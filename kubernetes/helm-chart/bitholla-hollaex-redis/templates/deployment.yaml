@@ -1,0 +1,41 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: {{.Release.Name}}
+  name: {{.Release.Name}}
+  namespace: {{.Release.Namespace}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{.Release.Name}}
+      role: master
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: {{.Release.Name}}
+        role: master
+        tier: backend
+    spec:
+
+{{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+{{- end }}
+
+      containers:
+      - name: {{.Release.Name}}
+        image: redis:5.0.5-alpine
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: port
+          containerPort: 6379
+        command: ["redis-server", "--requirepass", "$(REDIS_AUTH_PASSWORD)"]
+        env:
+        - name: REDIS_AUTH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{.Values.setAuth.secretName}}
+              key: REDIS_PASSWORD

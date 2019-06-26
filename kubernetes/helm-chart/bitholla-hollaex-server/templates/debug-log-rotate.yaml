@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: debug-log-rotater-cronjob-{{.Release.Name}}
+  namespace: {{.Release.Namespace}}
+data:
+  root: |-
+
+    0 1 * * * LOGROTATE_TARGETDATE=$(date +%Y-%m-%d -d '1 day ago') && rm /app/logs/debug.log.${LOGROTATE_TARGETDATE}
+    
+    * * * * * TIMESTAMP=$(date +%Y-%m-%d) && ln -sf /app/logs/debug.log.$TIMESTAMP /app/logs/debug.log

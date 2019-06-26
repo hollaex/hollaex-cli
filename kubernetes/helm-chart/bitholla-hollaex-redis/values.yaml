@@ -1,0 +1,11 @@
+# Default values for bitholla-hollaex-nginx.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+NodePort:
+  enable: false
+  port: 31255
+
+nodeSelector: {}
+
+setAuth:
+  secretName: hollaex-secret

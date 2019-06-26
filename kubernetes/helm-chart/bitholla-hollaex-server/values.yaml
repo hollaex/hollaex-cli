@@ -1,0 +1,30 @@
+# Default values for bitholla-hollaex-nginx.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+imageName: hollaex
+imageRegistry: bitholla
+dockerTag:
+
+envName: hollaex-testnet-env
+secretName: hollaex-testnet-secret
+DEPLOYMENT_MODE: all
+
+stable:
+  replicaCount: 1
+  
+staging:
+  enable: false
+  replicaCount: 1
+  dockerTag:
+
+nodeSelector: {}
+
+autoScaling:
+  hpa:
+    enable: false 
+    maxReplicas: 4
+    cpu: 500m
+
+APM_URL:
+
+podRestart_webhook_url:

@@ -1,0 +1,126 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: {{.Release.Name}}
+    role: {{.Release.Namespace}}
+  name: {{.Release.Name}}
+  namespace: {{.Release.Namespace}}
+spec:
+  revisionHistoryLimit: 3
+  replicas: {{.Values.stable.replicaCount}}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+
+{{- if eq .Values.DEPLOYMENT_MODE "api" }}
+  minReadySeconds: 15
+{{- end }}
+
+  selector:
+    matchLabels:
+      app: {{.Release.Name}}
+      role: {{.Release.Namespace}}
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: {{.Release.Name}}
+        role: {{.Release.Namespace}}
+        tier: backend
+    spec:
+
+      volumes:
+         #Volume for debug log storing & printing
+         - name: shared-data
+           emptyDir: {}
+         - name: debug-log-rotater-cronjob-rules
+           configMap:
+            # defaultMode: 0600
+            name: debug-log-rotater-cronjob-{{.Release.Name}}
+
+{{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+{{- end }}
+
+      containers:
+      - name: {{.Release.Name}}
+        image: {{.Values.imageRegistry}}/{{.Values.imageName}}:{{.Values.dockerTag}}
+        imagePullPolicy: Always
+        ports:
+        - name: websocket-port
+          containerPort: 10080
+        - name: port
+          containerPort: 10010
+
+        volumeMounts:
+          - name: shared-data
+            mountPath: /app/logs
+
+        envFrom:
+          - configMapRef:
+              name: {{.Values.envName}}
+          - secretRef:
+              name: {{.Values.secretName}}
+        env:
+          - name: DEPLOYMENT_MODE
+            value: {{.Values.DEPLOYMENT_MODE}}
+          - name: ELASTIC_APM_SERVICE_NAME
+            value: {{.Release.Name}}
+          - name: ELASTIC_APM_SERVER_URL
+            value: {{.Values.APM_URL}}
+        
+        resources:
+          limits:
+            memory: "1024Mi"
+            cpu: "1000m"
+          requests:
+            memory: "100Mi"
+            cpu: "2m"
+        
+{{- if .Values.podRestart_webhook_url }}
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "export hostname=`hostname` && curl -X POST -H 'Content-type: application/json' --data '{\"attachments\": [ { \"color\": \"#A569BD\", \"title\": \"Pod has been terminated!\", \"text\": \"⚠️Pod '\"${hostname}\"' just has been terminated.⚠️\" } ] }' https://hooks.slack.com/services/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"]
+{{- end }}
+
+{{- if eq .Values.DEPLOYMENT_MODE "api" }}
+        readinessProbe:
+          exec:
+            command:
+            - curl
+            - http://localhost:10010/v0/health
+          initialDelaySeconds: 1
+          periodSeconds: 15
+{{- end }}
+
+      # Sidecar container to print out debug logs
+      - name: {{.Release.Name}}-winston-log-printer
+        image: bitholla/devops-tools:alpine_coretuils-3.6
+        #imagePullPolicy: Always
+        volumeMounts:
+          - name: shared-data
+            mountPath: /app/logs
+          - name: debug-log-rotater-cronjob-rules
+            mountPath: /etc/crontabs
+        command: ["/bin/sh","-c"]
+        args: 
+          - crond;
+            export TIMESTAMP=$(date +%Y-%m-%d);
+            ln -sf /app/logs/debug.log.$TIMESTAMP /app/logs/debug.log;
+            tail -F /app/logs/debug.log;
+
+        resources:
+          limits:
+            memory: "20Mi"
+            cpu: "2m"
+          requests:
+            memory: "10Mi"
+            cpu: "1m"
+
+      imagePullSecrets:
+      - name: bitholla-registry-secret

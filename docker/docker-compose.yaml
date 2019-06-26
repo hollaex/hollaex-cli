@@ -1,0 +1,22 @@
+version: '3'
+services:
+  hollaex-cli:
+    image: bitholla/hollaex-cli:1.0.0
+    environment:
+    # TOKEN, API SERVER ENDPOINT, CERT FOR YOUR KUBERNETES CLUSTER
+    # YOU CAN ALSO PASS KUBECONFIG FILE INSTEAD OF DEFINING IT MANUALLY
+      # - KUBERNETES_TOKEN=
+      # - KUBERNETES_SERVER=
+      # - KUBERNETES_CERT=
+      - HOLLAEX=upgrade --config /root/config --no_verify
+
+    volumes:
+      #PATH TO KUBECOFNIG FILE
+      #NO NEED TO SET IT IF YOU ALREADY DEFINED TOKEN, API SERVER ENDPOINT, AND CA AS ENVIRONMENT
+      - <PATH_TO_KUBECONFIG_FILE>:/root/kubeconfig
+      #PATH TO HOLLAEX-CLI CONFIG FILE
+      - <PATH_TO_HOLLAEX-CLI_CONFIG_FILE>:/root/config
+    
+
+      
+  

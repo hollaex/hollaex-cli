@@ -1,0 +1,25 @@
+# Default values for bitholla-hollaex-nginx.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+pvc:
+  create: false
+  size: 50Gi
+  name: hollaex-testnet-postgres-volume
+
+secretName: hollaex-secret
+
+NodePort:
+  enable: false
+  port: 
+
+nodeSelector: {}
+
+filebeat:
+  create: false
+  image:
+    repository: docker.elastic.co/beats/filebeat
+    tag: "6.5.4"
+    pullPolicy: IfNotPresent
+  kibana_host: testnet-es-kibana.elasticsearch
+  elasticsearch_host: testnet-es-elasticsearch-client.elasticsearch
+  elasticsearch_port: 9200
