@@ -1,5 +1,7 @@
  #!/bin/bash 
 
+SCRIPTPATH=$HOME/.hollaex-cli
+
 #### hollaex-cli Settings ####
 
 RUN_WITH_VERIFY=true 
@@ -782,7 +784,6 @@ elif [ "$1" == "upgrade" ]; then
 
     echo "*** Applying latest secret on the cluster ***"
     kubectl apply -f $SCRIPTPATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
-
 
     if [ "$UPGRADE_BACKEND_COMPONENTS" == true ]; then
 

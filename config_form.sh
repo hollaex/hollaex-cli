@@ -1,5 +1,5 @@
- #!/bin/bash 
-# SCRIPTPATH=$( cd "$(dirname "$0")" ; pwd )
+#!/bin/bash 
+SCRIPTPATH=$HOME/.hollaex-cli
 
 function local_database_init() {
 
@@ -478,7 +478,7 @@ EOL
 
 function generate_random_values() {
 
-  python -c 'import os,base64; print base64.b64encode(os.urandom(16))'
+  python -c "import os; print os.urandom(16).encode('hex')"
 
 }
 
@@ -499,7 +499,7 @@ for k in ${GENERATE_VALUES_LIST[@]}; do
 grep -v $k $SECRET_CONFIG_FILE_PATH > temp && mv temp $SECRET_CONFIG_FILE_PATH
 
 cat >> $SECRET_CONFIG_FILE_PATH <<EOL
-$k=$(generate_random_values | cut -f1 -d "=")
+$k=$(generate_random_values)
 EOL
 
 done
