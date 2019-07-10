@@ -356,42 +356,16 @@ cat > $SCRIPTPATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml <<
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
-  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-master
-  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
-  annotations:
-    kubernetes.io/ingress.class: "nginx"
-    certmanager.k8s.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}
-    nginx.org/server-tokens: "False"
-    nginx.org/client-max-body-size: "2m"
-    nginx.org/mergeable-ingress-type: master
-    # FOR COOKIE STICKY
-    nginx.org/lb-method: "round_robin"
-    custom.nginx.org/sticky-session: "on"
-    custom.nginx.org/sticky-session-expires: "30d"
-spec:
-  rules:
-  - host: ${KUBERNETES_CONFIGMAP_API_HOST}
-  tls:
-  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
-    hosts:
-    - ${KUBERNETES_CONFIGMAP_API_HOST}
----
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
   name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-api
   namespace: ${ENVIRONMENT_EXCHANGE_NAME}
   annotations:
     kubernetes.io/ingress.class: "nginx"
     certmanager.k8s.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}
-    #nginx.org/lb-method: "round_robin"
-    #snginx.org/server-tokens: "False"
-    nginx.org/client-max-body-size: "2m"
-    nginx.org/location-snippets: |
+    nginx.ingress.kubernetes.io/proxy-body-size: "2m"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
       limit_req zone=api burst=10 nodelay;
       limit_req_log_level notice;
       limit_req_status 429;
-    nginx.org/mergeable-ingress-type: minion
 spec:
   rules:
   - host: ${KUBERNETES_CONFIGMAP_API_HOST}
@@ -401,6 +375,12 @@ spec:
         backend:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
           servicePort: 10010
+
+  tls:
+  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
+    hosts:
+    - ${KUBERNETES_CONFIGMAP_API_HOST}
+
 ---
 apiVersion: extensions/v1beta1
 kind: Ingress
@@ -410,14 +390,11 @@ metadata:
   annotations:
     kubernetes.io/ingress.class: "nginx"
     certmanager.k8s.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}
-    #nginx.org/lb-method: "round_robin"
-    #nginx.org/server-tokens: "False"
-    nginx.org/client-max-body-size: "2m"
-    nginx.org/location-snippets: |
+    nginx.ingress.kubernetes.io/proxy-body-size: "2m"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
       limit_req zone=order burst=3 nodelay;
       limit_req_log_level notice;
       limit_req_status 429;
-    nginx.org/mergeable-ingress-type: minion
 spec:
   rules:
   - host: ${KUBERNETES_CONFIGMAP_API_HOST}
@@ -427,6 +404,12 @@ spec:
         backend:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
           servicePort: 10010
+  
+  tls:
+  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
+    hosts:
+    - ${KUBERNETES_CONFIGMAP_API_HOST}
+
 ---
 apiVersion: extensions/v1beta1
 kind: Ingress
@@ -436,10 +419,7 @@ metadata:
   annotations:
     kubernetes.io/ingress.class: "nginx"
     certmanager.k8s.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}
-    #nginx.org/lb-method: "round_robin"
-    #nginx.org/server-tokens: "False"
-    nginx.org/client-max-body-size: "2m"
-    nginx.org/mergeable-ingress-type: minion
+    nginx.ingress.kubernetes.io/proxy-body-size: "2m"
 spec:
   rules:
   - host: ${KUBERNETES_CONFIGMAP_API_HOST}
@@ -449,6 +429,12 @@ spec:
         backend:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
           servicePort: 10010
+
+  tls:
+  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
+    hosts:
+    - ${KUBERNETES_CONFIGMAP_API_HOST}
+
 ---
 apiVersion: extensions/v1beta1
 kind: Ingress
@@ -458,11 +444,8 @@ metadata:
   annotations:
     kubernetes.io/ingress.class: "nginx"
     certmanager.k8s.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}
-    nginx.org/websocket-services: "${ENVIRONMENT_EXCHANGE_NAME}-server-ws"
-    #nginx.org/lb-method: "round_robin"
-    #nginx.org/server-tokens: "False"
-    nginx.org/client-max-body-size: "2m"
-    nginx.org/mergeable-ingress-type: minion
+    nginx.ingress.kubernetes.io/proxy-body-size: "2m"
+    nginx.org/websocket-services: "${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}-server-ws"
 spec:
   rules:
   - host: ${KUBERNETES_CONFIGMAP_API_HOST}
@@ -472,6 +455,11 @@ spec:
         backend:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-ws
           servicePort: 10080
+  
+  tls:
+  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
+    hosts:
+    - ${KUBERNETES_CONFIGMAP_API_HOST}
 EOL
 
 }
