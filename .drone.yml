@@ -40,7 +40,8 @@ pipeline:
       
   #### Docker image build ####
   docker_build:
-    image: bitholla/devops-tools:drone_docker-1086846
+    #image: bitholla/devops-tools:drone_docker-1086846
+    image: plugins/docker
     secrets: [ docker_username, docker_password ]
     repo: bitholla/hollaex-cli
     dockerfile: docker/Dockerfile
