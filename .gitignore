@@ -1,1 +1,4 @@
 testscript.sh
+kubernetes/config
+local/*.local
+local/*.yaml
