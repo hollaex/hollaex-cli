@@ -34,7 +34,7 @@ sudo mv $(pwd)/hollaex-cli $HOME/.hollaex-cli
 sudo ln -s $HOME/.hollaex-cli/hollaex /usr/local/bin/hollaex
 
 # ex -sc '2i|SCRIPTPATH=$HOME/.hollaex-cli' -cx $HOME/.hollaex-cli/hollaex
-# ex -sc '2i|SCRIPTPATH=$HOME/.hollaex-cli' -cx $HOME/.hollaex-cli/config_form.sh
+# ex -sc '2i|SCRIPTPATH=$HOME/.hollaex-cli' -cx $HOME/.hollaex-cli/tools_generator.sh
 
 echo "hollaex-cli v$(cat $HOME/.hollaex-cli/version) has been successfully installed!"
 echo "If you want to uninstall hollaex-cli later, Please visit https://github.com/bitholla/hollaex-cli for further information."
