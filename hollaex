@@ -12,8 +12,6 @@ GENERATE_PASSWORDS=
 
 DOCKER_COMPOSE_NAME_PREFIX=local
 
-ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS=2
-
 err_msg() { echo "$@" ;} >&2
 err_msg_a() { err_msg "-a option argument required" ;}
 err_msg_l() { err_msg "--long option argument required" ;}
@@ -250,6 +248,8 @@ elif [ "$1" == "init" ]; then
     echo "*** All done! ***"
     echo "*** To run hollaex-cli commands further, Please get into initialized path first to let hollaex-cli reads settings. ***"
 
+    exit 0;
+    
 elif [ "$1" == "start" ]; then
 
     while true; do
@@ -358,7 +358,7 @@ elif [ "$1" == "start" ]; then
 
             else 
 
-                echo "*** Are you sure you want to initialize $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($KUBERNETES_CONFIGMAP_API_HOST) on this cluster? (y/n) ***"
+                echo "*** Are you sure you want to initialize / start $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($KUBERNETES_CONFIGMAP_API_HOST) on this cluster? (y/n) ***"
 
             fi
 
@@ -370,6 +370,7 @@ elif [ "$1" == "start" ]; then
             fi
 
         fi
+        
 
         if [ "$GENERATE_PASSWORDS" == true ]; then
 
@@ -382,7 +383,6 @@ elif [ "$1" == "start" ]; then
 
         fi
 
-        
         # For scaling up exisitng Exchange on Kubernetes
         if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
@@ -411,9 +411,7 @@ elif [ "$1" == "start" ]; then
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-db --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-influxdb --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-            fi
-
+            
             echo "*** All done! ***"
             echo "*** Containers successfully scaled up ***"
 
@@ -531,10 +529,10 @@ elif [ "$1" == "start" ]; then
 
             read answer
 
-                if [ "$answer" = "${answer#[Yy]}" ] ;then
-                    echo "*** Exiting... ***"
-                    exit 0;
-                fi
+            if [ "$answer" = "${answer#[Yy]}" ] ;then
+                echo "*** Exiting... ***"
+                exit 0;
+            fi
 
         fi
 
@@ -859,6 +857,7 @@ elif [ "$1" == "stop" ]; then
     fi
 
 elif [ "$1" == "upgrade" ]; then
+
 
     while true; do
         [ $# -eq 0 ] && break
