@@ -35,7 +35,7 @@ Options:
         --no_verify, Run script without verifying docker-compose setup.
     stop :
         --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
-        --deployment_mode, Specify exact container to stop on this machine, Such as api.
+        --mode, Specify exact container to stop on this machine, Such as api.
         --database_init, Run sequelize db:migrate, db:seed and db triggers after init steps.
         --skip_generate_passwords, Skip generated random value passwords.
         --no_verify, Run script without verifying connected kubernetes cluster.
@@ -270,7 +270,7 @@ elif [ "$1" == "start" ]; then
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 LOCAL_DEPLOYMENT_MODE=$1
-                echo "Your DEPLOYMENT_MODE setup : $LOCAL_DEPLOYMENT_MODE."
+                echo "Your DEPLOYMENT MODE setup : $LOCAL_DEPLOYMENT_MODE."
                 shift; continue
                 ;;
             --with_backends)
