@@ -3,11 +3,11 @@ SCRIPTPATH=$HOME/.hollaex-cli
 
 function local_database_init() {
     
-    if [ "$1" == "start" ]; then
+    if [[ "$1" == "start" ]]; then
 
-      if [ $HOLLAEX_CODEBASE_PATH ]; then
+      if [[ ! $LOCAL_DEPLOYMENT_MODE == "all" ]]; then
 
-        CONTAINER_PREFIX=""
+        CONTAINER_PREFIX="-$LOCAL_DEPLOYMENT_MODE"
 
       fi
 
@@ -27,11 +27,11 @@ function local_database_init() {
 
       exit 0;
 
-    elif [ "$1" == "upgrade" ]; then
+    elif [[ "$1" == 'upgrade' ]]; then
 
-      if [ $HOLLAEX_CODEBASE_PATH ]; then
+      if [[ $LOCAL_DEPLOYMENT_MODE ]]; then
 
-        CONTAINER_PREFIX=""
+        CONTAINER_PREFIX="-$LOCAL_DEPLOYMENT_MODE"
 
       fi
 
@@ -116,9 +116,9 @@ EOL
 
 }
 
-function generate_nginx_conf() {
+function generate_nginx_upstream() {
   
-if [ "$LOCAL_DEPLOYMENT_MODE" == "all" ]; then 
+if [[ "$LOCAL_DEPLOYMENT_MODE" == "all" ]]; then 
 
   # Generate local nginx conf
   cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
@@ -139,7 +139,7 @@ fi
 
 #IFS=',' read -ra LOCAL_DEPLOYMENT_MODE <<< "$1"
 
-if [ "$LOCAL_DEPLOYMENT_MODE" == "api" ] && [ ! "$LOCAL_DEPLOYMENT_MODE" == "ws" ]; then
+if [[ "$LOCAL_DEPLOYMENT_MODE" == "api" ]] && [[ ! "$LOCAL_DEPLOYMENT_MODE" == "ws" ]]; then
 
   # Generate local nginx conf
   cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
@@ -154,7 +154,7 @@ if [ "$LOCAL_DEPLOYMENT_MODE" == "api" ] && [ ! "$LOCAL_DEPLOYMENT_MODE" == "ws"
 
 EOL
 
-elif [ ! "$LOCAL_DEPLOYMENT_MODE" == "api" ] && [ "$LOCAL_DEPLOYMENT_MODE" == "ws" ]; then
+elif [[ ! "$LOCAL_DEPLOYMENT_MODE" == "api" ]] && [[ "$LOCAL_DEPLOYMENT_MODE" == "ws" ]]; then
 
   # Generate local nginx conf
   cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
@@ -171,7 +171,7 @@ EOL
 
 fi
 
-if [ "$LOCAL_DEPLOYMENT_MODE" == "api" ] && [ "$LOCAL_DEPLOYMENT_MODE" == "ws" ]; then
+if [[ "$LOCAL_DEPLOYMENT_MODE" == "api" ]] && [[ "$LOCAL_DEPLOYMENT_MODE" == "ws" ]]; then
 
 # Generate local nginx conf
 cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
@@ -191,6 +191,102 @@ fi
 
 }
 
+function generate_nginx_config_for_plugin() {
+
+  if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf" ]]; then
+
+    rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf
+    touch $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf
+  
+  fi
+
+  # if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-plugins.conf" ]]; then
+
+  #   rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-plugins.conf
+  #   touch $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-plugins.conf
+  
+  # fi
+  
+  IFS=',' read -ra PLUGINS <<< "$ENVIRONMENT_CUSTOM_PLUGINS_NAME"    #Convert string to array
+
+  for i in "${PLUGINS[@]}"; do
+    PLUGINS_UPSTREAM_NAME=$(echo $i | cut -f1 -d ",")
+
+    CUSTOM_ENDPOINT=$(set -o posix ; set | grep "ENVIRONMENT_CUSTOM_ENDPOINT_$(echo $PLUGINS_UPSTREAM_NAME | tr a-z A-Z)" | cut -f2 -d"=")
+    CUSTOM_ENDPOINT_PORT=$(set -o posix ; set | grep "ENVIRONMENT_CUSTOM_ENDPOINT_PORT_$(echo $PLUGINS_UPSTREAM_NAME | tr a-z A-Z)" | cut -f2 -d"=")
+    CUSTOM_URL=$(set -o posix ; set | grep "ENVIRONMENT_CUSTOM_URL_$(echo $PLUGINS_UPSTREAM_NAME | tr a-z A-Z)" | cut -f2 -d"=")
+    CUSTOM_IS_WEBSOCKET=$(set -o posix ; set | grep "ENVIRONMENT_CUSTOM_IS_WEBSOCKET_$(echo $PLUGINS_UPSTREAM_NAME | tr a-z A-Z)" | cut -f2 -d"=")
+
+    if [[ "$USE_KUBERNETES" ]]; then
+
+      function websocket_upgrade() {
+        if  [[ "$CUSTOM_IS_WEBSOCKET" == "true" ]]; then
+          echo "nginx.org/websocket-services: '${CUSTOM_ENDPOINT}'"
+        fi
+      }
+
+cat >> $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml <<EOL
+---
+
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-${PLUGINS_UPSTREAM_NAME}
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    certmanager.k8s.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}
+    nginx.ingress.kubernetes.io/proxy-body-size: "2m"
+    $(websocket_upgrade;)
+spec:
+  rules:
+  - host: ${KUBERNETES_CONFIGMAP_API_HOST}
+    http:
+      paths:
+      - path: ${CUSTOM_URL}
+        backend:
+          serviceName: ${CUSTOM_ENDPOINT}
+          servicePort: ${CUSTOM_ENDPOINT_PORT}
+          
+tls:
+  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
+    hosts:
+    - ${KUBERNETES_CONFIGMAP_API_HOST}
+EOL
+
+    fi
+
+    if [[ ! "$USE_KUBERNETES" ]]; then
+
+      function websocket_upgrade() {
+        if  [[ "$CUSTOM_IS_WEBSOCKET" == "true" ]]; then
+          echo "proxy_http_version  1.1;
+          proxy_set_header    Upgrade \$http_upgrade; 
+          proxy_set_header    Connection \"upgrade\";"
+        fi
+      }
+      
+# Generate local nginx conf
+cat >> $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
+
+upstream $PLUGINS_UPSTREAM_NAME {
+  server ${CUSTOM_ENDPOINT}:${CUSTOM_ENDPOINT_PORT};
+}
+EOL
+
+cat >> $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf <<EOL
+location ${CUSTOM_URL} {
+  $(websocket_upgrade;)
+  proxy_pass      http://$PLUGINS_UPSTREAM_NAME;
+}
+
+EOL
+  
+  fi
+
+  done
+
+}
 
 function generate_local_docker_compose() {
 
@@ -200,9 +296,10 @@ version: '3'
 services:
 EOL
 
-if [ "$WITH_BACKENDS" ]; then 
-# Generate docker-compose
-cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+if [[ "$WITH_BACKENDS" ]]; then 
+
+  # Generate docker-compose
+  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-redis:
     image: redis:5.0.5-alpine
     depends_on:
@@ -212,7 +309,7 @@ cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose
     ports:
       - 6379:6379
   ${ENVIRONMENT_EXCHANGE_NAME}-db:
-    image: postgres:10.6
+    image: postgres:10.9
     ports:
       - 5432:5432
     environment:
@@ -241,11 +338,10 @@ EOL
 
 fi 
 
-if [ "$1" == "all" ] && [ "$WITH_BACKENDS" ] ; then
+if [[ "$1" == "all" ]] && [[ "$WITH_BACKENDS" ]] ; then
 
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
-
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server:
     image: $ENVIRONMENT_DOCKER_IMAGE_REGISTRY:$ENVIRONMENT_DOCKER_IMAGE_VERSION
@@ -281,11 +377,10 @@ if [ "$1" == "all" ] && [ "$WITH_BACKENDS" ] ; then
 
 EOL
 
-elif [ "$1" == "all" ] && [ ! "$WITH_BACKENDS" ] ; then
+elif [[ "$1" == "all" ]] && [[ ! "$WITH_BACKENDS" ]] ; then
 
  # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
-
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server:
     image: $ENVIRONMENT_DOCKER_IMAGE_REGISTRY:$ENVIRONMENT_DOCKER_IMAGE_VERSION
@@ -328,7 +423,6 @@ IFS=',' read -ra LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE <<< "$LOCAL_DEPLOYME
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
 
-
   ${ENVIRONMENT_EXCHANGE_NAME}-server-${i}:
     image: $ENVIRONMENT_DOCKER_IMAGE_REGISTRY:$ENVIRONMENT_DOCKER_IMAGE_VERSION
     env_file:
@@ -343,13 +437,13 @@ IFS=',' read -ra LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE <<< "$LOCAL_DEPLOYME
       - ${i}
 EOL
 
-  if [ "$i" == "api" ]; then
+  if [[ "$i" == "api" ]]; then
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
     ports:
       - 10010:10010
 EOL
 
-  elif [ "$i" == "ws" ]; then
+  elif [[ "$i" == "ws" ]]; then
 
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
     ports:
@@ -421,7 +515,7 @@ metadata:
     certmanager.k8s.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}
     nginx.ingress.kubernetes.io/proxy-body-size: "2m"
     nginx.ingress.kubernetes.io/configuration-snippet: |
-      limit_req zone=api burst=10 nodelay;
+      limit_req zone=api burst=5 nodelay;
       limit_req_log_level notice;
       limit_req_status 429;
 spec:
@@ -581,22 +675,22 @@ function helm_dynamic_trading_paris() {
     TRADE_PARIS_DEPLOYMENT=$(echo $i | cut -f1 -d ",")
     TRADE_PARIS_DEPLOYMENT_NAME=${TRADE_PARIS_DEPLOYMENT//-/}
 
-    if [ "$1" == "run" ]; then
+    if [[ "$1" == "run" ]]; then
 
       #Running and Upgrading
       helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-queue-$TRADE_PARIS_DEPLOYMENT_NAME --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="queue $TRADE_PARIS_DEPLOYMENT" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
-    elif [ "$1" == "scaleup" ]; then
+    elif [[ "$1" == "scaleup" ]]; then
       
       #Scaling down queue deployments on Kubernetes
       kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-queue-$TRADE_PARIS_DEPLOYMENT_NAME --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-    elif [ "$1" == "scaledown" ]; then
+    elif [[ "$1" == "scaledown" ]]; then
       
       #Scaling down queue deployments on Kubernetes
       kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-queue-$TRADE_PARIS_DEPLOYMENT_NAME --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-    elif [ "$1" == "terminate" ]; then
+    elif [[ "$1" == "terminate" ]]; then
 
       #Terminating
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-queue-$TRADE_PARIS_DEPLOYMENT_NAME

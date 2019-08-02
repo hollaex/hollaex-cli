@@ -1,16 +1,16 @@
  #!/bin/bash 
 
-SCRIPTPATH=$HOME/.hollaex-cli
+SCRIPTPATH="$HOME/.hollaex-cli"
 
 #### hollaex-cli Settings ####
 
 RUN_WITH_VERIFY=true 
 
-LOCAL_DEPLOYMENT_MODE=all
+LOCAL_DEPLOYMENT_MODE='all'
 
 GENERATE_PASSWORDS=
 
-DOCKER_COMPOSE_NAME_PREFIX=local
+DOCKER_COMPOSE_NAME_PREFIX='local'
 
 err_msg() { echo "$@" ;} >&2
 err_msg_a() { err_msg "-a option argument required" ;}
@@ -28,7 +28,7 @@ Options:
     start :
         --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
         --deployment_mode, Specify exact container to start on this machine, Such as api.
-        --without_backends, Running containers only without creating backend components, such as Redis.
+        --with_backends, Running containers only without creating backend components, such as Redis.
         --database_init, Run sequelize db:migrate, db:seed and db triggers after init steps.
         --no_verify, Run script without verifying docker-compose setup.
     stop :
@@ -53,10 +53,10 @@ Options:
 EOF
 }
 
-if [ "$1" == "dev" ]; then
+if [[ "$1" == 'dev' ]]; then
 
     while true; do
-        [ $# -eq 0 ] && break
+        [[ $# -eq 0 ]] && break
         case $1 in
             --path)
                 shift 
@@ -81,17 +81,17 @@ if [ "$1" == "dev" ]; then
                 ;;
             --database_init)
                 LOCAL_DATABASE_INIT=true
-                echo "Local database initialization enabled."
+                echo 'Local database initialization enabled.'
                 shift; continue
                 ;;
             --test)
                 LOCAL_CODE_TEST=true
-                echo "Local mocha code test mode enabled."
+                echo 'Local mocha code test mode enabled.'
                 shift; continue
                 ;;
             --no_verify)
                 RUN_WITH_VERIFY=false
-                echo "Running it wihtout verify the config."
+                echo 'Running it wihtout verify the config.'
                 shift; continue
                 ;;
             --*) 
@@ -103,8 +103,8 @@ if [ "$1" == "dev" ]; then
         shift
     done
 
-    DOCKER_COMPOSE_NAME_PREFIX=hollaex-server   
-    ENVIRONMENT_EXCHANGE_NAME=$LOCAL_APPNAME
+    DOCKER_COMPOSE_NAME_PREFIX='hollaex-server'   
+    ENVIRONMENT_EXCHANGE_NAME="$LOCAL_APPNAME"
 
     source $SCRIPTPATH/tools_generator.sh
 
@@ -122,15 +122,15 @@ if [ "$1" == "dev" ]; then
     fi
 
     # Running database jobs for local db.
-    if [ "$LOCAL_DATABASE_INIT" == true ] && [ ! "$LOCAL_COMMAND" ]; then
+    if [[ "$LOCAL_DATABASE_INIT" == true ]] && [[ ! "$LOCAL_COMMAND" ]]; then
 
-        if [ "$RUN_WITH_VERIFY" == true ]; then
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
             echo "*** Are you sure you want to run database init jobs for your local $LOCAL_APPNAME db? (y/n) ***"
 
             read answer
 
-            if [ "$answer" = "${answer#[Yy]}" ]; then
+            if [[ "$answer" = "${answer#[Yy]}" ]]; then
                 echo "*** Exiting... ***"
                 exit 0;
             fi
@@ -142,20 +142,20 @@ if [ "$1" == "dev" ]; then
     fi
 
     # Running local code test
-    if [ "$LOCAL_CODE_TEST" == true ] && [ ! "$LOCAL_COMMAND" ]; then
+    if [[ "$LOCAL_CODE_TEST" == true ]] && [[ ! "$LOCAL_COMMAND" ]]; then
 
-         if  [ ! "$LOCAL_APPNAME" ]; then
+         if  [[ ! "$LOCAL_APPNAME" ]]; then
             echo "You must specify app name before running local code test."
             exit 1;
         fi
 
-        if [ "$RUN_WITH_VERIFY" == true ]; then
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
             echo "*** Are you sure you want to run local code test for $LOCAL_APPNAME? (y/n) ***"
 
             read answer
 
-            if [ "$answer" = "${answer#[Yy]}" ]; then
+            if [[ "$answer" = "${answer#[Yy]}" ]]; then
                 echo "*** Exiting... ***"
                 exit 0;
             fi
@@ -167,7 +167,7 @@ if [ "$1" == "dev" ]; then
     fi
 
     #Quit if necessary flags are missing
-    if [ ! "$LOCAL_APPNAME" ] || [ ! "$LOCAL_COMMAND" ]; then
+    if [[ ! "$LOCAL_APPNAME" ]] || [[ ! "$LOCAL_COMMAND" ]]; then
 
         echo "*** Some necessary flags are missing! Please check agian your command. ***"
         print_usage;
@@ -175,13 +175,13 @@ if [ "$1" == "dev" ]; then
 
     fi
 
-    if [ "$RUN_WITH_VERIFY" == true ]; then
+    if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
         echo "*** Are you sure you want to run docker-compose $LOCAL_COMMAND for local $LOCAL_APPNAME development? (y/n) ***"
 
         read answer
 
-        if [ "$answer" = "${answer#[Yy]}" ] ;then
+        if [[ "$answer" = "${answer#[Yy]}" ]] ;then
             echo "*** Exiting... ***"
             exit 0;
         fi
@@ -189,7 +189,7 @@ if [ "$1" == "dev" ]; then
     fi
 
     #Set current path for hollaex dev command in case of user didn't pass it themselves.
-    if [ ! "$HOLLAEX_CODEBASE_PATH" ]; then
+    if [[ ! "$HOLLAEX_CODEBASE_PATH" ]]; then
 
         HOLLAEX_CODEBASE_PATH=$(pwd)
         
@@ -199,10 +199,10 @@ if [ "$1" == "dev" ]; then
 
     exit 0;
 
-elif [ "$1" == "init" ]; then
+elif [[ "$1" == "init" ]]; then
     
     while true; do
-        [ $# -eq 0 ] && break
+        [[ $# -eq 0 ]] && break
         case $1 in
             --name)
                 shift 
@@ -216,7 +216,7 @@ elif [ "$1" == "init" ]; then
     done
 
     #Quit if name of exchange is missing
-    if [ ! "$ENVIRONMENT_EXCHANGE_NAME" ]; then
+    if [[ ! "$ENVIRONMENT_EXCHANGE_NAME" ]]; then
 
         echo "*** You must specify the name of your Exchange! Use `--name` flag to pass name. ***"
         print_usage;
@@ -226,7 +226,7 @@ elif [ "$1" == "init" ]; then
 
     HOLLAEX_CLI_INIT_PATH=$(pwd)/$ENVIRONMENT_EXCHANGE_NAME
 
-    if [ -d "$HOLLAEX_CLI_INIT_PATH" ]; then
+    if [[ -d "$HOLLAEX_CLI_INIT_PATH" ]]; then
 
         echo "*** Init path exists! hollaex-cli can't override exsiting exchange files. ***"
         exit 1;
@@ -250,17 +250,17 @@ elif [ "$1" == "init" ]; then
 
     exit 0;
     
-elif [ "$1" == "start" ]; then
+elif [[ "$1" == "start" ]]; then
 
     while true; do
-        [ $# -eq 0 ] && break
+        [[ $# -eq 0 ]] && break
         case $1 in
             --settings)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                if [ -d "$1" ] ; then
+                if [[ -d "$1" ]] ; then
                     CONFIG_FILE_PATH=$1/*
-                elif [ -f "$1" ]; then
+                elif [[ -f "$1" ]]; then
                     CONFIG_FILE_PATH=$1
                 fi
                 echo "Your configuration file : $CONFIG_FILE_PATH."
@@ -307,14 +307,14 @@ elif [ "$1" == "start" ]; then
         shift
     done
 
-    if [ ! "$CONFIG_FILE_PATH" ]; then
+    if [[ ! "$CONFIG_FILE_PATH" ]]; then
         CONFIG_FILE_PATH=$(pwd)/settings/*
         TEMPLATE_GENERATE_PATH=$(pwd)/templates
         INIT_PATH_CHECK=$(pwd)/.hollaex
     fi
 
     #Quit if necessary flags are missing
-    if [ ! "$CONFIG_FILE_PATH" ] || [ ! -f "$INIT_PATH_CHECK" ]; then
+    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
         echo "*** Failed to detect hollaex-cli initialized directory! Please re-check your path. ***"
         print_usage;
@@ -330,17 +330,17 @@ elif [ "$1" == "start" ]; then
     load_config_variables;
 
 
-    if [ "$USE_KUBERNETES" ]; then
+    if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
         check_kubernetes_dependencies;
 
         #Creating kubernetes_config directory for generating config for Kubernetes.
-        if [ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]; then
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
         fi
 
-        if [ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION"  ] || [ ! "$ENVIRONMENT_EXCHANGE_NAME"  ] ; then
+        if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION"  ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME"  ]] ; then
             echo "Error : Please define exchange name and Docker image version on config file before running hollaex-cli."
             print_usage
             exit 1;
@@ -350,9 +350,9 @@ elif [ "$1" == "start" ]; then
         echo "*** Verifying current KUBECONFIG on the machine ***"
         kubectl get nodes
 
-        if [ "$RUN_WITH_VERIFY" == true ]; then
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            if [ "$DATABASE_INIT" == true ]; then
+            if [[ "$DATABASE_INIT" == true ]]; then
 
                 echo "*** Are you sure you want to initialize $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($KUBERNETES_CONFIGMAP_API_HOST) with automatic database initalization on this cluster? (y/n) ***"
 
@@ -364,7 +364,7 @@ elif [ "$1" == "start" ]; then
 
             read answer
 
-            if [ "$answer" = "${answer#[Yy]}" ] ;then
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
                 echo "*** Exiting... ***"
                 exit 0;
             fi
@@ -372,7 +372,7 @@ elif [ "$1" == "start" ]; then
         fi
         
 
-        if [ "$GENERATE_PASSWORDS" == true ]; then
+        if [[ "$GENERATE_PASSWORDS" == true ]]; then
 
             #Generating random values for passwords and update config file to contain it;
             update_random_values_to_config;
@@ -388,12 +388,12 @@ elif [ "$1" == "start" ]; then
 
             echo "*** Existing Exchange - $ENVIRONMENT_EXCHANGE_NAME detected ***"
 
-            if [ "$RUN_WITH_VERIFY" == true ]; then
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
                 echo "*** Would you like to recover (scale up) existing Exchange on this Kubernetes? (y/n) ***"
 
                 read answer
 
-                if [ "$answer" = "${answer#[Yy]}" ] ;then
+                if [[ "$answer" = "${answer#[Yy]}" ]] ;then
                     echo "*** Exiting... ***"
                     exit 0;
                 fi
@@ -420,24 +420,32 @@ elif [ "$1" == "start" ]; then
         fi
 
 
-        if [ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]; then
+        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
 
             echo "Generating Kubernetes Configmap"
             generate_kubernetes_configmap;
 
         fi
 
-        if [ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]; then
+        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]]; then
 
             echo "Generating Kubernetes Secret"
             generate_kubernetes_secret;
 
         fi
 
-        if [ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]; then
+
+        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
 
             echo "Generating Kubernetes Ingress"
             generate_kubernetes_ingress;
+
+        fi
+
+        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == true ]]; then
+
+            echo "Generating Kubernetes Ingress for custom plugins"
+            generate_nginx_config_for_plugin;
 
         fi
         
@@ -451,13 +459,13 @@ elif [ "$1" == "start" ]; then
         echo "*** Applying secret on the namespace ***"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
-        if [ "$ENVIRONMENT_KUBERNETES_USE_EXTERNAL_REDIS" == false ]; then
+        if [[ "$ENVIRONMENT_KUBERNETES_USE_EXTERNAL_REDIS" == false ]]; then
 
             generate_nodeselector_values $ENVIRONMENT_KUBERNETES_REDIS_NODESELECTOR redis
 
             echo "*** Running Redis ***"
             
-            if [ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS" == true ]; then
+            if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS" == true ]]; then
 
                 helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-redis  --namespace $ENVIRONMENT_EXCHANGE_NAME --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT" --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis
         
@@ -468,12 +476,12 @@ elif [ "$1" == "start" ]; then
 
         fi
 
-        if [ "$ENVIRONMENT_KUBERNETES_USE_EXTERNAL_POSTGRESQL" == false ]; then
+        if [[ "$ENVIRONMENT_KUBERNETES_USE_EXTERNAL_POSTGRESQL" == false ]]; then
 
             generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_NODESELECTOR postgresql
             echo "*** Running PostgreSQL DB ***"
 
-            if [ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_ACCESS" == true ]; then
+            if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_ACCESS" == true ]]; then
 
                 helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_ACCESS_PORT" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres
 
@@ -485,9 +493,9 @@ elif [ "$1" == "start" ]; then
 
         fi
 
-        if [ "$ENVIRONMENT_KUBERNETES_USE_EXTERNAL_INFLUXDB" == false ]; then
+        if [[ "$ENVIRONMENT_KUBERNETES_USE_EXTERNAL_INFLUXDB" == false ]]; then
 
-            if [ "$ENVIRONMENT_KUBERNETES_INFLUXDB_NODESELECTOR" ]; then
+            if [[ "$ENVIRONMENT_KUBERNETES_INFLUXDB_NODESELECTOR" ]]; then
 
                 generate_nodeselector_values $ENVIRONMENT_KUBERNETES_INFLUXDB_NODESELECTOR influxdb
 
@@ -501,7 +509,7 @@ elif [ "$1" == "start" ]; then
         echo "*** Applying ingress on the namespace ***"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
-        if [ ! "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_USERNAME" ] || [ ! "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_PASSWORD" ] || [ ! "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL" ]; then
+        if [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_USERNAME" ]] || [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_PASSWORD" ]] || [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL" ]]; then
 
             echo "*** One of your docker registry credentials are missing! ***"
 
@@ -529,7 +537,7 @@ elif [ "$1" == "start" ]; then
 
             read answer
 
-            if [ "$answer" = "${answer#[Yy]}" ] ;then
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
                 echo "*** Exiting... ***"
                 exit 0;
             fi
@@ -577,7 +585,7 @@ elif [ "$1" == "start" ]; then
 
     fi
 
-    if [ ! "$USE_KUBERNETES" ]; then
+    if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
         if command docker-compose version > /dev/null 2>&1; then
@@ -592,46 +600,22 @@ elif [ "$1" == "start" ]; then
 
         fi
 
-        if [ ! -d "$TEMPLATE_GENERATE_PATH/local" ]; then
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local;
         fi
 
-        if [ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx" ]; then
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local/nginx;
         fi
 
-        if [ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]; then
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
-        fi
-
-        #if [ ! -f "$TEMPLATE_GENERATE_PATH/local/logs/nginx/error.log" ]; then
-        #    touch $TEMPLATE_GENERATE_PATH/local/logs/nginx/error.log;
-        #fi
-
-        # Running database jobs for local db.
-        if [ "$LOCAL_DATABASE_INIT" == true ] && [ ! "$LOCAL_COMMAND" ]; then
-
-            if [ "$RUN_WITH_VERIFY" == true ]; then
-
-                echo "*** Are you sure you want to run database init jobs for your local $ENVIRONMENT_EXCHANGE_NAME db? (y/n) ***"
-
-                read answer
-
-                if [ "$answer" = "${answer#[Yy]}" ]; then
-                    echo "*** Exiting... ***"
-                    exit 0;
-                fi
-
-            fi
-
-            local_database_init start;
-
         fi
         
         LOCAL_COMMAND="up -d"
 
         #Quit if necessary flags are missing
-        if [ ! "$LOCAL_COMMAND" ]; then
+        if [[ ! "$LOCAL_COMMAND" ]]; then
 
             echo "*** Some necessary flags are missing! Please check agian your command. ***"
             print_usage;
@@ -639,20 +623,20 @@ elif [ "$1" == "start" ]; then
 
         fi
 
-        if [ "$RUN_WITH_VERIFY" == true ]; then
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "*** Are you sure you want to run docker-compose $LOCAL_COMMAND for $ENVIRONMENT_EXCHANGE_NAME on your local? (y/n) ***"
+            echo "*** Are you sure you want to run $ENVIRONMENT_EXCHANGE_NAME on your local machine? (y/n) ***"
 
             read answer
 
-            if [ "$answer" = "${answer#[Yy]}" ] ;then
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
                 echo "*** Exiting... ***"
                 exit 0;
             fi
 
         fi
 
-        if [ "$GENERATE_PASSWORDS" == true ]; then
+        if [[ "$GENERATE_PASSWORDS" == true ]]; then
 
             #Generating random values for passwords and update config file to contain it;
             update_random_values_to_config;
@@ -663,37 +647,67 @@ elif [ "$1" == "start" ]; then
 
         fi
 
-        if [ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]; then
+        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
             generate_local_env;
 
         fi
 
-        if [ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]; then
+        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
 
             generate_local_docker_compose $LOCAL_DEPLOYMENT_MODE;
 
         fi
 
-        generate_nginx_conf $LOCAL_DEPLOYMENT_MODE;
+        generate_nginx_upstream $LOCAL_DEPLOYMENT_MODE;
+
+        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
+        
+            generate_nginx_config_for_plugin;
+
+        elif [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "false" ]]; then
+
+            rm -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf
+
+        fi
 
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND
+
+        # Running database jobs for local db.
+        if [[ "$LOCAL_DATABASE_INIT" == true ]]; then
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "*** Are you sure you want to run database init jobs for your local $ENVIRONMENT_EXCHANGE_NAME db? (y/n) ***"
+
+                read answer
+
+                if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                    echo "*** Exiting... ***"
+                    exit 0;
+                fi
+
+            fi
+
+            local_database_init start;
+
+        fi
 
         exit 0;
 
     fi
 
-elif [ "$1" == "stop" ]; then
+elif [[ "$1" == "stop" ]]; then
 
     while true; do
-        [ $# -eq 0 ] && break
+        [[ $# -eq 0 ]] && break
         case $1 in
             --settings)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                if [ -d "$1" ] ; then
+                if [[ -d "$1" ]] ; then
                     CONFIG_FILE_PATH=$1/*
-                elif [ -f "$1" ]; then
+                elif [[ -f "$1" ]]; then
                     CONFIG_FILE_PATH=$1
                 fi
                 echo "Your configuration file : $CONFIG_FILE_PATH."
@@ -730,14 +744,14 @@ elif [ "$1" == "stop" ]; then
         shift
     done
 
-    if [ ! "$CONFIG_FILE_PATH" ]; then
+    if [[ ! "$CONFIG_FILE_PATH" ]]; then
         CONFIG_FILE_PATH=$(pwd)/settings/*
         TEMPLATE_GENERATE_PATH=$(pwd)/templates
         INIT_PATH_CHECK=$(pwd)/.hollaex
     fi
 
     #Quit if necessary flags are missing
-    if [ ! "$CONFIG_FILE_PATH" ] || [ ! -f "$INIT_PATH_CHECK" ]; then
+    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
         echo "*** Failed to detect hollaex-cli initialized directory! Please re-check your path. ***"
         print_usage;
@@ -752,7 +766,7 @@ elif [ "$1" == "stop" ]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
-    if [ "$USE_KUBERNETES" ]; then
+    if [[ "$USE_KUBERNETES" ]]; then
 
          #Checking Kubernetes dependencies
         check_kubernetes_dependencies;
@@ -760,13 +774,13 @@ elif [ "$1" == "stop" ]; then
         echo "*** Verifying current KUBECONFIG on the machine ***"
         kubectl get nodes
 
-        if [ "$RUN_WITH_VERIFY" == true ]; then
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
             echo "*** Are you sure you want to stop (scale down) $ENVIRONMENT_EXCHANGE_NAME on this cluster? (y/n) ***"
 
             read answer
 
-            if [ "$answer" = "${answer#[Yy]}" ] ;then
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
                 echo "*** Exiting... ***"
                 exit 0;
             fi
@@ -783,7 +797,7 @@ elif [ "$1" == "stop" ]; then
 
         helm_dynamic_trading_paris scaledown;
 
-        if [ "$WITH_BACKENDS" ]; then
+        if [[ "$WITH_BACKENDS" ]]; then
 
             echo "*** Scaling down backend components... ***"
 
@@ -800,7 +814,7 @@ elif [ "$1" == "stop" ]; then
 
     fi
 
-    if [ ! "$USE_KUBERNETES" ]; then
+    if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
         if command docker-compose version > /dev/null 2>&1; then
@@ -818,7 +832,7 @@ elif [ "$1" == "stop" ]; then
         LOCAL_COMMAND="stop"
 
         #Quit if necessary flags are missing
-        if [ ! "$LOCAL_COMMAND" ]; then
+        if [[ ! "$LOCAL_COMMAND" ]]; then
 
             echo "*** Some necessary flags are missing! Please check agian your command. ***"
             print_usage;
@@ -826,20 +840,20 @@ elif [ "$1" == "stop" ]; then
 
         fi
 
-        if [ "$RUN_WITH_VERIFY" == true ]; then
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
             echo "*** Are you sure you want to stop $ENVIRONMENT_EXCHANGE_NAME - $LOCAL_DEPLOYMENT_MODE which running on your local? (y/n) ***"
 
             read answer
 
-            if [ "$answer" = "${answer#[Yy]}" ] ;then
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
                 echo "*** Exiting... ***"
                 exit 0;
             fi
 
         fi
 
-        if [ "$GENERATE_PASSWORDS" == true ]; then
+        if [[ "$GENERATE_PASSWORDS" == true ]]; then
 
             #Generating random values for passwords and update config file to contain it;
             update_random_values_to_config;
@@ -856,18 +870,18 @@ elif [ "$1" == "stop" ]; then
 
     fi
 
-elif [ "$1" == "upgrade" ]; then
+elif [[ "$1" == "upgrade" ]]; then
 
 
     while true; do
-        [ $# -eq 0 ] && break
+        [[ $# -eq 0 ]] && break
         case $1 in
             --settings)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                if [ -d "$1" ] ; then
+                if [[ -d "$1" ]] ; then
                     CONFIG_FILE_PATH=$1/*
-                elif [ -f "$1" ]; then
+                elif [[ -f "$1" ]]; then
                     CONFIG_FILE_PATH=$1
                 fi
                 echo "Your configuration file : $CONFIG_FILE_PATH."
@@ -885,6 +899,11 @@ elif [ "$1" == "upgrade" ]; then
                 echo "Enable generating random password values. Make sure that you already backup existing values on settings file."
                 shift; continue
                 ;;
+             --with_backends)
+                WITH_BACKENDS=true
+                echo "Upgrade backend components such as Database or Redis together with exchange containers on this machine."
+                shift; continue
+                ;;
             --database_init)
                 DATABASE_INIT=true
                 echo "Database re-initialization enabled."
@@ -895,11 +914,11 @@ elif [ "$1" == "upgrade" ]; then
                 echo "hollaex-cli will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
-            --upgrade_backends)
-                UPGRADE_BACKEND_COMPONENTS=true
-                echo "Backend components upgrade enabled."
-                shift; continue
-                ;;
+            # --upgrade_backends)
+            #     UPGRADE_BACKEND_COMPONENTS=true
+            #     echo "Backend components upgrade enabled."
+            #     shift; continue
+            #     ;;
             --no_verify)
                 RUN_WITH_VERIFY=false
                 echo "Running it wihtout verify the config."
@@ -914,14 +933,14 @@ elif [ "$1" == "upgrade" ]; then
         shift
     done
 
-    if [ ! "$CONFIG_FILE_PATH" ]; then
+    if [[ ! "$CONFIG_FILE_PATH" ]]; then
         CONFIG_FILE_PATH=$(pwd)/settings/*
         TEMPLATE_GENERATE_PATH=$(pwd)/templates
         INIT_PATH_CHECK=$(pwd)/.hollaex
     fi
 
     #Quit if necessary flags are missing
-    if [ ! "$CONFIG_FILE_PATH" ] || [ ! -f "$INIT_PATH_CHECK" ]; then
+    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
         echo "*** Failed to detect hollaex-cli initialized directory! Please re-check your path. ***"
         print_usage;
@@ -936,17 +955,17 @@ elif [ "$1" == "upgrade" ]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
-    if [ "$USE_KUBERNETES" ]; then
+    if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
         check_kubernetes_dependencies;
 
         #Creating kubernetes_config directory for generating config for Kubernetes.
-        if [ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]; then
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
         fi
 
-        if [ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION"  ] || [ ! "$ENVIRONMENT_EXCHANGE_NAME"  ] ; then
+        if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION"  ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME"  ]] ; then
             echo "Error : Please define exchange name and Docker image version on config file before running hollaex-cli."
             print_usage
             exit 1;
@@ -955,13 +974,13 @@ elif [ "$1" == "upgrade" ]; then
         echo "*** Verifying current KUBECONFIG on the machine ***"
         kubectl get nodes
 
-        if [ "$RUN_WITH_VERIFY" == true ]; then
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            if [ "$STAGING_VERSION" ] && [ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION" ]; then
+            if [[ "$STAGING_VERSION" ]] && [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION" ]]; then
 
                 echo "*** Are you sure you want to enable / upgrade $ENVIRONMENT_EXCHANGE_NAME-server-api staging v$STAGING_VERSION with $STAGING_REPLICACOUNT containers on this cluster? (y/n) ***"
 
-            elif [ "$STAGING_VERSION" ] && [ "$ENVIRONMENT_DOCKER_IMAGE_VERSION" ]; then
+            elif [[ "$STAGING_VERSION" ]] && [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION" ]]; then
 
                 echo "*** Are you sure you want to upgrade $ENVIRONMENT_EXCHANGE_NAME to v$ENVIRONMENT_DOCKER_IMAGE_VERSION with $ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS api containers, and enable / upgrade $ENVIRONMENT_EXCHANGE_NAME-server-api staging to v$STAGING_VERSION with $STAGING_REPLICACOUNT containers on this cluster? (y/n) ***"
 
@@ -973,14 +992,14 @@ elif [ "$1" == "upgrade" ]; then
 
             read answer
 
-            if [ "$answer" = "${answer#[Yy]}" ] ;then
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
                 echo "*** Exiting... ***"
                 exit 0;
             fi
 
         fi
 
-        if [ "$GENERATE_PASSWORDS" == true ]; then
+        if [[ "$GENERATE_PASSWORDS" == true ]]; then
 
             #Generating random values for passwords and update config file to contain it;
             update_random_values_to_config;
@@ -991,24 +1010,31 @@ elif [ "$1" == "upgrade" ]; then
             
         fi
 
-        if [ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]; then
+        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
 
             echo "Generating Kubernetes Configmap"
             generate_kubernetes_configmap;
 
         fi
 
-        if [ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]; then
+        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]]; then
 
             echo "Generating Kubernetes Configmap"
             generate_kubernetes_secret;
 
         fi
 
-        if [ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]; then
+        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
 
             echo "Generating Kubernetes Configmap"
             generate_kubernetes_ingress;
+
+        fi
+
+        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == true ]]; then
+
+            echo "Generating Kubernetes Ingress for custom plugins"
+            generate_nginx_config_for_plugin;
 
         fi
 
@@ -1021,12 +1047,12 @@ elif [ "$1" == "upgrade" ]; then
         echo "*** Applying latest secret on the cluster ***"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
-        if [ "$UPGRADE_BACKEND_COMPONENTS" == true ]; then
+        if [[ "$WITH_BACKENDS" == true ]]; then
 
             echo "*** Upgrading Redis ***"
             generate_nodeselector_values $ENVIRONMENT_KUBERNETES_REDIS_NODESELECTOR redis
 
-            if [ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS" == true ]; then
+            if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS" == true ]]; then
 
                 helm upgrade --install --recreate-pods $ENVIRONMENT_EXCHANGE_NAME-redis  --namespace $ENVIRONMENT_EXCHANGE_NAME --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT"  --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis
         
@@ -1038,7 +1064,7 @@ elif [ "$1" == "upgrade" ]; then
             echo "*** Running PostgreSQL DB ***"
             generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_NODESELECTOR postgresql
 
-            if [ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_ACCESS" == true ]; then
+            if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_ACCESS" == true ]]; then
 
                 helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_ACCESS_PORT" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres
 
@@ -1063,7 +1089,7 @@ elif [ "$1" == "upgrade" ]; then
 
         helm_dynamic_trading_paris run;
 
-        if [ "$DATABASE_INIT" == true ]; then
+        if [[ "$DATABASE_INIT" == true ]]; then
 
             echo "Waiting for 60 seconds to Pods get ready to run database jobs..."
             sleep 60;
@@ -1091,7 +1117,7 @@ elif [ "$1" == "upgrade" ]; then
     
     fi
 
-    if [ ! "$USE_KUBERNETES" ]; then
+    if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
         if command docker-compose version > /dev/null 2>&1; then
@@ -1106,26 +1132,26 @@ elif [ "$1" == "upgrade" ]; then
 
         fi
 
-        if [ ! -d "$TEMPLATE_GENERATE_PATH/local" ]; then
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local;
         fi
 
-        if [ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx" ]; then
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local/nginx;
         fi
 
-        if [ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]; then
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
         fi
 
-        #if [ ! -f "$TEMPLATE_GENERATE_PATH/local/logs/nginx/error.log" ]; then
+        #if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/logs/nginx/error.log" ]]; then
         #    touch $TEMPLATE_GENERATE_PATH/local/logs/nginx/error.log;
         #fi
         
         LOCAL_COMMAND="up -d"
 
         #Quit if necessary flags are missing
-        if [ ! "$LOCAL_COMMAND" ]; then
+        if [[ ! "$LOCAL_COMMAND" ]]; then
 
             echo "*** Some necessary flags are missing! Please check agian your command. ***"
             print_usage;
@@ -1133,20 +1159,20 @@ elif [ "$1" == "upgrade" ]; then
 
         fi
 
-        if [ "$RUN_WITH_VERIFY" == true ]; then
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
             echo "*** Are you sure you want to run docker-compose $LOCAL_COMMAND for $ENVIRONMENT_EXCHANGE_NAME on your local? (y/n) ***"
 
             read answer
 
-            if [ "$answer" = "${answer#[Yy]}" ] ;then
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
                 echo "*** Exiting... ***"
                 exit 0;
             fi
 
         fi
 
-        if [ "$GENERATE_PASSWORDS" == true ]; then
+        if [[ "$GENERATE_PASSWORDS" == true ]]; then
 
             #Generating random values for passwords and update config file to contain it;
             update_random_values_to_config;
@@ -1157,34 +1183,44 @@ elif [ "$1" == "upgrade" ]; then
 
         fi
 
-        if [ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]; then
+        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
             generate_local_env;
 
         fi
 
-        if [ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]; then
+        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
 
             generate_local_docker_compose $LOCAL_DEPLOYMENT_MODE;
 
         fi
 
-        generate_nginx_conf $LOCAL_DEPLOYMENT_MODE;
+        generate_nginx_upstream $LOCAL_DEPLOYMENT_MODE;
+
+        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
+
+            generate_nginx_config_for_plugin;
+
+        elif [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "false" ]]; then
+
+            rm -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf
+
+        fi
 
         echo "*** Restarting containers to apply new changes... ***"
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND
 
         # Running database jobs for local db.
-        if [ "$DATABASE_INIT" == true ]; then
+        if [[ "$DATABASE_INIT" == true ]]; then
 
-            if [ "$RUN_WITH_VERIFY" == true ]; then
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
                 echo "*** Are you sure you want to run database init jobs for your local $ENVIRONMENT_EXCHANGE_NAME db? (y/n) ***"
 
                 read answer
 
-                if [ "$answer" = "${answer#[Yy]}" ]; then
+                if [[ "$answer" = "${answer#[Yy]}" ]]; then
                     echo "*** Exiting... ***"
                     exit 0;
                 fi
@@ -1199,29 +1235,29 @@ elif [ "$1" == "upgrade" ]; then
 
     fi
 
-elif [ "$1" == "terminate" ]; then
+elif [[ "$1" == "terminate" ]]; then
 
     while true; do
-        [ $# -eq 0 ] && break
+        [[ $# -eq 0 ]] && break
         case $1 in
             --settings)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                if [ -d "$1" ] ; then
+                if [[ -d "$1" ]] ; then
                     CONFIG_FILE_PATH=$1/*
-                elif [ -f "$1" ]; then
+                elif [[ -f "$1" ]]; then
                     CONFIG_FILE_PATH=$1
                 fi
                 echo "Your configuration file : $CONFIG_FILE_PATH."
                 shift; continue
                 ;;
-            --mode)
-                shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                LOCAL_DEPLOYMENT_MODE=$1
-                echo "Your DEPLOYMENT_MODE setup : $LOCAL_DEPLOYMENT_MODE."
-                shift; continue
-                ;;
+            # --mode)
+            #     shift 
+            #     case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+            #     LOCAL_DEPLOYMENT_MODE=$1
+            #     echo "Your DEPLOYMENT_MODE setup : $LOCAL_DEPLOYMENT_MODE."
+            #     shift; continue
+            #     ;;
             --with_backends)
                 WITH_BACKENDS=true
                 echo "Creating backend components such as Database or Redis together with exchange containers on this machine."
@@ -1246,14 +1282,14 @@ elif [ "$1" == "terminate" ]; then
         shift
     done
 
-    if [ ! "$CONFIG_FILE_PATH" ]; then
+    if [[ ! "$CONFIG_FILE_PATH" ]]; then
         CONFIG_FILE_PATH=$(pwd)/settings/*
         TEMPLATE_GENERATE_PATH=$(pwd)/templates
         INIT_PATH_CHECK=$(pwd)/.hollaex
     fi
 
     #Quit if necessary flags are missing
-    if [ ! "$CONFIG_FILE_PATH" ] || [ ! -f "$INIT_PATH_CHECK" ]; then
+    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
         echo "*** Failed to detect hollaex-cli initialized directory! Please re-check your path. ***"
         print_usage;
@@ -1268,7 +1304,7 @@ elif [ "$1" == "terminate" ]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
-    if [ "$USE_KUBERNETES" ]; then
+    if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
         check_kubernetes_dependencies;
@@ -1276,13 +1312,13 @@ elif [ "$1" == "terminate" ]; then
         echo "*** Verifying current KUBECONFIG on the machine ***"
         kubectl get nodes
 
-        if [ "$RUN_WITH_VERIFY" == true ]; then
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
             echo "*** Are you sure you want to terminate $ENVIRONMENT_EXCHANGE_NAME on this cluster? (y/n) ***"
 
             read answer
 
-            if [ "$answer" = "${answer#[Yy]}" ] ;then
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
                 echo "*** Exiting... ***"
                 exit 0;
             fi
@@ -1312,7 +1348,7 @@ elif [ "$1" == "terminate" ]; then
 
     fi
 
-    if [ ! "$USE_KUBERNETES" ]; then
+    if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
         if command docker-compose version > /dev/null 2>&1; then
@@ -1330,7 +1366,7 @@ elif [ "$1" == "terminate" ]; then
         LOCAL_COMMAND="down --remove-orphans"
 
         #Quit if necessary flags are missing
-        if [ ! "$LOCAL_COMMAND" ]; then
+        if [[ ! "$LOCAL_COMMAND" ]]; then
 
             echo "*** Some necessary flags are missing! Please check agian your command. ***"
             print_usage;
@@ -1338,13 +1374,13 @@ elif [ "$1" == "terminate" ]; then
 
         fi
 
-        if [ "$RUN_WITH_VERIFY" == true ]; then
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
             echo "*** Are you sure you want to terminate $ENVIRONMENT_EXCHANGE_NAME - $LOCAL_DEPLOYMENT_MODE which running on your local? (y/n) ***"
 
             read answer
 
-            if [ "$answer" = "${answer#[Yy]}" ] ;then
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
                 echo "*** Exiting... ***"
                 exit 0;
             fi
@@ -1357,7 +1393,7 @@ elif [ "$1" == "terminate" ]; then
     fi
 
 
-elif [ "$1" == "--version" ]; then
+elif [[ "$1" == "--version" ]]; then
 
     echo "hollaex-cli : v$(cat $SCRIPTPATH/version)"
 

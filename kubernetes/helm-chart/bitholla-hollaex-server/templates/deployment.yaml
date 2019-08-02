@@ -36,10 +36,6 @@ spec:
          #Volume for debug log storing & printing
          - name: shared-data
            emptyDir: {}
-         - name: debug-log-rotater-cronjob-rules
-           configMap:
-            # defaultMode: 0600
-            name: debug-log-rotater-cronjob-{{.Release.Name}}
 
 {{- if .Values.nodeSelector }}
       nodeSelector:
@@ -97,30 +93,6 @@ spec:
           initialDelaySeconds: 1
           periodSeconds: 15
 {{- end }}
-
-      # Sidecar container to print out debug logs
-      - name: {{.Release.Name}}-winston-log-printer
-        image: bitholla/devops-tools:alpine_coretuils-3.6
-        #imagePullPolicy: Always
-        volumeMounts:
-          - name: shared-data
-            mountPath: /app/logs
-          - name: debug-log-rotater-cronjob-rules
-            mountPath: /etc/crontabs
-        command: ["/bin/sh","-c"]
-        args: 
-          - crond;
-            export TIMESTAMP=$(date +%Y-%m-%d);
-            ln -sf /app/logs/debug.log.$TIMESTAMP /app/logs/debug.log;
-            tail -F /app/logs/debug.log;
-
-        resources:
-          limits:
-            memory: "20Mi"
-            cpu: "2m"
-          requests:
-            memory: "10Mi"
-            cpu: "1m"
 
       imagePullSecrets:
       - name: bitholla-registry-secret
