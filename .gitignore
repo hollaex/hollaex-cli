@@ -2,3 +2,5 @@ testscript.sh
 kubernetes/config
 local/*.local
 local/*.yaml
+local/nginx/conf.d/*
+local/logs/*

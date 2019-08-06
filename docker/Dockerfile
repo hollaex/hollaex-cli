@@ -8,7 +8,7 @@ RUN curl -L https://git.io/get_helm.sh | bash
 
 COPY . /root/hollaex-cli
 
-RUN chmod +x /root/hollaex-cli && mv /root/hollaex-cli /root/.hollaex-cli && ln -s /root/.hollaex-cli/hollaex /usr/local/bin/hollaex && ex -sc '2i|SCRIPTPATH=/root/.hollaex-cli' -cx /root/.hollaex-cli/hollaex && ex -sc '2i|SCRIPTPATH=/root/.hollaex-cli' -cx /root/.hollaex-cli/config_form.sh
+RUN chmod +x /root/hollaex-cli && mv /root/hollaex-cli /root/.hollaex-cli && ln -s /root/.hollaex-cli/hollaex /usr/local/bin/hollaex && ex -sc '2i|SCRIPTPATH=/root/.hollaex-cli' -cx /root/.hollaex-cli/hollaex && ex -sc '2i|SCRIPTPATH=/root/.hollaex-cli' -cx /root/.hollaex-cli/tools_generator.sh
 
 COPY docker/run.sh /run.sh
 RUN chmod +x /run.sh

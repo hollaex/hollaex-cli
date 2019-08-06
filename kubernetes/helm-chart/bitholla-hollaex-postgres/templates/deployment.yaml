@@ -64,7 +64,7 @@ spec:
 
       containers:
       - name: {{.Release.Name}}
-        image: postgres:10.6
+        image: postgres:10.9
         env:
           - name: POSTGRES_DB
             valueFrom:
