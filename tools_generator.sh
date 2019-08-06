@@ -74,8 +74,8 @@ function check_kubernetes_dependencies() {
  
 function load_config_variables() {
 
-  HOLLAEX_CONFIGMAP_VARIABLES=$(set -o posix ; set | grep "KUBERNETES_CONFIGMAP" | cut -c22-)
-  HOLLAEX_SECRET_VARIABLES=$(set -o posix ; set | grep "KUBERNETES_SECRET" | cut -c19-)
+  HOLLAEX_CONFIGMAP_VARIABLES=$(set -o posix ; set | grep "HOLLAEX_CONFIGMAP" | cut -c19-)
+  HOLLAEX_SECRET_VARIABLES=$(set -o posix ; set | grep "HOLLAEX_SECRET" | cut -c16-)
 
   HOLLAEX_CONFIGMAP_VARIABLES_YAML=$(for value in ${HOLLAEX_CONFIGMAP_VARIABLES} 
   do 
@@ -288,6 +288,88 @@ EOL
 
 }
 
+function generate_local_docker_compose_for_dev() {
+
+echo $HOLLAEX_CODEBASE_PATH
+# Generate docker-compose
+cat > $HOLLAEX_CODEBASE_PATH/.${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+version: '3'
+services:
+  ${ENVIRONMENT_EXCHANGE_NAME}-redis:
+    image: redis:5.0.5-alpine
+    depends_on:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+    ports:
+      - 6379:6379
+  ${ENVIRONMENT_EXCHANGE_NAME}-db:
+    image: postgres:10.9
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_DB=$HOLLAEX_SECRET_DB_NAME
+      - POSTGRES_USER=$HOLLAEX_SECRET_DB_USERNAME
+      - POSTGRES_PASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+  ${ENVIRONMENT_EXCHANGE_NAME}-influxdb:
+    image: influxdb:1.7-alpine
+    ports:
+      - 8086:8086
+    environment:
+      - INFLUX_DB=$HOLLAEX_SECRET_INFLUX_DB
+      - INFLUX_HOST=${ENVIRONMENT_EXCHANGE_NAME}-influxdb
+      - INFLUX_PORT=8086
+      - INFLUX_USER=$HOLLAEX_SECRET_INFLUX_USER
+      - INFLUX_PASSWORD=$HOLLAEX_SECRET_INFLUX_PASSWORD
+    depends_on:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
+      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+  ${ENVIRONMENT_EXCHANGE_NAME}-server:
+    image: ${ENVIRONMENT_EXCHANGE_NAME}-server-pm2
+    build:
+      context: .
+      dockerfile: ./tools/Dockerfile.pm2
+    env_file:
+      - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    entrypoint:
+      - pm2-runtime
+      - start
+      - ecosystem.config.js
+      - --env
+      - development
+    depends_on:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
+      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
+      - ${ENVIRONMENT_EXCHANGE_NAME}-influxdb
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+  ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
+    image: nginx:1.15.8-alpine
+    volumes:
+      - ${TEMPLATE_GENERATE_PATH}/local/nginx:/etc/nginx
+      - ${TEMPLATE_GENERATE_PATH}/local/logs/nginx:/var/log
+      - ${TEMPLATE_GENERATE_PATH}/local/nginx/static/:/usr/share/nginx/html
+    ports:
+      - 80:80
+    environment:
+      - NGINX_PORT=80
+    depends_on:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-server
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+
+networks:
+  ${ENVIRONMENT_EXCHANGE_NAME}-network:
+
+EOL
+
+}
+
+
 function generate_local_docker_compose() {
 
 # Generate docker-compose
@@ -313,9 +395,9 @@ if [[ "$WITH_BACKENDS" ]]; then
     ports:
       - 5432:5432
     environment:
-      - POSTGRES_DB=$KUBERNETES_SECRET_DB_NAME
-      - POSTGRES_USER=$KUBERNETES_SECRET_DB_USERNAME
-      - POSTGRES_PASSWORD=$KUBERNETES_SECRET_DB_PASSWORD
+      - POSTGRES_DB=$HOLLAEX_SECRET_DB_NAME
+      - POSTGRES_USER=$HOLLAEX_SECRET_DB_USERNAME
+      - POSTGRES_PASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
   ${ENVIRONMENT_EXCHANGE_NAME}-influxdb:
@@ -323,11 +405,11 @@ if [[ "$WITH_BACKENDS" ]]; then
     ports:
       - 8086:8086
     environment:
-      - INFLUX_DB=$KUBERNETES_SECRET_INFLUX_DB
+      - INFLUX_DB=$HOLLAEX_SECRET_INFLUX_DB
       - INFLUX_HOST=${ENVIRONMENT_EXCHANGE_NAME}-influxdb
       - INFLUX_PORT=8086
-      - INFLUX_USER=$KUBERNETES_SECRET_INFLUX_USER
-      - INFLUX_PASSWORD=$KUBERNETES_SECRET_INFLUX_PASSWORD
+      - INFLUX_USER=$HOLLAEX_SECRET_INFLUX_USER
+      - INFLUX_PASSWORD=$HOLLAEX_SECRET_INFLUX_PASSWORD
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
       - ${ENVIRONMENT_EXCHANGE_NAME}-redis
@@ -376,6 +458,7 @@ if [[ "$1" == "all" ]] && [[ "$WITH_BACKENDS" ]] ; then
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
 
 EOL
+
 
 elif [[ "$1" == "all" ]] && [[ ! "$WITH_BACKENDS" ]] ; then
 
@@ -486,7 +569,7 @@ EOL
 
 }
 
-function generate_kubernetes_secret() {
+function generate_HOLLAEX_SECRET() {
 
 # Generate Kubernetes Secret
 cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-secret.yaml <<EOL
@@ -625,12 +708,12 @@ function generate_random_values() {
 function update_random_values_to_config() {
 
 
-GENERATE_VALUES_LIST=( "KUBERNETES_SECRET_ADMIN_PASSWORD" "KUBERNETES_SECRET_SUPERVISOR_PASSWORD" "KUBERNETES_SECRET_SUPPORT_PASSWORD" "KUBERNETES_SECRET_KYC_PASSWORD" "KUBERNETES_SECRET_QUICK_TRADE_SECRET" "KUBERNETES_SECRET_API_KEYS" "KUBERNETES_SECRET_SECRET" )
+GENERATE_VALUES_LIST=( "HOLLAEX_SECRET_ADMIN_PASSWORD" "HOLLAEX_SECRET_SUPERVISOR_PASSWORD" "HOLLAEX_SECRET_SUPPORT_PASSWORD" "HOLLAEX_SECRET_KYC_PASSWORD" "HOLLAEX_SECRET_QUICK_TRADE_SECRET" "HOLLAEX_SECRET_API_KEYS" "HOLLAEX_SECRET_SECRET" )
 
 
 for j in ${CONFIG_FILE_PATH[@]}; do
 
-if command grep -q "KUBERNETES_SECRET" $j > /dev/null ; then
+if command grep -q "HOLLAEX_SECRET" $j > /dev/null ; then
 
 SECRET_CONFIG_FILE_PATH=$j
 

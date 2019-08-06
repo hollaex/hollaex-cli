@@ -65,13 +65,6 @@ if [[ "$1" == 'dev' ]]; then
                 echo "Hollaex-server codebase : $HOLLAEX_CODEBASE_PATH."
                 shift; continue
                 ;;
-            --app)
-                shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                LOCAL_APPNAME=$1
-                echo "Your target application is : $LOCAL_APPNAME."
-                shift; continue
-                ;;
             --command)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
@@ -103,101 +96,156 @@ if [[ "$1" == 'dev' ]]; then
         shift
     done
 
-    DOCKER_COMPOSE_NAME_PREFIX='hollaex-server'   
-    ENVIRONMENT_EXCHANGE_NAME="$LOCAL_APPNAME"
+    if [[ "$HOLLAEX_CODEBASE_PATH" ]]; then
 
-    source $SCRIPTPATH/tools_generator.sh
+        CONFIG_FILE_PATH=$HOLLAEX_CODEBASE_PATH/tools/hollaex-cli-settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_CODEBASE_PATH/tools/hollaex-cli-templates
+        INIT_PATH_CHECK=$HOLLAEX_CODEBASE_PATH/.hollaex
+        DOCKER_COMPOSE_NAME_PREFIX=$(basename "$HOLLAEX_CODEBASE_PATH")
 
-    # Checking docker-compose is installed on this machine.
-    if command docker-compose version > /dev/null 2>&1; then
+    elif [[ ! "$HOLLAEX_CODEBASE_PATH" ]]; then
 
-         echo "*** docker-compose detected ***"
-         echo "version: $(docker-compose version)"
-
-    else
-
-         echo "*** hollaex-cli failed to detect docker-compose installed on this machine. Please install it before running hollaex-cli. ***"
-         exit 1;
-
-    fi
-
-    # Running database jobs for local db.
-    if [[ "$LOCAL_DATABASE_INIT" == true ]] && [[ ! "$LOCAL_COMMAND" ]]; then
-
-        if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-            echo "*** Are you sure you want to run database init jobs for your local $LOCAL_APPNAME db? (y/n) ***"
-
-            read answer
-
-            if [[ "$answer" = "${answer#[Yy]}" ]]; then
-                echo "*** Exiting... ***"
-                exit 0;
-            fi
-
-        fi
-
-        local_database_init start;
+        CONFIG_FILE_PATH=$(pwd)/tools/hollaex-cli-settings/*
+        TEMPLATE_GENERATE_PATH=$(pwd)/tools/hollaex-cli-templates
+        INIT_PATH_CHECK=$(pwd)/.hollaex
+        HOLLAEX_CODEBASE_PATH=$(pwd)
+        DOCKER_COMPOSE_NAME_PREFIX=$(basename "$HOLLAEX_CODEBASE_PATH")
 
     fi
 
-    # Running local code test
-    if [[ "$LOCAL_CODE_TEST" == true ]] && [[ ! "$LOCAL_COMMAND" ]]; then
-
-         if  [[ ! "$LOCAL_APPNAME" ]]; then
-            echo "You must specify app name before running local code test."
-            exit 1;
-        fi
-
-        if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-            echo "*** Are you sure you want to run local code test for $LOCAL_APPNAME? (y/n) ***"
-
-            read answer
-
-            if [[ "$answer" = "${answer#[Yy]}" ]]; then
-                echo "*** Exiting... ***"
-                exit 0;
-            fi
-
-        fi
-
-        local_code_test;
-
-    fi
+    echo $HOLLAEX_CODEBASE_PATH
 
     #Quit if necessary flags are missing
-    if [[ ! "$LOCAL_APPNAME" ]] || [[ ! "$LOCAL_COMMAND" ]]; then
+    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "*** Some necessary flags are missing! Please check agian your command. ***"
+        echo "*** Failed to detect hollaex-cli initialized directory! Please re-check your path. ***"
         print_usage;
         exit 1;
 
     fi
 
-    if [[ "$RUN_WITH_VERIFY" == true ]]; then
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
+    
+    source $SCRIPTPATH/tools_generator.sh
+    load_config_variables;
 
-        echo "*** Are you sure you want to run docker-compose $LOCAL_COMMAND for local $LOCAL_APPNAME development? (y/n) ***"
+    if [[ ! "$USE_KUBERNETES" ]]; then
 
-        read answer
+        # Checking docker-compose is installed on this machine.
+        if command docker-compose version > /dev/null 2>&1; then
 
-        if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-            echo "*** Exiting... ***"
-            exit 0;
+            echo "*** docker-compose detected ***"
+            echo "version: $(docker-compose version)"
+
+        else
+
+            echo "*** hollaex-cli failed to detect docker-compose installed on this machine. Please install it before running hollaex-cli. ***"
+            exit 1;
+
         fi
 
-    fi
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local;
+        fi
 
-    #Set current path for hollaex dev command in case of user didn't pass it themselves.
-    if [[ ! "$HOLLAEX_CODEBASE_PATH" ]]; then
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local/nginx;
+        fi
 
-        HOLLAEX_CODEBASE_PATH=$(pwd)
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
+        fi
+    
+
+        #Quit if necessary flags are missing
+        if [[ ! "$LOCAL_COMMAND" ]]; then
+
+            echo "*** Make sure to specify --command flag for dev commands ***"
+            print_usage;
+            exit 1;
+
+        fi
+
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+            echo "*** Are you sure you want to run $ENVIRONMENT_EXCHANGE_NAME - $LOCAL_COMMAND on your local machine? (y/n) ***"
+
+            read answer
+
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                echo "*** Exiting... ***"
+                exit 0;
+            fi
+
+        fi
+
+        if [[ "$GENERATE_PASSWORDS" == true ]]; then
+
+            #Generating random values for passwords and update config file to contain it;
+            update_random_values_to_config;
+            for i in ${CONFIG_FILE_PATH[@]}; do
+                source $i
+            done;
+            load_config_variables;
+
+        fi
+
+        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
+
+            generate_local_env;
+
+        fi
+
+        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
+
+            # if [[ -f "$HOLLAEX_CODEBASE_PATH/.${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml" ]]; then
+            #     rm $HOLLAEX_CODEBASE_PATH/.${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml
+            #     #ln -s $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml $HOLLAEX_CODEBASE_PATH/.${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml
+            # fi
+
+            generate_local_docker_compose_for_dev;
+        fi
+
+        generate_nginx_upstream $LOCAL_DEPLOYMENT_MODE;
+
+        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
         
+            generate_nginx_config_for_plugin;
+
+        elif [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "false" ]]; then
+
+            rm -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf
+
+        fi
+
+        docker-compose -f $HOLLAEX_CODEBASE_PATH/.${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml $LOCAL_COMMAND
+
+        # Running database jobs for local db.
+        if [[ "$LOCAL_DATABASE_INIT" == true ]]; then
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "*** Are you sure you want to run database init jobs for your local $ENVIRONMENT_EXCHANGE_NAME db? (y/n) ***"
+
+                read answer
+
+                if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                    echo "*** Exiting... ***"
+                    exit 0;
+                fi
+
+            fi
+
+            local_database_init start;
+
+        fi
+
+        exit 0;
+
     fi
 
-    docker-compose -f $HOLLAEX_CODEBASE_PATH/.docker-compose-$LOCAL_APPNAME.yaml $LOCAL_COMMAND
-
-    exit 0;
 
 elif [[ "$1" == "init" ]]; then
     
