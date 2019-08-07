@@ -94,5 +94,7 @@ spec:
           periodSeconds: 15
 {{- end }}
 
+{{- if .Values.imagePullSecrets }}
       imagePullSecrets:
-      - name: bitholla-registry-secret
+{{ toYaml .Values.imagePullSecrets | indent 8 }}
+{{- end }}

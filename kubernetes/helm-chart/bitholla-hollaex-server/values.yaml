@@ -4,6 +4,8 @@
 imageName: hollaex
 imageRegistry: bitholla
 dockerTag:
+imagePullSecrets:
+  - name: bitholla-registry-secret
 
 envName: hollaex-testnet-env
 secretName: hollaex-testnet-secret
@@ -27,5 +29,6 @@ autoScaling:
 
 APM_ENABLED:
 APM_URL:
+
 
 podRestart_webhook_url:
