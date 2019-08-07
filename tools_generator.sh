@@ -305,7 +305,7 @@ services:
       - 6379:6379
     environment:
       - REDIS_PASSWORD=${HOLLAEX_SECRET_REDIS_PASSWORD}
-    command : ["sh", "-c", "redis-server --requirepass $${REDIS_PASSWORD}"]
+    command : ["sh", "-c", "redis-server --requirepass \$\${REDIS_PASSWORD}"]
   ${ENVIRONMENT_EXCHANGE_NAME}-db:
     image: postgres:10.9
     ports:
