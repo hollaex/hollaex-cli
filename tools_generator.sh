@@ -303,6 +303,9 @@ services:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     ports:
       - 6379:6379
+    environment:
+      - REDIS_PASSWORD=${HOLLAEX_SECRET_REDIS_PASSWORD}
+    command : ["sh", "-c", "redis-server --requirepass $${REDIS_PASSWORD}"]
   ${ENVIRONMENT_EXCHANGE_NAME}-db:
     image: postgres:10.9
     ports:
@@ -332,7 +335,7 @@ services:
     image: ${ENVIRONMENT_EXCHANGE_NAME}-server-pm2
     build:
       context: .
-      dockerfile: ./tools/Dockerfile.pm2
+      dockerfile: ${HOLLAEX_CODEBASE_PATH}/tools/Dockerfile.pm2
     env_file:
       - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
     entrypoint:
@@ -341,6 +344,21 @@ services:
       - ecosystem.config.js
       - --env
       - development
+    volumes:
+      - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
+      - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
+      - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
+      - ${HOLLAEX_CODEBASE_PATH}/mail:/app/mail
+      - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
+      - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
+      - ${HOLLAEX_CODEBASE_PATH}/app.js:/app/app.js
+      - ${HOLLAEX_CODEBASE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
+      - ${HOLLAEX_CODEBASE_PATH}/constants.js:/app/constants.js
+      - ${HOLLAEX_CODEBASE_PATH}/messages.js:/app/messages.js
+      - ${HOLLAEX_CODEBASE_PATH}/logs:/app/logs
+      - ${HOLLAEX_CODEBASE_PATH}/test:/app/test
+      - ${HOLLAEX_CODEBASE_PATH}/tools:/app/tools
+      - ${HOLLAEX_CODEBASE_PATH}/utils:/app/utils
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
       - ${ENVIRONMENT_EXCHANGE_NAME}-redis
@@ -390,6 +408,9 @@ if [[ "$WITH_BACKENDS" ]]; then
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     ports:
       - 6379:6379
+    environment:
+      - REDIS_PASSWORD=${HOLLAEX_SECRET_REDIS_PASSWORD}
+    command : ["sh", "-c", "redis-server --requirepass $${REDIS_PASSWORD}"]
   ${ENVIRONMENT_EXCHANGE_NAME}-db:
     image: postgres:10.9
     ports:
