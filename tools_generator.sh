@@ -368,9 +368,10 @@ services:
   ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
     image: nginx:1.15.8-alpine
     volumes:
-      - ${TEMPLATE_GENERATE_PATH}/local/nginx:/etc/nginx
+      - ${TEMPLATE_GENERATE_PATH}/nginx:/etc/nginx
+      - ${TEMPLATE_GENERATE_PATH}/local/nginx/conf.d:/etc/nginx/conf.d
       - ${TEMPLATE_GENERATE_PATH}/local/logs/nginx:/var/log
-      - ${TEMPLATE_GENERATE_PATH}/local/nginx/static/:/usr/share/nginx/html
+      - ${TEMPLATE_GENERATE_PATH}/nginx/static/:/usr/share/nginx/html
     ports:
       - 80:80
     environment:
@@ -410,7 +411,7 @@ if [[ "$WITH_BACKENDS" ]]; then
       - 6379:6379
     environment:
       - REDIS_PASSWORD=${HOLLAEX_SECRET_REDIS_PASSWORD}
-    command : ["sh", "-c", "redis-server --requirepass $${REDIS_PASSWORD}"]
+    command : ["sh", "-c", "redis-server --requirepass \$\${REDIS_PASSWORD}"]
   ${ENVIRONMENT_EXCHANGE_NAME}-db:
     image: postgres:10.9
     ports:
