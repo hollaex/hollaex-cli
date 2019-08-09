@@ -2,6 +2,19 @@
 SCRIPTPATH=$HOME/.hollaex-cli
 
 function local_database_init() {
+
+    if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+        echo "*** Are you sure you want to run database init jobs for your local $ENVIRONMENT_EXCHANGE_NAME db? (y/n) ***"
+
+        read answer
+
+      if [[ "$answer" = "${answer#[Yy]}" ]]; then
+        echo "*** Exiting... ***"
+        exit 0;
+      fi
+
+    fi
     
     if [[ "$1" == "start" ]]; then
 
@@ -240,7 +253,7 @@ metadata:
     $(websocket_upgrade;)
 spec:
   rules:
-  - host: ${KUBERNETES_CONFIGMAP_API_HOST}
+  - host: ${HOLLAEX_CONFIGMAP_API_HOST}
     http:
       paths:
       - path: ${CUSTOM_URL}
@@ -251,7 +264,7 @@ spec:
 tls:
   - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
     hosts:
-    - ${KUBERNETES_CONFIGMAP_API_HOST}
+    - ${HOLLAEX_CONFIGMAP_API_HOST}
 EOL
 
     fi
@@ -326,6 +339,10 @@ services:
       - INFLUX_PORT=8086
       - INFLUX_USER=$HOLLAEX_SECRET_INFLUX_USER
       - INFLUX_PASSWORD=$HOLLAEX_SECRET_INFLUX_PASSWORD
+      - INFLUXDB_HTTP_LOG_ENABLED=false
+      - INFLUXDB_DATA_QUERY_LOG_ENABLED=false
+      - INFLUXDB_CONTINUOUS_QUERIES_LOG_ENABLED=false
+      - INFLUXDB_LOGGING_LEVEL=error
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
       - ${ENVIRONMENT_EXCHANGE_NAME}-redis
@@ -432,6 +449,10 @@ if [[ "$WITH_BACKENDS" ]]; then
       - INFLUX_PORT=8086
       - INFLUX_USER=$HOLLAEX_SECRET_INFLUX_USER
       - INFLUX_PASSWORD=$HOLLAEX_SECRET_INFLUX_PASSWORD
+      - INFLUXDB_HTTP_LOG_ENABLED=false
+      - INFLUXDB_DATA_QUERY_LOG_ENABLED=false
+      - INFLUXDB_CONTINUOUS_QUERIES_LOG_ENABLED=false
+      - INFLUXDB_LOGGING_LEVEL=error
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
       - ${ENVIRONMENT_EXCHANGE_NAME}-redis
@@ -575,7 +596,7 @@ EOL
 
 }
 
-function generate_kubernetes_configmap() {
+function generate_HOLLAEX_CONFIGMAP() {
 
 # Generate Kubernetes Configmap
 cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-configmap.yaml <<EOL
@@ -591,7 +612,7 @@ EOL
 
 }
 
-function generate_HOLLAEX_SECRET() {
+function generate_kubernetes_secret() {
 
 # Generate Kubernetes Secret
 cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-secret.yaml <<EOL
@@ -625,7 +646,7 @@ metadata:
       limit_req_status 429;
 spec:
   rules:
-  - host: ${KUBERNETES_CONFIGMAP_API_HOST}
+  - host: ${HOLLAEX_CONFIGMAP_API_HOST}
     http:
       paths:
       - path: /v0
@@ -636,7 +657,7 @@ spec:
   tls:
   - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
     hosts:
-    - ${KUBERNETES_CONFIGMAP_API_HOST}
+    - ${HOLLAEX_CONFIGMAP_API_HOST}
 
 ---
 apiVersion: extensions/v1beta1
@@ -654,7 +675,7 @@ metadata:
       limit_req_status 429;
 spec:
   rules:
-  - host: ${KUBERNETES_CONFIGMAP_API_HOST}
+  - host: ${HOLLAEX_CONFIGMAP_API_HOST}
     http:
       paths:
       - path: /v0/order
@@ -665,7 +686,7 @@ spec:
   tls:
   - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
     hosts:
-    - ${KUBERNETES_CONFIGMAP_API_HOST}
+    - ${HOLLAEX_CONFIGMAP_API_HOST}
 
 ---
 apiVersion: extensions/v1beta1
@@ -679,7 +700,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-body-size: "2m"
 spec:
   rules:
-  - host: ${KUBERNETES_CONFIGMAP_API_HOST}
+  - host: ${HOLLAEX_CONFIGMAP_API_HOST}
     http:
       paths:
       - path: /v0/admin
@@ -690,7 +711,7 @@ spec:
   tls:
   - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
     hosts:
-    - ${KUBERNETES_CONFIGMAP_API_HOST}
+    - ${HOLLAEX_CONFIGMAP_API_HOST}
 
 ---
 apiVersion: extensions/v1beta1
@@ -705,7 +726,7 @@ metadata:
     nginx.org/websocket-services: "${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}-server-ws"
 spec:
   rules:
-  - host: ${KUBERNETES_CONFIGMAP_API_HOST}
+  - host: ${HOLLAEX_CONFIGMAP_API_HOST}
     http:
       paths:
       - path: /socket.io
@@ -716,7 +737,7 @@ spec:
   tls:
   - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
     hosts:
-    - ${KUBERNETES_CONFIGMAP_API_HOST}
+    - ${HOLLAEX_CONFIGMAP_API_HOST}
 EOL
 
 }
@@ -743,9 +764,20 @@ for k in ${GENERATE_VALUES_LIST[@]}; do
 
 grep -v $k $SECRET_CONFIG_FILE_PATH > temp && mv temp $SECRET_CONFIG_FILE_PATH
 
+# Using special form to generate both API_KEYS keys and secret
+if [[ "$k" == "HOLLAEX_SECRET_API_KEYS" ]]; then
+
+cat >> $SECRET_CONFIG_FILE_PATH <<EOL
+$k=$(generate_random_values):$(generate_random_values)
+EOL
+
+else 
+
 cat >> $SECRET_CONFIG_FILE_PATH <<EOL
 $k=$(generate_random_values)
 EOL
+
+fi
 
 done
         
@@ -774,7 +806,7 @@ EOL
 
 function helm_dynamic_trading_paris() {
 
-  IFS=',' read -ra PAIRS <<< "$KUBERNETES_CONFIGMAP_PAIRS"    #Convert string to array
+  IFS=',' read -ra PAIRS <<< "$HOLLAEX_CONFIGMAP_PAIRS"    #Convert string to array
 
   for i in "${PAIRS[@]}"; do
     TRADE_PARIS_DEPLOYMENT=$(echo $i | cut -f1 -d ",")

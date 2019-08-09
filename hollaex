@@ -8,7 +8,7 @@ RUN_WITH_VERIFY=true
 
 LOCAL_DEPLOYMENT_MODE='all'
 
-GENERATE_PASSWORDS=
+GENERATE_PASSWORDS=false
 
 DOCKER_COMPOSE_NAME_PREFIX='local'
 
@@ -40,7 +40,6 @@ Options:
     upgrade :
         --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
         --database_init, Run sequelize db:migrate, db:seed and db triggers after init steps.
-        --generate_passwords, Generate new random value passwords for replacing existing ones.
         --no_verify, Run script without verifying connected kubernetes cluster.
     terminate :
         --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
@@ -75,6 +74,11 @@ if [[ "$1" == 'dev' ]]; then
             --database_init)
                 LOCAL_DATABASE_INIT=true
                 echo 'Local database initialization enabled.'
+                shift; continue
+                ;;
+            --generate_passwords)
+                GENERATE_PASSWORDS=true
+                echo "Enable generating random password values. Make sure that you already removed existing values on config file."
                 shift; continue
                 ;;
             --test)
@@ -160,11 +164,20 @@ if [[ "$1" == 'dev' ]]; then
     
 
         #Quit if necessary flags are missing
-        if [[ ! "$LOCAL_COMMAND" ]]; then
+        if [[ ! "$LOCAL_COMMAND" ]] && [[ ! "$LOCAL_DATABASE_INIT" ]]; then
 
             echo "*** Make sure to specify --command flag for dev commands ***"
             print_usage;
             exit 1;
+
+        fi
+
+        # Running database jobs for local db.
+        if [[ ! "$LOCAL_COMMAND" ]] && [[ "$LOCAL_DATABASE_INIT" == true ]]; then
+        
+            local_database_init start;
+
+            exit 0;
 
         fi
 
@@ -200,11 +213,6 @@ if [[ "$1" == 'dev' ]]; then
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
 
-            # if [[ -f "$HOLLAEX_CODEBASE_PATH/.${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml" ]]; then
-            #     rm $HOLLAEX_CODEBASE_PATH/.${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml
-            #     #ln -s $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml $HOLLAEX_CODEBASE_PATH/.${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml
-            # fi
-
             generate_local_docker_compose_for_dev;
         fi
 
@@ -224,19 +232,6 @@ if [[ "$1" == 'dev' ]]; then
 
         # Running database jobs for local db.
         if [[ "$LOCAL_DATABASE_INIT" == true ]]; then
-
-            if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-                echo "*** Are you sure you want to run database init jobs for your local $ENVIRONMENT_EXCHANGE_NAME db? (y/n) ***"
-
-                read answer
-
-                if [[ "$answer" = "${answer#[Yy]}" ]]; then
-                    echo "*** Exiting... ***"
-                    exit 0;
-                fi
-
-            fi
 
             local_database_init start;
 
@@ -288,6 +283,7 @@ elif [[ "$1" == "init" ]]; then
     cp -r $SCRIPTPATH/plugin $HOLLAEX_CLI_INIT_PATH/plugin
     cp -r $SCRIPTPATH/templates $HOLLAEX_CLI_INIT_PATH/templates
     touch $HOLLAEX_CLI_INIT_PATH/.hollaex
+    echo "Initialized by using hollaex-cli v$(cat $SCRIPTPATH/version)" >> $HOLLAEX_CLI_INIT_PATH/.hollaex
 
     grep -v ENVIRONMENT_EXCHANGE_NAME $HOLLAEX_CLI_INIT_PATH/settings/configmap > temp.init && mv temp.init $HOLLAEX_CLI_INIT_PATH/settings/configmap
 
@@ -306,12 +302,8 @@ elif [[ "$1" == "start" ]]; then
             --settings)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                if [[ -d "$1" ]] ; then
-                    CONFIG_FILE_PATH=$1/*
-                elif [[ -f "$1" ]]; then
-                    CONFIG_FILE_PATH=$1
-                fi
-                echo "Your configuration file : $CONFIG_FILE_PATH."
+                HOLLAEX_CLI_INIT_PATH=$1
+                echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
             --mode)
@@ -355,11 +347,23 @@ elif [[ "$1" == "start" ]]; then
         shift
     done
 
-    if [[ ! "$CONFIG_FILE_PATH" ]]; then
+    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        HOLLAEX_CLI_INIT_PATH=$(pwd)
         CONFIG_FILE_PATH=$(pwd)/settings/*
         TEMPLATE_GENERATE_PATH=$(pwd)/templates
         INIT_PATH_CHECK=$(pwd)/.hollaex
+
     fi
+
+    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        
+    fi
+
 
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
@@ -750,15 +754,11 @@ elif [[ "$1" == "stop" ]]; then
     while true; do
         [[ $# -eq 0 ]] && break
         case $1 in
-            --settings)
+           --settings)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                if [[ -d "$1" ]] ; then
-                    CONFIG_FILE_PATH=$1/*
-                elif [[ -f "$1" ]]; then
-                    CONFIG_FILE_PATH=$1
-                fi
-                echo "Your configuration file : $CONFIG_FILE_PATH."
+                HOLLAEX_CLI_INIT_PATH=$1
+                echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
             --mode)
@@ -791,11 +791,24 @@ elif [[ "$1" == "stop" ]]; then
         esac
         shift
     done
+    
+    # Export hollaex-cli initialized directory
 
-    if [[ ! "$CONFIG_FILE_PATH" ]]; then
+    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        HOLLAEX_CLI_INIT_PATH=$(pwd)
         CONFIG_FILE_PATH=$(pwd)/settings/*
         TEMPLATE_GENERATE_PATH=$(pwd)/templates
         INIT_PATH_CHECK=$(pwd)/.hollaex
+
+    fi
+
+    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        
     fi
 
     #Quit if necessary flags are missing
@@ -877,17 +890,6 @@ elif [[ "$1" == "stop" ]]; then
 
         fi
 
-        LOCAL_COMMAND="stop"
-
-        #Quit if necessary flags are missing
-        if [[ ! "$LOCAL_COMMAND" ]]; then
-
-            echo "*** Some necessary flags are missing! Please check agian your command. ***"
-            print_usage;
-            exit 1;
-
-        fi
-
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
             echo "*** Are you sure you want to stop $ENVIRONMENT_EXCHANGE_NAME - $LOCAL_DEPLOYMENT_MODE which running on your local? (y/n) ***"
@@ -912,7 +914,7 @@ elif [[ "$1" == "stop" ]]; then
 
         fi
 
-        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND
+        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
 
         exit 0;
 
@@ -927,12 +929,8 @@ elif [[ "$1" == "upgrade" ]]; then
             --settings)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                if [[ -d "$1" ]] ; then
-                    CONFIG_FILE_PATH=$1/*
-                elif [[ -f "$1" ]]; then
-                    CONFIG_FILE_PATH=$1
-                fi
-                echo "Your configuration file : $CONFIG_FILE_PATH."
+                HOLLAEX_CLI_INIT_PATH=$1
+                echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
             --mode)
@@ -940,11 +938,6 @@ elif [[ "$1" == "upgrade" ]]; then
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 LOCAL_DEPLOYMENT_MODE=$1
                 echo "Your DEPLOYMENT_MODE setup : $LOCAL_DEPLOYMENT_MODE."
-                shift; continue
-                ;;
-            --generate_passwords)
-                GENERATE_PASSWORDS=true
-                echo "Enable generating random password values. Make sure that you already backup existing values on settings file."
                 shift; continue
                 ;;
              --with_backends)
@@ -962,11 +955,6 @@ elif [[ "$1" == "upgrade" ]]; then
                 echo "hollaex-cli will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
-            # --upgrade_backends)
-            #     UPGRADE_BACKEND_COMPONENTS=true
-            #     echo "Backend components upgrade enabled."
-            #     shift; continue
-            #     ;;
             --no_verify)
                 RUN_WITH_VERIFY=false
                 echo "Running it wihtout verify the config."
@@ -981,12 +969,23 @@ elif [[ "$1" == "upgrade" ]]; then
         shift
     done
 
-    if [[ ! "$CONFIG_FILE_PATH" ]]; then
+    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        HOLLAEX_CLI_INIT_PATH=$(pwd)
         CONFIG_FILE_PATH=$(pwd)/settings/*
         TEMPLATE_GENERATE_PATH=$(pwd)/templates
         INIT_PATH_CHECK=$(pwd)/.hollaex
+
     fi
 
+    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        
+    fi
+    
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
@@ -1045,17 +1044,6 @@ elif [[ "$1" == "upgrade" ]]; then
                 exit 0;
             fi
 
-        fi
-
-        if [[ "$GENERATE_PASSWORDS" == true ]]; then
-
-            #Generating random values for passwords and update config file to contain it;
-            update_random_values_to_config;
-            for i in ${CONFIG_FILE_PATH[@]}; do
-                source $i
-            done;
-            load_config_variables;
-            
         fi
 
         if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
@@ -1159,7 +1147,7 @@ elif [[ "$1" == "upgrade" ]]; then
         sleep 5;
 
         echo "*** All done! ***"
-        echo "*** Your $ENVIRONMENT_EXCHANGE_NAME ($KUBERNETES_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again. ***"
+        echo "*** Your $ENVIRONMENT_EXCHANGE_NAME ($HOLLAEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again. ***"
 
         exit 0;
     
@@ -1192,24 +1180,10 @@ elif [[ "$1" == "upgrade" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
         fi
 
-        #if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/logs/nginx/error.log" ]]; then
-        #    touch $TEMPLATE_GENERATE_PATH/local/logs/nginx/error.log;
-        #fi
-        
-        LOCAL_COMMAND="up -d"
-
-        #Quit if necessary flags are missing
-        if [[ ! "$LOCAL_COMMAND" ]]; then
-
-            echo "*** Some necessary flags are missing! Please check agian your command. ***"
-            print_usage;
-            exit 1;
-
-        fi
-
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-            echo "*** Are you sure you want to run docker-compose $LOCAL_COMMAND for $ENVIRONMENT_EXCHANGE_NAME on your local? (y/n) ***"
+            
+            echo "*** !! Exchange service will be unavailable during the upgrade !! ***"
+            echo "*** Are you sure you want to upgrade $ENVIRONMENT_EXCHANGE_NAME on your local? (y/n) ***"
 
             read answer
 
@@ -1217,17 +1191,6 @@ elif [[ "$1" == "upgrade" ]]; then
                 echo "*** Exiting... ***"
                 exit 0;
             fi
-
-        fi
-
-        if [[ "$GENERATE_PASSWORDS" == true ]]; then
-
-            #Generating random values for passwords and update config file to contain it;
-            update_random_values_to_config;
-            for i in ${CONFIG_FILE_PATH[@]}; do
-                source $i
-            done;
-            load_config_variables;
 
         fi
 
@@ -1256,8 +1219,7 @@ elif [[ "$1" == "upgrade" ]]; then
         fi
 
         echo "*** Restarting containers to apply new changes... ***"
-        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND
+        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
 
         # Running database jobs for local db.
         if [[ "$DATABASE_INIT" == true ]]; then
