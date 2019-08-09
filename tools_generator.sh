@@ -596,7 +596,7 @@ EOL
 
 }
 
-function generate_HOLLAEX_CONFIGMAP() {
+function generate_generate_kubernetes_configmap() {
 
 # Generate Kubernetes Configmap
 cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-configmap.yaml <<EOL
