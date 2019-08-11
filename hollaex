@@ -406,11 +406,11 @@ elif [[ "$1" == "start" ]]; then
 
             if [[ "$DATABASE_INIT" == true ]]; then
 
-                echo "*** Are you sure you want to initialize $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($KUBERNETES_CONFIGMAP_API_HOST) with automatic database initalization on this cluster? (y/n) ***"
+                echo "*** Are you sure you want to initialize $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) with automatic database initalization on this cluster? (y/n) ***"
 
             else 
 
-                echo "*** Are you sure you want to initialize / start $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($KUBERNETES_CONFIGMAP_API_HOST) on this cluster? (y/n) ***"
+                echo "*** Are you sure you want to initialize / start $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) on this cluster? (y/n) ***"
 
             fi
 
@@ -604,9 +604,9 @@ elif [[ "$1" == "start" ]]; then
 
         echo "*** Running HollaEx server containers ***"
 
-        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="api" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="$ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="$ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
-        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-ws --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="ws" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-ws --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="ws" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
         helm_dynamic_trading_paris run;
 
@@ -631,7 +631,7 @@ elif [[ "$1" == "start" ]]; then
 
         
         echo "*** All done! ***"
-        echo "*** Your $ENVIRONMENT_EXCHANGE_NAME ($KUBERNETES_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again. ***"
+        echo "*** Your $ENVIRONMENT_EXCHANGE_NAME ($HOLLAEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again. ***"
 
         exit 0;
 
@@ -1119,9 +1119,9 @@ elif [[ "$1" == "upgrade" ]]; then
         generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hollaex
 
         echo "*** Upgrading $ENVIRONMENT_EXCHANGE_NAME Pods on Kubernetes. ***"
-        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="api" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="2" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="2" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
-        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-ws --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="ws" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-ws --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="ws" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
         helm_dynamic_trading_paris run;
 
@@ -1352,7 +1352,7 @@ elif [[ "$1" == "terminate" ]]; then
         kubectl delete ns $ENVIRONMENT_EXCHANGE_NAME
 
         echo "*** All done! ***"
-        echo "*** $ENVIRONMENT_EXCHANGE_NAME ($KUBERNETES_CONFIGMAP_API_HOST) has been successfully removed. If there's an issue, please review logs and try it again. ***"
+        echo "*** $ENVIRONMENT_EXCHANGE_NAME ($HOLLAEX_CONFIGMAP_API_HOST) has been successfully removed. If there's an issue, please review logs and try it again. ***"
 
         exit 0;
 

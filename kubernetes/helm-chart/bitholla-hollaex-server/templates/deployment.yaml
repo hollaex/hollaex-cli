@@ -44,7 +44,7 @@ spec:
 
       containers:
       - name: {{.Release.Name}}
-        image: {{.Values.imageRegistry}}/{{.Values.imageName}}:{{.Values.dockerTag}}
+        image: {{.Values.imageRegistry}}:{{.Values.dockerTag}}
         imagePullPolicy: Always
         ports:
         - name: websocket-port
