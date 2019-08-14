@@ -18,25 +18,26 @@ function local_database_init() {
     
     if [[ "$1" == "start" ]]; then
 
-      if [[ ! $LOCAL_DEPLOYMENT_MODE == "all" ]]; then
+      if [[ ! $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE == "all" ]]; then
 
-        CONTAINER_PREFIX="-$LOCAL_DEPLOYMENT_MODE"
+        IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE}"
+        # IFS=',' CONTAINER_PREFIX="-${ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE[0]}"
 
       fi
 
       echo "*** Running sequelize db:migrate ***"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:migrate
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 sequelize db:migrate
 
       echo "*** Running database triggers ***"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/runTriggers.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js
 
       echo "*** Running sequelize db:seed:all ***"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:seed:all
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 sequelize db:seed:all
 
       echo "*** Running InfluxDB migrations ***"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/createInflux.js
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/migrateInflux.js
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/initializeInflux.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/createInflux.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/migrateInflux.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/initializeInflux.js
 
 
     elif [[ "$1" == 'upgrade' ]]; then
@@ -420,13 +421,13 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]]; then
     image: redis:5.0.5-alpine
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
-    networks:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-network
     ports:
       - 6379:6379
     environment:
       - REDIS_PASSWORD=${HOLLAEX_SECRET_REDIS_PASSWORD}
     command : ["sh", "-c", "redis-server --requirepass \$\${REDIS_PASSWORD}"]
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
 
 EOL
 fi
