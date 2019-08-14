@@ -294,8 +294,7 @@ elif [[ "$1" == "init" ]]; then
 
     exit 0;
     
-elif [[ "$1" == "start" ]]; then
-
+elif [[ "$1" == "launch" ]]; then
     while true; do
         [[ $# -eq 0 ]] && break
         case $1 in
@@ -304,28 +303,6 @@ elif [[ "$1" == "start" ]]; then
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 HOLLAEX_CLI_INIT_PATH=$1
                 echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
-                shift; continue
-                ;;
-            --mode)
-                shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                LOCAL_DEPLOYMENT_MODE=$1
-                echo "Your DEPLOYMENT MODE setup : $LOCAL_DEPLOYMENT_MODE."
-                shift; continue
-                ;;
-            --with_backends)
-                WITH_BACKENDS=true
-                echo "Creating backend components. Running backend components such as PostgreSQL or Redis together on this machine."
-                shift; continue
-                ;;
-            --generate_passwords)
-                GENERATE_PASSWORDS=true
-                echo "Enable generating random password values. Make sure that you already removed existing values on config file."
-                shift; continue
-                ;;
-            --database_init)
-                LOCAL_DATABASE_INIT=true
-                echo "Local database initialization enabled."
                 shift; continue
                 ;;
             --kube)
@@ -404,15 +381,7 @@ elif [[ "$1" == "start" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            if [[ "$DATABASE_INIT" == true ]]; then
-
-                echo "*** Are you sure you want to initialize $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) with automatic database initalization on this cluster? (y/n) ***"
-
-            else 
-
-                echo "*** Are you sure you want to initialize / start $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) on this cluster? (y/n) ***"
-
-            fi
+            echo "*** Are you sure you want to launch $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) with automatic database initalization on this cluster? (y/n) ***"
 
             read answer
 
@@ -423,53 +392,12 @@ elif [[ "$1" == "start" ]]; then
 
         fi
         
-
-        if [[ "$GENERATE_PASSWORDS" == true ]]; then
-
-            #Generating random values for passwords and update config file to contain it;
-            update_random_values_to_config;
-            for i in ${CONFIG_FILE_PATH[@]}; do
-                source $i
-            done;
-            load_config_variables;
-
-        fi
-
-        # For scaling up exisitng Exchange on Kubernetes
-        if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
-
-            echo "*** Existing Exchange - $ENVIRONMENT_EXCHANGE_NAME detected ***"
-
-            if [[ "$RUN_WITH_VERIFY" == true ]]; then
-                echo "*** Would you like to recover (scale up) existing Exchange on this Kubernetes? (y/n) ***"
-
-                read answer
-
-                if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                    echo "*** Exiting... ***"
-                    exit 0;
-                fi
-            fi
-
-            echo "*** Scaling up containers on the cluster... ***"
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=$ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-ws --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-            helm_dynamic_trading_paris scaleup;
-
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-db --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-influxdb --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
-            
-            echo "*** All done! ***"
-            echo "*** Containers successfully scaled up ***"
-
-            exit 0;
-
-        fi
+        #Generating random values for passwords and update config file to contain it;
+        update_random_values_to_config;
+        for i in ${CONFIG_FILE_PATH[@]}; do
+            source $i
+        done;
+        load_config_variables;
 
 
         if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
@@ -688,16 +616,12 @@ elif [[ "$1" == "start" ]]; then
 
         fi
 
-        if [[ "$GENERATE_PASSWORDS" == true ]]; then
-
-            #Generating random values for passwords and update config file to contain it;
-            update_random_values_to_config;
-            for i in ${CONFIG_FILE_PATH[@]}; do
-                source $i
-            done;
-            load_config_variables;
-
-        fi
+        #Generating random values for passwords and update config file to contain it;
+        update_random_values_to_config;
+        for i in ${CONFIG_FILE_PATH[@]}; do
+            source $i
+        done;
+        load_config_variables;
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
@@ -707,7 +631,7 @@ elif [[ "$1" == "start" ]]; then
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
 
-            generate_local_docker_compose $LOCAL_DEPLOYMENT_MODE;
+            generate_local_docker_compose $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE;
 
         fi
 
@@ -724,26 +648,254 @@ elif [[ "$1" == "start" ]]; then
         fi
 
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND
+        
+        # Running database init
+        RUN_WITH_VERIFY=false
+        local_database_init start;
 
-        # Running database jobs for local db.
-        if [[ "$LOCAL_DATABASE_INIT" == true ]]; then
+        # Restarting containers after database init jobs.
+        echo "Restarting containers to apply database changes."
+        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        exit 0;
+
+    fi
+
+
+elif [[ "$1" == "start" ]]; then
+
+    while true; do
+        [[ $# -eq 0 ]] && break
+        case $1 in
+            --settings)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_CLI_INIT_PATH=$1
+                echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
+                shift; continue
+                ;;
+            --mode)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                LOCAL_DEPLOYMENT_MODE=$1
+                echo "Your DEPLOYMENT MODE setup : $LOCAL_DEPLOYMENT_MODE."
+                shift; continue
+                ;;
+            --with_backends)
+                WITH_BACKENDS=true
+                echo "Creating backend components. Running backend components such as PostgreSQL or Redis together on this machine."
+                shift; continue
+                ;;
+            --kube)
+                USE_KUBERNETES=true
+                echo "hollaex-cli will use your Kubernetes cluster as a target."
+                shift; continue
+                ;;
+            --no_verify)
+                RUN_WITH_VERIFY=false
+                echo "Running it wihtout verify the config."
+                shift; continue
+                ;;
+            --*) 
+                err_msg "Invalid option: $1"
+                print_usage;
+                exit 1;
+                ;;
+        esac
+        shift
+    done
+
+    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        CONFIG_FILE_PATH=$(pwd)/settings/*
+        TEMPLATE_GENERATE_PATH=$(pwd)/templates
+        INIT_PATH_CHECK=$(pwd)/.hollaex
+
+    fi
+
+    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        
+    fi
+
+
+    #Quit if necessary flags are missing
+    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
+
+        echo "*** Failed to detect hollaex-cli initialized directory! Please re-check your path. ***"
+        print_usage;
+        exit 1;
+
+    fi
+
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
+    
+    source $SCRIPTPATH/tools_generator.sh
+    load_config_variables;
+
+
+    if [[ "$USE_KUBERNETES" ]]; then
+
+        #Checking Kubernetes dependencies
+        check_kubernetes_dependencies;
+
+        #Creating kubernetes_config directory for generating config for Kubernetes.
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
+        fi
+
+        if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION"  ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME"  ]] ; then
+            echo "Error : Please define exchange name and Docker image version on config file before running hollaex-cli."
+            print_usage
+            exit 1;
+        fi
+        
+
+        echo "*** Verifying current KUBECONFIG on the machine ***"
+        kubectl get nodes
+
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+
+            echo "*** Are you sure you want to start $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) on this cluster? (y/n) ***"
+
+            read answer
+
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                echo "*** Exiting... ***"
+                exit 0;
+            fi
+
+        fi
+
+        # For scaling up exisitng Exchange on Kubernetes
+        if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+
+            echo "*** Existing Exchange - $ENVIRONMENT_EXCHANGE_NAME detected ***"
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-                echo "*** Are you sure you want to run database init jobs for your local $ENVIRONMENT_EXCHANGE_NAME db? (y/n) ***"
+                echo "*** Would you like to recover (scale up) existing Exchange on this Kubernetes? (y/n) ***"
 
                 read answer
 
-                if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                if [[ "$answer" = "${answer#[Yy]}" ]] ;then
                     echo "*** Exiting... ***"
                     exit 0;
                 fi
-
             fi
 
-            local_database_init start;
+            echo "*** Scaling up containers on the cluster... ***"
+            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=$ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-ws --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+            helm_dynamic_trading_paris scaleup;
+
+            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-db --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-influxdb --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+            
+            echo "*** All done! ***"
+            echo "*** Containers successfully scaled up ***"
+
+            exit 0;
+
+        else 
+
+            echo "*** hollaex-cli failed to detect existing exchange running on this Kubernetes. ***"
+            echo "*** Please review your settings files and targeted Kubernetes. ***"
+
+            exit 1;
 
         fi
+
+    fi
+
+    if [[ ! "$USE_KUBERNETES" ]]; then
+
+        # Checking docker-compose is installed on this machine.
+        if command docker-compose version > /dev/null 2>&1; then
+
+            echo "*** docker-compose detected ***"
+            echo "version: $(docker-compose version)"
+
+        else
+
+            echo "*** hollaex-cli failed to detect docker-compose installed on this machine. Please install it before running hollaex-cli. ***"
+            exit 1;
+
+        fi
+
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local;
+        fi
+
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local/nginx;
+        fi
+
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
+        fi
+        
+        LOCAL_COMMAND="start"
+
+        #Quit if necessary flags are missing
+        if [[ ! "$LOCAL_COMMAND" ]]; then
+
+            echo "*** Some necessary flags are missing! Please check agian your command. ***"
+            print_usage;
+            exit 1;
+
+        fi
+
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+            echo "*** Are you sure you want to run $ENVIRONMENT_EXCHANGE_NAME on your local machine? (y/n) ***"
+
+            read answer
+
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                echo "*** Exiting... ***"
+                exit 0;
+            fi
+
+        fi
+
+        #Regenerate ENV
+        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
+
+            generate_local_env;
+
+        fi
+
+        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
+
+            generate_local_docker_compose $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE;
+
+        fi
+
+        generate_nginx_upstream $LOCAL_DEPLOYMENT_MODE;
+
+        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
+        
+            generate_nginx_config_for_plugin;
+
+        elif [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "false" ]]; then
+
+            rm -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf
+
+        fi
+
+        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND
 
         exit 0;
 
@@ -766,11 +918,6 @@ elif [[ "$1" == "stop" ]]; then
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 LOCAL_DEPLOYMENT_MODE=$1
                 echo "Your DEPLOYMENT_MODE setup : $LOCAL_DEPLOYMENT_MODE."
-                shift; continue
-                ;;
-            --with_backends)
-                WITH_BACKENDS=true
-                echo "Creating backend components such as Database or Redis together with exchange containers on this machine."
                 shift; continue
                 ;;
             --kube)
@@ -903,17 +1050,6 @@ elif [[ "$1" == "stop" ]]; then
 
         fi
 
-        if [[ "$GENERATE_PASSWORDS" == true ]]; then
-
-            #Generating random values for passwords and update config file to contain it;
-            update_random_values_to_config;
-            for i in ${CONFIG_FILE_PATH[@]}; do
-                source $i
-            done;
-            load_config_variables;
-
-        fi
-
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
 
         exit 0;
@@ -931,18 +1067,6 @@ elif [[ "$1" == "upgrade" ]]; then
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 HOLLAEX_CLI_INIT_PATH=$1
                 echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
-                shift; continue
-                ;;
-            --mode)
-                shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                LOCAL_DEPLOYMENT_MODE=$1
-                echo "Your DEPLOYMENT_MODE setup : $LOCAL_DEPLOYMENT_MODE."
-                shift; continue
-                ;;
-             --with_backends)
-                WITH_BACKENDS=true
-                echo "Upgrade backend components such as Database or Redis together with exchange containers on this machine."
                 shift; continue
                 ;;
             --database_init)
@@ -1023,19 +1147,8 @@ elif [[ "$1" == "upgrade" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            if [[ "$STAGING_VERSION" ]] && [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION" ]]; then
-
-                echo "*** Are you sure you want to enable / upgrade $ENVIRONMENT_EXCHANGE_NAME-server-api staging v$STAGING_VERSION with $STAGING_REPLICACOUNT containers on this cluster? (y/n) ***"
-
-            elif [[ "$STAGING_VERSION" ]] && [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION" ]]; then
-
-                echo "*** Are you sure you want to upgrade $ENVIRONMENT_EXCHANGE_NAME to v$ENVIRONMENT_DOCKER_IMAGE_VERSION with $ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS api containers, and enable / upgrade $ENVIRONMENT_EXCHANGE_NAME-server-api staging to v$STAGING_VERSION with $STAGING_REPLICACOUNT containers on this cluster? (y/n) ***"
-
-            else
-                
-                echo "*** Are you sure you want to upgrade $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION with $ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS api containers on this cluster? (y/n) ***"
-
-            fi
+            echo "*** !! Exchange service will be unavailable during the upgrade !! ***"
+            echo "*** Are you sure you want to upgrade $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION with $ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS api containers on this cluster? (y/n) ***"
 
             read answer
 
@@ -1125,21 +1238,19 @@ elif [[ "$1" == "upgrade" ]]; then
 
         helm_dynamic_trading_paris run;
 
-        if [[ "$DATABASE_INIT" == true ]]; then
 
-            echo "Waiting for 60 seconds to Pods get ready to run database jobs..."
-            sleep 60;
+        echo "Waiting for 60 seconds to Pods get ready to run database jobs..."
+        sleep 60;
 
-            echo "*** Running sequelize db:migrate ***"
-            kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:migrate 
+        echo "*** Running sequelize db:migrate ***"
+        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:migrate 
 
-            echo "*** Running Database Triggers ***"
-            kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/runTriggers.js
+        echo "*** Running Database Triggers ***"
+        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/runTriggers.js
 
-            echo "*** Running InfluxDB migrations ***"
-            kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
+        echo "*** Running InfluxDB migrations ***"
+        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
             
-        fi
 
         echo "*** Applying $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster. ***"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
@@ -1202,7 +1313,7 @@ elif [[ "$1" == "upgrade" ]]; then
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
 
-            generate_local_docker_compose $LOCAL_DEPLOYMENT_MODE;
+            generate_local_docker_compose $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE;
 
         fi
 
@@ -1259,18 +1370,6 @@ elif [[ "$1" == "terminate" ]]; then
                     CONFIG_FILE_PATH=$1
                 fi
                 echo "Your configuration file : $CONFIG_FILE_PATH."
-                shift; continue
-                ;;
-            # --mode)
-            #     shift 
-            #     case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-            #     LOCAL_DEPLOYMENT_MODE=$1
-            #     echo "Your DEPLOYMENT_MODE setup : $LOCAL_DEPLOYMENT_MODE."
-            #     shift; continue
-            #     ;;
-            --with_backends)
-                WITH_BACKENDS=true
-                echo "Creating backend components such as Database or Redis together with exchange containers on this machine."
                 shift; continue
                 ;;
             --kube)
