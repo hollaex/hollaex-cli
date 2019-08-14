@@ -280,7 +280,7 @@ elif [[ "$1" == "init" ]]; then
     mkdir $HOLLAEX_CLI_INIT_PATH
 
     cp -r $SCRIPTPATH/settings $HOLLAEX_CLI_INIT_PATH/settings
-    cp -r $SCRIPTPATH/plugin $HOLLAEX_CLI_INIT_PATH/plugin
+    cp -r $SCRIPTPATH/plugins $HOLLAEX_CLI_INIT_PATH/plugins
     cp -r $SCRIPTPATH/templates $HOLLAEX_CLI_INIT_PATH/templates
     touch $HOLLAEX_CLI_INIT_PATH/.hollaex
     echo "Initialized by using hollaex-cli v$(cat $SCRIPTPATH/version)" >> $HOLLAEX_CLI_INIT_PATH/.hollaex
