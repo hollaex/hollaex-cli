@@ -281,7 +281,7 @@ elif [[ "$1" == "init" ]]; then
     touch $HOLLAEX_CLI_INIT_PATH/.hollaex
     echo "Initialized by using hollaex-cli v$(cat $SCRIPTPATH/version)" >> $HOLLAEX_CLI_INIT_PATH/.hollaex
 
-    grep -v ENVIRONMENT_EXCHANGE_NAME $HOLLAEX_CLI_INIT_PATH/settings/configmap > temp.init && mv temp.init $HOLLAEX_CLI_INIT_PATH/settings/configmap
+    grep -v ENVIRONMENT_EXCHANGE_NAME= $HOLLAEX_CLI_INIT_PATH/settings/configmap > temp.init && mv temp.init $HOLLAEX_CLI_INIT_PATH/settings/configmap
 
     (echo "ENVIRONMENT_EXCHANGE_NAME=$ENVIRONMENT_EXCHANGE_NAME" && cat $HOLLAEX_CLI_INIT_PATH/settings/configmap) > temp.init && mv temp.init $HOLLAEX_CLI_INIT_PATH/settings/configmap
 
@@ -1316,26 +1316,6 @@ elif [[ "$1" == "upgrade" ]]; then
 
         RUN_WITH_VERIFY=false
         local_database_init upgrade;
-
-        # # Running database jobs for local db.
-        # if [[ "$DATABASE_INIT" == true ]]; then
-
-        #     if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-        #         echo "*** Are you sure you want to run database init jobs for your local $ENVIRONMENT_EXCHANGE_NAME db? (y/n) ***"
-
-        #         read answer
-
-        #         if [[ "$answer" = "${answer#[Yy]}" ]]; then
-        #             echo "*** Exiting... ***"
-        #             exit 0;
-        #         fi
-
-        #     fi
-
-        #     local_database_init upgrade;
-
-        # fi
 
         exit 0;
 
