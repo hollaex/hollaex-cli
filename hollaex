@@ -198,10 +198,6 @@ if [[ "$1" == 'dev' ]]; then
 
             #Generating random values for passwords and update config file to contain it;
             update_random_values_to_config;
-            for i in ${CONFIG_FILE_PATH[@]}; do
-                source $i
-            done;
-            load_config_variables;
 
         fi
 
@@ -340,8 +336,7 @@ elif [[ "$1" == "launch" ]]; then
         INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
         
     fi
-
-
+    
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
@@ -375,6 +370,7 @@ elif [[ "$1" == "launch" ]]; then
             exit 1;
         fi
         
+        check_empty_values_on_settings;
 
         echo "*** Verifying current KUBECONFIG on the machine ***"
         kubectl get nodes
@@ -394,10 +390,6 @@ elif [[ "$1" == "launch" ]]; then
         
         #Generating random values for passwords and update config file to contain it;
         update_random_values_to_config;
-        for i in ${CONFIG_FILE_PATH[@]}; do
-            source $i
-        done;
-        load_config_variables;
 
 
         if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
@@ -591,6 +583,8 @@ elif [[ "$1" == "launch" ]]; then
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
         fi
+
+        check_empty_values_on_settings;
         
         LOCAL_COMMAND="up -d"
 
@@ -616,12 +610,8 @@ elif [[ "$1" == "launch" ]]; then
 
         fi
 
-        #Generating random values for passwords and update config file to contain it;
+        # #Generating random values for passwords and update config file to contain it;
         update_random_values_to_config;
-        for i in ${CONFIG_FILE_PATH[@]}; do
-            source $i
-        done;
-        load_config_variables;
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
@@ -755,7 +745,8 @@ elif [[ "$1" == "start" ]]; then
             print_usage
             exit 1;
         fi
-        
+
+        check_empty_values_on_settings;
 
         echo "*** Verifying current KUBECONFIG on the machine ***"
         kubectl get nodes
@@ -763,7 +754,7 @@ elif [[ "$1" == "start" ]]; then
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
 
-            echo "*** Are you sure you want to start $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) on this cluster? (y/n) ***"
+            echo "*** Are you sure you want to start (scale up) $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) on this cluster? (y/n) ***"
 
             read answer
 
@@ -776,19 +767,6 @@ elif [[ "$1" == "start" ]]; then
 
         # For scaling up exisitng Exchange on Kubernetes
         if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
-
-            echo "*** Existing Exchange - $ENVIRONMENT_EXCHANGE_NAME detected ***"
-
-            if [[ "$RUN_WITH_VERIFY" == true ]]; then
-                echo "*** Would you like to recover (scale up) existing Exchange on this Kubernetes? (y/n) ***"
-
-                read answer
-
-                if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                    echo "*** Exiting... ***"
-                    exit 0;
-                fi
-            fi
 
             echo "*** Scaling up containers on the cluster... ***"
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=$ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS --namespace $ENVIRONMENT_EXCHANGE_NAME
@@ -803,6 +781,9 @@ elif [[ "$1" == "start" ]]; then
 
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-influxdb --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
             
+            echo "*** Applying Ingress rules... ***"
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
             echo "*** All done! ***"
             echo "*** Containers successfully scaled up ***"
 
@@ -845,6 +826,8 @@ elif [[ "$1" == "start" ]]; then
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
         fi
+
+        check_empty_values_on_settings;
         
         LOCAL_COMMAND="start"
 
@@ -869,23 +852,22 @@ elif [[ "$1" == "start" ]]; then
             fi
 
         fi
-
-        #Regenerate ENV
-        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
-
-            generate_local_env;
-
-        fi
-
-        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
+        
+        # Generate docker-compose.yaml and nginx upstream.conf in case of they are missing.
+        if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml" ]]; then
 
             generate_local_docker_compose $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE;
 
         fi
 
-        generate_nginx_upstream $LOCAL_DEPLOYMENT_MODE;
+        if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf" ]]; then
 
-        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
+            generate_nginx_upstream $LOCAL_DEPLOYMENT_MODE;
+
+        fi
+
+        # Generate plugins.conf in case of the file is missing while the ENV true.
+        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]] && [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf" ]]; then
         
             generate_nginx_config_for_plugin;
 
@@ -975,6 +957,8 @@ elif [[ "$1" == "stop" ]]; then
     load_config_variables;
 
     if [[ "$USE_KUBERNETES" ]]; then
+        
+        check_empty_values_on_settings;
 
          #Checking Kubernetes dependencies
         check_kubernetes_dependencies;
@@ -1005,20 +989,18 @@ elif [[ "$1" == "stop" ]]; then
 
         helm_dynamic_trading_paris scaledown;
 
-        if [[ "$WITH_BACKENDS" ]]; then
+        echo "*** Scaling down backend components... ***"
 
-            echo "*** Scaling down backend components... ***"
+        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
+        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-db --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-db --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-influxdb --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-        fi
+        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-influxdb --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
         echo "*** All done! ***"
         echo "*** Containers successfully scaled down ***"
+
+        exit 0;
 
     fi
 
@@ -1035,7 +1017,9 @@ elif [[ "$1" == "stop" ]]; then
             echo "*** hollaex-cli failed to detect docker-compose installed on this machine. Please install it before running hollaex-cli. ***"
             exit 1;
 
-        fi
+        fi 
+
+        check_empty_values_on_settings;
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
@@ -1058,7 +1042,6 @@ elif [[ "$1" == "stop" ]]; then
 
 elif [[ "$1" == "upgrade" ]]; then
 
-
     while true; do
         [[ $# -eq 0 ]] && break
         case $1 in
@@ -1067,11 +1050,6 @@ elif [[ "$1" == "upgrade" ]]; then
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 HOLLAEX_CLI_INIT_PATH=$1
                 echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
-                shift; continue
-                ;;
-            --database_init)
-                DATABASE_INIT=true
-                echo "Database re-initialization enabled."
                 shift; continue
                 ;;
             --kube)
@@ -1141,6 +1119,8 @@ elif [[ "$1" == "upgrade" ]]; then
             print_usage
             exit 1;
         fi
+
+        check_empty_values_on_settings;
 
         echo "*** Verifying current KUBECONFIG on the machine ***"
         kubectl get nodes
@@ -1291,6 +1271,8 @@ elif [[ "$1" == "upgrade" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
         fi
 
+        check_empty_values_on_settings;
+
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
             
             echo "*** !! Exchange service will be unavailable during the upgrade !! ***"
@@ -1358,18 +1340,14 @@ elif [[ "$1" == "upgrade" ]]; then
 
 elif [[ "$1" == "terminate" ]]; then
 
-    while true; do
+     while true; do
         [[ $# -eq 0 ]] && break
         case $1 in
             --settings)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                if [[ -d "$1" ]] ; then
-                    CONFIG_FILE_PATH=$1/*
-                elif [[ -f "$1" ]]; then
-                    CONFIG_FILE_PATH=$1
-                fi
-                echo "Your configuration file : $CONFIG_FILE_PATH."
+                HOLLAEX_CLI_INIT_PATH=$1
+                echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
             --kube)
@@ -1389,12 +1367,23 @@ elif [[ "$1" == "terminate" ]]; then
                 ;;
         esac
         shift
-    done
+     done
 
-    if [[ ! "$CONFIG_FILE_PATH" ]]; then
+    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        HOLLAEX_CLI_INIT_PATH=$(pwd)
         CONFIG_FILE_PATH=$(pwd)/settings/*
         TEMPLATE_GENERATE_PATH=$(pwd)/templates
         INIT_PATH_CHECK=$(pwd)/.hollaex
+
+    fi
+
+    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        
     fi
 
     #Quit if necessary flags are missing
@@ -1513,5 +1502,7 @@ else
     exit 0;
 
 fi
+
+exit 0;
 
 

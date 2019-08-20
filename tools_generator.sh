@@ -211,13 +211,6 @@ function generate_nginx_config_for_plugin() {
     touch $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf
   
   fi
-
-  # if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-plugins.conf" ]]; then
-
-  #   rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-plugins.conf
-  #   touch $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-plugins.conf
-  
-  # fi
   
   IFS=',' read -ra PLUGINS <<< "$ENVIRONMENT_CUSTOM_PLUGINS_NAME"    #Convert string to array
 
@@ -802,6 +795,26 @@ EOL
         
         done
 
+        # IMPORT VALUES AGAIN ONCE IT GET GENERATED
+        # set -o posix ; set
+
+        unset k
+        unset GENERATE_VALUES_LIST
+        unset HOLLAEX_CONFIGMAP_VARIABLES
+        unset HOLLAEX_SECRET_VARIABLES
+        unset HOLLAEX_SECRET_VARIABLES_BASE64
+        unset HOLLAEX_SECRET_VARIABLES_YAML
+        unset HOLLAEX_CONFIGMAP_VARIABLES_YAML
+
+        set -o posix ; set | grep "HOLLAEX_CONFIGMAP" 
+        set -o posix ; set | grep "HOLLAEX_SECRET" 
+
+        for i in ${CONFIG_FILE_PATH[@]}; do
+            source $i
+        done;
+
+        load_config_variables;
+
       else
 
         echo "*** Skipping... ***"
@@ -861,6 +874,34 @@ function helm_dynamic_trading_paris() {
 
     fi
 
+  done
+
+}
+
+function check_empty_values_on_settings() {
+
+  for i in ${HOLLAEX_CONFIGMAP_VARIABLES[@]}; do
+
+    PARSED_CONFIGMAP_VARIABLES=$(echo $i | cut -f2 -d '=')
+
+    if [[ -z $PARSED_CONFIGMAP_VARIABLES ]]; then
+
+      echo "Warning! Configmap - \"$(echo $i | cut -f1 -d '=')\" got an empty value! Please reconfirm the settings files."
+
+    fi
+  
+  done
+
+  for i in ${HOLLAEX_SECRET_VARIABLES[@]}; do
+
+    PARSED_SECRET_VARIABLES=$(echo $i | cut -f2 -d '=')
+
+    if [[ -z $PARSED_SECRET_VARIABLES ]]; then
+
+      echo "Warning! Secret - \"$(echo $i | cut -f1 -d '=')\" got an empty value! Please reconfirm the settings files."
+
+    fi
+  
   done
 
 }

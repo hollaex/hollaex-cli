@@ -32,11 +32,6 @@ spec:
         tier: backend
     spec:
 
-      volumes:
-         #Volume for debug log storing & printing
-         - name: shared-data
-           emptyDir: {}
-
 {{- if .Values.nodeSelector }}
       nodeSelector:
 {{ toYaml .Values.nodeSelector | indent 8 }}
@@ -51,10 +46,6 @@ spec:
           containerPort: 10080
         - name: port
           containerPort: 10010
-
-        volumeMounts:
-          - name: shared-data
-            mountPath: /app/logs
 
         envFrom:
           - configMapRef:
