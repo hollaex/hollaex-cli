@@ -805,8 +805,8 @@ EOL
         unset HOLLAEX_SECRET_VARIABLES_YAML
         unset HOLLAEX_CONFIGMAP_VARIABLES_YAML
 
-        set -o posix ; set | grep "HOLLAEX_CONFIGMAP" 
-        set -o posix ; set | grep "HOLLAEX_SECRET" 
+        # set -o posix ; set | grep "HOLLAEX_CONFIGMAP" 
+        # set -o posix ; set | grep "HOLLAEX_SECRET" 
 
         for i in ${CONFIG_FILE_PATH[@]}; do
             source $i
@@ -902,5 +902,20 @@ function check_empty_values_on_settings() {
     fi
   
   done
+
+}
+
+function override_docker_image_version() {
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+
+    if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+      CONFIGMAP_FILE_PATH=$i
+      sed -i.bak "s/$ENVIRONMENT_DOCKER_IMAGE_VERSION/$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    fi
+    
+  done
+
+  rm $CONFIGMAP_FILE_PATH.bak
 
 }

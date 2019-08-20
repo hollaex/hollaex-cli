@@ -1057,6 +1057,13 @@ elif [[ "$1" == "upgrade" ]]; then
                 echo "hollaex-cli will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
+            --version)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$1
+                echo "Target HollaEx version : v $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE."
+                shift; continue
+                ;;
             --no_verify)
                 RUN_WITH_VERIFY=false
                 echo "Running it wihtout verify the config."
@@ -1139,6 +1146,14 @@ elif [[ "$1" == "upgrade" ]]; then
 
         fi
 
+        # Override target docker image version If user passed it manually with flag.
+        if [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
+            
+            override_docker_image_version;
+            ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+            
+        fi
+
         if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
 
             echo "Generating Kubernetes Configmap"
@@ -1176,37 +1191,40 @@ elif [[ "$1" == "upgrade" ]]; then
         echo "*** Applying latest secret on the cluster ***"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
-        if [[ "$WITH_BACKENDS" == true ]]; then
 
-            echo "*** Upgrading Redis ***"
-            generate_nodeselector_values $ENVIRONMENT_KUBERNETES_REDIS_NODESELECTOR redis
+        # Backend component upgrades should be moved to hollaex toolbox command line sets.
 
-            if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS" == true ]]; then
+        # if [[ "$WITH_BACKENDS" == true ]]; then
 
-                helm upgrade --install --recreate-pods $ENVIRONMENT_EXCHANGE_NAME-redis  --namespace $ENVIRONMENT_EXCHANGE_NAME --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT"  --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis
+        #     echo "*** Upgrading Redis ***"
+        #     generate_nodeselector_values $ENVIRONMENT_KUBERNETES_REDIS_NODESELECTOR redis
+
+        #     if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS" == true ]]; then
+
+        #         helm upgrade --install --recreate-pods $ENVIRONMENT_EXCHANGE_NAME-redis  --namespace $ENVIRONMENT_EXCHANGE_NAME --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT"  --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis
         
-            else
+        #     else
 
-                helm upgrade --install --recreate-pods $ENVIRONMENT_EXCHANGE_NAME-redis  --namespace $ENVIRONMENT_EXCHANGE_NAME  --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis
-            fi
+        #         helm upgrade --install --recreate-pods $ENVIRONMENT_EXCHANGE_NAME-redis  --namespace $ENVIRONMENT_EXCHANGE_NAME  --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis
+        #     fi
 
-            echo "*** Running PostgreSQL DB ***"
-            generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_NODESELECTOR postgresql
+        #     echo "*** Running PostgreSQL DB ***"
+        #     generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_NODESELECTOR postgresql
 
-            if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_ACCESS" == true ]]; then
+        #     if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_ACCESS" == true ]]; then
 
-                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_ACCESS_PORT" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres
+        #         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_ACCESS_PORT" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres
 
-            else
+        #     else
 
-                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres
+        #         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres
 
-            fi
+        #     fi
 
-            echo "*** Upgrading InfluxDB ***"
-            helm upgrade --install --recreate-pods $ENVIRONMENT_EXCHANGE_NAME-influxdb --namespace $ENVIRONMENT_EXCHANGE_NAME --set persistence.size=$ENVIRONMENT_KUBERNETES_INFLUXDB_VOLUMESIZE --set setCustomUser.enabled="true" --set setCustomUser.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret"  $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb
+        #     echo "*** Upgrading InfluxDB ***"
+        #     helm upgrade --install --recreate-pods $ENVIRONMENT_EXCHANGE_NAME-influxdb --namespace $ENVIRONMENT_EXCHANGE_NAME --set persistence.size=$ENVIRONMENT_KUBERNETES_INFLUXDB_VOLUMESIZE --set setCustomUser.enabled="true" --set setCustomUser.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret"  $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb
         
-        fi
+        # fi
 
         # FOR GENERATING NODESELECTOR VALUES
         generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hollaex
@@ -1285,6 +1303,14 @@ elif [[ "$1" == "upgrade" ]]; then
                 exit 0;
             fi
 
+        fi
+
+        # Override target docker image version If user passed it manually with flag.
+        if [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
+            
+            override_docker_image_version;
+            ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+            
         fi
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
