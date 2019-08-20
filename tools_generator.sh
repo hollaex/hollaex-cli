@@ -21,7 +21,6 @@ function local_database_init() {
       if [[ ! $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE == "all" ]]; then
 
         IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE}"
-        # IFS=',' CONTAINER_PREFIX="-${ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE[0]}"
 
       fi
 
@@ -42,10 +41,10 @@ function local_database_init() {
 
     elif [[ "$1" == 'upgrade' ]]; then
 
-      if [[ $LOCAL_DEPLOYMENT_MODE ]]; then
+       if [[ ! $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE == "all" ]]; then
 
-        CONTAINER_PREFIX="-$LOCAL_DEPLOYMENT_MODE"
-
+        IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE}"
+        
       fi
 
       echo "*** Running sequelize db:migrate ***"
