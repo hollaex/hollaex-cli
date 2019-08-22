@@ -32,11 +32,6 @@ spec:
         tier: backend
     spec:
 
-      volumes:
-         #Volume for debug log storing & printing
-         - name: shared-data
-           emptyDir: {}
-
 {{- if .Values.nodeSelector }}
       nodeSelector:
 {{ toYaml .Values.nodeSelector | indent 8 }}
@@ -52,10 +47,6 @@ spec:
         - name: port
           containerPort: 10010
 
-        volumeMounts:
-          - name: shared-data
-            mountPath: /app/logs
-
         envFrom:
           - configMapRef:
               name: {{.Values.envName}}
@@ -66,8 +57,8 @@ spec:
             value: {{.Values.DEPLOYMENT_MODE}}
           - name: ELASTIC_APM_SERVICE_NAME
             value: {{.Release.Name}}
-          - name: ELASTIC_APM_SERVER_URL
-            value: {{.Values.APM_URL}}
+          # - name: ELASTIC_APM_SERVER_URL
+          #   value: {{.Values.APM_URL}}
         
         resources:
           limits:
