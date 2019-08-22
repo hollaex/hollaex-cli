@@ -20,33 +20,35 @@ function print_usage() {
 /bin/cat << EOF
 
 Usage : 
-    hollaex [ init ] [ start ] [ stop ] [ upgrade ] [ terminate ] (--flags)
+    hollaex [ init ] [ start ] [ stop ] [ upgrade ] [ terminate ] [ toolbox ] (--flags)
 Options:
     init :
         --name, Name of your exchange.
         --path, Path to create init directory for hollaex-cli, Default is current directory.
     start :
         --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
-        --deployment_mode, Specify exact container to start on this machine, Such as api.
-        --with_backends, Running containers only without creating backend components, such as Redis.
-        --database_init, Run sequelize db:migrate, db:seed and db triggers after init steps.
+        --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying docker-compose setup.
     stop :
         --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
-        --mode, Specify exact container to stop on this machine, Such as api.
-        --database_init, Run sequelize db:migrate, db:seed and db triggers after init steps.
-        --skip_generate_passwords, Skip generated random value passwords.
+        --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying connected kubernetes cluster.
     upgrade :
         --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
-        --database_init, Run sequelize db:migrate, db:seed and db triggers after init steps.
+        --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying connected kubernetes cluster.
     terminate :
         --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
+        --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying connected kubernetes cluster.
-    
+    toolbox:
+        --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
+        --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
+        --no_verify, Run script without verifying connected kubernetes cluster.
+        --upgrade_backends, Update backend services, such as Redis or PostgreSQL for the exchange to latest compatible.
+        --backup_postgresql, Run the full backup with pg_dumpall for the exchange PostgreSQL database.
+        --flush_redis, Run the full flush of Redis stored data. It could be helpful in certain situation If the exchange doesnt work properly.
     General Flags : 
-    --kube, Run the command for Kubernetes cluster. If you want to deploy or operate exchange on Kubernetes, use this flag.
     --version, Print out current installed version of hollaex-cli.
 
 EOF
@@ -431,7 +433,7 @@ elif [[ "$1" == "launch" ]]; then
         echo "*** Applying secret on the namespace ***"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
-        if [[ "$ENVIRONMENT_KUBERNETES_USE_EXTERNAL_REDIS" == false ]]; then
+        if [[ "$ENVIRONMENT_KUBERNETES_RUN_REDIS" == true ]]; then
 
             generate_nodeselector_values $ENVIRONMENT_KUBERNETES_REDIS_NODESELECTOR redis
 
@@ -448,24 +450,24 @@ elif [[ "$1" == "launch" ]]; then
 
         fi
 
-        if [[ "$ENVIRONMENT_KUBERNETES_USE_EXTERNAL_POSTGRESQL" == false ]]; then
+        if [[ "$ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB" == true ]]; then
 
-            generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_NODESELECTOR postgresql
+            generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
             echo "*** Running PostgreSQL DB ***"
 
-            if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_ACCESS" == true ]]; then
+            if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS" == true ]]; then
 
-                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_ACCESS_PORT" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres
+                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres
 
             else
 
-                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres
+                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres
 
             fi
 
         fi
 
-        if [[ "$ENVIRONMENT_KUBERNETES_USE_EXTERNAL_INFLUXDB" == false ]]; then
+        if [[ "$ENVIRONMENT_KUBERNETES_RUN_INFLUXDB" == true ]]; then
 
             if [[ "$ENVIRONMENT_KUBERNETES_INFLUXDB_NODESELECTOR" ]]; then
 
@@ -474,7 +476,7 @@ elif [[ "$1" == "launch" ]]; then
             fi
 
             echo "*** Running InfluxDB ***"
-            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-influxdb --namespace $ENVIRONMENT_EXCHANGE_NAME --set setCustomUser.enabled="true" --set setCustomUser.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret"  -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-influxdb.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb
+            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-influxdb --namespace $ENVIRONMENT_EXCHANGE_NAME --set setCustomUser.enabled="true" --set setCustomUser.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set persistence.size="$ENVIRONMENT_KUBERNETES_INFLUXDB_VOLUMESIZE" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-influxdb.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb
 
         fi
 
@@ -549,6 +551,8 @@ elif [[ "$1" == "launch" ]]; then
         kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/migrateInflux.js
         kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
 
+        echo "*** Restarting all containers to apply latest database changes... ***"
+        kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
         
         echo "*** All done! ***"
         echo "*** Your $ENVIRONMENT_EXCHANGE_NAME ($HOLLAEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again. ***"
@@ -811,6 +815,14 @@ elif [[ "$1" == "start" ]]; then
         else
 
             echo "*** hollaex-cli failed to detect docker-compose installed on this machine. Please install it before running hollaex-cli. ***"
+            exit 1;
+
+        fi
+
+        # Exit hollaex-cli If docker_compose 
+        if [[ ! "$ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE" ]]; then
+
+            echo "Your ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE value is missing! Please reconfirm your settings files."
             exit 1;
 
         fi
@@ -1111,6 +1123,14 @@ elif [[ "$1" == "upgrade" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
+    # Override target docker image version If user passed it manually with flag.
+    if [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
+        
+        override_docker_image_version;
+        ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+        
+    fi
+
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
@@ -1144,14 +1164,6 @@ elif [[ "$1" == "upgrade" ]]; then
                 exit 0;
             fi
 
-        fi
-
-        # Override target docker image version If user passed it manually with flag.
-        if [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
-            
-            override_docker_image_version;
-            ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
-            
         fi
 
         if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
@@ -1191,41 +1203,6 @@ elif [[ "$1" == "upgrade" ]]; then
         echo "*** Applying latest secret on the cluster ***"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
-
-        # Backend component upgrades should be moved to hollaex toolbox command line sets.
-
-        # if [[ "$WITH_BACKENDS" == true ]]; then
-
-        #     echo "*** Upgrading Redis ***"
-        #     generate_nodeselector_values $ENVIRONMENT_KUBERNETES_REDIS_NODESELECTOR redis
-
-        #     if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS" == true ]]; then
-
-        #         helm upgrade --install --recreate-pods $ENVIRONMENT_EXCHANGE_NAME-redis  --namespace $ENVIRONMENT_EXCHANGE_NAME --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT"  --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis
-        
-        #     else
-
-        #         helm upgrade --install --recreate-pods $ENVIRONMENT_EXCHANGE_NAME-redis  --namespace $ENVIRONMENT_EXCHANGE_NAME  --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis
-        #     fi
-
-        #     echo "*** Running PostgreSQL DB ***"
-        #     generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_NODESELECTOR postgresql
-
-        #     if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_ACCESS" == true ]]; then
-
-        #         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_ACCESS_PORT" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres
-
-        #     else
-
-        #         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres
-
-        #     fi
-
-        #     echo "*** Upgrading InfluxDB ***"
-        #     helm upgrade --install --recreate-pods $ENVIRONMENT_EXCHANGE_NAME-influxdb --namespace $ENVIRONMENT_EXCHANGE_NAME --set persistence.size=$ENVIRONMENT_KUBERNETES_INFLUXDB_VOLUMESIZE --set setCustomUser.enabled="true" --set setCustomUser.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret"  $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb
-        
-        # fi
-
         # FOR GENERATING NODESELECTOR VALUES
         generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hollaex
 
@@ -1248,12 +1225,16 @@ elif [[ "$1" == "upgrade" ]]; then
 
         echo "*** Running InfluxDB migrations ***"
         kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
-            
+        
+        echo "*** Restarting all containers to apply latest database changes... ***"
+        kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+
+        echo "*** Waiting for the containers get fully ready... ***"
+        sleep 30;
 
         echo "*** Applying $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster. ***"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
-        sleep 5;
 
         echo "*** All done! ***"
         echo "*** Your $ENVIRONMENT_EXCHANGE_NAME ($HOLLAEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again. ***"
@@ -1496,6 +1477,368 @@ elif [[ "$1" == "terminate" ]]; then
 
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND
         exit 0;
+
+    fi
+
+elif [[ "$1" == "toolbox" ]]; then
+
+    while true; do
+        [[ $# -eq 0 ]] && break
+        case $1 in
+            --settings)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_CLI_INIT_PATH=$1
+                echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
+                shift; continue
+                ;;
+            --kube)
+                USE_KUBERNETES=true
+                echo "hollaex-cli will use your Kubernetes cluster as a target."
+                shift; continue
+                ;;
+            --upgrade_backends)
+                UPGRADE_BACKENDS=true
+                TOOLBOX_ENABLE=true
+                echo "hollaex-cli will upgrade your backends (PostgreSQL, Redis, InfluxDB) based on your settings files value."
+                shift; continue
+                ;;
+            --backup_postgresql)
+                BACKUP_POSTGRESQL=true
+                TOOLBOX_ENABLE=true
+                echo "hollaex-cli will run PostgreSQL database dump on your initialized exchange folder."
+                shift; continue
+                ;;
+            --flush_redis)
+                FLUSH_REDIS=true
+                TOOLBOX_ENABLE=true
+                echo "hollaex-cli will run full flush of Redis stored data. This could be helpful in certain situation If the exchange doesnt work properly."
+                shift; continue
+                ;;
+            --no_verify)
+                RUN_WITH_VERIFY=false
+                echo "Running it wihtout verify the config."
+                shift; continue
+                ;;
+            --*) 
+                err_msg "Invalid option: $1"
+                print_usage;
+                exit 1;
+                ;;
+        esac
+        shift
+    done
+
+    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        CONFIG_FILE_PATH=$(pwd)/settings/*
+        TEMPLATE_GENERATE_PATH=$(pwd)/templates
+        INIT_PATH_CHECK=$(pwd)/.hollaex
+
+    fi
+
+    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        
+    fi
+    
+    #Quit if necessary flags are missing
+    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
+
+        echo "*** Failed to detect hollaex-cli initialized directory! Please re-check your path. ***"
+        print_usage;
+        exit 1;
+
+    fi
+
+    if [[ ! "$TOOLBOX_ENABLE" ]]; then
+    
+        print_usage;
+        echo "*** NO features are enabled for toolbox. Please recheck the command. ***"
+        exit 1;
+
+    fi
+
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
+
+    source $SCRIPTPATH/tools_generator.sh
+    load_config_variables;
+
+    if [[ "$USE_KUBERNETES" ]]; then
+
+        #Verify remote Kubernetes cluster is correct.
+        echo "*** Verifying current KUBECONFIG on the machine ***"
+        kubectl get nodes
+
+    fi
+
+    # Features
+    if [[ "$UPGRADE_BACKENDS" ]]; then 
+
+        echo "*** !! Exchange service will be unavailable during the upgrade !! ***"
+
+        echo "*** All workload containers will be restarted once the upgrade process is done. ***"
+    
+        if [[ "$USE_KUBERNETES" ]]; then
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "*** Are you sure you want to upgrade backends (PostgreSQL, Redis, InfluxDB) to latest compatible on this cluster? (y/n) ***"
+
+                read answer
+
+                if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                    echo "*** Exiting... ***"
+                    exit 0;
+                fi
+
+            fi
+
+            echo "*** Deleting Ingress rules for the exchange... ***"
+            kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+            
+            if [[ "$ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB" ]]; then
+
+                echo "*** Upgrading PostgreSQL DB ***"
+                generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
+
+                if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS" == true ]]; then
+
+                    helm upgrade $ENVIRONMENT_EXCHANGE_NAME-db --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres
+
+                else
+
+                    helm upgrade $ENVIRONMENT_EXCHANGE_NAME-db --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres
+
+                fi
+
+            fi
+
+            if [[ "$ENVIRONMENT_KUBERNETES_RUN_REDIS" ]]; then
+
+                echo "*** Upgrading Redis ***"
+                generate_nodeselector_values $ENVIRONMENT_KUBERNETES_REDIS_NODESELECTOR redis
+
+                 if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS" == true ]]; then
+
+                    helm upgrade $ENVIRONMENT_EXCHANGE_NAME-redis --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT" --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis
+        
+                else
+
+                    helm upgrade $ENVIRONMENT_EXCHANGE_NAME-redis --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis
+                
+                fi
+
+            fi
+
+            if [[ "$ENVIRONMENT_KUBERNETES_RUN_INFLUXDB" ]]; then
+
+                generate_nodeselector_values $ENVIRONMENT_KUBERNETES_INFLUXDB_NODESELECTOR influxdb
+
+                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-influxdb --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set setCustomUser.enabled="true" --set setCustomUser.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret"  -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-influxdb.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb
+
+            fi
+
+            echo "*** Restarting all workload containers... ***"
+            kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+
+            sleep 10;
+
+            echo "*** Applying Ingress rules for the exchange... ***"
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+            exit 0;
+
+        elif [[ ! "$USE_KUBERNETES" ]]; then
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "*** Are you sure you want to upgrade backends (PostgreSQL, Redis, InfluxDB) to latest compatible on this machine? (y/n) ***"
+
+                read answer
+
+                if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                    echo "*** Exiting... ***"
+                    exit 0;
+                fi
+
+            fi
+
+            echo "*** All workload containers will be restarted once the upgrade process is done. ***"
+
+            echo "*** Regenerating docker-compose file... ***"
+            generate_local_docker_compose $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE
+
+            echo "*** Restarting containers... ***"
+            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND
+
+            exit 0;
+
+        fi
+
+    elif [[ "$BACKUP_POSTGRESQL" ]]; then
+
+        # Check pg_dump is available on your local
+        if command pg_dumpall --version > /dev/null 2>&1; then
+
+            echo "*** pg_dump detected on your machine! ***"
+            pg_dumpall --version
+
+        else 
+
+            echo "*** hollaex-cli failed to detect pg_dump on your local ***"
+            echo "*** Please make sure that you already installed pg_dump ***"
+
+            exit 1;
+
+        fi 
+
+        if [[ "$USE_KUBERNETES" ]] && [[ "$ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB" ]]; then
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "*** Are you sure you want to run full PostgreSQL database backup (pg_dumpall) on this cluster? (y/n) ***"
+
+                read answer
+
+                if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                    echo "*** Exiting... ***"
+                    exit 0;
+                fi
+
+            fi
+
+            echo "*** hollaex-cli will open proxy tunnel between your local and remote proxy with kubectl proxy. ***"
+
+            echo "*** Opening local proxy on 5432 port of your local... ***"
+            kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-db" -o name | sed 's/pod\///' | head -n 1) 5432:5432 &
+
+            echo "*** Waiting for the proxy tunnel get fully ready... ***"
+            sleep 10;
+            
+            echo "*** Running pg_dumpall... ***"
+            export PGUSER=$HOLLAEX_SECRET_DB_USERNAME
+            export PGPASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
+            export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
+            export PGHOST=localhost
+
+            pg_dumpall > $HOLLAEX_CLI_INIT_PATH/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump
+            
+            unset PGUSER
+            unset PGPASSWORD
+            unset PGDATABASE
+            unset PGHOST
+
+            echo "*** Dump data is saved as $HOLLAEX_CLI_INIT_PATH/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump"
+
+            echo "*** Killing the opened proxy tunnel... ***"
+            kill $(ps -ef | grep "kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME" | awk '{print $2}' | head -n 1)
+
+            exit 0;
+
+        fi
+
+        if [[ ! "$USE_KUBERNETES" ]] && [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" ]]; then
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "*** Are you sure you want to run full PostgreSQL database backup (pg_dumpall) on this machine? (y/n) ***"
+
+                read answer
+
+                if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                    echo "*** Exiting... ***"
+                    exit 0;
+                fi
+
+            fi
+
+            echo "*** hollaex-cli will backup your local PostgreSQL DB. ***"
+
+            echo "*** Running pg_dumpall... ***"
+            
+            export PGUSER=$HOLLAEX_SECRET_DB_USERNAME
+            export PGPASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
+            export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
+            export PGHOST=localhost
+            pg_dumpall > $HOLLAEX_CLI_INIT_PATH/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump
+            
+            unset PGUSER
+            unset PGPASSWORD
+            unset PGDATABASE
+            unset PGHOST
+
+            echo "*** Dump data is saved as $HOLLAEX_CLI_INIT_PATH/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump"
+
+            exit 0;
+
+        fi
+        
+    elif [[ "$FLUSH_REDIS" ]]; then
+
+        echo "*** !! Exchange service will be unavailable during the upgrade !! ***"
+
+        if [[ "$USE_KUBERNETES" ]] ; then
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "*** Are you sure you want to run flush Redis data on this cluster? (y/n) ***"
+
+                read answer
+
+                if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                    echo "*** Exiting... ***"
+                    exit 0;
+                fi
+
+            fi
+
+            echo "*** Flushing Redis... ***"
+            kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/flushRedis.js
+
+            echo "*** Restarting all workload containers... ***"
+            kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+
+            exit 0;
+
+        elif [[ ! "$USE_KUBERNETES" ]] ; then
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "*** Are you sure you want to to run flush Redis data on this machine? (y/n) ***"
+
+                read answer
+
+                if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                    echo "*** Exiting... ***"
+                    exit 0;
+                fi
+
+            fi
+
+            echo "*** Deleting Ingress rules for the exchange... ***"
+            kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+            
+            echo "*** Flushing Redis... ***"
+            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/flushRedis.js
+
+            echo "*** Restarting all workload containers... ***"
+            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+            sleep 10;
+            
+            echo "*** Applying Ingress rules for the exchange... ***"
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+            exit 0;
+        fi
 
     fi
 
