@@ -18,34 +18,33 @@ function local_database_init() {
     
     if [[ "$1" == "start" ]]; then
 
-      if [[ ! $LOCAL_DEPLOYMENT_MODE == "all" ]]; then
+      if [[ ! $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE == "all" ]]; then
 
-        CONTAINER_PREFIX="-$LOCAL_DEPLOYMENT_MODE"
+        IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE}"
 
       fi
 
       echo "*** Running sequelize db:migrate ***"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:migrate
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 sequelize db:migrate
 
       echo "*** Running database triggers ***"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/runTriggers.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js
 
       echo "*** Running sequelize db:seed:all ***"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:seed:all
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 sequelize db:seed:all
 
       echo "*** Running InfluxDB migrations ***"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/createInflux.js
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/migrateInflux.js
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/initializeInflux.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/createInflux.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/migrateInflux.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/initializeInflux.js
 
-      exit 0;
 
     elif [[ "$1" == 'upgrade' ]]; then
 
-      if [[ $LOCAL_DEPLOYMENT_MODE ]]; then
+       if [[ ! $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE == "all" ]]; then
 
-        CONTAINER_PREFIX="-$LOCAL_DEPLOYMENT_MODE"
-
+        IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE}"
+        
       fi
 
       echo "*** Running sequelize db:migrate ***"
@@ -102,8 +101,7 @@ function load_config_variables() {
 
   HOLLAEX_SECRET_VARIABLES_BASE64=$(for value in ${HOLLAEX_SECRET_VARIABLES} 
   do
-
-      printf "${value//$(cut -d "=" -f 2 <<< "$value")/$(cut -d "=" -f 2 <<< "$value" | tr -d '\n' | base64)} ";
+      printf "${value//$(cut -d "=" -f 2 <<< "$value")/$(cut -d "=" -f 2 <<< "$value" | tr -d '\n' | tr -d "'" | base64)} ";
   
   done)
 
@@ -212,13 +210,6 @@ function generate_nginx_config_for_plugin() {
     touch $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf
   
   fi
-
-  # if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-plugins.conf" ]]; then
-
-  #   rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-plugins.conf
-  #   touch $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-plugins.conf
-  
-  # fi
   
   IFS=',' read -ra PLUGINS <<< "$ENVIRONMENT_CUSTOM_PLUGINS_NAME"    #Convert string to array
 
@@ -414,7 +405,7 @@ version: '3'
 services:
 EOL
 
-if [[ "$WITH_BACKENDS" ]]; then 
+if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]]; then 
 
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
@@ -422,13 +413,20 @@ if [[ "$WITH_BACKENDS" ]]; then
     image: redis:5.0.5-alpine
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
-    networks:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-network
     ports:
       - 6379:6379
     environment:
       - REDIS_PASSWORD=${HOLLAEX_SECRET_REDIS_PASSWORD}
     command : ["sh", "-c", "redis-server --requirepass \$\${REDIS_PASSWORD}"]
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+
+EOL
+fi
+
+if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then 
+  # Generate docker-compose
+  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-db:
     image: postgres:10.9
     ports:
@@ -439,6 +437,14 @@ if [[ "$WITH_BACKENDS" ]]; then
       - POSTGRES_PASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
+
+EOL
+
+fi
+
+if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" == "true" ]]; then
+  # Generate docker-compose
+  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-influxdb:
     image: influxdb:1.7-alpine
     ports:
@@ -460,10 +466,9 @@ if [[ "$WITH_BACKENDS" ]]; then
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
 
 EOL
-
 fi 
 
-if [[ "$1" == "all" ]] && [[ "$WITH_BACKENDS" ]] ; then
+if [[ "$1" == "all" ]]; then
 
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
@@ -503,7 +508,7 @@ if [[ "$1" == "all" ]] && [[ "$WITH_BACKENDS" ]] ; then
 EOL
 
 
-elif [[ "$1" == "all" ]] && [[ ! "$WITH_BACKENDS" ]] ; then
+elif [[ "$1" == "all" ]] && [[ ! "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]] && [[ ! "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]] && [[ ! "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" == "true" ]] ; then
 
  # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
@@ -540,9 +545,9 @@ EOL
 
 else
 
-LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE=$1
+#LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE=$ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE
 
-IFS=',' read -ra LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE <<< "$LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE"
+IFS=',' read -ra LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE <<< "$ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE"
 
   for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
 
@@ -596,7 +601,7 @@ EOL
 
 }
 
-function generate_HOLLAEX_CONFIGMAP() {
+function generate_kubernetes_configmap() {
 
 # Generate Kubernetes Configmap
 cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-configmap.yaml <<EOL
@@ -753,40 +758,74 @@ function update_random_values_to_config() {
 
 GENERATE_VALUES_LIST=( "HOLLAEX_SECRET_ADMIN_PASSWORD" "HOLLAEX_SECRET_SUPERVISOR_PASSWORD" "HOLLAEX_SECRET_SUPPORT_PASSWORD" "HOLLAEX_SECRET_KYC_PASSWORD" "HOLLAEX_SECRET_QUICK_TRADE_SECRET" "HOLLAEX_SECRET_API_KEYS" "HOLLAEX_SECRET_SECRET" )
 
-
 for j in ${CONFIG_FILE_PATH[@]}; do
 
-if command grep -q "HOLLAEX_SECRET" $j > /dev/null ; then
+  if command grep -q "HOLLAEX_SECRET" $j > /dev/null ; then
 
-SECRET_CONFIG_FILE_PATH=$j
+    SECRET_CONFIG_FILE_PATH=$j
 
-for k in ${GENERATE_VALUES_LIST[@]}; do
+    if command grep -q "HOLLAEX_SECRET_ADMIN_PASSWORD" $SECRET_CONFIG_FILE_PATH ; then
+  
+      echo "*** Pre-generated secrets are detected on your secert file! ***"
+      echo "Are you sure you want to override them? (y/n)"
 
-grep -v $k $SECRET_CONFIG_FILE_PATH > temp && mv temp $SECRET_CONFIG_FILE_PATH
+      read answer
 
-# Using special form to generate both API_KEYS keys and secret
-if [[ "$k" == "HOLLAEX_SECRET_API_KEYS" ]]; then
+      if [[ "$answer" == "${answer#[Nn]}" ]]; then
 
-cat >> $SECRET_CONFIG_FILE_PATH <<EOL
+        for k in ${GENERATE_VALUES_LIST[@]}; do
+
+          grep -v $k $SECRET_CONFIG_FILE_PATH > temp && mv temp $SECRET_CONFIG_FILE_PATH
+
+          # Using special form to generate both API_KEYS keys and secret
+          if [[ "$k" == "HOLLAEX_SECRET_API_KEYS" ]]; then
+
+            cat >> $SECRET_CONFIG_FILE_PATH <<EOL
 $k=$(generate_random_values):$(generate_random_values)
 EOL
 
-else 
+          else 
 
-cat >> $SECRET_CONFIG_FILE_PATH <<EOL
+            cat >> $SECRET_CONFIG_FILE_PATH <<EOL
 $k=$(generate_random_values)
 EOL
 
-fi
-
-done
+          fi
         
-fi
+        done
 
+        # IMPORT VALUES AGAIN ONCE IT GET GENERATED
+        # set -o posix ; set
+
+        unset k
+        unset GENERATE_VALUES_LIST
+        unset HOLLAEX_CONFIGMAP_VARIABLES
+        unset HOLLAEX_SECRET_VARIABLES
+        unset HOLLAEX_SECRET_VARIABLES_BASE64
+        unset HOLLAEX_SECRET_VARIABLES_YAML
+        unset HOLLAEX_CONFIGMAP_VARIABLES_YAML
+
+        # set -o posix ; set | grep "HOLLAEX_CONFIGMAP" 
+        # set -o posix ; set | grep "HOLLAEX_SECRET" 
+
+        for i in ${CONFIG_FILE_PATH[@]}; do
+            source $i
+        done;
+
+        load_config_variables;
+
+      else
+
+        echo "*** Skipping... ***"
+
+      fi
+
+    fi
+  fi
 done
 
 unset GENERATE_VALUES_LIST
-
+ 
 }
 
 function generate_nodeselector_values() {
@@ -815,7 +854,7 @@ function helm_dynamic_trading_paris() {
     if [[ "$1" == "run" ]]; then
 
       #Running and Upgrading
-      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-queue-$TRADE_PARIS_DEPLOYMENT_NAME --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="queue $TRADE_PARIS_DEPLOYMENT" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-queue-$TRADE_PARIS_DEPLOYMENT_NAME --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="queue $TRADE_PARIS_DEPLOYMENT" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
     elif [[ "$1" == "scaleup" ]]; then
       
@@ -835,5 +874,48 @@ function helm_dynamic_trading_paris() {
     fi
 
   done
+
+}
+
+function check_empty_values_on_settings() {
+
+  for i in ${HOLLAEX_CONFIGMAP_VARIABLES[@]}; do
+
+    PARSED_CONFIGMAP_VARIABLES=$(echo $i | cut -f2 -d '=')
+
+    if [[ -z $PARSED_CONFIGMAP_VARIABLES ]]; then
+
+      echo "Warning! Configmap - \"$(echo $i | cut -f1 -d '=')\" got an empty value! Please reconfirm the settings files."
+
+    fi
+  
+  done
+
+  for i in ${HOLLAEX_SECRET_VARIABLES[@]}; do
+
+    PARSED_SECRET_VARIABLES=$(echo $i | cut -f2 -d '=')
+
+    if [[ -z $PARSED_SECRET_VARIABLES ]]; then
+
+      echo "Warning! Secret - \"$(echo $i | cut -f1 -d '=')\" got an empty value! Please reconfirm the settings files."
+
+    fi
+  
+  done
+
+}
+
+function override_docker_image_version() {
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+
+    if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+      CONFIGMAP_FILE_PATH=$i
+      sed -i.bak "s/$ENVIRONMENT_DOCKER_IMAGE_VERSION/$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    fi
+    
+  done
+
+  rm $CONFIGMAP_FILE_PATH.bak
 
 }
