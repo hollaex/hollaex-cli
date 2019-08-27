@@ -6,9 +6,9 @@ RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.13.4/b
 
 RUN curl -L https://git.io/get_helm.sh | bash
 
-COPY . /root/hollaex-cli
+COPY . /root/hex-cli
 
-RUN chmod +x /root/hollaex-cli && mv /root/hollaex-cli /root/.hollaex-cli && ln -s /root/.hollaex-cli/hollaex /usr/local/bin/hollaex && ex -sc '2i|SCRIPTPATH=/root/.hollaex-cli' -cx /root/.hollaex-cli/hollaex && ex -sc '2i|SCRIPTPATH=/root/.hollaex-cli' -cx /root/.hollaex-cli/tools_generator.sh
+RUN chmod +x /root/hex-cli && mv /root/hex-cli /root/.hex-cli && ln -s /root/.hex-cli/hex /usr/local/bin/hex && ex -sc '2i|SCRIPTPATH=/root/.hex-cli' -cx /root/.hex-cli/hex && ex -sc '2i|SCRIPTPATH=/root/.hex-cli' -cx /root/.hex-cli/tools_generator.sh
 
 COPY docker/run.sh /run.sh
 RUN chmod +x /run.sh
