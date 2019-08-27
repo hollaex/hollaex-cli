@@ -7,7 +7,7 @@ clone:
 pipeline:
   ### SLACK NOTIFY - Build start ###
   notify_job_start:
-    image: plugins/slack
+    image: bitholla/devops-tools:drone_slack-8a15f61
     channel: deployment
     secrets: [ slack_webhook ]
     template: "<{{build.link}}|Deployment> - #{{build.number}} started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
@@ -51,7 +51,7 @@ pipeline:
   
   #### SLACK NOTIFY - Build status report ####
   notify_to_deployment:
-    image: plugins/slack
+    image: bitholla/devops-tools:drone_slack-8a15f61
     channel: deployment
     secrets: [ slack_webhook ]
     when:
