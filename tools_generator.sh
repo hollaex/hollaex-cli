@@ -56,6 +56,22 @@ function local_database_init() {
       echo "*** Running InfluxDB initialization ***"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/initializeInflux.js
     
+    elif [[ "$1" == 'dev' ]]; then
+
+      echo "*** Running sequelize db:migrate ***"
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server_1 sequelize db:migrate
+
+      echo "*** Running database triggers ***"
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server_1 node tools/dbs/runTriggers.js
+
+      echo "*** Running sequelize db:seed:all ***"
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server_1 sequelize db:seed:all
+
+      echo "*** Running InfluxDB migrations ***"
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server_1 node tools/dbs/createInflux.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server_1 node tools/dbs/migrateInflux.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server_1 node tools/dbs/initializeInflux.js
+
     fi
 }
 
@@ -415,6 +431,7 @@ services:
       - ${HEX_CODEBASE_PATH}/test:/app/test
       - ${HEX_CODEBASE_PATH}/tools:/app/tools
       - ${HEX_CODEBASE_PATH}/utils:/app/utils
+      - ${HEX_CODEBASE_PATH}/init.js:/app/init.js
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
       - ${ENVIRONMENT_EXCHANGE_NAME}-redis
