@@ -389,6 +389,15 @@ elif [[ "$1" == "launch" ]]; then
         echo "*** Verifying current KUBECONFIG on the machine ***"
         kubectl get nodes
 
+        if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+
+            echo "*** Alert: hex-cli detected that $ENVIRONMENT_EXCHANGE_NAME exchange exists on your remote Kubernetes environment. ***"
+            echo "*** You can't run launch process multiple times for existing exchange. This could break up system badly. ***"
+            echo "*** Exiting... ***"
+            exit 1;
+
+        fi
+
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
             echo "*** Are you sure you want to launch $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HEX_CONFIGMAP_API_HOST) with automatic database initalization on this cluster? (y/n) ***"
@@ -401,7 +410,8 @@ elif [[ "$1" == "launch" ]]; then
             fi
 
         fi
-        
+
+
         #Generating random values for passwords and update config file to contain it;
         update_random_values_to_config;
 
@@ -546,25 +556,7 @@ elif [[ "$1" == "launch" ]]; then
 
         sleep 5;
 
-        echo "Waiting for 60 seconds to Pods get ready to run database jobs..."
-        sleep 60;
-
-        echo "*** Running sequelize db:migrate ***"
-        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:migrate 
-
-        echo "*** Running Database Triggers ***"
-        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/runTriggers.js
-
-        echo "*** Running sequelize db:seed:all ***"
-        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:seed:all 
-
-        echo "*** Running InfluxDB migrations ***"
-        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/createInflux.js
-        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/migrateInflux.js
-        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
-
-        echo "*** Restarting all containers to apply latest database changes... ***"
-        kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+        kubernetes_database_init launch;
         
         echo "*** All done! ***"
         echo "*** Your $ENVIRONMENT_EXCHANGE_NAME ($HEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again. ***"
@@ -584,6 +576,15 @@ elif [[ "$1" == "launch" ]]; then
         else
 
             echo "*** hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli. ***"
+            exit 1;
+
+        fi
+
+         if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+
+            echo "*** Alert: hex-cli detected that $ENVIRONMENT_EXCHANGE_NAME exchange exists on your local machine. ***"
+            echo "*** You can't run launch process multiple times for existing exchange. This could break up system badly. ***"
+            echo "*** Exiting... ***"
             exit 1;
 
         fi
@@ -1225,24 +1226,8 @@ elif [[ "$1" == "upgrade" ]]; then
 
         helm_dynamic_trading_paris run;
 
-
-        echo "Waiting for 60 seconds to Pods get ready to run database jobs..."
-        sleep 60;
-
-        echo "*** Running sequelize db:migrate ***"
-        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:migrate 
-
-        echo "*** Running Database Triggers ***"
-        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/runTriggers.js
-
-        echo "*** Running InfluxDB migrations ***"
-        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
-        
-        echo "*** Restarting all containers to apply latest database changes... ***"
-        kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
-
-        echo "*** Waiting for the containers get fully ready... ***"
-        sleep 30;
+        # Running database job for Kubernetes
+        kubernetes_database_init upgrade;
 
         echo "*** Applying $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster. ***"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
