@@ -1,8 +1,8 @@
  #!/bin/bash 
 
-SCRIPTPATH="$HOME/.hollaex-cli"
+SCRIPTPATH="$HOME/.hex-cli"
 
-#### hollaex-cli Settings ####
+#### hex-cli Settings ####
 
 RUN_WITH_VERIFY=true 
 
@@ -20,36 +20,47 @@ function print_usage() {
 /bin/cat << EOF
 
 Usage : 
-    hollaex [ init ] [ start ] [ stop ] [ upgrade ] [ terminate ] [ toolbox ] (--flags)
+    hex [ init ] [ start ] [ stop ] [ upgrade ] [ terminate ] [ toolbox ] (--flags)
 Options:
-    init :
+    init : Generating the initialized exchange folder for your new exchange.
         --name, Name of your exchange.
-        --path, Path to create init directory for hollaex-cli, Default is current directory.
-    start :
-        --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
-        --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
+        --path, Path to create init directory for hex-cli, Default is current directory.
+
+    launch : Bringing up your new exchange for the first time.
+        --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
+        --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying docker-compose setup.
-    stop :
-        --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
-        --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
+
+    start : Turning on the existing exchange which get stopped.
+        --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
+        --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
+        --no_verify, Run script without verifying docker-compose setup.
+
+    stop : Turning off the existing exchange which is already running.
+        --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
+        --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying connected kubernetes cluster.
-    upgrade :
-        --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
-        --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
+
+    upgrade : Upgrading the existing exchange to new version based on the settings files.
+        --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
+        --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying connected kubernetes cluster.
-    terminate :
-        --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
-        --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
+
+    terminate : TERMINATING the existing exchange. THIS COMMAND WILL COMPLETELY REMOVE YOUR EXCHANGE ENVIRONMENT.
+        --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
+        --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying connected kubernetes cluster.
-    toolbox:
-        --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
-        --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
+
+    toolbox: Toolbox with advanced features which could be helpful for your exchange operations.
+        --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
+        --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying connected kubernetes cluster.
         --upgrade_backends, Update backend services, such as Redis or PostgreSQL for the exchange to latest compatible.
         --backup_postgresql, Run the full backup with pg_dumpall for the exchange PostgreSQL database.
         --flush_redis, Run the full flush of Redis stored data. It could be helpful in certain situation If the exchange doesnt work properly.
+
     General Flags : 
-    --version, Print out current installed version of hollaex-cli.
+        --version, Print out current installed version of hex-cli.
 
 EOF
 }
@@ -62,8 +73,8 @@ if [[ "$1" == 'dev' ]]; then
             --path)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                HOLLAEX_CODEBASE_PATH=$1
-                echo "Hollaex-server codebase : $HOLLAEX_CODEBASE_PATH."
+                HEX_CODEBASE_PATH=$1
+                echo "hex-core codebase : $HEX_CODEBASE_PATH."
                 shift; continue
                 ;;
             --command)
@@ -102,29 +113,29 @@ if [[ "$1" == 'dev' ]]; then
         shift
     done
 
-    if [[ "$HOLLAEX_CODEBASE_PATH" ]]; then
+    if [[ "$HEX_CODEBASE_PATH" ]]; then
 
-        CONFIG_FILE_PATH=$HOLLAEX_CODEBASE_PATH/tools/hollaex-cli-settings/*
-        TEMPLATE_GENERATE_PATH=$HOLLAEX_CODEBASE_PATH/tools/hollaex-cli-templates
-        INIT_PATH_CHECK=$HOLLAEX_CODEBASE_PATH/.hollaex
-        DOCKER_COMPOSE_NAME_PREFIX=$(basename "$HOLLAEX_CODEBASE_PATH")
+        CONFIG_FILE_PATH=$HEX_CODEBASE_PATH/tools/hex-cli-settings/*
+        TEMPLATE_GENERATE_PATH=$HEX_CODEBASE_PATH/tools/hex-cli-templates
+        INIT_PATH_CHECK=$HEX_CODEBASE_PATH/.hex
+        DOCKER_COMPOSE_NAME_PREFIX=$(basename "$HEX_CODEBASE_PATH")
 
-    elif [[ ! "$HOLLAEX_CODEBASE_PATH" ]]; then
+    elif [[ ! "$HEX_CODEBASE_PATH" ]]; then
 
-        CONFIG_FILE_PATH=$(pwd)/tools/hollaex-cli-settings/*
-        TEMPLATE_GENERATE_PATH=$(pwd)/tools/hollaex-cli-templates
-        INIT_PATH_CHECK=$(pwd)/.hollaex
-        HOLLAEX_CODEBASE_PATH=$(pwd)
-        DOCKER_COMPOSE_NAME_PREFIX=$(basename "$HOLLAEX_CODEBASE_PATH")
+        CONFIG_FILE_PATH=$(pwd)/tools/hex-cli-settings/*
+        TEMPLATE_GENERATE_PATH=$(pwd)/tools/hex-cli-templates
+        INIT_PATH_CHECK=$(pwd)/.hex
+        HEX_CODEBASE_PATH=$(pwd)
+        DOCKER_COMPOSE_NAME_PREFIX=$(basename "$HEX_CODEBASE_PATH")
 
     fi
 
-    echo $HOLLAEX_CODEBASE_PATH
+    echo $HEX_CODEBASE_PATH
 
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "*** Failed to detect hollaex-cli initialized directory! Please re-check your path. ***"
+        echo "*** Failed to detect hex-cli initialized directory! Please re-check your path. ***"
         print_usage;
         exit 1;
 
@@ -147,7 +158,7 @@ if [[ "$1" == 'dev' ]]; then
 
         else
 
-            echo "*** hollaex-cli failed to detect docker-compose installed on this machine. Please install it before running hollaex-cli. ***"
+            echo "*** hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli. ***"
             exit 1;
 
         fi
@@ -226,7 +237,7 @@ if [[ "$1" == 'dev' ]]; then
 
         fi
 
-        docker-compose -f $HOLLAEX_CODEBASE_PATH/.${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml $LOCAL_COMMAND
+        docker-compose -f $HEX_CODEBASE_PATH/.${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml $LOCAL_COMMAND
 
         # Running database jobs for local db.
         if [[ "$LOCAL_DATABASE_INIT" == true ]]; then
@@ -265,30 +276,30 @@ elif [[ "$1" == "init" ]]; then
 
     fi
 
-    HOLLAEX_CLI_INIT_PATH=$(pwd)/$ENVIRONMENT_EXCHANGE_NAME
+    HEX_CLI_INIT_PATH=$(pwd)/$ENVIRONMENT_EXCHANGE_NAME
 
-    if [[ -d "$HOLLAEX_CLI_INIT_PATH" ]]; then
+    if [[ -d "$HEX_CLI_INIT_PATH" ]]; then
 
-        echo "*** Init path exists! hollaex-cli can't override exsiting exchange files. ***"
+        echo "*** Init path exists! hex-cli can't override exsiting exchange files. ***"
         exit 1;
     fi
 
-    echo "*** Initializing new Exchange - $ENVIRONMENT_EXCHANGE_NAME on $HOLLAEX_CLI_INIT_PATH ... ***"
+    echo "*** Initializing new Exchange - $ENVIRONMENT_EXCHANGE_NAME on $HEX_CLI_INIT_PATH ... ***"
 
-    mkdir $HOLLAEX_CLI_INIT_PATH
+    mkdir $HEX_CLI_INIT_PATH
 
-    cp -r $SCRIPTPATH/settings $HOLLAEX_CLI_INIT_PATH/settings
-    cp -r $SCRIPTPATH/plugins $HOLLAEX_CLI_INIT_PATH/plugins
-    cp -r $SCRIPTPATH/templates $HOLLAEX_CLI_INIT_PATH/templates
-    touch $HOLLAEX_CLI_INIT_PATH/.hollaex
-    echo "Initialized by using hollaex-cli v$(cat $SCRIPTPATH/version)" >> $HOLLAEX_CLI_INIT_PATH/.hollaex
+    cp -r $SCRIPTPATH/settings $HEX_CLI_INIT_PATH/settings
+    cp -r $SCRIPTPATH/plugins $HEX_CLI_INIT_PATH/plugins
+    cp -r $SCRIPTPATH/templates $HEX_CLI_INIT_PATH/templates
+    touch $HEX_CLI_INIT_PATH/.hex
+    echo "Initialized by using hex-cli v$(cat $SCRIPTPATH/version)" >> $HEX_CLI_INIT_PATH/.hex
 
-    grep -v ENVIRONMENT_EXCHANGE_NAME= $HOLLAEX_CLI_INIT_PATH/settings/configmap > temp.init && mv temp.init $HOLLAEX_CLI_INIT_PATH/settings/configmap
+    grep -v ENVIRONMENT_EXCHANGE_NAME= $HEX_CLI_INIT_PATH/settings/configmap > temp.init && mv temp.init $HEX_CLI_INIT_PATH/settings/configmap
 
-    (echo "ENVIRONMENT_EXCHANGE_NAME=$ENVIRONMENT_EXCHANGE_NAME" && cat $HOLLAEX_CLI_INIT_PATH/settings/configmap) > temp.init && mv temp.init $HOLLAEX_CLI_INIT_PATH/settings/configmap
+    (echo "ENVIRONMENT_EXCHANGE_NAME=$ENVIRONMENT_EXCHANGE_NAME" && cat $HEX_CLI_INIT_PATH/settings/configmap) > temp.init && mv temp.init $HEX_CLI_INIT_PATH/settings/configmap
 
     echo "*** All done! ***"
-    echo "*** To run hollaex-cli commands further, Please get into initialized path first to let hollaex-cli reads settings. ***"
+    echo "*** To run hex-cli commands further, Please get into initialized path first to let hex-cli reads settings. ***"
 
     exit 0;
     
@@ -299,13 +310,13 @@ elif [[ "$1" == "launch" ]]; then
             --settings)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                HOLLAEX_CLI_INIT_PATH=$1
-                echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
+                HEX_CLI_INIT_PATH=$1
+                echo "Your initialized exchange path : $HEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
             --kube)
                 USE_KUBERNETES=true
-                echo "hollaex-cli will use your Kubernetes cluster as a target."
+                echo "hex-cli will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
             --no_verify)
@@ -322,27 +333,27 @@ elif [[ "$1" == "launch" ]]; then
         shift
     done
 
-    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+    if [[ ! "$HEX_CLI_INIT_PATH" ]]; then
 
-        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        HEX_CLI_INIT_PATH=$(pwd)
         CONFIG_FILE_PATH=$(pwd)/settings/*
         TEMPLATE_GENERATE_PATH=$(pwd)/templates
-        INIT_PATH_CHECK=$(pwd)/.hollaex
+        INIT_PATH_CHECK=$(pwd)/.hex
 
     fi
 
-    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+    if [[ "$HEX_CLI_INIT_PATH" ]]; then
 
-        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
-        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
-        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        CONFIG_FILE_PATH=$HEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HEX_CLI_INIT_PATH/.hex
         
     fi
     
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "*** Failed to detect hollaex-cli initialized directory! Please re-check your path. ***"
+        echo "*** Failed to detect hex-cli initialized directory! Please re-check your path. ***"
         print_usage;
         exit 1;
 
@@ -363,11 +374,12 @@ elif [[ "$1" == "launch" ]]; then
 
         #Creating kubernetes_config directory for generating config for Kubernetes.
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/kubernetes;
             mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
         fi
 
         if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION"  ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME"  ]] ; then
-            echo "Error : Please define exchange name and Docker image version on config file before running hollaex-cli."
+            echo "Error : Please define exchange name and Docker image version on config file before running hex-cli."
             print_usage
             exit 1;
         fi
@@ -377,9 +389,18 @@ elif [[ "$1" == "launch" ]]; then
         echo "*** Verifying current KUBECONFIG on the machine ***"
         kubectl get nodes
 
+        if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+
+            echo "*** Alert: hex-cli detected that $ENVIRONMENT_EXCHANGE_NAME exchange exists on your remote Kubernetes environment. ***"
+            echo "*** You can't run launch process multiple times for existing exchange. This could break up system badly. ***"
+            echo "*** Exiting... ***"
+            exit 1;
+
+        fi
+
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "*** Are you sure you want to launch $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) with automatic database initalization on this cluster? (y/n) ***"
+            echo "*** Are you sure you want to launch $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HEX_CONFIGMAP_API_HOST) with automatic database initalization on this cluster? (y/n) ***"
 
             read answer
 
@@ -389,7 +410,8 @@ elif [[ "$1" == "launch" ]]; then
             fi
 
         fi
-        
+
+
         #Generating random values for passwords and update config file to contain it;
         update_random_values_to_config;
 
@@ -441,11 +463,11 @@ elif [[ "$1" == "launch" ]]; then
             
             if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS" == true ]]; then
 
-                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-redis  --namespace $ENVIRONMENT_EXCHANGE_NAME --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT" --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis
+                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-redis  --namespace $ENVIRONMENT_EXCHANGE_NAME --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT" --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-redis
         
             else
 
-                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-redis  --namespace $ENVIRONMENT_EXCHANGE_NAME --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis
+                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-redis  --namespace $ENVIRONMENT_EXCHANGE_NAME --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-redis
             fi
 
         fi
@@ -457,11 +479,11 @@ elif [[ "$1" == "launch" ]]; then
 
             if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS" == true ]]; then
 
-                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres
+                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-postgres
 
             else
 
-                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres
+                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-postgres
 
             fi
 
@@ -476,7 +498,7 @@ elif [[ "$1" == "launch" ]]; then
             fi
 
             echo "*** Running InfluxDB ***"
-            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-influxdb --namespace $ENVIRONMENT_EXCHANGE_NAME --set setCustomUser.enabled="true" --set setCustomUser.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set persistence.size="$ENVIRONMENT_KUBERNETES_INFLUXDB_VOLUMESIZE" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-influxdb.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb
+            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-influxdb --namespace $ENVIRONMENT_EXCHANGE_NAME --set setCustomUser.enabled="true" --set setCustomUser.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set persistence.size="$ENVIRONMENT_KUBERNETES_INFLUXDB_VOLUMESIZE" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-influxdb/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-influxdb.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-influxdb
 
         fi
 
@@ -522,40 +544,22 @@ elif [[ "$1" == "launch" ]]; then
         kubectl create secret docker-registry bitholla-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME --docker-server=docker.io --docker-username=$ENVIRONMENT_KUBERNETES_DOCKER_HUB_USERNAME --docker-password=$ENVIRONMENT_KUBERNETES_DOCKER_HUB_PASSWORD --docker-email=$ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL
 
         # FOR GENERATING NODESELECTOR VALUES
-        generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hollaex
+        generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hex
 
-        echo "*** Running HollaEx server containers ***"
+        echo "*** Running $ENVIRONMENT_EXCHANGE_NAME workload containers ***"
 
-        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="$ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="$ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
 
-        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-ws --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="ws" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-ws --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="ws" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
 
         helm_dynamic_trading_paris run;
 
         sleep 5;
 
-        echo "Waiting for 60 seconds to Pods get ready to run database jobs..."
-        sleep 60;
-
-        echo "*** Running sequelize db:migrate ***"
-        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:migrate 
-
-        echo "*** Running Database Triggers ***"
-        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/runTriggers.js
-
-        echo "*** Running sequelize db:seed:all ***"
-        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:seed:all 
-
-        echo "*** Running InfluxDB migrations ***"
-        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/createInflux.js
-        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/migrateInflux.js
-        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
-
-        echo "*** Restarting all containers to apply latest database changes... ***"
-        kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+        kubernetes_database_init launch;
         
         echo "*** All done! ***"
-        echo "*** Your $ENVIRONMENT_EXCHANGE_NAME ($HOLLAEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again. ***"
+        echo "*** Your $ENVIRONMENT_EXCHANGE_NAME ($HEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again. ***"
 
         exit 0;
 
@@ -571,7 +575,16 @@ elif [[ "$1" == "launch" ]]; then
 
         else
 
-            echo "*** hollaex-cli failed to detect docker-compose installed on this machine. Please install it before running hollaex-cli. ***"
+            echo "*** hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli. ***"
+            exit 1;
+
+        fi
+
+         if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+
+            echo "*** Alert: hex-cli detected that $ENVIRONMENT_EXCHANGE_NAME exchange exists on your local machine. ***"
+            echo "*** You can't run launch process multiple times for existing exchange. This could break up system badly. ***"
+            echo "*** Exiting... ***"
             exit 1;
 
         fi
@@ -664,8 +677,8 @@ elif [[ "$1" == "start" ]]; then
             --settings)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                HOLLAEX_CLI_INIT_PATH=$1
-                echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
+                HEX_CLI_INIT_PATH=$1
+                echo "Your initialized exchange path : $HEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
             --mode)
@@ -682,7 +695,7 @@ elif [[ "$1" == "start" ]]; then
                 ;;
             --kube)
                 USE_KUBERNETES=true
-                echo "hollaex-cli will use your Kubernetes cluster as a target."
+                echo "hex-cli will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
             --no_verify)
@@ -699,20 +712,20 @@ elif [[ "$1" == "start" ]]; then
         shift
     done
 
-    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+    if [[ ! "$HEX_CLI_INIT_PATH" ]]; then
 
-        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        HEX_CLI_INIT_PATH=$(pwd)
         CONFIG_FILE_PATH=$(pwd)/settings/*
         TEMPLATE_GENERATE_PATH=$(pwd)/templates
-        INIT_PATH_CHECK=$(pwd)/.hollaex
+        INIT_PATH_CHECK=$(pwd)/.hex
 
     fi
 
-    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+    if [[ "$HEX_CLI_INIT_PATH" ]]; then
 
-        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
-        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
-        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        CONFIG_FILE_PATH=$HEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HEX_CLI_INIT_PATH/.hex
         
     fi
 
@@ -720,7 +733,7 @@ elif [[ "$1" == "start" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "*** Failed to detect hollaex-cli initialized directory! Please re-check your path. ***"
+        echo "*** Failed to detect hex-cli initialized directory! Please re-check your path. ***"
         print_usage;
         exit 1;
 
@@ -745,7 +758,7 @@ elif [[ "$1" == "start" ]]; then
         fi
 
         if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION"  ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME"  ]] ; then
-            echo "Error : Please define exchange name and Docker image version on config file before running hollaex-cli."
+            echo "Error : Please define exchange name and Docker image version on config file before running hex-cli."
             print_usage
             exit 1;
         fi
@@ -758,7 +771,7 @@ elif [[ "$1" == "start" ]]; then
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
 
-            echo "*** Are you sure you want to start (scale up) $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) on this cluster? (y/n) ***"
+            echo "*** Are you sure you want to start (scale up) $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HEX_CONFIGMAP_API_HOST) on this cluster? (y/n) ***"
 
             read answer
 
@@ -795,7 +808,7 @@ elif [[ "$1" == "start" ]]; then
 
         else 
 
-            echo "*** hollaex-cli failed to detect existing exchange running on this Kubernetes. ***"
+            echo "*** hex-cli failed to detect existing exchange running on this Kubernetes. ***"
             echo "*** Please review your settings files and targeted Kubernetes. ***"
 
             exit 1;
@@ -814,12 +827,12 @@ elif [[ "$1" == "start" ]]; then
 
         else
 
-            echo "*** hollaex-cli failed to detect docker-compose installed on this machine. Please install it before running hollaex-cli. ***"
+            echo "*** hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli. ***"
             exit 1;
 
         fi
 
-        # Exit hollaex-cli If docker_compose 
+        # Exit hex-cli If docker_compose 
         if [[ ! "$ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE" ]]; then
 
             echo "Your ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE value is missing! Please reconfirm your settings files."
@@ -903,8 +916,8 @@ elif [[ "$1" == "stop" ]]; then
            --settings)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                HOLLAEX_CLI_INIT_PATH=$1
-                echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
+                HEX_CLI_INIT_PATH=$1
+                echo "Your initialized exchange path : $HEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
             --mode)
@@ -916,7 +929,7 @@ elif [[ "$1" == "stop" ]]; then
                 ;;
             --kube)
                 USE_KUBERNETES=true
-                echo "hollaex-cli will use your Kubernetes cluster as a target."
+                echo "hex-cli will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
             --no_verify)
@@ -933,29 +946,29 @@ elif [[ "$1" == "stop" ]]; then
         shift
     done
     
-    # Export hollaex-cli initialized directory
+    # Export hex-cli initialized directory
 
-    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+    if [[ ! "$HEX_CLI_INIT_PATH" ]]; then
 
-        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        HEX_CLI_INIT_PATH=$(pwd)
         CONFIG_FILE_PATH=$(pwd)/settings/*
         TEMPLATE_GENERATE_PATH=$(pwd)/templates
-        INIT_PATH_CHECK=$(pwd)/.hollaex
+        INIT_PATH_CHECK=$(pwd)/.hex
 
     fi
 
-    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+    if [[ "$HEX_CLI_INIT_PATH" ]]; then
 
-        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
-        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
-        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        CONFIG_FILE_PATH=$HEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HEX_CLI_INIT_PATH/.hex
         
     fi
 
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "*** Failed to detect hollaex-cli initialized directory! Please re-check your path. ***"
+        echo "*** Failed to detect hex-cli initialized directory! Please re-check your path. ***"
         print_usage;
         exit 1;
 
@@ -1026,7 +1039,7 @@ elif [[ "$1" == "stop" ]]; then
 
         else
 
-            echo "*** hollaex-cli failed to detect docker-compose installed on this machine. Please install it before running hollaex-cli. ***"
+            echo "*** hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli. ***"
             exit 1;
 
         fi 
@@ -1060,20 +1073,20 @@ elif [[ "$1" == "upgrade" ]]; then
             --settings)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                HOLLAEX_CLI_INIT_PATH=$1
-                echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
+                HEX_CLI_INIT_PATH=$1
+                echo "Your initialized exchange path : $HEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
             --kube)
                 USE_KUBERNETES=true
-                echo "hollaex-cli will use your Kubernetes cluster as a target."
+                echo "hex-cli will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
             --version)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$1
-                echo "Target HollaEx version : v $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE."
+                echo "Target hex release version : v $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE."
                 shift; continue
                 ;;
             --no_verify)
@@ -1090,27 +1103,27 @@ elif [[ "$1" == "upgrade" ]]; then
         shift
     done
 
-    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+    if [[ ! "$HEX_CLI_INIT_PATH" ]]; then
 
-        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        HEX_CLI_INIT_PATH=$(pwd)
         CONFIG_FILE_PATH=$(pwd)/settings/*
         TEMPLATE_GENERATE_PATH=$(pwd)/templates
-        INIT_PATH_CHECK=$(pwd)/.hollaex
+        INIT_PATH_CHECK=$(pwd)/.hex
 
     fi
 
-    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+    if [[ "$HEX_CLI_INIT_PATH" ]]; then
 
-        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
-        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
-        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        CONFIG_FILE_PATH=$HEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HEX_CLI_INIT_PATH/.hex
         
     fi
     
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "*** Failed to detect hollaex-cli initialized directory! Please re-check your path. ***"
+        echo "*** Failed to detect hex-cli initialized directory! Please re-check your path. ***"
         print_usage;
         exit 1;
 
@@ -1142,7 +1155,7 @@ elif [[ "$1" == "upgrade" ]]; then
         fi
 
         if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION"  ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME"  ]] ; then
-            echo "Error : Please define exchange name and Docker image version on config file before running hollaex-cli."
+            echo "Error : Please define exchange name and Docker image version on config file before running hex-cli."
             print_usage
             exit 1;
         fi
@@ -1204,40 +1217,24 @@ elif [[ "$1" == "upgrade" ]]; then
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
         # FOR GENERATING NODESELECTOR VALUES
-        generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hollaex
+        generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hex
 
         echo "*** Upgrading $ENVIRONMENT_EXCHANGE_NAME Pods on Kubernetes. ***"
-        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="2" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="2" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
 
-        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-ws --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="ws" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-ws --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="ws" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
 
         helm_dynamic_trading_paris run;
 
-
-        echo "Waiting for 60 seconds to Pods get ready to run database jobs..."
-        sleep 60;
-
-        echo "*** Running sequelize db:migrate ***"
-        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:migrate 
-
-        echo "*** Running Database Triggers ***"
-        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/runTriggers.js
-
-        echo "*** Running InfluxDB migrations ***"
-        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
-        
-        echo "*** Restarting all containers to apply latest database changes... ***"
-        kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
-
-        echo "*** Waiting for the containers get fully ready... ***"
-        sleep 30;
+        # Running database job for Kubernetes
+        kubernetes_database_init upgrade;
 
         echo "*** Applying $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster. ***"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
 
         echo "*** All done! ***"
-        echo "*** Your $ENVIRONMENT_EXCHANGE_NAME ($HOLLAEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again. ***"
+        echo "*** Your $ENVIRONMENT_EXCHANGE_NAME ($HEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again. ***"
 
         exit 0;
     
@@ -1253,7 +1250,7 @@ elif [[ "$1" == "upgrade" ]]; then
 
         else
 
-            echo "*** hollaex-cli failed to detect docker-compose installed on this machine. Please install it before running hollaex-cli. ***"
+            echo "*** hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli. ***"
             exit 1;
 
         fi
@@ -1336,13 +1333,13 @@ elif [[ "$1" == "terminate" ]]; then
             --settings)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                HOLLAEX_CLI_INIT_PATH=$1
-                echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
+                HEX_CLI_INIT_PATH=$1
+                echo "Your initialized exchange path : $HEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
             --kube)
                 USE_KUBERNETES=true
-                echo "hollaex-cli will use your Kubernetes cluster as a target."
+                echo "hex-cli will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
             --no_verify)
@@ -1359,27 +1356,27 @@ elif [[ "$1" == "terminate" ]]; then
         shift
      done
 
-    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+    if [[ ! "$HEX_CLI_INIT_PATH" ]]; then
 
-        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        HEX_CLI_INIT_PATH=$(pwd)
         CONFIG_FILE_PATH=$(pwd)/settings/*
         TEMPLATE_GENERATE_PATH=$(pwd)/templates
-        INIT_PATH_CHECK=$(pwd)/.hollaex
+        INIT_PATH_CHECK=$(pwd)/.hex
 
     fi
 
-    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+    if [[ "$HEX_CLI_INIT_PATH" ]]; then
 
-        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
-        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
-        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        CONFIG_FILE_PATH=$HEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HEX_CLI_INIT_PATH/.hex
         
     fi
 
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "*** Failed to detect hollaex-cli initialized directory! Please re-check your path. ***"
+        echo "*** Failed to detect hex-cli initialized directory! Please re-check your path. ***"
         print_usage;
         exit 1;
 
@@ -1430,7 +1427,7 @@ elif [[ "$1" == "terminate" ]]; then
         kubectl delete ns $ENVIRONMENT_EXCHANGE_NAME
 
         echo "*** All done! ***"
-        echo "*** $ENVIRONMENT_EXCHANGE_NAME ($HOLLAEX_CONFIGMAP_API_HOST) has been successfully removed. If there's an issue, please review logs and try it again. ***"
+        echo "*** $ENVIRONMENT_EXCHANGE_NAME ($HEX_CONFIGMAP_API_HOST) has been successfully removed. If there's an issue, please review logs and try it again. ***"
 
         exit 0;
 
@@ -1446,7 +1443,7 @@ elif [[ "$1" == "terminate" ]]; then
 
         else
 
-            echo "*** hollaex-cli failed to detect docker-compose installed on this machine. Please install it before running hollaex-cli. ***"
+            echo "*** hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli. ***"
             exit 1;
 
         fi
@@ -1488,31 +1485,31 @@ elif [[ "$1" == "toolbox" ]]; then
             --settings)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                HOLLAEX_CLI_INIT_PATH=$1
-                echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
+                HEX_CLI_INIT_PATH=$1
+                echo "Your initialized exchange path : $HEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
             --kube)
                 USE_KUBERNETES=true
-                echo "hollaex-cli will use your Kubernetes cluster as a target."
+                echo "hex-cli will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
             --upgrade_backends)
                 UPGRADE_BACKENDS=true
                 TOOLBOX_ENABLE=true
-                echo "hollaex-cli will upgrade your backends (PostgreSQL, Redis, InfluxDB) based on your settings files value."
+                echo "hex-cli will upgrade your backends (PostgreSQL, Redis, InfluxDB) based on your settings files value."
                 shift; continue
                 ;;
             --backup_postgresql)
                 BACKUP_POSTGRESQL=true
                 TOOLBOX_ENABLE=true
-                echo "hollaex-cli will run PostgreSQL database dump on your initialized exchange folder."
+                echo "hex-cli will run PostgreSQL database dump on your initialized exchange folder."
                 shift; continue
                 ;;
             --flush_redis)
                 FLUSH_REDIS=true
                 TOOLBOX_ENABLE=true
-                echo "hollaex-cli will run full flush of Redis stored data. This could be helpful in certain situation If the exchange doesnt work properly."
+                echo "hex-cli will run full flush of Redis stored data. This could be helpful in certain situation If the exchange doesnt work properly."
                 shift; continue
                 ;;
             --no_verify)
@@ -1529,27 +1526,27 @@ elif [[ "$1" == "toolbox" ]]; then
         shift
     done
 
-    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+    if [[ ! "$HEX_CLI_INIT_PATH" ]]; then
 
-        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        HEX_CLI_INIT_PATH=$(pwd)
         CONFIG_FILE_PATH=$(pwd)/settings/*
         TEMPLATE_GENERATE_PATH=$(pwd)/templates
-        INIT_PATH_CHECK=$(pwd)/.hollaex
+        INIT_PATH_CHECK=$(pwd)/.hex
 
     fi
 
-    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+    if [[ "$HEX_CLI_INIT_PATH" ]]; then
 
-        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
-        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
-        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        CONFIG_FILE_PATH=$HEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HEX_CLI_INIT_PATH/.hex
         
     fi
     
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "*** Failed to detect hollaex-cli initialized directory! Please re-check your path. ***"
+        echo "*** Failed to detect hex-cli initialized directory! Please re-check your path. ***"
         print_usage;
         exit 1;
 
@@ -1611,11 +1608,11 @@ elif [[ "$1" == "toolbox" ]]; then
 
                 if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS" == true ]]; then
 
-                    helm upgrade $ENVIRONMENT_EXCHANGE_NAME-db --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres
+                    helm upgrade $ENVIRONMENT_EXCHANGE_NAME-db --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-postgres
 
                 else
 
-                    helm upgrade $ENVIRONMENT_EXCHANGE_NAME-db --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres
+                    helm upgrade $ENVIRONMENT_EXCHANGE_NAME-db --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-postgres
 
                 fi
 
@@ -1628,11 +1625,11 @@ elif [[ "$1" == "toolbox" ]]; then
 
                  if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS" == true ]]; then
 
-                    helm upgrade $ENVIRONMENT_EXCHANGE_NAME-redis --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT" --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis
+                    helm upgrade $ENVIRONMENT_EXCHANGE_NAME-redis --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT" --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-redis
         
                 else
 
-                    helm upgrade $ENVIRONMENT_EXCHANGE_NAME-redis --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis
+                    helm upgrade $ENVIRONMENT_EXCHANGE_NAME-redis --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-redis
                 
                 fi
 
@@ -1642,7 +1639,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
                 generate_nodeselector_values $ENVIRONMENT_KUBERNETES_INFLUXDB_NODESELECTOR influxdb
 
-                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-influxdb --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set setCustomUser.enabled="true" --set setCustomUser.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret"  -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-influxdb.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb
+                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-influxdb --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set setCustomUser.enabled="true" --set setCustomUser.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret"  -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-influxdb/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-influxdb.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-influxdb
 
             fi
 
@@ -1693,7 +1690,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         else 
 
-            echo "*** hollaex-cli failed to detect pg_dump on your local ***"
+            echo "*** hex-cli failed to detect pg_dump on your local ***"
             echo "*** Please make sure that you already installed pg_dump ***"
 
             exit 1;
@@ -1715,7 +1712,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
             fi
 
-            echo "*** hollaex-cli will open proxy tunnel between your local and remote proxy with kubectl proxy. ***"
+            echo "*** hex-cli will open proxy tunnel between your local and remote proxy with kubectl proxy. ***"
 
             echo "*** Opening local proxy on 5432 port of your local... ***"
             kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-db" -o name | sed 's/pod\///' | head -n 1) 5432:5432 &
@@ -1724,19 +1721,19 @@ elif [[ "$1" == "toolbox" ]]; then
             sleep 10;
             
             echo "*** Running pg_dumpall... ***"
-            export PGUSER=$HOLLAEX_SECRET_DB_USERNAME
-            export PGPASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
-            export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
+            export PGUSER=$HEX_SECRET_DB_USERNAME
+            export PGPASSWORD=$HEX_SECRET_DB_PASSWORD
+            export PGDATABASE=$HEX_SECRET_DB_NAME
             export PGHOST=localhost
 
-            pg_dumpall > $HOLLAEX_CLI_INIT_PATH/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump
+            pg_dumpall > $HEX_CLI_INIT_PATH/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump
             
             unset PGUSER
             unset PGPASSWORD
             unset PGDATABASE
             unset PGHOST
 
-            echo "*** Dump data is saved as $HOLLAEX_CLI_INIT_PATH/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump"
+            echo "*** Dump data is saved as $HEX_CLI_INIT_PATH/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump"
 
             echo "*** Killing the opened proxy tunnel... ***"
             kill $(ps -ef | grep "kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME" | awk '{print $2}' | head -n 1)
@@ -1760,22 +1757,22 @@ elif [[ "$1" == "toolbox" ]]; then
 
             fi
 
-            echo "*** hollaex-cli will backup your local PostgreSQL DB. ***"
+            echo "*** hex-cli will backup your local PostgreSQL DB. ***"
 
             echo "*** Running pg_dumpall... ***"
             
-            export PGUSER=$HOLLAEX_SECRET_DB_USERNAME
-            export PGPASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
-            export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
+            export PGUSER=$HEX_SECRET_DB_USERNAME
+            export PGPASSWORD=$HEX_SECRET_DB_PASSWORD
+            export PGDATABASE=$HEX_SECRET_DB_NAME
             export PGHOST=localhost
-            pg_dumpall > $HOLLAEX_CLI_INIT_PATH/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump
+            pg_dumpall > $HEX_CLI_INIT_PATH/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump
             
             unset PGUSER
             unset PGPASSWORD
             unset PGDATABASE
             unset PGHOST
 
-            echo "*** Dump data is saved as $HOLLAEX_CLI_INIT_PATH/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump"
+            echo "*** Dump data is saved as $HEX_CLI_INIT_PATH/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump"
 
             exit 0;
 
@@ -1845,7 +1842,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
 elif [[ "$1" == "--version" ]]; then
 
-    echo "hollaex-cli : v$(cat $SCRIPTPATH/version)"
+    echo "hex-cli : v$(cat $SCRIPTPATH/version)"
 
 else
 

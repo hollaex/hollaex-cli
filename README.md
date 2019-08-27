@@ -25,14 +25,5 @@ curl -L https://raw.githubusercontent.com/bitholla/hollaex-cli/master/uninstall.
 ```
 
 ## Documents
-### Playing with `hollaex-cli`
 
-> See the full documentation [here](./docs/playing-with-hollaex-cli.md).
-
-### How to setup `config` file correctly
-
-> See the full documentation [here](./docs/how-to-setup-config-file-correctly.md).
-
-### How to use dockerized `hollaex-cli`
-
-> See the full documentation [here](./docs/how-to-use-dockerized-hollaex-cli.md).
+Plesae visit the offical [docs page](https://docs.bitholla.com/hollaex/get-started) to see the full usage and details.
