@@ -22,34 +22,45 @@ function print_usage() {
 Usage : 
     hollaex [ init ] [ start ] [ stop ] [ upgrade ] [ terminate ] [ toolbox ] (--flags)
 Options:
-    init :
+    init : Generating the initialized exchange folder for your new exchange.
         --name, Name of your exchange.
         --path, Path to create init directory for hollaex-cli, Default is current directory.
-    start :
+
+    launch : Bringing up your new exchange for the first time.
         --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
         --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying docker-compose setup.
-    stop :
+
+    start : Turning on the existing exchange which get stopped.
+        --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
+        --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
+        --no_verify, Run script without verifying docker-compose setup.
+
+    stop : Turning off the existing exchange which is already running.
         --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
         --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying connected kubernetes cluster.
-    upgrade :
+
+    upgrade : Upgrading the existing exchange to new version based on the settings files.
         --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
         --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying connected kubernetes cluster.
-    terminate :
+
+    terminate : TERMINATING the existing exchange. THIS COMMAND WILL COMPLETELY REMOVE YOUR EXCHANGE ENVIRONMENT.
         --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
         --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying connected kubernetes cluster.
-    toolbox:
+
+    toolbox: Toolbox with advanced features which could be helpful for your exchange operations.
         --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
         --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying connected kubernetes cluster.
         --upgrade_backends, Update backend services, such as Redis or PostgreSQL for the exchange to latest compatible.
         --backup_postgresql, Run the full backup with pg_dumpall for the exchange PostgreSQL database.
         --flush_redis, Run the full flush of Redis stored data. It could be helpful in certain situation If the exchange doesnt work properly.
+
     General Flags : 
-    --version, Print out current installed version of hollaex-cli.
+        --version, Print out current installed version of hollaex-cli.
 
 EOF
 }
