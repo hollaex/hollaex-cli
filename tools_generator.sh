@@ -1,5 +1,5 @@
 #!/bin/bash 
-SCRIPTPATH=$HOME/.hollaex-cli
+SCRIPTPATH=$HOME/.hex-cli
 
 function local_database_init() {
 
@@ -59,6 +59,54 @@ function local_database_init() {
     fi
 }
 
+function kubernetes_database_init() {
+
+  # Checks the api container(s) get ready enough to run database upgrade jobs.
+  while ! kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- echo "API is ready!" > /dev/null 2>&1;
+      do echo "API container is not ready! Retrying..."
+      sleep 10;
+  done;
+
+  echo "*** API container become ready to run Database initialization jobs! ***"
+  sleep 10;
+
+  if [[ "$1" == "launch" ]]; then
+
+    echo "*** Running sequelize db:migrate ***"
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:migrate 
+
+    echo "*** Running Database Triggers ***"
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/runTriggers.js
+
+    echo "*** Running sequelize db:seed:all ***"
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:seed:all 
+
+    echo "*** Running InfluxDB migrations ***"
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/createInflux.js
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/migrateInflux.js
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
+
+  elif [[ "$1" == "upgrade" ]]; then
+
+    echo "*** Running sequelize db:migrate ***"
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:migrate 
+
+    echo "*** Running Database Triggers ***"
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/runTriggers.js
+
+    echo "*** Running InfluxDB migrations ***"
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
+
+  fi
+
+  echo "*** Restarting all containers to apply latest database changes... ***"
+  kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+
+  echo "*** Waiting for the containers get fully ready... ***"
+  sleep 30;
+
+}
+
 function local_code_test() {
 
     echo "*** Running mocha code test ***"
@@ -76,7 +124,7 @@ function check_kubernetes_dependencies() {
 
     else
 
-         echo "*** hollaex-cli failed to detect kubectl or helm installed on this machine. Please install it before running hollaex-cli. ***"
+         echo "*** hex-cli failed to detect kubectl or helm installed on this machine. Please install it before running hex-cli. ***"
          exit 1;
 
     fi
@@ -86,10 +134,10 @@ function check_kubernetes_dependencies() {
  
 function load_config_variables() {
 
-  HOLLAEX_CONFIGMAP_VARIABLES=$(set -o posix ; set | grep "HOLLAEX_CONFIGMAP" | cut -c19-)
-  HOLLAEX_SECRET_VARIABLES=$(set -o posix ; set | grep "HOLLAEX_SECRET" | cut -c16-)
+  HEX_CONFIGMAP_VARIABLES=$(set -o posix ; set | grep "HEX_CONFIGMAP" | cut -c15-)
+  HEX_SECRET_VARIABLES=$(set -o posix ; set | grep "HEX_SECRET" | cut -c12-)
 
-  HOLLAEX_CONFIGMAP_VARIABLES_YAML=$(for value in ${HOLLAEX_CONFIGMAP_VARIABLES} 
+  HEX_CONFIGMAP_VARIABLES_YAML=$(for value in ${HEX_CONFIGMAP_VARIABLES} 
   do 
       if [[ $value == *"'"* ]]; then
         printf "  ${value//=/: }\n";
@@ -99,13 +147,13 @@ function load_config_variables() {
 
   done)
 
-  HOLLAEX_SECRET_VARIABLES_BASE64=$(for value in ${HOLLAEX_SECRET_VARIABLES} 
+  HEX_SECRET_VARIABLES_BASE64=$(for value in ${HEX_SECRET_VARIABLES} 
   do
       printf "${value//$(cut -d "=" -f 2 <<< "$value")/$(cut -d "=" -f 2 <<< "$value" | tr -d '\n' | tr -d "'" | base64)} ";
   
   done)
 
-  HOLLAEX_SECRET_VARIABLES_YAML=$(for value in ${HOLLAEX_SECRET_VARIABLES_BASE64} 
+  HEX_SECRET_VARIABLES_YAML=$(for value in ${HEX_SECRET_VARIABLES_BASE64} 
   do
 
       printf "  ${value/=/: }\n";
@@ -120,9 +168,9 @@ function generate_local_env() {
 cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local <<EOL
 DB_DIALECT=postgres
 
-$(echo "$HOLLAEX_CONFIGMAP_VARIABLES" | tr -d '\'\')
+$(echo "$HEX_CONFIGMAP_VARIABLES" | tr -d '\'\')
 
-$(echo "$HOLLAEX_SECRET_VARIABLES")
+$(echo "$HEX_SECRET_VARIABLES")
 EOL
 
 }
@@ -244,7 +292,7 @@ metadata:
     $(websocket_upgrade;)
 spec:
   rules:
-  - host: ${HOLLAEX_CONFIGMAP_API_HOST}
+  - host: ${HEX_CONFIGMAP_API_HOST}
     http:
       paths:
       - path: ${CUSTOM_URL}
@@ -255,7 +303,7 @@ spec:
 tls:
   - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
     hosts:
-    - ${HOLLAEX_CONFIGMAP_API_HOST}
+    - ${HEX_CONFIGMAP_API_HOST}
 EOL
 
     fi
@@ -294,9 +342,9 @@ EOL
 
 function generate_local_docker_compose_for_dev() {
 
-echo $HOLLAEX_CODEBASE_PATH
+echo $HEX_CODEBASE_PATH
 # Generate docker-compose
-cat > $HOLLAEX_CODEBASE_PATH/.${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+cat > $HEX_CODEBASE_PATH/.${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
 version: '3'
 services:
   ${ENVIRONMENT_EXCHANGE_NAME}-redis:
@@ -308,16 +356,16 @@ services:
     ports:
       - 6379:6379
     environment:
-      - REDIS_PASSWORD=${HOLLAEX_SECRET_REDIS_PASSWORD}
+      - REDIS_PASSWORD=${HEX_SECRET_REDIS_PASSWORD}
     command : ["sh", "-c", "redis-server --requirepass \$\${REDIS_PASSWORD}"]
   ${ENVIRONMENT_EXCHANGE_NAME}-db:
     image: postgres:10.9
     ports:
       - 5432:5432
     environment:
-      - POSTGRES_DB=$HOLLAEX_SECRET_DB_NAME
-      - POSTGRES_USER=$HOLLAEX_SECRET_DB_USERNAME
-      - POSTGRES_PASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
+      - POSTGRES_DB=$HEX_SECRET_DB_NAME
+      - POSTGRES_USER=$HEX_SECRET_DB_USERNAME
+      - POSTGRES_PASSWORD=$HEX_SECRET_DB_PASSWORD
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
   ${ENVIRONMENT_EXCHANGE_NAME}-influxdb:
@@ -325,11 +373,11 @@ services:
     ports:
       - 8086:8086
     environment:
-      - INFLUX_DB=$HOLLAEX_SECRET_INFLUX_DB
+      - INFLUX_DB=$HEX_SECRET_INFLUX_DB
       - INFLUX_HOST=${ENVIRONMENT_EXCHANGE_NAME}-influxdb
       - INFLUX_PORT=8086
-      - INFLUX_USER=$HOLLAEX_SECRET_INFLUX_USER
-      - INFLUX_PASSWORD=$HOLLAEX_SECRET_INFLUX_PASSWORD
+      - INFLUX_USER=$HEX_SECRET_INFLUX_USER
+      - INFLUX_PASSWORD=$HEX_SECRET_INFLUX_PASSWORD
       - INFLUXDB_HTTP_LOG_ENABLED=false
       - INFLUXDB_DATA_QUERY_LOG_ENABLED=false
       - INFLUXDB_CONTINUOUS_QUERIES_LOG_ENABLED=false
@@ -343,7 +391,7 @@ services:
     image: ${ENVIRONMENT_EXCHANGE_NAME}-server-pm2
     build:
       context: .
-      dockerfile: ${HOLLAEX_CODEBASE_PATH}/tools/Dockerfile.pm2
+      dockerfile: ${HEX_CODEBASE_PATH}/tools/Dockerfile.pm2
     env_file:
       - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
     entrypoint:
@@ -353,20 +401,20 @@ services:
       - --env
       - development
     volumes:
-      - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
-      - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
-      - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
-      - ${HOLLAEX_CODEBASE_PATH}/mail:/app/mail
-      - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
-      - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
-      - ${HOLLAEX_CODEBASE_PATH}/app.js:/app/app.js
-      - ${HOLLAEX_CODEBASE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
-      - ${HOLLAEX_CODEBASE_PATH}/constants.js:/app/constants.js
-      - ${HOLLAEX_CODEBASE_PATH}/messages.js:/app/messages.js
-      - ${HOLLAEX_CODEBASE_PATH}/logs:/app/logs
-      - ${HOLLAEX_CODEBASE_PATH}/test:/app/test
-      - ${HOLLAEX_CODEBASE_PATH}/tools:/app/tools
-      - ${HOLLAEX_CODEBASE_PATH}/utils:/app/utils
+      - ${HEX_CODEBASE_PATH}/api:/app/api
+      - ${HEX_CODEBASE_PATH}/config:/app/config
+      - ${HEX_CODEBASE_PATH}/db:/app/db
+      - ${HEX_CODEBASE_PATH}/mail:/app/mail
+      - ${HEX_CODEBASE_PATH}/queue:/app/queue
+      - ${HEX_CODEBASE_PATH}/ws:/app/ws
+      - ${HEX_CODEBASE_PATH}/app.js:/app/app.js
+      - ${HEX_CODEBASE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
+      - ${HEX_CODEBASE_PATH}/constants.js:/app/constants.js
+      - ${HEX_CODEBASE_PATH}/messages.js:/app/messages.js
+      - ${HEX_CODEBASE_PATH}/logs:/app/logs
+      - ${HEX_CODEBASE_PATH}/test:/app/test
+      - ${HEX_CODEBASE_PATH}/tools:/app/tools
+      - ${HEX_CODEBASE_PATH}/utils:/app/utils
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
       - ${ENVIRONMENT_EXCHANGE_NAME}-redis
@@ -416,7 +464,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]]; then
     ports:
       - 6379:6379
     environment:
-      - REDIS_PASSWORD=${HOLLAEX_SECRET_REDIS_PASSWORD}
+      - REDIS_PASSWORD=${HEX_SECRET_REDIS_PASSWORD}
     command : ["sh", "-c", "redis-server --requirepass \$\${REDIS_PASSWORD}"]
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
@@ -432,9 +480,9 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
     ports:
       - 5432:5432
     environment:
-      - POSTGRES_DB=$HOLLAEX_SECRET_DB_NAME
-      - POSTGRES_USER=$HOLLAEX_SECRET_DB_USERNAME
-      - POSTGRES_PASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
+      - POSTGRES_DB=$HEX_SECRET_DB_NAME
+      - POSTGRES_USER=$HEX_SECRET_DB_USERNAME
+      - POSTGRES_PASSWORD=$HEX_SECRET_DB_PASSWORD
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
 
@@ -450,11 +498,11 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" == "true" ]]; then
     ports:
       - 8086:8086
     environment:
-      - INFLUX_DB=$HOLLAEX_SECRET_INFLUX_DB
+      - INFLUX_DB=$HEX_SECRET_INFLUX_DB
       - INFLUX_HOST=${ENVIRONMENT_EXCHANGE_NAME}-influxdb
       - INFLUX_PORT=8086
-      - INFLUX_USER=$HOLLAEX_SECRET_INFLUX_USER
-      - INFLUX_PASSWORD=$HOLLAEX_SECRET_INFLUX_PASSWORD
+      - INFLUX_USER=$HEX_SECRET_INFLUX_USER
+      - INFLUX_PASSWORD=$HEX_SECRET_INFLUX_PASSWORD
       - INFLUXDB_HTTP_LOG_ENABLED=false
       - INFLUXDB_DATA_QUERY_LOG_ENABLED=false
       - INFLUXDB_CONTINUOUS_QUERIES_LOG_ENABLED=false
@@ -612,7 +660,7 @@ metadata:
   namespace: ${ENVIRONMENT_EXCHANGE_NAME}
 data:
   DB_DIALECT: postgres
-${HOLLAEX_CONFIGMAP_VARIABLES_YAML}
+${HEX_CONFIGMAP_VARIABLES_YAML}
 EOL
 
 }
@@ -628,7 +676,7 @@ metadata:
   namespace: ${ENVIRONMENT_EXCHANGE_NAME}
 type: Opaque
 data:
-${HOLLAEX_SECRET_VARIABLES_YAML}
+${HEX_SECRET_VARIABLES_YAML}
 EOL
 }
 
@@ -651,7 +699,7 @@ metadata:
       limit_req_status 429;
 spec:
   rules:
-  - host: ${HOLLAEX_CONFIGMAP_API_HOST}
+  - host: ${HEX_CONFIGMAP_API_HOST}
     http:
       paths:
       - path: /v0
@@ -662,7 +710,7 @@ spec:
   tls:
   - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
     hosts:
-    - ${HOLLAEX_CONFIGMAP_API_HOST}
+    - ${HEX_CONFIGMAP_API_HOST}
 
 ---
 apiVersion: extensions/v1beta1
@@ -680,7 +728,7 @@ metadata:
       limit_req_status 429;
 spec:
   rules:
-  - host: ${HOLLAEX_CONFIGMAP_API_HOST}
+  - host: ${HEX_CONFIGMAP_API_HOST}
     http:
       paths:
       - path: /v0/order
@@ -691,7 +739,7 @@ spec:
   tls:
   - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
     hosts:
-    - ${HOLLAEX_CONFIGMAP_API_HOST}
+    - ${HEX_CONFIGMAP_API_HOST}
 
 ---
 apiVersion: extensions/v1beta1
@@ -705,7 +753,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-body-size: "2m"
 spec:
   rules:
-  - host: ${HOLLAEX_CONFIGMAP_API_HOST}
+  - host: ${HEX_CONFIGMAP_API_HOST}
     http:
       paths:
       - path: /v0/admin
@@ -716,7 +764,7 @@ spec:
   tls:
   - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
     hosts:
-    - ${HOLLAEX_CONFIGMAP_API_HOST}
+    - ${HEX_CONFIGMAP_API_HOST}
 
 ---
 apiVersion: extensions/v1beta1
@@ -731,7 +779,7 @@ metadata:
     nginx.org/websocket-services: "${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}-server-ws"
 spec:
   rules:
-  - host: ${HOLLAEX_CONFIGMAP_API_HOST}
+  - host: ${HEX_CONFIGMAP_API_HOST}
     http:
       paths:
       - path: /socket.io
@@ -742,7 +790,7 @@ spec:
   tls:
   - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
     hosts:
-    - ${HOLLAEX_CONFIGMAP_API_HOST}
+    - ${HEX_CONFIGMAP_API_HOST}
 EOL
 
 }
@@ -756,15 +804,15 @@ function generate_random_values() {
 function update_random_values_to_config() {
 
 
-GENERATE_VALUES_LIST=( "HOLLAEX_SECRET_ADMIN_PASSWORD" "HOLLAEX_SECRET_SUPERVISOR_PASSWORD" "HOLLAEX_SECRET_SUPPORT_PASSWORD" "HOLLAEX_SECRET_KYC_PASSWORD" "HOLLAEX_SECRET_QUICK_TRADE_SECRET" "HOLLAEX_SECRET_API_KEYS" "HOLLAEX_SECRET_SECRET" )
+GENERATE_VALUES_LIST=( "HEX_SECRET_ADMIN_PASSWORD" "HEX_SECRET_SUPERVISOR_PASSWORD" "HEX_SECRET_SUPPORT_PASSWORD" "HEX_SECRET_KYC_PASSWORD" "HEX_SECRET_QUICK_TRADE_SECRET" "HEX_SECRET_API_KEYS" "HEX_SECRET_SECRET" )
 
 for j in ${CONFIG_FILE_PATH[@]}; do
 
-  if command grep -q "HOLLAEX_SECRET" $j > /dev/null ; then
+  if command grep -q "HEX_SECRET" $j > /dev/null ; then
 
     SECRET_CONFIG_FILE_PATH=$j
 
-    if command grep -q "HOLLAEX_SECRET_ADMIN_PASSWORD" $SECRET_CONFIG_FILE_PATH ; then
+    if command grep -q "HEX_SECRET_ADMIN_PASSWORD" $SECRET_CONFIG_FILE_PATH ; then
   
       echo "*** Pre-generated secrets are detected on your secert file! ***"
       echo "Are you sure you want to override them? (y/n)"
@@ -778,7 +826,7 @@ for j in ${CONFIG_FILE_PATH[@]}; do
           grep -v $k $SECRET_CONFIG_FILE_PATH > temp && mv temp $SECRET_CONFIG_FILE_PATH
 
           # Using special form to generate both API_KEYS keys and secret
-          if [[ "$k" == "HOLLAEX_SECRET_API_KEYS" ]]; then
+          if [[ "$k" == "HEX_SECRET_API_KEYS" ]]; then
 
             cat >> $SECRET_CONFIG_FILE_PATH <<EOL
 $k=$(generate_random_values):$(generate_random_values)
@@ -799,14 +847,14 @@ EOL
 
         unset k
         unset GENERATE_VALUES_LIST
-        unset HOLLAEX_CONFIGMAP_VARIABLES
-        unset HOLLAEX_SECRET_VARIABLES
-        unset HOLLAEX_SECRET_VARIABLES_BASE64
-        unset HOLLAEX_SECRET_VARIABLES_YAML
-        unset HOLLAEX_CONFIGMAP_VARIABLES_YAML
+        unset HEX_CONFIGMAP_VARIABLES
+        unset HEX_SECRET_VARIABLES
+        unset HEX_SECRET_VARIABLES_BASE64
+        unset HEX_SECRET_VARIABLES_YAML
+        unset HEX_CONFIGMAP_VARIABLES_YAML
 
-        # set -o posix ; set | grep "HOLLAEX_CONFIGMAP" 
-        # set -o posix ; set | grep "HOLLAEX_SECRET" 
+        # set -o posix ; set | grep "HEX_CONFIGMAP" 
+        # set -o posix ; set | grep "HEX_SECRET" 
 
         for i in ${CONFIG_FILE_PATH[@]}; do
             source $i
@@ -845,7 +893,7 @@ EOL
 
 function helm_dynamic_trading_paris() {
 
-  IFS=',' read -ra PAIRS <<< "$HOLLAEX_CONFIGMAP_PAIRS"    #Convert string to array
+  IFS=',' read -ra PAIRS <<< "$HEX_CONFIGMAP_PAIRS"    #Convert string to array
 
   for i in "${PAIRS[@]}"; do
     TRADE_PARIS_DEPLOYMENT=$(echo $i | cut -f1 -d ",")
@@ -854,7 +902,7 @@ function helm_dynamic_trading_paris() {
     if [[ "$1" == "run" ]]; then
 
       #Running and Upgrading
-      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-queue-$TRADE_PARIS_DEPLOYMENT_NAME --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="queue $TRADE_PARIS_DEPLOYMENT" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-queue-$TRADE_PARIS_DEPLOYMENT_NAME --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="queue $TRADE_PARIS_DEPLOYMENT" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
 
     elif [[ "$1" == "scaleup" ]]; then
       
@@ -879,7 +927,7 @@ function helm_dynamic_trading_paris() {
 
 function check_empty_values_on_settings() {
 
-  for i in ${HOLLAEX_CONFIGMAP_VARIABLES[@]}; do
+  for i in ${HEX_CONFIGMAP_VARIABLES[@]}; do
 
     PARSED_CONFIGMAP_VARIABLES=$(echo $i | cut -f2 -d '=')
 
@@ -891,7 +939,7 @@ function check_empty_values_on_settings() {
   
   done
 
-  for i in ${HOLLAEX_SECRET_VARIABLES[@]}; do
+  for i in ${HEX_SECRET_VARIABLES[@]}; do
 
     PARSED_SECRET_VARIABLES=$(echo $i | cut -f2 -d '=')
 
