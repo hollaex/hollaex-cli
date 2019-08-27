@@ -415,6 +415,7 @@ services:
       - ${HEX_CODEBASE_PATH}/test:/app/test
       - ${HEX_CODEBASE_PATH}/tools:/app/tools
       - ${HEX_CODEBASE_PATH}/utils:/app/utils
+      - ${HEX_CODEBASE_PATH}/init.js:/app/init.js
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
       - ${ENVIRONMENT_EXCHANGE_NAME}-redis
