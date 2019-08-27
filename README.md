@@ -1,4 +1,4 @@
-![hex-cli](docs/.docs-images/hex-cli.png)
+![hex-cli](docs/.docs-images/hollaex-cli.png)
 
 ## HEX CLI
 
