@@ -186,7 +186,7 @@ DB_DIALECT=postgres
 
 $(echo "$HEX_CONFIGMAP_VARIABLES" | tr -d '\'\')
 
-$(echo "$HEX_SECRET_VARIABLES")
+$(echo "$HEX_SECRET_VARIABLES" | tr -d '\'\')
 EOL
 
 }
@@ -829,7 +829,7 @@ for j in ${CONFIG_FILE_PATH[@]}; do
 
     SECRET_CONFIG_FILE_PATH=$j
 
-    if command grep -q "HEX_SECRET_ADMIN_PASSWORD" $SECRET_CONFIG_FILE_PATH ; then
+    if [[ ! -z "$HEX_SECRET_ADMIN_PASSWORD" ]] ; then
   
       echo "*** Pre-generated secrets are detected on your secert file! ***"
       echo "Are you sure you want to override them? (y/n)"
@@ -859,9 +859,6 @@ EOL
         
         done
 
-        # IMPORT VALUES AGAIN ONCE IT GET GENERATED
-        # set -o posix ; set
-
         unset k
         unset GENERATE_VALUES_LIST
         unset HEX_CONFIGMAP_VARIABLES
@@ -869,9 +866,6 @@ EOL
         unset HEX_SECRET_VARIABLES_BASE64
         unset HEX_SECRET_VARIABLES_YAML
         unset HEX_CONFIGMAP_VARIABLES_YAML
-
-        # set -o posix ; set | grep "HEX_CONFIGMAP" 
-        # set -o posix ; set | grep "HEX_SECRET" 
 
         for i in ${CONFIG_FILE_PATH[@]}; do
             source $i
@@ -885,7 +879,45 @@ EOL
 
       fi
 
+    elif [[ -z "$HEX_SECRET_ADMIN_PASSWORD" ]] ; then
+
+      for k in ${GENERATE_VALUES_LIST[@]}; do
+
+          grep -v $k $SECRET_CONFIG_FILE_PATH > temp && mv temp $SECRET_CONFIG_FILE_PATH
+
+          # Using special form to generate both API_KEYS keys and secret
+          if [[ "$k" == "HEX_SECRET_API_KEYS" ]]; then
+
+            cat >> $SECRET_CONFIG_FILE_PATH <<EOL
+$k=$(generate_random_values):$(generate_random_values)
+EOL
+
+          else 
+
+            cat >> $SECRET_CONFIG_FILE_PATH <<EOL
+$k=$(generate_random_values)
+EOL
+
+          fi
+        
+        done
+
+        unset k
+        unset GENERATE_VALUES_LIST
+        unset HEX_CONFIGMAP_VARIABLES
+        unset HEX_SECRET_VARIABLES
+        unset HEX_SECRET_VARIABLES_BASE64
+        unset HEX_SECRET_VARIABLES_YAML
+        unset HEX_CONFIGMAP_VARIABLES_YAML
+
+        for i in ${CONFIG_FILE_PATH[@]}; do
+            source $i
+        done;
+
+        load_config_variables;
+
     fi
+    
   fi
 done
 
@@ -984,3 +1016,4 @@ function override_docker_image_version() {
   rm $CONFIGMAP_FILE_PATH.bak
 
 }
+

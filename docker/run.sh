@@ -40,13 +40,13 @@ if [[ ! -z ${PLUGIN_HELM} ]]; then
   helm ${PLUGIN_HELM}
 fi
 
-# Run hollaex command
+# Run hex command
 if [[ ! -z ${PLUGIN_HOLLAEX} ]]; then
-  hollaex ${PLUGIN_HOLLAEX}
+  hex ${PLUGIN_HOLLAEX}
 fi
 
 if [[ ! -z ${HOLLAEX} ]]; then
-  hollaex ${HOLLAEX}
+  hex ${HOLLAEX}
 fi
 
 
