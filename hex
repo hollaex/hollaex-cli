@@ -58,9 +58,9 @@ Options:
         --upgrade_backends, Update backend services, such as Redis or PostgreSQL for the exchange to latest compatible.
         --backup_postgresql, Run the full backup with pg_dumpall for the exchange PostgreSQL database.
         --flush_redis, Run the full flush of Redis stored data. It could be helpful in certain situation If the exchange doesnt work properly.
+        --upgrade_api_only, Do zero-downtime rolling upgrade for API contianers on Kubernetes.
 
-    General Flags : 
-        --version, Print out current installed version of hex-cli.
+    version : Print out current installed version of hex-cli.
 
 EOF
 }
@@ -580,7 +580,7 @@ elif [[ "$1" == "launch" ]]; then
 
         fi
 
-         if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+        if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
             echo "*** Alert: hex-cli detected that $ENVIRONMENT_EXCHANGE_NAME exchange exists on your local machine. ***"
             echo "*** You can't run launch process multiple times for existing exchange. This could break up system badly. ***"
@@ -1223,7 +1223,7 @@ elif [[ "$1" == "upgrade" ]]; then
         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="2" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
 
         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-ws --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="ws" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
-
+        
         helm_dynamic_trading_paris run;
 
         # Running database job for Kubernetes
@@ -1512,6 +1512,12 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "hex-cli will run full flush of Redis stored data. This could be helpful in certain situation If the exchange doesnt work properly."
                 shift; continue
                 ;;
+            --upgrade_api_only)
+                UPGRADE_API_ONLY=true
+                TOOLBOX_ENABLE=true
+                echo "hex-cli will rolling-upgrade API containers only for Kubernetes."
+                shift; continue
+                ;;
             --no_verify)
                 RUN_WITH_VERIFY=false
                 echo "Running it wihtout verify the config."
@@ -1568,6 +1574,9 @@ elif [[ "$1" == "toolbox" ]]; then
     load_config_variables;
 
     if [[ "$USE_KUBERNETES" ]]; then
+
+        #Checking Kubernetes dependencies
+        check_kubernetes_dependencies;
 
         #Verify remote Kubernetes cluster is correct.
         echo "*** Verifying current KUBECONFIG on the machine ***"
@@ -1836,13 +1845,62 @@ elif [[ "$1" == "toolbox" ]]; then
 
             exit 0;
         fi
+        
+    elif [[ "$UPGRADE_API_ONLY" ]]; then
 
+        if [[ "$USE_KUBERNETES" ]] ; then
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "*** Are you sure you want to do rolling upgrade for $ENVIRONMENT_EXCHANGE_NAME api pods to v$ENVIRONMENT_DOCKER_IMAGE_VERSION on this cluster? (y/n) ***"
+                echo "*** Configmap values would be updated either while on the rolling upgrade ***"
+
+                read answer
+
+                if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                    echo "*** Exiting... ***"
+                    exit 0;
+                fi
+
+            fi
+
+            if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
+
+                echo "Generating Kubernetes Configmap"
+                generate_kubernetes_configmap;
+
+            fi
+
+            echo "*** Applying latest configmap env on the cluster. ***"
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+
+            echo "*** Applying $ENVIRONMENT_EXCHANGE_NAME API pods only on Kubernetes. ***"
+
+
+            echo "*** Upgrading $ENVIRONMENT_EXCHANGE_NAME API pods only on Kubernetes. ***"
+            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="2" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
+
+            echo "*** Rolling upgrade process has been finished. ***"
+            echo "*** It would take few minutes to Kubernetes replace api pods to new version completely. Please check the status constantly. ***"
+            
+            exit 0;
+            
+        
+        elif [[ ! "$USE_KUBERNETES" ]] ; then
+
+            echo "*** hex-cli only supports rolling-upgrade for api contianers on Kubernets environment. ***"
+            echo "*** Please use --kube flag to point Kubernetes. ***"
+
+            exit 1;
+
+        fi
+        
     fi
 
 
-elif [[ "$1" == "--version" ]]; then
+elif [[ "$1" == "version" ]]; then
 
-    echo "hex-cli : v$(cat $SCRIPTPATH/version)"
+    echo "hex-cli : v$(cat $SCRIPTPATH/version), Made with <3 by bitHolla Inc."
 
 else
 

@@ -27,7 +27,6 @@ autoScaling:
     maxReplicas: 4
     cpu: 500m
 
-APM_ENABLED:
 APM_URL:
 
 
