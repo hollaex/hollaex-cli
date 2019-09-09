@@ -1109,12 +1109,18 @@ function add_coin_input() {
   
   done;
 
+  read -ra RANGE_DEPOSIT_LIMITS_LEVEL <<< $(set -o posix ; set | grep "DEPOSIT_LIMITS_LEVEL_" | cut -c22 )
+  read -ra VALUE_DEPOSIT_LIMITS_LEVEL <<< $(set -o posix ; set | grep "DEPOSIT_LIMITS_LEVEL_" | cut -f2 -d "=" )
+
   # Asking withdrawal limit of new coin per level
   for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
 
     do echo "*** What is a withdrawal limit for user on LEVEL $i? ***" && read answer && export WITHDRAWAL_LIMITS_LEVEL_$i=$answer
   
   done;
+
+  read -ra RANGE_WITHDRAWAL_LIMITS_LEVEL <<< $(set -o posix ; set | grep "WITHDRAWAL_LIMITS_LEVEL_" | cut -c25 )
+  read -ra VALUE_WITHDRAWAL_LIMITS_LEVEL <<< $(set -o posix ; set | grep "WITHDRAWAL_LIMITS_LEVEL_" | cut -f2 -d "=" )
 
   echo "*** Are you going to active the new coin you just configured? (y/n) [Default: y] ***"
   read answer
@@ -1131,7 +1137,7 @@ function add_coin_input() {
 
   function print_coin_add_deposit_level(){ 
 
-    for i in $(set -o posix ; set | grep "DEPOSIT_LIMITS");
+    for i in $(set -o posix ; set | grep "DEPOSIT_LIMITS_LEVEL_");
 
       do echo -e "$i"
 
@@ -1141,7 +1147,7 @@ function add_coin_input() {
 
   function print_coin_add_withdrawal_level(){ 
 
-    for i in $(set -o posix ; set | grep "WITHDRAWAL_LIMITS");
+    for i in $(set -o posix ; set | grep "WITHDRAWAL_LIMITS_LEVEL_");
 
       do echo -e "$i"
 
@@ -1172,6 +1178,54 @@ function add_coin_input() {
   
   fi
 
+  function join_array_to_json(){
+    local arr=( "$@" );
+    local len=${#arr[@]}
+
+    if [[ ${len} -eq 0 ]]; then
+            >&2 echo "Error: Length of input array needs to be at least 2.";
+            return 1;
+    fi
+
+    if [[ $((len%2)) -eq 1 ]]; then
+            >&2 echo "Error: Length of input array needs to be even (key/value pairs).";
+            return 1;
+    fi
+
+    local data="";
+    local foo=0;
+    for i in "${arr[@]}"; do
+            local char=","
+            if [ $((++foo%2)) -eq 0 ]; then
+            char=":";
+            fi
+
+            local first="${i:0:1}";  # read first charc
+
+            local app="\"$i\""
+
+            if [[ "$first" == "^" ]]; then
+            app="${i:1}"  # remove first char
+            fi
+
+            data="$data$char$app";
+
+    done
+
+    data="${data:1}";  # remove first char
+    echo "{$data}";    # add braces around the string
+  }
+
+
+  function print_deposit_array_side_by_side() {
+    for ((i=0; i<=${#RANGE_DEPOSIT_LIMITS_LEVEL[@]}; i++)); do
+    printf '%s %s\n' "${RANGE_DEPOSIT_LIMITS_LEVEL[i]}" "${VALUE_DEPOSIT_LIMITS_LEVEL[i]}"
+    done
+  }
+
+  COIN_DEPOSIT_LIMITS=$(join_array_to_json $(print_deposit_array_side_by_side))
+  COIN_WITHDRAWAL_LIMITS=$(join_array_to_json $(print_deposit_array_side_by_side))
+
 }
 
 function add_coin_exec() {
@@ -1189,13 +1243,14 @@ function add_coin_exec() {
           
       fi
 
-      COIN_DEPOSIT_LIMITS='{ "1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0 }'
-      COIN_WITHDRAWAL_LIMITS='{ "1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0 }'
-
       echo "*** Adding new coin $COIN_SYMBOL on local docker ***"
       docker exec --env "COIN_FULLNAME=${COIN_FULLNAME}" --env "COIN_SYMBOL=${COIN_SYMBOL}" --env "COIN_ALLOW_DEPOSIT=${COIN_ALLOW_DEPOSIT}" --env "COIN_ALLOW_WITHDRAWAL=${COIN_ALLOW_WITHDRAWAL}" --env "COIN_WITHDRAWAL_FEE=${COIN_WITHDRAWAL_FEE}" --env "COIN_MIN=${COIN_MIN}" --env "COIN_MAX=${COIN_MAX}" --env "COIN_INCREMENT_UNIT=${COIN_INCREMENT_UNIT}" --env "COIN_DEPOSIT_LIMITS=${COIN_DEPOSIT_LIMITS}" --env "COIN_WITHDRAWAL_LIMITS=${COIN_WITHDRAWAL_LIMITS}" --env "COIN_ACTIVE=${COIN_ACTIVE}"  ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/addCoin.js
 
   fi
+
+  # Restarting containers after database init jobs.
+  echo "Restarting containers to apply database changes."
+  docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
 
 
   for i in ${CONFIG_FILE_PATH[@]}; do
@@ -1239,6 +1294,32 @@ function remove_coin_input() {
   
   fi
 
+}
+
+function remove_coin_exec() {
+
+  if [[ "$USE_KUBERNETES" ]]; then
+
+  echo "*** Removing existing coin $COIN_SYMBOL on Kubernetes ***"
+  kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- bash -c 'COIN_FULLNAME=$(echo $COIN_FULLNAME); echo "coin fullname: $COIN_FULLNAME"'
+
+  elif [[ ! "$USE_KUBERNETES" ]]; then
+
+      if [[ ! $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE == "all" ]]; then
+
+          IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE}"
+          
+      fi
+
+      echo "*** Removing new coin $COIN_SYMBOL on local docker ***"
+      docker exec --env "COIN_SYMBOL=${COIN_SYMBOL}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/removeCoin.js
+
+      # Restarting containers after database init jobs.
+      echo "Restarting containers to apply database changes."
+      docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+      
+  fi
+
 
   for i in ${CONFIG_FILE_PATH[@]}; do
 
@@ -1251,4 +1332,6 @@ function remove_coin_input() {
 
   done
 
+
 }
+
