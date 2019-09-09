@@ -2,39 +2,41 @@
 
 REPLACE_EXISTING_TO_LATEST=false
 
-echo "#### hollaex-cli Installer ####"
+echo "#### hex-cli Installer ####"
 
-if [ -d "$HOME/.hollaex-cli" ]; then
-    echo "You already installed previous version of hollaex-cli."
+if [[ -d "$HOME/.hex-cli" ]] || [[ -d "$HOME/.hollaex-cli" ]]; then
+    echo "You already installed previous version of hex-cli."
     echo "Are you sure you want to replace existing one to latest? (y/n)"
     REPLACE_EXISTING_TO_LATEST=true
 else
-    echo "Are you sure you want to proceed to install hollaex-cli? (y/n)"
+    echo "Are you sure you want to proceed to install hex-cli? (y/n)"
 fi
 
 read answer
 
-if [ "$answer" != "${answer#[Nn]}" ] ;then
+if [[ "$answer" != "${answer#[Nn]}" ]] ;then
     echo "*** Exiting... ***"
     exit 0;
 fi
 
-if [ "$REPLACE_EXISTING_TO_LATEST" == "true" ]; then
-    echo "Replacing existing hollaex-cli to latest"
+if [[ "$REPLACE_EXISTING_TO_LATEST" == "true" ]]; then
+    echo "Replacing existing hex-cli to latest"
     sudo rm -r $HOME/.hollaex-cli
+    sudo rm -r $HOME/.hex-cli
     sudo rm /usr/local/bin/hollaex
-    git clone https://github.com/bitholla/hollaex-cli.git
+    sudo rm /usr/local/bin/hex
+    git clone https://github.com/bitholla/hex-cli.git
 else       
-    echo "Cloning hollaex-cli repo from git"
-    git clone https://github.com/bitholla/hollaex-cli.git
+    echo "Cloning hex-cli repo from git"
+    git clone https://github.com/bitholla/hex-cli.git
 fi
 
-chmod +x $(pwd)/hollaex-cli
-sudo mv $(pwd)/hollaex-cli $HOME/.hollaex-cli
-sudo ln -s $HOME/.hollaex-cli/hollaex /usr/local/bin/hollaex
+chmod +x $(pwd)/hex-cli
+sudo mv $(pwd)/hex-cli $HOME/.hex-cli
+sudo ln -s $HOME/.hex-cli/hex /usr/local/bin/hex
 
-# ex -sc '2i|SCRIPTPATH=$HOME/.hollaex-cli' -cx $HOME/.hollaex-cli/hollaex
-# ex -sc '2i|SCRIPTPATH=$HOME/.hollaex-cli' -cx $HOME/.hollaex-cli/tools_generator.sh
+# ex -sc '2i|SCRIPTPATH=$HOME/.hex-cli' -cx $HOME/.hex-cli/hex
+# ex -sc '2i|SCRIPTPATH=$HOME/.hex-cli' -cx $HOME/.hex-cli/tools_generator.sh
 
-echo "hollaex-cli v$(cat $HOME/.hollaex-cli/version) has been successfully installed!"
-echo "If you want to uninstall hollaex-cli later, Please visit https://github.com/bitholla/hollaex-cli for further information."
+echo "hex-cli v$(cat $HOME/.hex-cli/version) has been successfully installed!"
+echo "If you want to uninstall hex-cli later, Please visit https://github.com/bitholla/hex-cli for further information."

@@ -27,7 +27,7 @@ pipeline:
 
   #### Docker image tagging - PRODUCTION RELEASES ####
   docker_tagging:
-    image: golang:1.10.0-alpine
+    image: alpine
     commands:
       - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION" > .tags
       - echo -n ",latest" >> .tags
@@ -40,9 +40,10 @@ pipeline:
       
   #### Docker image build ####
   docker_build:
-    image: bitholla/devops-tools:drone_docker-1086846
+    #image: bitholla/devops-tools:drone_docker-1086846
+    image: plugins/docker
     secrets: [ docker_username, docker_password ]
-    repo: bitholla/hollaex-cli
+    repo: bitholla/hex-cli
     dockerfile: docker/Dockerfile
     when:
       branch: [ master ] 
@@ -55,6 +56,15 @@ pipeline:
     secrets: [ slack_webhook ]
     when:
       status: [success, failure]
+      branch: [ master ]
+      event: push
+
+  
+  version_tagging_for_partymaker:
+    image: alpine
+    commands:
+      - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION" > .tags
+    when:
       branch: [ master ]
       event: push
 
