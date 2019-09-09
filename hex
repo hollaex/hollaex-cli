@@ -1935,6 +1935,8 @@ elif [[ "$1" == "toolbox" ]]; then
         echo "*** Please double confirm that you are good to proceed ***"
         
         remove_coin_input;
+
+        remove_coin_exec;
         
     fi
 
