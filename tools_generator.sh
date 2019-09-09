@@ -708,7 +708,8 @@ metadata:
   namespace: ${ENVIRONMENT_EXCHANGE_NAME}
   annotations:
     kubernetes.io/ingress.class: "nginx"
-    certmanager.k8s.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo "certmanager.k8s.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
     nginx.ingress.kubernetes.io/proxy-body-size: "2m"
     nginx.ingress.kubernetes.io/configuration-snippet: |
       limit_req zone=api burst=5 nodelay;
@@ -737,7 +738,8 @@ metadata:
   namespace: ${ENVIRONMENT_EXCHANGE_NAME}
   annotations:
     kubernetes.io/ingress.class: "nginx"
-    certmanager.k8s.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo "certmanager.k8s.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
     nginx.ingress.kubernetes.io/proxy-body-size: "2m"
     nginx.ingress.kubernetes.io/configuration-snippet: |
       limit_req zone=order burst=3 nodelay;
@@ -766,7 +768,8 @@ metadata:
   namespace: ${ENVIRONMENT_EXCHANGE_NAME}
   annotations:
     kubernetes.io/ingress.class: "nginx"
-    certmanager.k8s.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo "certmanager.k8s.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
     nginx.ingress.kubernetes.io/proxy-body-size: "2m"
 spec:
   rules:
@@ -791,7 +794,8 @@ metadata:
   namespace: ${ENVIRONMENT_EXCHANGE_NAME}
   annotations:
     kubernetes.io/ingress.class: "nginx"
-    certmanager.k8s.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo "certmanager.k8s.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
     nginx.ingress.kubernetes.io/proxy-body-size: "2m"
     nginx.org/websocket-services: "${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}-server-ws"
 spec:
@@ -1032,3 +1036,219 @@ function override_docker_image_version() {
 
 }
 
+function add_coin_input() {
+
+  echo "*** What is a full name of your new coin? [Default: Ethereum] ***"
+  read answer
+
+  COIN_FULLNAME=${answer:-Ethereum}
+
+  echo "*** What is a symbol of your new coin? [Default: eth] ***"
+  read answer
+
+  COIN_SYMBOL=${answer:-eth}
+
+  echo "*** Are you going to allow deposit to your new coin? (y/n) [Default: y] ***"
+  read answer
+  
+  if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+      
+    COIN_ALLOW_DEPOSIT=false
+  
+  else
+
+    COIN_ALLOW_DEPOSIT=true
+
+  fi
+
+  echo "*** Are you going to allow withdrawal to your new coin? (y/n) [Default: y] ***"
+  read answer
+  
+  if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+      
+    COIN_ALLOW_WITHDRAWAL=false
+  
+  else
+
+    COIN_ALLOW_WITHDRAWAL=true
+
+  fi
+  
+  echo "*** What is the fee of new coin withdrawal? [Default: 0.001] ***"
+  read answer
+
+  COIN_WITHDRAWAL_FEE=${answer:-0.001}
+
+  echo "*** What is the minimum price of the new coin? [Default: 0.001] ***"
+  read answer
+
+  COIN_MIN=${answer:-0.001}
+
+  echo "*** What is the maximum price of the new coin? [Default: 10000] ***"
+  read answer
+
+  COIN_MAX=${answer:-10000}
+
+  echo "*** What is the increment size of the new coin? [Default: 0.001] ***"
+  read answer
+
+  COIN_INCREMENT_UNIT=${answer:-0.001}
+
+  # Checking user level setup on settings file is set or not
+  if [[ ! "$HEX_CONFIGMAP_USER_LEVEL_NUMBER" ]]; then
+
+    echo "*** Warning: Settings value - HEX_CONFIGMAP_USER_LEVEL_NUMBER is not configured. Please confirm your settings files. ***"
+    exit 1;
+
+  fi
+
+  # Asking deposit limit of new coin per level
+  for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
+
+    do echo "*** What is a deposit limit for user on LEVEL $i? ***" && read answer && export DEPOSIT_LIMITS_LEVEL_$i=$answer
+  
+  done;
+
+  # Asking withdrawal limit of new coin per level
+  for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
+
+    do echo "*** What is a withdrawal limit for user on LEVEL $i? ***" && read answer && export WITHDRAWAL_LIMITS_LEVEL_$i=$answer
+  
+  done;
+
+  echo "*** Are you going to active the new coin you just configured? (y/n) [Default: y] ***"
+  read answer
+  
+  if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+      
+    COIN_ACTIVE=false
+  
+  else
+
+    COIN_ACTIVE=true
+
+  fi
+
+  function print_coin_add_deposit_level(){ 
+
+    for i in $(set -o posix ; set | grep "DEPOSIT_LIMITS");
+
+      do echo -e "$i"
+
+    done;
+
+  }
+
+  function print_coin_add_withdrawal_level(){ 
+
+    for i in $(set -o posix ; set | grep "WITHDRAWAL_LIMITS");
+
+      do echo -e "$i"
+
+    done;
+
+  }
+  
+  echo "*********************************************"
+  echo "Full name: $COIN_FULLNAME"
+  echo "Symbol: $COIN_SYMBOL"
+  echo "Allow deposit: $COIN_ALLOW_DEPOSIT"
+  echo "Allow withdrawal: $COIN_ALLOW_WITHDRAWAL"
+  echo "Minimum price: $COIN_MIN"
+  echo "Maximum price: $COIN_MAX"
+  echo "Increment size: $COIN_INCREMENT_UNIT"
+  echo -e "Deposit limits per level:\n$(print_coin_add_deposit_level;)"
+  echo -e "Withdrawal limits per level:\n$(print_coin_add_withdrawal_level;)"
+  echo "Activation: $COIN_ACTIVE"
+  echo "*********************************************"
+
+  echo "*** Are the values are all correct? (y/n) ***"
+  read answer
+
+  if [[ "$answer" = "${answer#[Yy]}" ]]; then
+      
+    echo "*** You chose false. Please confirm the values and re-run the command. ***"
+    exit 1;
+  
+  fi
+
+}
+
+function add_coin_exec() {
+
+  if [[ "$USE_KUBERNETES" ]]; then
+
+  echo "*** Adding new coin $COIN_SYMBOL on Kubernetes ***"
+  kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- bash -c 'COIN_FULLNAME=$(echo $COIN_FULLNAME); echo "coin fullname: $COIN_FULLNAME"'
+
+  elif [[ ! "$USE_KUBERNETES" ]]; then
+
+      if [[ ! $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE == "all" ]]; then
+
+          IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE}"
+          
+      fi
+
+      COIN_DEPOSIT_LIMITS='{ "1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0 }'
+      COIN_WITHDRAWAL_LIMITS='{ "1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0 }'
+
+      echo "*** Adding new coin $COIN_SYMBOL on local docker ***"
+      docker exec --env "COIN_FULLNAME=${COIN_FULLNAME}" --env "COIN_SYMBOL=${COIN_SYMBOL}" --env "COIN_ALLOW_DEPOSIT=${COIN_ALLOW_DEPOSIT}" --env "COIN_ALLOW_WITHDRAWAL=${COIN_ALLOW_WITHDRAWAL}" --env "COIN_WITHDRAWAL_FEE=${COIN_WITHDRAWAL_FEE}" --env "COIN_MIN=${COIN_MIN}" --env "COIN_MAX=${COIN_MAX}" --env "COIN_INCREMENT_UNIT=${COIN_INCREMENT_UNIT}" --env "COIN_DEPOSIT_LIMITS=${COIN_DEPOSIT_LIMITS}" --env "COIN_WITHDRAWAL_LIMITS=${COIN_WITHDRAWAL_LIMITS}" --env "COIN_ACTIVE=${COIN_ACTIVE}"  ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/addCoin.js
+
+  fi
+
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+
+  if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+      CONFIGMAP_FILE_PATH=$i
+      HEX_CONFIGMAP_CURRENCIES_OVERRIDE="${HEX_CONFIGMAP_CURRENCIES},${COIN_SYMBOL}"
+      sed -i.bak "s/$HEX_CONFIGMAP_CURRENCIES/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+      rm $CONFIGMAP_FILE_PATH.bak
+  fi
+
+  done
+
+}
+
+function remove_coin_input() {
+
+  echo "*** What is a symbol of your want to remove? ***"
+  read answer
+
+  COIN_SYMBOL=$answer
+
+  if [[ -z "$answer" ]]; then
+
+    echo "*** Your value is empty. Please confirm your input and run the command again. ***"
+    exit 1;
+  
+  fi
+  
+  echo "*********************************************"
+  echo "Symbol: $COIN_SYMBOL"
+  echo "*********************************************"
+
+  echo "*** Are the sure you want to remove this coin from your exchange? (y/n) ***"
+  read answer
+
+  if [[ "$answer" = "${answer#[Yy]}" ]]; then
+      
+    echo "*** You chose false. Please confirm the values and run the command again. ***"
+    exit 1;
+  
+  fi
+
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+
+  if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+      CONFIGMAP_FILE_PATH=$i
+      HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_CURRENCIES//,$COIN_SYMBOL}")
+      sed -i.bak "s/$HEX_CONFIGMAP_CURRENCIES/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+      rm $CONFIGMAP_FILE_PATH.bak
+  fi
+
+  done
+
+}

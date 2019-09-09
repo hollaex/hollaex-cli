@@ -1518,6 +1518,30 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "hex-cli will rolling-upgrade API containers only for Kubernetes."
                 shift; continue
                 ;;
+            --add_coin)
+                ADD_COIN=true
+                TOOLBOX_ENABLE=true
+                echo "hex-cli will proceed to add new coin on your existing exchange."
+                shift; continue
+                ;;
+            --add_trading_pair)
+                ADD_TRADING_PAIR=true
+                TOOLBOX_ENABLE=true
+                echo "hex-cli will proceed to add new trading pair on your existing exchange."
+                shift; continue
+                ;;
+            --remove_coin)
+                REMOVE_COIN=true
+                TOOLBOX_ENABLE=true
+                echo "hex-cli will proceed to remove coin on your existing exchange."
+                shift; continue
+                ;;
+            --remove_trading_pair)
+                REMOVE_TRADING_PAIR=true
+                TOOLBOX_ENABLE=true
+                echo "hex-cli will proceed to remove trading pair on your existing exchange."
+                shift; continue
+                ;;
             --no_verify)
                 RUN_WITH_VERIFY=false
                 echo "Running it wihtout verify the config."
@@ -1894,6 +1918,23 @@ elif [[ "$1" == "toolbox" ]]; then
             exit 1;
 
         fi
+
+
+    elif [[ "$ADD_COIN" ]]; then
+
+        echo "*** Warning: Adding new coin requires full restart of the exchange! ***"
+        echo "*** Please double confirm that you are good to proceed ***"
+        
+        add_coin_input;
+
+        add_coin_exec;
+        
+    elif [[ "$REMOVE_COIN" ]]; then
+
+        echo "*** Warning: Removing new coin requires full restart of the exchange! ***"
+        echo "*** Please double confirm that you are good to proceed ***"
+        
+        remove_coin_input;
         
     fi
 
