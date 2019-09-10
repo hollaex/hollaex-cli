@@ -634,16 +634,23 @@ elif [[ "$1" == "launch" ]]; then
 
             generate_local_env;
 
-        fi
-
+        fi  
+        
+        # Generating docker-compose yaml for exchange
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
 
             generate_local_docker_compose $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE;
 
         fi
 
-        generate_nginx_upstream $LOCAL_DEPLOYMENT_MODE;
+        # Generating nginx upstream.conf for exchange
+        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_NGINX_UPSTREAM" == true ]]; then
 
+            generate_nginx_upstream $LOCAL_DEPLOYMENT_MODE;
+        
+        fi
+
+        # Generating nginx configurations for custom plugin
         if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
         
             generate_nginx_config_for_plugin;
@@ -654,6 +661,7 @@ elif [[ "$1" == "launch" ]]; then
 
         fi
 
+        # Actual part of running docker-compose command
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND
         
         # Running database init
@@ -1303,7 +1311,12 @@ elif [[ "$1" == "upgrade" ]]; then
 
         fi
 
-        generate_nginx_upstream $LOCAL_DEPLOYMENT_MODE;
+        # Generating nginx upstream.conf for exchange
+        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_NGINX_UPSTREAM" == true ]]; then
+
+            generate_nginx_upstream $LOCAL_DEPLOYMENT_MODE;
+        
+        fi
 
         if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
 
