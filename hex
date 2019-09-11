@@ -188,7 +188,7 @@ if [[ "$1" == 'dev' ]]; then
         # Running database jobs for local db.
         if [[ ! "$LOCAL_COMMAND" ]] && [[ "$LOCAL_DATABASE_INIT" == true ]]; then
         
-            local_database_init start;
+            local_database_init dev;
 
             exit 0;
 
