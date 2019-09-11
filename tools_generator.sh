@@ -192,29 +192,12 @@ EOL
 }
 
 function generate_nginx_upstream() {
+
+IFS=',' read -ra LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE <<< "$ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE"
+
+for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
   
-if [[ "$LOCAL_DEPLOYMENT_MODE" == "all" ]]; then 
-
-  # Generate local nginx conf
-  cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
-
-  upstream api {
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server:10010;
-  }
-
-  upstream socket {
-    ip_hash;
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server:10080;
-  }
-
-EOL
-
-fi
-
-
-#IFS=',' read -ra LOCAL_DEPLOYMENT_MODE <<< "$1"
-
-if [[ "$LOCAL_DEPLOYMENT_MODE" == "api" ]] && [[ ! "$LOCAL_DEPLOYMENT_MODE" == "ws" ]]; then
+  if [[ "$i" == "api" ]]; then 
 
   # Generate local nginx conf
   cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
@@ -224,45 +207,15 @@ if [[ "$LOCAL_DEPLOYMENT_MODE" == "api" ]] && [[ ! "$LOCAL_DEPLOYMENT_MODE" == "
   }
 
   upstream socket {
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server-api:10080;
-  }
-
-EOL
-
-elif [[ ! "$LOCAL_DEPLOYMENT_MODE" == "api" ]] && [[ "$LOCAL_DEPLOYMENT_MODE" == "ws" ]]; then
-
-  # Generate local nginx conf
-  cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
-
-  upstream api {
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server-ws:10010;
-  }
-  
-  upstream socket {
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server-ws:10080;
-  }
-
-EOL
-
-fi
-
-if [[ "$LOCAL_DEPLOYMENT_MODE" == "api" ]] && [[ "$LOCAL_DEPLOYMENT_MODE" == "ws" ]]; then
-
-# Generate local nginx conf
-cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
-
-  upstream api {
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server-api:10010;
-  }
-
-  upstream socket {
     ip_hash;
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server-ws:10080;
+    server ${ENVIRONMENT_EXCHANGE_NAME}-server-stream:10080;
   }
 
 EOL
 
-fi
+  fi
+
+done
 
 }
 
@@ -487,6 +440,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]]; then
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
 
 EOL
+
 fi
 
 if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then 
@@ -531,90 +485,14 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" == "true" ]]; then
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
 
 EOL
+
 fi 
-
-if [[ "$1" == "all" ]]; then
-
-  # Generate docker-compose
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
-
-  ${ENVIRONMENT_EXCHANGE_NAME}-server:
-    image: $ENVIRONMENT_DOCKER_IMAGE_REGISTRY:$ENVIRONMENT_DOCKER_IMAGE_VERSION
-    env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
-    entrypoint:
-      - pm2-runtime
-      - start
-      - ecosystem.config.js
-      - --env
-      - development
-    depends_on:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-db
-      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
-      - ${ENVIRONMENT_EXCHANGE_NAME}-influxdb
-    networks:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-network
-
-  ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
-    image: nginx:1.15.8-alpine
-    volumes:
-      - ./nginx:/etc/nginx
-      - ./logs/nginx:/var/log
-      - ./nginx/static/:/usr/share/nginx/html
-    ports:
-      - 80:80
-    environment:
-      - NGINX_PORT=80
-    depends_on:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-server
-    networks:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-network
-
-EOL
-
-
-elif [[ "$1" == "all" ]] && [[ ! "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]] && [[ ! "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]] && [[ ! "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" == "true" ]] ; then
-
- # Generate docker-compose
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
-
-  ${ENVIRONMENT_EXCHANGE_NAME}-server:
-    image: $ENVIRONMENT_DOCKER_IMAGE_REGISTRY:$ENVIRONMENT_DOCKER_IMAGE_VERSION
-    env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
-    entrypoint:
-      - pm2-runtime
-      - start
-      - ecosystem.config.js
-      - --env
-      - development
-    networks:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-network
-
-  ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
-    image: nginx:1.15.8-alpine
-    volumes:
-      - ./nginx:/etc/nginx
-      - ./logs/nginx:/var/log
-      - ./nginx/static/:/usr/share/nginx/html
-    ports:
-      - 80:80
-    environment:
-      - NGINX_PORT=80
-    depends_on:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-server
-    networks:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-network
-
-EOL
-
-else
 
 #LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE=$ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE
 
 IFS=',' read -ra LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE <<< "$ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE"
 
-  for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
+for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
 
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
@@ -624,37 +502,43 @@ IFS=',' read -ra LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE <<< "$ENVIRONMENT_DO
     env_file:
       - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
     entrypoint:
-      - pm2-runtime
-      - start
-      - ecosystem.config.js
-      - --env
-      - development
-      - --only
-      - ${i}
+      - /app/${i}-binary
+    $(if [[ "${i}" == "api" ]] || [[ "${i}" == "stream" ]]; then echo "ports:"; fi)
+      $(if [[ "${i}" == "api" ]]; then echo "- 10010:10010"; fi) 
+      $(if [[ "${i}" == "stream" ]]; then echo "- 10080:10080"; fi)
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+    $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" ]] || [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" ]] || [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" ]]; then echo "depends_on:"; fi)
+      $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-influxdb"; fi)
+      $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-redis"; fi)
+      $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-db"; fi)
+
 EOL
 
   if [[ "$i" == "api" ]]; then
+  # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
-    ports:
-      - 10010:10010
-EOL
 
-  elif [[ "$i" == "ws" ]]; then
-
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+  ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
+    image: nginx:1.15.8-alpine
+    volumes:
+      - ./nginx:/etc/nginx
+      - ./logs/nginx:/var/log
+      - ./nginx/static/:/usr/share/nginx/html
     ports:
-      - 10080:10080
+      - 80:80
+    environment:
+      - NGINX_PORT=80
+    depends_on:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-server-${i}
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+      
 EOL
 
   fi
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
-    networks:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-network
-EOL
 
 done
-
-fi
 
 # Generate docker-compose
 cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
@@ -1233,7 +1117,8 @@ function add_coin_exec() {
   if [[ "$USE_KUBERNETES" ]]; then
 
   echo "*** Adding new coin $COIN_SYMBOL on Kubernetes ***"
-  kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- bash -c 'COIN_FULLNAME=$(echo $COIN_FULLNAME); echo "coin fullname: $COIN_FULLNAME"'
+  helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL --namespace $ENVIRONMENT_EXCHANGE_NAME --set job.enable="true" --set job.mode="add_coin" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set job.env.coin_fullname="$COIN_FULLNAME" --set job.env.coin_symbol="$COIN_SYMBOL" --set job.env.coin_allow_deposit="$COIN_ALLOW_DEPOSIT" --set job.env.coin_allow_withdrawal="$COIN_WITHDRAWAL_FEE" --set job.env.coin_min="$COIN_MIN" --set job.env.coin_max="$COIN_MAX" --set job.env.coin_increment_unit="$COIN_INCREMENT_UNIT"  --set job.env.coin_deposit_limits="$COIN_DEPOSIT_LIMITS" --set job.env.coin_withdrawal_limits="$COIN_WITHDRAWAL_LIMITS" --set job.env.coin_active="$COIN_ACTIVE" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
+  #helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL --namespace $ENVIRONMENT_EXCHANGE_NAME --set job.enable="true" --set job.mode="add_coin"  $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
 
   elif [[ ! "$USE_KUBERNETES" ]]; then
 
@@ -1246,11 +1131,12 @@ function add_coin_exec() {
       echo "*** Adding new coin $COIN_SYMBOL on local docker ***"
       docker exec --env "COIN_FULLNAME=${COIN_FULLNAME}" --env "COIN_SYMBOL=${COIN_SYMBOL}" --env "COIN_ALLOW_DEPOSIT=${COIN_ALLOW_DEPOSIT}" --env "COIN_ALLOW_WITHDRAWAL=${COIN_ALLOW_WITHDRAWAL}" --env "COIN_WITHDRAWAL_FEE=${COIN_WITHDRAWAL_FEE}" --env "COIN_MIN=${COIN_MIN}" --env "COIN_MAX=${COIN_MAX}" --env "COIN_INCREMENT_UNIT=${COIN_INCREMENT_UNIT}" --env "COIN_DEPOSIT_LIMITS=${COIN_DEPOSIT_LIMITS}" --env "COIN_WITHDRAWAL_LIMITS=${COIN_WITHDRAWAL_LIMITS}" --env "COIN_ACTIVE=${COIN_ACTIVE}"  ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/addCoin.js
 
-  fi
 
-  # Restarting containers after database init jobs.
-  echo "Restarting containers to apply database changes."
-  docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+      # Restarting containers after database init jobs.
+      echo "Restarting containers to apply database changes."
+      docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+  fi
 
 
   for i in ${CONFIG_FILE_PATH[@]}; do
