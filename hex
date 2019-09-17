@@ -1950,6 +1950,24 @@ elif [[ "$1" == "toolbox" ]]; then
         remove_coin_input;
 
         remove_coin_exec;
+    
+    elif [[ "$ADD_TRADING_PAIR" ]]; then
+
+        echo "*** Warning: Adding new pair requires full restart of the exchange! ***"
+        echo "*** Please double confirm that you are good to proceed ***"
+        
+        add_pair_input;
+
+        add_pair_exec;
+
+    elif [[ "$REMOVE_TRADING_PAIR" ]]; then
+
+        echo "*** Warning: Removing new pair requires full restart of the exchange! ***"
+        echo "*** Please double confirm that you are good to proceed ***"
+        
+        remove_pair_input;
+
+        remove_pair_exec;
         
     fi
 
