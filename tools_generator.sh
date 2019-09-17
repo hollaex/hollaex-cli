@@ -922,15 +922,15 @@ function override_docker_image_version() {
 
 function add_coin_input() {
 
-  echo "*** What is a full name of your new coin? [Default: Ethereum] ***"
-  read answer
-
-  COIN_FULLNAME=${answer:-Ethereum}
-
   echo "*** What is a symbol of your new coin? [Default: eth] ***"
   read answer
 
   COIN_SYMBOL=${answer:-eth}
+
+  echo "*** What is a full name of your new coin? [Default: Ethereum] ***"
+  read answer
+
+  COIN_FULLNAME=${answer:-Ethereum}
 
   echo "*** Are you going to allow deposit to your new coin? (y/n) [Default: y] ***"
   read answer
@@ -1040,8 +1040,8 @@ function add_coin_input() {
   }
   
   echo "*********************************************"
-  echo "Full name: $COIN_FULLNAME"
   echo "Symbol: $COIN_SYMBOL"
+  echo "Full name: $COIN_FULLNAME"
   echo "Allow deposit: $COIN_ALLOW_DEPOSIT"
   echo "Allow withdrawal: $COIN_ALLOW_WITHDRAWAL"
   echo "Minimum price: $COIN_MIN"
