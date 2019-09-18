@@ -1055,26 +1055,26 @@ function join_array_to_json(){
 
 function add_coin_input() {
 
-  echo "*** What is a full name of your new coin? [Default: Ethereum] ***"
-  read answer
-
-  COIN_FULLNAME=${answer:-Ethereum}
-
   echo "*** What is a symbol of your new coin? [Default: eth] ***"
   read answer
 
   COIN_SYMBOL=${answer:-eth}
+
+  echo "*** What is a full name of your new coin? [Default: Ethereum] ***"
+  read answer
+
+  COIN_FULLNAME=${answer:-Ethereum}
 
   echo "*** Are you going to allow deposit to your new coin? (y/n) [Default: y] ***"
   read answer
   
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
       
-    COIN_ALLOW_DEPOSIT=false
+    COIN_ALLOW_DEPOSIT='false'
   
   else
 
-    COIN_ALLOW_DEPOSIT=true
+    COIN_ALLOW_DEPOSIT='true'
 
   fi
 
@@ -1083,11 +1083,11 @@ function add_coin_input() {
   
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
       
-    COIN_ALLOW_WITHDRAWAL=false
+    COIN_ALLOW_WITHDRAWAL='false'
   
   else
 
-    COIN_ALLOW_WITHDRAWAL=true
+    COIN_ALLOW_WITHDRAWAL='true'
 
   fi
   
@@ -1162,11 +1162,11 @@ function add_coin_input() {
   
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
       
-    COIN_ACTIVE=false
+    COIN_ACTIVE='false'
   
   else
 
-    COIN_ACTIVE=true
+    COIN_ACTIVE='true'
 
   fi
 
@@ -1191,8 +1191,8 @@ function add_coin_input() {
   }
   
   echo "*********************************************"
-  echo "Full name: $COIN_FULLNAME"
   echo "Symbol: $COIN_SYMBOL"
+  echo "Full name: $COIN_FULLNAME"
   echo "Allow deposit: $COIN_ALLOW_DEPOSIT"
   echo "Allow withdrawal: $COIN_ALLOW_WITHDRAWAL"
   echo "Minimum price: $COIN_MIN"
@@ -1214,13 +1214,84 @@ function add_coin_input() {
   fi
 }
 
+
 function add_coin_exec() {
 
   if [[ "$USE_KUBERNETES" ]]; then
 
-  echo "*** Adding new coin $COIN_SYMBOL on Kubernetes ***"
-  helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL --namespace $ENVIRONMENT_EXCHANGE_NAME --set job.enable="true" --set job.mode="add_coin" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set job.env.coin_fullname="$COIN_FULLNAME" --set job.env.coin_symbol="$COIN_SYMBOL" --set job.env.coin_allow_deposit="$COIN_ALLOW_DEPOSIT" --set job.env.coin_allow_withdrawal="$COIN_WITHDRAWAL_FEE" --set job.env.coin_min="$COIN_MIN" --set job.env.coin_max="$COIN_MAX" --set job.env.coin_increment_unit="$COIN_INCREMENT_UNIT"  --set job.env.coin_deposit_limits="$COIN_DEPOSIT_LIMITS" --set job.env.coin_withdrawal_limits="$COIN_WITHDRAWAL_LIMITS" --set job.env.coin_active="$COIN_ACTIVE" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
-  #helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL --namespace $ENVIRONMENT_EXCHANGE_NAME --set job.enable="true" --set job.mode="add_coin"  $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
+
+    function generate_kubernetes_add_coin_values() {
+
+    # Generate Kubernetes Configmap
+    cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/add-coin.yaml <<EOL
+job:
+  enable: true
+  mode: add_coin
+  env:
+    coin_symbol: ${COIN_SYMBOL}
+    coin_fullname: ${COIN_FULLNAME}
+    coin_allow_deposit: ${COIN_ALLOW_DEPOSIT}
+    coin_allow_withdrawal: ${COIN_ALLOW_WITHDRAWAL}
+    coin_withdrawal_fee: ${COIN_WITHDRAWAL_FEE}
+    coin_min: ${COIN_MIN}
+    coin_max: ${COIN_MAX}
+    coin_increment_unit: ${COIN_INCREMENT_UNIT}
+    coin_deposit_limits: '${COIN_DEPOSIT_LIMITS}'
+    coin_withdrawal_limits: '${COIN_WITHDRAWAL_LIMITS}'
+    coin_active: ${COIN_ACTIVE}
+EOL
+
+    }
+
+    generate_kubernetes_add_coin_values;
+
+    echo "*** Adding new coin $COIN_SYMBOL on Kubernetes ***"
+    
+    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL --namespace $ENVIRONMENT_EXCHANGE_NAME --set job.enable="true" --set job.mode="add_coin" --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/add-coin.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server; then
+
+      echo "*** Kubernetes Job has been created for adding new coin $COIN_SYMBOL. ***"
+
+      echo "*** Waiting until Job get completely run ***"
+      sleep 30;
+
+    else 
+
+      echo "*** Failed to create Kubernetes Job for adding new coin $COIN_SYMBOL, Please confirm your input values and try again. ***"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
+
+    fi
+
+    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+
+      echo "*** Coin $COIN_SYMBOL has been successfully added on your exchange! ***"
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
+      
+      echo "*** Upgrading exchange with latest settings... ***"
+      hex upgrade --kube --no_verify
+
+      echo "*** Removing created Kubernetes Job for adding new coin... ***"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
+
+      echo "*** Updating settings file to add new $COIN_SYMBOL. ***"
+      for i in ${CONFIG_FILE_PATH[@]}; do
+
+      if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+          CONFIGMAP_FILE_PATH=$i
+          HEX_CONFIGMAP_CURRENCIES_OVERRIDE="${HEX_CONFIGMAP_CURRENCIES},${COIN_SYMBOL}"
+          sed -i.bak "s/$HEX_CONFIGMAP_CURRENCIES/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+          rm $CONFIGMAP_FILE_PATH.bak
+      fi
+
+      done
+
+    else
+
+      echo "*** Failed to add new coin $COIN_SYMBOL! Please try again.***"
+      
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
+      
+    fi
 
   elif [[ ! "$USE_KUBERNETES" ]]; then
 
@@ -1302,7 +1373,70 @@ function remove_coin_exec() {
   if [[ "$USE_KUBERNETES" ]]; then
 
   echo "*** Removing existing coin $COIN_SYMBOL on Kubernetes ***"
-  kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- bash -c 'COIN_FULLNAME=$(echo $COIN_FULLNAME); echo "coin fullname: $COIN_FULLNAME"'
+    
+    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL \
+                --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                --set job.enable="true" \
+                --set job.mode="remove_coin" \
+                --set job.env.coin_symbol="$COIN_SYMBOL" \
+                --set DEPLOYMENT_MODE="api" \
+                --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" \
+                --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" \
+                --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml \
+                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml \
+                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server; then
+
+      echo "*** Kubernetes Job has been created for removing existing coin $COIN_SYMBOL. ***"
+
+      echo "*** Waiting until Job get completely run ***"
+      sleep 30;
+
+    else 
+
+      echo "*** Failed to create Kubernetes Job for removing existing coin $COIN_SYMBOL, Please confirm your input values and try again. ***"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
+
+    fi
+
+    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL \
+            --namespace $ENVIRONMENT_EXCHANGE_NAME \
+            -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+
+      echo "*** Coin $COIN_SYMBOL has been successfully removed on your exchange! ***"
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
+      
+      echo "*** Restarting containers... ***"
+      kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+
+      echo "*** Removing created Kubernetes Job for removing existing coin... ***"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
+
+      echo "*** Updating settings file to remove $COIN_SYMBOL. ***"
+      for i in ${CONFIG_FILE_PATH[@]}; do
+
+      if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+          CONFIGMAP_FILE_PATH=$i
+          if [[ "$COIN_SYMBOL" == "hex" ]]; then
+            HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_CURRENCIES//$COIN_SYMBOL,}")
+          else
+            HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_CURRENCIES//,$COIN_SYMBOL}")
+          fi
+          sed -i.bak "s/$HEX_CONFIGMAP_CURRENCIES/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+          rm $CONFIGMAP_FILE_PATH.bak
+      fi
+
+      done
+
+    else
+
+      echo "*** Failed to remove existing coin $COIN_SYMBOL! Please try again.***"
+      
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
+      
+    fi
 
   elif [[ ! "$USE_KUBERNETES" ]]; then
 
@@ -1319,12 +1453,16 @@ function remove_coin_exec() {
       echo "Restarting containers to apply database changes."
       docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
 
-      echo "*** Updating settings file to add new $COIN_SYMBOL. ***"
+      echo "*** Updating settings file to remove $COIN_SYMBOL. ***"
       for i in ${CONFIG_FILE_PATH[@]}; do
 
       if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
           CONFIGMAP_FILE_PATH=$i
-          HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_CURRENCIES//,$COIN_SYMBOL}")
+          if [[ "$COIN_SYMBOL" == "hex" ]]; then
+            HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_CURRENCIES//$COIN_SYMBOL,}")
+          else
+            HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_CURRENCIES//,$COIN_SYMBOL}")
+          fi
           sed -i.bak "s/$HEX_CONFIGMAP_CURRENCIES/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
           rm $CONFIGMAP_FILE_PATH.bak
       fi
@@ -1492,9 +1630,101 @@ function add_pair_exec() {
 
   if [[ "$USE_KUBERNETES" ]]; then
 
-  echo "*** Adding new pair $PAIR_NAME on Kubernetes ***"
-  helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME --namespace $ENVIRONMENT_EXCHANGE_NAME --set job.enable="true" --set job.mode="add_coin" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set job.env.coin_fullname="$COIN_FULLNAME" --set job.env.coin_symbol="$COIN_SYMBOL" --set job.env.coin_allow_deposit="$COIN_ALLOW_DEPOSIT" --set job.env.coin_allow_withdrawal="$COIN_WITHDRAWAL_FEE" --set job.env.coin_min="$COIN_MIN" --set job.env.coin_max="$COIN_MAX" --set job.env.coin_increment_unit="$COIN_INCREMENT_UNIT"  --set job.env.coin_deposit_limits="$COIN_DEPOSIT_LIMITS" --set job.env.coin_withdrawal_limits="$COIN_WITHDRAWAL_LIMITS" --set job.env.coin_active="$COIN_ACTIVE" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
-  #helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL --namespace $ENVIRONMENT_EXCHANGE_NAME --set job.enable="true" --set job.mode="add_coin"  $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
+    function generate_kubernetes_add_pair_values() {
+
+    # Generate Kubernetes Configmap
+    cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/add-pair.yaml <<EOL
+job:
+  enable: true
+  mode: add_pair
+  env:
+    pair_name: ${PAIR_NAME}
+    pair_base: ${PAIR_BASE}
+    pair_2: ${PAIR_2}
+    taker_fees: '${TAKER_FEES}'
+    maker_fees: '${MAKER_FEES}'
+    min_size: ${MIN_SIZE}
+    max_size: ${MAX_SIZE}
+    min_price: ${MIN_PRICE}
+    max_price: ${MAX_PRICE}
+    increment_size: ${INCREMENT_SIZE}
+    increment_price: ${INCREMENT_PRICE}
+    pair_active: ${PAIR_ACTIVE}
+EOL
+
+      }
+
+    generate_kubernetes_add_pair_values;
+
+    echo "*** Adding new pair $PAIR_NAME on Kubernetes ***"
+    
+    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME \
+                --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                --set job.enable="true" \
+                --set job.mode="add_pair" \
+                --set DEPLOYMENT_MODE="api" \
+                --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" \
+                --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" \
+                --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml \
+                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/add-pair.yaml \
+                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server; then
+
+      echo "*** Kubernetes Job has been created for adding new pair $PAIR_NAME. ***"
+
+      echo "*** Waiting until Job get completely run ***"
+      sleep 30;
+
+    else 
+
+      echo "*** Failed to create Kubernetes Job for adding new pair $PAIR_NAME, Please confirm your input values and try again. ***"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
+
+    fi
+
+    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME \
+            --namespace $ENVIRONMENT_EXCHANGE_NAME \
+            -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+
+      echo "*** Pair $PAIR_NAME has been successfully added on your exchange! ***"
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
+
+      echo "*** Updating settings file to add new $PAIR_NAME. ***"
+      for i in ${CONFIG_FILE_PATH[@]}; do
+
+      if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+          CONFIGMAP_FILE_PATH=$i
+          HEX_CONFIGMAP_PAIRS_OVERRIDE="${HEX_CONFIGMAP_PAIRS},${PAIR_NAME}"
+          sed -i.bak "s/$HEX_CONFIGMAP_PAIRS/$HEX_CONFIGMAP_PAIRS_OVERRIDE/" $CONFIGMAP_FILE_PATH
+          rm $CONFIGMAP_FILE_PATH.bak
+      fi
+
+      done
+
+      # Reading variable again
+      for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+      done;
+      
+      source $SCRIPTPATH/tools_generator.sh
+      load_config_variables;
+      
+      echo "*** Upgrading exchange with latest settings... ***"
+      hex upgrade --kube --no_verify
+
+      echo "*** Removing created Kubernetes Job for adding new coin... ***"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
+
+    else
+
+      echo "*** Failed to add new pair $PAIR_NAME! Please try again.***"
+      
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
+      
+    fi
 
   elif [[ ! "$USE_KUBERNETES" ]]; then
 
@@ -1511,7 +1741,7 @@ function add_pair_exec() {
         echo "Restarting containers to apply database changes."
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
 
-        echo "*** Updating settings file to add new $COIN_SYMBOL. ***"
+        echo "*** Updating settings file to add new $PAIR_NAME. ***"
         for i in ${CONFIG_FILE_PATH[@]}; do
 
         if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
@@ -1568,8 +1798,77 @@ function remove_pair_exec() {
 
   if [[ "$USE_KUBERNETES" ]]; then
 
-  echo "*** Removing existing pair $COIN_SYMBOL on Kubernetes ***"
-  kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- bash -c 'COIN_FULLNAME=$(echo $COIN_FULLNAME); echo "coin fullname: $COIN_FULLNAME"'
+    echo "*** Removing existing pair $PAIR_NAME on Kubernetes ***"
+      
+    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME \
+                --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                --set job.enable="true" \
+                --set job.mode="remove_pair" \
+                --set job.env.pair_name="$PAIR_NAME" \
+                --set DEPLOYMENT_MODE="api" \
+                --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" \
+                --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" \
+                --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml \
+                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml \
+                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server; then
+
+      echo "*** Kubernetes Job has been created for removing existing pair $PAIR_NAME. ***"
+
+      echo "*** Waiting until Job get completely run ***"
+      sleep 30;
+
+    else 
+
+      echo "*** Failed to create Kubernetes Job for removing existing pair $PAIR_NAME, Please confirm your input values and try again. ***"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
+
+    fi
+
+    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME \
+            --namespace $ENVIRONMENT_EXCHANGE_NAME \
+            -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+
+      echo "*** Pair $PAIR_NAME has been successfully removed on your exchange! ***"
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
+
+      echo "*** Removing existing $PAIR_NAME container from Kubernetes ***"
+      PAIR_BASE=$(echo $PAIR_NAME | cut -f1 -d '-')
+      PAIR_2=$(echo $PAIR_NAME | cut -f2 -d '-')
+
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-queue-$PAIR_BASE$PAIR_2
+
+      echo "*** Restarting containers... ***"
+      kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+
+      echo "*** Removing created Kubernetes Job for removing existing pair... ***"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
+
+      echo "*** Updating settings file to add new $PAIR_NAME. ***"
+      for i in ${CONFIG_FILE_PATH[@]}; do
+
+      if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+          CONFIGMAP_FILE_PATH=$i
+          if [[ "$PAIR_NAME" == "hex-usdt" ]]; then
+              HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_PAIRS//$PAIR_NAME,}")
+            else
+              HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_PAIRS//,$PAIR_NAME}")
+          fi
+          sed -i.bak "s/$HEX_CONFIGMAP_PAIRS/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+          rm $CONFIGMAP_FILE_PATH.bak
+      fi
+
+      done
+
+    else
+
+      echo "*** Failed to remove existing pair $PAIR_NAME! Please try again.***"
+      
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
+      
+    fi
 
   elif [[ ! "$USE_KUBERNETES" ]]; then
 
@@ -1582,21 +1881,25 @@ function remove_pair_exec() {
       echo "*** Removing new pair $PAIR_NAME on local exchange ***"
       if command docker exec --env "PAIR_NAME=${PAIR_NAME}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/removePair.js; then
 
-      # Restarting containers after database init jobs.
-      echo "Restarting containers to apply database changes."
-      docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+        # Restarting containers after database init jobs.
+        echo "Restarting containers to apply database changes."
+        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
 
-      echo "*** Updating settings file to add new $COIN_SYMBOL. ***"
-      for i in ${CONFIG_FILE_PATH[@]}; do
+        echo "*** Updating settings file to add new $PAIR_NAME. ***"
+        for i in ${CONFIG_FILE_PATH[@]}; do
 
-      if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
-          CONFIGMAP_FILE_PATH=$i
-          HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_PAIRS//,$PAIR_NAME}")
-          sed -i.bak "s/$HEX_CONFIGMAP_PAIRS/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
-          rm $CONFIGMAP_FILE_PATH.bak
-      fi
+        if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+            CONFIGMAP_FILE_PATH=$i
+            if [[ "$PAIR_NAME" == "hex-usdt" ]]; then
+              HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_PAIRS//$PAIR_NAME,}")
+            else
+              HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_PAIRS//,$PAIR_NAME}")
+            fi
+            sed -i.bak "s/$HEX_CONFIGMAP_PAIRS/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+            rm $CONFIGMAP_FILE_PATH.bak
+        fi
 
-      done
+        done
 
       else
 

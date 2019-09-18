@@ -39,7 +39,9 @@ job:
         #add_pair
         #remove_pair
   env:
-    coin_fullname:
+    coin_symbol:
+    pair_name:
+  
     
   
 

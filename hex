@@ -1196,14 +1196,14 @@ elif [[ "$1" == "upgrade" ]]; then
 
         if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]]; then
 
-            echo "Generating Kubernetes Configmap"
+            echo "Generating Kubernetes Secret"
             generate_kubernetes_secret;
 
         fi
 
         if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
 
-            echo "Generating Kubernetes Configmap"
+            echo "Generating Kubernetes Ingress"
             generate_kubernetes_ingress;
 
         fi
