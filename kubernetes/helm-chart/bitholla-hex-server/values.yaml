@@ -9,7 +9,9 @@ imagePullSecrets:
 
 envName: hollaex-testnet-env
 secretName: hollaex-testnet-secret
-DEPLOYMENT_MODE: all
+
+DEPLOYMENT_MODE: api
+PAIR:
 
 stable:
   replicaCount: 1

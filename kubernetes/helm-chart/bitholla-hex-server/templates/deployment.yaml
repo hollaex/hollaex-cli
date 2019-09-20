@@ -41,6 +41,24 @@ spec:
       - name: {{.Release.Name}}
         image: {{.Values.imageRegistry}}:{{.Values.dockerTag}}
         imagePullPolicy: Always
+
+{{- if eq .Values.DEPLOYMENT_MODE "api" }}
+
+        command: ["/bin/bash"]
+        args: ["-c", "/app/api-binary"]
+
+{{- else if eq .Values.DEPLOYMENT_MODE "stream" }}
+
+        command: ["/bin/bash"]
+        args: ["-c", "/app/stream-binary"]
+
+{{- else if eq .Values.DEPLOYMENT_MODE "engine" }}
+
+        command: ["/bin/bash"]
+        args: ["-c", "/app/engine-binary"]
+
+{{- end }}
+
         ports:
         - name: websocket-port
           containerPort: 10080
@@ -53,12 +71,10 @@ spec:
           - secretRef:
               name: {{.Values.secretName}}
         env:
-          - name: DEPLOYMENT_MODE
-            value: {{.Values.DEPLOYMENT_MODE}}
+          - name: PAIR
+            value: {{.Values.PAIR}}
           - name: ELASTIC_APM_SERVICE_NAME
             value: {{.Release.Name}}
-          # - name: ELASTIC_APM_SERVER_URL
-          #   value: {{.Values.APM_URL}}
         
         resources:
           limits:
