@@ -1511,6 +1511,11 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "hex-cli will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
+            --dev)
+                IS_DEVELOP=true
+                echo "hex-cli is configured as dev mode for development purpose."
+                shift; continue
+                ;;
             --upgrade_backends)
                 UPGRADE_BACKENDS=true
                 TOOLBOX_ENABLE=true
@@ -1588,6 +1593,28 @@ elif [[ "$1" == "toolbox" ]]; then
         TEMPLATE_GENERATE_PATH=$HEX_CLI_INIT_PATH/templates
         INIT_PATH_CHECK=$HEX_CLI_INIT_PATH/.hex
         
+    fi
+
+    # PATH overriding for develop    
+    if [[ "$IS_DEVELOP" ]]; then
+
+        if [[ "$HEX_CODEBASE_PATH" ]]; then
+
+            CONFIG_FILE_PATH=$HEX_CODEBASE_PATH/tools/hex-cli-settings/*
+            TEMPLATE_GENERATE_PATH=$HEX_CODEBASE_PATH/tools/hex-cli-templates
+            INIT_PATH_CHECK=$HEX_CODEBASE_PATH/.hex
+            DOCKER_COMPOSE_NAME_PREFIX=$(basename "$HEX_CODEBASE_PATH")
+
+        elif [[ ! "$HEX_CODEBASE_PATH" ]]; then
+
+            CONFIG_FILE_PATH=$(pwd)/tools/hex-cli-settings/*
+            TEMPLATE_GENERATE_PATH=$(pwd)/tools/hex-cli-templates
+            INIT_PATH_CHECK=$(pwd)/.hex
+            HEX_CODEBASE_PATH=$(pwd)
+            DOCKER_COMPOSE_NAME_PREFIX=$(basename "$HEX_CODEBASE_PATH")
+
+        fi
+
     fi
     
     #Quit if necessary flags are missing

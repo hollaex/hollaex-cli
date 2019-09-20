@@ -1301,6 +1301,13 @@ EOL
           
       fi
 
+      # Overriding container prefix for develop server
+      if [[ "$IS_DEVELOP" ]]; then
+        
+        CONTAINER_PREFIX=
+
+      fi
+
       echo "*** Adding new coin $COIN_SYMBOL on local exchange ***"
       if command docker exec --env "COIN_FULLNAME=${COIN_FULLNAME}" \
                   --env "COIN_SYMBOL=${COIN_SYMBOL}" \
@@ -1319,9 +1326,19 @@ EOL
         echo "*** Running database triggers ***"
         docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js
 
+        if  [[ "$IS_DEVELOP" ]]; then
+
         # Restarting containers after database init jobs.
-        echo "*** Restarting containers to apply database changes. ***"
-        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+        echo "Restarting containers to apply database changes."
+        docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        else
+
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        fi
 
         echo "*** Updating settings file to add new $COIN_SYMBOL. ***"
         for i in ${CONFIG_FILE_PATH[@]}; do
@@ -1458,12 +1475,32 @@ function remove_coin_exec() {
           
       fi
 
-      echo "*** Removing new coin $COIN_SYMBOL on local docker ***"
-      if command docker exec --env "COIN_SYMBOL=${COIN_SYMBOL}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/removeCoin.js; then
+      # Overriding container prefix for develop server
+      if [[ "$IS_DEVELOP" ]]; then
+        
+        CONTAINER_PREFIX=
 
-      # Restarting containers after database init jobs.
-      echo "Restarting containers to apply database changes."
-      docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+      fi
+
+      echo "*** Removing new coin $COIN_SYMBOL on local docker ***"
+      if command docker exec --env "COIN_SYMBOL=${COIN_SYMBOL}" \
+                  ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
+                  node tools/dbs/removeCoin.js; then
+
+
+      if  [[ "$IS_DEVELOP" ]]; then
+
+        # Restarting containers after database init jobs.
+        echo "Restarting containers to apply database changes."
+        docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+      else
+
+        # Restarting containers after database init jobs.
+        echo "Restarting containers to apply database changes."
+        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+      fi
 
       echo "*** Updating settings file to remove $COIN_SYMBOL. ***"
       for i in ${CONFIG_FILE_PATH[@]}; do
@@ -1746,12 +1783,42 @@ EOL
           
       fi
 
-      echo "*** Adding new pair $PAIR_NAME on local exchange ***"
-      if command docker exec --env "PAIR_NAME=${PAIR_NAME}" --env "PAIR_BASE=${PAIR_BASE}" --env "PAIR_2=${PAIR_2}" --env "TAKER_FEES=${TAKER_FEES}" --env "MAKER_FEES=${MAKER_FEES}" --env "MIN_SIZE=${MIN_SIZE}" --env "MAX_SIZE=${MAX_SIZE}" --env "MIN_PRICE=${MIN_PRICE}" --env "MAX_PRICE=${MAX_PRICE}" --env "INCREMENT_SIZE=${INCREMENT_SIZE}" --env "INCREMENT_PRICE=${INCREMENT_PRICE}"  --env "PAIR_ACTIVE=${PAIR_ACTIVE}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/addPair.js; then
+      # Overriding container prefix for develop server
+      if [[ "$IS_DEVELOP" ]]; then
+        
+        CONTAINER_PREFIX=
 
-         # Restarting containers after database init jobs.
+      fi
+
+      echo "*** Adding new pair $PAIR_NAME on local exchange ***"
+      if command docker exec --env "PAIR_NAME=${PAIR_NAME}" \
+                  --env "PAIR_BASE=${PAIR_BASE}" \
+                  --env "PAIR_2=${PAIR_2}" \
+                  --env "TAKER_FEES=${TAKER_FEES}" \
+                  --env "MAKER_FEES=${MAKER_FEES}" \
+                  --env "MIN_SIZE=${MIN_SIZE}" \
+                  --env "MAX_SIZE=${MAX_SIZE}" \
+                  --env "MIN_PRICE=${MIN_PRICE}" \
+                  --env "MAX_PRICE=${MAX_PRICE}" \
+                  --env "INCREMENT_SIZE=${INCREMENT_SIZE}" \
+                  --env "INCREMENT_PRICE=${INCREMENT_PRICE}"  \
+                  --env "PAIR_ACTIVE=${PAIR_ACTIVE}" \
+                  ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
+                  node tools/dbs/addPair.js; then
+
+        if  [[ "$IS_DEVELOP" ]]; then
+
+        # Restarting containers after database init jobs.
         echo "Restarting containers to apply database changes."
-        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+        docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        else
+
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        fi
 
         echo "*** Updating settings file to add new $PAIR_NAME. ***"
         for i in ${CONFIG_FILE_PATH[@]}; do
@@ -1890,12 +1957,29 @@ function remove_pair_exec() {
           
       fi
 
+      # Overriding container prefix for develop server
+      if [[ "$IS_DEVELOP" ]]; then
+        
+        CONTAINER_PREFIX=
+
+      fi
+
       echo "*** Removing new pair $PAIR_NAME on local exchange ***"
       if command docker exec --env "PAIR_NAME=${PAIR_NAME}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/removePair.js; then
 
+        if  [[ "$IS_DEVELOP" ]]; then
+
         # Restarting containers after database init jobs.
         echo "Restarting containers to apply database changes."
-        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+        docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        else
+
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        fi
 
         echo "*** Updating settings file to add new $PAIR_NAME. ***"
         for i in ${CONFIG_FILE_PATH[@]}; do
