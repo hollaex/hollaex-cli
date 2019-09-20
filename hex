@@ -59,6 +59,10 @@ Options:
         --backup_postgresql, Run the full backup with pg_dumpall for the exchange PostgreSQL database.
         --flush_redis, Run the full flush of Redis stored data. It could be helpful in certain situation If the exchange doesnt work properly.
         --upgrade_api_only, Do zero-downtime rolling upgrade for API contianers on Kubernetes.
+        --add_coin, Add new currency on exchange.
+        --remove_coin, Remove exisiting currency from exhcnage.
+        --add_trading_pair, Add new trading pair on ehchange.
+        --remove_trading_pair, Remove existing trading pair from exchange.
 
     version : Print out current installed version of hex-cli.
 
