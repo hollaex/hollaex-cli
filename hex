@@ -370,6 +370,42 @@ elif [[ "$1" == "launch" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
+    # Check Activation code is available
+    if [[ ! "$HEX_SECRET_ACTIVATION_CODE" ]]; then
+
+        echo "*** hex-cli failed to detect your activation code for the exchange. ***"
+        echo "*** Reading it manually... ***"
+        echo "What is your activation code?"
+        read activation_code
+
+        echo "*** Your activation code is : $activation_code"
+        echo "*** Is the value correct? (y/n) ***"
+        read answer
+
+        if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                echo "*** Exiting... ***"
+                exit 0;
+        fi
+
+        for i in ${CONFIG_FILE_PATH[@]}; do
+
+            if command grep -q "HEX_SECRET_ACTIVATION_CODE" $i > /dev/null ; then
+            SECRET_FILE_PATH=$i
+            sed -i.bak "s/HEX_SECRET_ACTIVATION_CODE=$HEX_SECRET_ACTIVATION_CODE/HEX_SECRET_ACTIVATION_CODE=$activation_code/" $SECRET_FILE_PATH
+            rm $SECRET_FILE_PATH.bak
+            fi
+            
+        done
+
+        for i in ${CONFIG_FILE_PATH[@]}; do
+            source $i
+        done;
+        
+        source $SCRIPTPATH/tools_generator.sh
+        load_config_variables;
+        
+    fi
+
 
     if [[ "$USE_KUBERNETES" ]]; then
 
