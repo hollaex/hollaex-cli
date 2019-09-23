@@ -29,5 +29,19 @@ autoScaling:
 
 APM_URL:
 
-
 podRestart_webhook_url:
+
+
+job:
+  enable: false
+  mode: #add_coin
+        #remove_coin
+        #add_pair
+        #remove_pair
+  env:
+    coin_symbol:
+    pair_name:
+  
+    
+  
+

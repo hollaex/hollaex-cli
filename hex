@@ -59,6 +59,10 @@ Options:
         --backup_postgresql, Run the full backup with pg_dumpall for the exchange PostgreSQL database.
         --flush_redis, Run the full flush of Redis stored data. It could be helpful in certain situation If the exchange doesnt work properly.
         --upgrade_api_only, Do zero-downtime rolling upgrade for API contianers on Kubernetes.
+        --add_coin, Add new currency on exchange.
+        --remove_coin, Remove exisiting currency from exhcnage.
+        --add_trading_pair, Add new trading pair on ehchange.
+        --remove_trading_pair, Remove existing trading pair from exchange.
 
     version : Print out current installed version of hex-cli.
 
@@ -188,7 +192,7 @@ if [[ "$1" == 'dev' ]]; then
         # Running database jobs for local db.
         if [[ ! "$LOCAL_COMMAND" ]] && [[ "$LOCAL_DATABASE_INIT" == true ]]; then
         
-            local_database_init start;
+            local_database_init dev;
 
             exit 0;
 
@@ -365,6 +369,42 @@ elif [[ "$1" == "launch" ]]; then
     
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
+
+    # Check Activation code is available
+    if [[ ! "$HEX_SECRET_ACTIVATION_CODE" ]]; then
+
+        echo "*** hex-cli failed to detect your activation code for the exchange. ***"
+        echo "*** Reading it manually... ***"
+        echo "What is your activation code?"
+        read activation_code
+
+        echo "*** Your activation code is : $activation_code"
+        echo "*** Is the value correct? (y/n) ***"
+        read answer
+
+        if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                echo "*** Exiting... ***"
+                exit 0;
+        fi
+
+        for i in ${CONFIG_FILE_PATH[@]}; do
+
+            if command grep -q "HEX_SECRET_ACTIVATION_CODE" $i > /dev/null ; then
+            SECRET_FILE_PATH=$i
+            sed -i.bak "s/HEX_SECRET_ACTIVATION_CODE=$HEX_SECRET_ACTIVATION_CODE/HEX_SECRET_ACTIVATION_CODE=$activation_code/" $SECRET_FILE_PATH
+            rm $SECRET_FILE_PATH.bak
+            fi
+            
+        done
+
+        for i in ${CONFIG_FILE_PATH[@]}; do
+            source $i
+        done;
+        
+        source $SCRIPTPATH/tools_generator.sh
+        load_config_variables;
+        
+    fi
 
 
     if [[ "$USE_KUBERNETES" ]]; then
@@ -634,16 +674,23 @@ elif [[ "$1" == "launch" ]]; then
 
             generate_local_env;
 
-        fi
-
+        fi  
+        
+        # Generating docker-compose yaml for exchange
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
 
             generate_local_docker_compose $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE;
 
         fi
 
-        generate_nginx_upstream $LOCAL_DEPLOYMENT_MODE;
+        # Generating nginx upstream.conf for exchange
+        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_NGINX_UPSTREAM" == true ]]; then
 
+            generate_nginx_upstream $LOCAL_DEPLOYMENT_MODE;
+        
+        fi
+
+        # Generating nginx configurations for custom plugin
         if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
         
             generate_nginx_config_for_plugin;
@@ -654,6 +701,7 @@ elif [[ "$1" == "launch" ]]; then
 
         fi
 
+        # Actual part of running docker-compose command
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND
         
         # Running database init
@@ -1188,14 +1236,14 @@ elif [[ "$1" == "upgrade" ]]; then
 
         if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]]; then
 
-            echo "Generating Kubernetes Configmap"
+            echo "Generating Kubernetes Secret"
             generate_kubernetes_secret;
 
         fi
 
         if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
 
-            echo "Generating Kubernetes Configmap"
+            echo "Generating Kubernetes Ingress"
             generate_kubernetes_ingress;
 
         fi
@@ -1303,7 +1351,12 @@ elif [[ "$1" == "upgrade" ]]; then
 
         fi
 
-        generate_nginx_upstream $LOCAL_DEPLOYMENT_MODE;
+        # Generating nginx upstream.conf for exchange
+        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_NGINX_UPSTREAM" == true ]]; then
+
+            generate_nginx_upstream $LOCAL_DEPLOYMENT_MODE;
+        
+        fi
 
         if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
 
@@ -1494,6 +1547,11 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "hex-cli will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
+            --dev)
+                IS_DEVELOP=true
+                echo "hex-cli is configured as dev mode for development purpose."
+                shift; continue
+                ;;
             --upgrade_backends)
                 UPGRADE_BACKENDS=true
                 TOOLBOX_ENABLE=true
@@ -1516,6 +1574,30 @@ elif [[ "$1" == "toolbox" ]]; then
                 UPGRADE_API_ONLY=true
                 TOOLBOX_ENABLE=true
                 echo "hex-cli will rolling-upgrade API containers only for Kubernetes."
+                shift; continue
+                ;;
+            --add_coin)
+                ADD_COIN=true
+                TOOLBOX_ENABLE=true
+                echo "hex-cli will proceed to add new coin on your existing exchange."
+                shift; continue
+                ;;
+            --add_trading_pair)
+                ADD_TRADING_PAIR=true
+                TOOLBOX_ENABLE=true
+                echo "hex-cli will proceed to add new trading pair on your existing exchange."
+                shift; continue
+                ;;
+            --remove_coin)
+                REMOVE_COIN=true
+                TOOLBOX_ENABLE=true
+                echo "hex-cli will proceed to remove coin on your existing exchange."
+                shift; continue
+                ;;
+            --remove_trading_pair)
+                REMOVE_TRADING_PAIR=true
+                TOOLBOX_ENABLE=true
+                echo "hex-cli will proceed to remove trading pair on your existing exchange."
                 shift; continue
                 ;;
             --no_verify)
@@ -1547,6 +1629,28 @@ elif [[ "$1" == "toolbox" ]]; then
         TEMPLATE_GENERATE_PATH=$HEX_CLI_INIT_PATH/templates
         INIT_PATH_CHECK=$HEX_CLI_INIT_PATH/.hex
         
+    fi
+
+    # PATH overriding for develop    
+    if [[ "$IS_DEVELOP" ]]; then
+
+        if [[ "$HEX_CODEBASE_PATH" ]]; then
+
+            CONFIG_FILE_PATH=$HEX_CODEBASE_PATH/tools/hex-cli-settings/*
+            TEMPLATE_GENERATE_PATH=$HEX_CODEBASE_PATH/tools/hex-cli-templates
+            INIT_PATH_CHECK=$HEX_CODEBASE_PATH/.hex
+            DOCKER_COMPOSE_NAME_PREFIX=$(basename "$HEX_CODEBASE_PATH")
+
+        elif [[ ! "$HEX_CODEBASE_PATH" ]]; then
+
+            CONFIG_FILE_PATH=$(pwd)/tools/hex-cli-settings/*
+            TEMPLATE_GENERATE_PATH=$(pwd)/tools/hex-cli-templates
+            INIT_PATH_CHECK=$(pwd)/.hex
+            HEX_CODEBASE_PATH=$(pwd)
+            DOCKER_COMPOSE_NAME_PREFIX=$(basename "$HEX_CODEBASE_PATH")
+
+        fi
+
     fi
     
     #Quit if necessary flags are missing
@@ -1894,6 +1998,43 @@ elif [[ "$1" == "toolbox" ]]; then
             exit 1;
 
         fi
+
+
+    elif [[ "$ADD_COIN" ]]; then
+
+        echo "*** Warning: Adding new coin requires full restart of the exchange! ***"
+        echo "*** Please double confirm that you are good to proceed ***"
+        
+        add_coin_input;
+
+        add_coin_exec;
+        
+    elif [[ "$REMOVE_COIN" ]]; then
+
+        echo "*** Warning: Removing new coin requires full restart of the exchange! ***"
+        echo "*** Please double confirm that you are good to proceed ***"
+        
+        remove_coin_input;
+
+        remove_coin_exec;
+    
+    elif [[ "$ADD_TRADING_PAIR" ]]; then
+
+        echo "*** Warning: Adding new pair requires full restart of the exchange! ***"
+        echo "*** Please double confirm that you are good to proceed ***"
+        
+        add_pair_input;
+
+        add_pair_exec;
+
+    elif [[ "$REMOVE_TRADING_PAIR" ]]; then
+
+        echo "*** Warning: Removing new pair requires full restart of the exchange! ***"
+        echo "*** Please double confirm that you are good to proceed ***"
+        
+        remove_pair_input;
+
+        remove_pair_exec;
         
     fi
 
