@@ -209,6 +209,20 @@ EOL
 
 done
 
+  # Generating WEB upstream
+  if [[ "$ENIRONMENT_WEB_ENABLE" ]]; then 
+
+  # Generate local nginx conf
+  cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
+
+  upstream web {
+    server ${ENVIRONMENT_EXCHANGE_NAME}-web:80;
+  }
+
+EOL
+
+  fi
+
 }
 
 function generate_nginx_config_for_plugin() {
@@ -476,6 +490,30 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" == "true" ]]; then
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
       - ${ENVIRONMENT_EXCHANGE_NAME}-redis
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+
+EOL
+
+fi 
+
+if [[ "$ENVIRONMENT_WEB_ENABLE" ]]; then
+  # Generate docker-compose
+  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+  ${ENVIRONMENT_EXCHANGE_NAME}-web:
+    image: bitholla/hex-web:latst
+    restart: always
+    environment:
+      - PUBLIC_URL=${HEX_CONFIGMAP_DOMAIN}
+      - REACT_APP_PUBLIC_URL=${HEX_CONFIGMAP_API_HOST}
+      - REACT_APP_SERVER_ENDPOINT=${HEX_CONFIGMAP_API_HOST}
+      - REACT_APP_NETWORK=${HEX_CONFIGMAP_NETWORK}
+      - REACT_APP_CAPTCHA_SITE_KEY=${ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}
+      - REACT_APP_DEFAULT_LANGUAGE=${ENVIRONMENT_WEB_DEFAULT_LANGUAGE}
+      - REACT_APP_DEFAULT_COUNTRY=${ENVIRONMENT_WEB_DEFAULT_COUNTRY}
+      - REACT_APP_BASE_CURRENCY=${ENVIRONMENT_WEB_BASE_CURRENCY}
+    depends_on:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-nginx
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
 
@@ -1247,3 +1285,27 @@ function remove_coin_exec() {
 
 }
 
+function generate_hex_web_configmap() {
+
+cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-web-env.yaml <<EOL
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-web-env
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+data:
+  PUBLIC_URL: ${HEX_CONFIGMAP_DOMAIN}
+  REACT_APP_PUBLIC_URL: ${HEX_CONFIGMAP_API_HOST}
+  REACT_APP_SERVER_ENDPOINT: ${HEX_CONFIGMAP_API_HOST}
+
+  REACT_APP_NETWORK: ${HEX_CONFIGMAP_NETWORK}
+
+  REACT_APP_CAPTCHA_SITE_KEY: ${ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}
+
+  REACT_APP_DEFAULT_LANGUAGE: ${ENVIRONMENT_WEB_DEFAULT_LANGUAGE}
+  REACT_APP_DEFAULT_COUNTRY: ${ENVIRONMENT_WEB_DEFAULT_COUNTRY}
+
+  REACT_APP_BASE_CURRENCY: ${ENVIRONMENT_WEB_BASE_CURRENCY}
+  
+EOL
+}
