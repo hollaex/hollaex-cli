@@ -202,18 +202,16 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
     ip_hash;
     server ${ENVIRONMENT_EXCHANGE_NAME}-server-stream:10080;
   }
-
 EOL
 
   fi
 
 done
 
-  # Generating WEB upstream
-  if [[ "$ENIRONMENT_WEB_ENABLE" ]]; then 
+if [[ "$ENVIRONMENT_WEB_ENABLE" ]]; then 
 
   # Generate local nginx conf
-  cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
+  cat >> $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
 
   upstream web {
     server ${ENVIRONMENT_EXCHANGE_NAME}-web:80;
@@ -223,6 +221,17 @@ EOL
 
   fi
 
+}
+
+function apply_nginx_user_defined_values(){
+          #sed -i.bak "s/$ENVIRONMENT_DOCKER_IMAGE_VERSION/$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
+
+    sed -i.bak "s/server_name.*\#Server.*/server_name $HEX_CONFIGMAP_API_HOST; \#Server domain/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
+    rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
+
+    CLIENT_DOMAIN=$(echo $HEX_CONFIGMAP_DOMAIN | cut -f3 -d "/")
+    sed -i.bak "s/server_name.*\#Client.*/server_name $CLIENT_DOMAIN; \#Client domain/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
+    rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
 }
 
 function generate_nginx_config_for_plugin() {
@@ -501,8 +510,10 @@ if [[ "$ENVIRONMENT_WEB_ENABLE" ]]; then
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-web:
-    image: bitholla/hex-web:latst
+    image: bitholla/hex-web:latest
     restart: always
+    ports:
+      - 8080:80
     environment:
       - PUBLIC_URL=${HEX_CONFIGMAP_DOMAIN}
       - REACT_APP_PUBLIC_URL=${HEX_CONFIGMAP_API_HOST}
@@ -512,8 +523,8 @@ if [[ "$ENVIRONMENT_WEB_ENABLE" ]]; then
       - REACT_APP_DEFAULT_LANGUAGE=${ENVIRONMENT_WEB_DEFAULT_LANGUAGE}
       - REACT_APP_DEFAULT_COUNTRY=${ENVIRONMENT_WEB_DEFAULT_COUNTRY}
       - REACT_APP_BASE_CURRENCY=${ENVIRONMENT_WEB_BASE_CURRENCY}
-    depends_on:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-nginx
+    # depends_on:
+    #   - ${ENVIRONMENT_EXCHANGE_NAME}-nginx
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
 
@@ -570,6 +581,7 @@ EOL
       - NGINX_PORT=80
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-server-${i}
+      $(if [[ "$ENVIRONMENT_WEB_ENABLE" ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-web"; fi)
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
       
@@ -1295,8 +1307,8 @@ metadata:
   namespace: ${ENVIRONMENT_EXCHANGE_NAME}
 data:
   PUBLIC_URL: ${HEX_CONFIGMAP_DOMAIN}
-  REACT_APP_PUBLIC_URL: ${HEX_CONFIGMAP_API_HOST}
-  REACT_APP_SERVER_ENDPOINT: ${HEX_CONFIGMAP_API_HOST}
+  REACT_APP_PUBLIC_URL: https://${HEX_CONFIGMAP_API_HOST}
+  REACT_APP_SERVER_ENDPOINT: https://${HEX_CONFIGMAP_API_HOST}
 
   REACT_APP_NETWORK: ${HEX_CONFIGMAP_NETWORK}
 

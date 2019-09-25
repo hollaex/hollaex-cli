@@ -225,7 +225,7 @@ if [[ "$1" == 'dev' ]]; then
             generate_local_docker_compose_for_dev;
         fi
 
-        generate_nginx_upstream $LOCAL_DEPLOYMENT_MODE;
+        generate_nginx_upstream;
 
         if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
         
@@ -642,7 +642,10 @@ elif [[ "$1" == "launch" ]]; then
 
         fi
 
-        generate_nginx_upstream $LOCAL_DEPLOYMENT_MODE;
+        generate_nginx_upstream;
+
+        # Update nginx.conf to apply user own domains
+        apply_nginx_user_defined_values;
 
         if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
         
@@ -653,6 +656,7 @@ elif [[ "$1" == "launch" ]]; then
             rm -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf
 
         fi
+
 
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND
         
@@ -887,7 +891,7 @@ elif [[ "$1" == "start" ]]; then
 
         if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf" ]]; then
 
-            generate_nginx_upstream $LOCAL_DEPLOYMENT_MODE;
+            generate_nginx_upstream;
 
         fi
 
@@ -1303,7 +1307,7 @@ elif [[ "$1" == "upgrade" ]]; then
 
         fi
 
-        generate_nginx_upstream $LOCAL_DEPLOYMENT_MODE;
+        generate_nginx_upstream;
 
         if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
 
@@ -1314,6 +1318,9 @@ elif [[ "$1" == "upgrade" ]]; then
             rm -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf
 
         fi
+        
+        # Update nginx.conf to apply user own domains
+        apply_nginx_user_defined_values;
 
         echo "*** Restarting containers to apply new changes... ***"
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
