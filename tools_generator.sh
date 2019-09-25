@@ -193,11 +193,9 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
 
   # Generate local nginx conf
   cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
-
   upstream api {
     server ${ENVIRONMENT_EXCHANGE_NAME}-server-api:10010;
   }
-
   upstream socket {
     ip_hash;
     server ${ENVIRONMENT_EXCHANGE_NAME}-server-stream:10080;
@@ -216,7 +214,6 @@ if [[ "$ENVIRONMENT_WEB_ENABLE" ]]; then
   upstream web {
     server ${ENVIRONMENT_EXCHANGE_NAME}-web:80;
   }
-
 EOL
 
   fi
@@ -454,7 +451,6 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]]; then
     command : ["sh", "-c", "redis-server --requirepass \$\${REDIS_PASSWORD}"]
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
-
 EOL
 
 fi
@@ -473,7 +469,6 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
       - POSTGRES_PASSWORD=$HEX_SECRET_DB_PASSWORD
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
-
 EOL
 
 fi
@@ -501,7 +496,6 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" == "true" ]]; then
       - ${ENVIRONMENT_EXCHANGE_NAME}-redis
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
-
 EOL
 
 fi 
@@ -527,7 +521,6 @@ if [[ "$ENVIRONMENT_WEB_ENABLE" ]]; then
     #   - ${ENVIRONMENT_EXCHANGE_NAME}-nginx
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
-
 EOL
 
 fi 
@@ -625,7 +618,6 @@ done
 
 # Generate docker-compose
 cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
-
 networks:
   ${ENVIRONMENT_EXCHANGE_NAME}-network:
   
@@ -792,7 +784,7 @@ function generate_random_values() {
 function update_random_values_to_config() {
 
 
-GENERATE_VALUES_LIST=( "HEX_SECRET_ADMIN_PASSWORD" "HEX_SECRET_SUPERVISOR_PASSWORD" "HEX_SECRET_SUPPORT_PASSWORD" "HEX_SECRET_KYC_PASSWORD" "HEX_SECRET_QUICK_TRADE_SECRET" "HEX_SECRET_API_KEYS" "HEX_SECRET_SECRET" )
+GENERATE_VALUES_LIST=( "HEX_SECRET_ADMIN_PASSWORD" "HEX_SECRET_SUPERVISOR_PASSWORD" "HEX_SECRET_SUPPORT_PASSWORD" "HEX_SECRET_KYC_PASSWORD" "HEX_SECRET_QUICK_TRADE_SECRET" "HEX_SECRET_SECRET" )
 
 for j in ${CONFIG_FILE_PATH[@]}; do
 
@@ -959,7 +951,7 @@ function check_empty_values_on_settings() {
   
   done
 
-  GENERATE_VALUES_LIST=( "ADMIN_PASSWORD" "SUPERVISOR_PASSWORD" "SUPPORT_PASSWORD" "KYC_PASSWORD" "QUICK_TRADE_SECRET" "API_KEYS" "SECRET" )
+  GENERATE_VALUES_LIST=( "ADMIN_PASSWORD" "SUPERVISOR_PASSWORD" "SUPPORT_PASSWORD" "KYC_PASSWORD" "QUICK_TRADE_SECRET" "SECRET" )
 
   for i in ${HEX_SECRET_VARIABLES[@]}; do
 
@@ -1003,7 +995,10 @@ function override_docker_image_version() {
 
 }
 
-function add_coin_input() {
+# JSON generator
+function join_array_to_json(){
+  local arr=( "$@" );
+  local len=${#arr[@]}
 
   echo "*** What is a symbol of your new coin? [Default: eth] ***"
   read answer
@@ -1015,16 +1010,21 @@ function add_coin_input() {
 
   COIN_FULLNAME=${answer:-Ethereum}
 
+  echo "*** What is a full name of your new coin? [Default: Ethereum] ***"
+  read answer
+
+  COIN_FULLNAME=${answer:-Ethereum}
+
   echo "*** Are you going to allow deposit to your new coin? (y/n) [Default: y] ***"
   read answer
   
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
       
-    COIN_ALLOW_DEPOSIT=false
+    COIN_ALLOW_DEPOSIT='false'
   
   else
 
-    COIN_ALLOW_DEPOSIT=true
+    COIN_ALLOW_DEPOSIT='true'
 
   fi
 
@@ -1033,11 +1033,11 @@ function add_coin_input() {
   
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
       
-    COIN_ALLOW_WITHDRAWAL=false
+    COIN_ALLOW_WITHDRAWAL='false'
   
   else
 
-    COIN_ALLOW_WITHDRAWAL=true
+    COIN_ALLOW_WITHDRAWAL='true'
 
   fi
   
@@ -1069,6 +1069,20 @@ function add_coin_input() {
 
   fi
 
+  # Side-by-side printer 
+  function print_deposit_array_side_by_side() { #LEVEL FRIST, VALUE NEXT.
+    for ((i=0; i<=${#RANGE_DEPOSIT_LIMITS_LEVEL[@]}; i++)); do
+    printf '%s %s\n' "${RANGE_DEPOSIT_LIMITS_LEVEL[i]}" "${VALUE_DEPOSIT_LIMITS_LEVEL[i]}"
+    done
+  }
+
+  # Side-by-side printer 
+  function print_withdrawal_array_side_by_side() { #LEVEL FRIST, VALUE NEXT.
+    for ((i=0; i<=${#RANGE_WITHDRAWAL_LIMITS_LEVEL[@]}; i++)); do
+    printf '%s %s\n' "${RANGE_WITHDRAWAL_LIMITS_LEVEL[i]}" "${VALUE_WITHDRAWAL_LIMITS_LEVEL[i]}"
+    done
+  }
+
   # Asking deposit limit of new coin per level
   for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
 
@@ -1078,6 +1092,8 @@ function add_coin_input() {
 
   read -ra RANGE_DEPOSIT_LIMITS_LEVEL <<< $(set -o posix ; set | grep "DEPOSIT_LIMITS_LEVEL_" | cut -c22 )
   read -ra VALUE_DEPOSIT_LIMITS_LEVEL <<< $(set -o posix ; set | grep "DEPOSIT_LIMITS_LEVEL_" | cut -f2 -d "=" )
+
+  COIN_DEPOSIT_LIMITS=$(join_array_to_json $(print_deposit_array_side_by_side))
 
   # Asking withdrawal limit of new coin per level
   for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
@@ -1089,16 +1105,18 @@ function add_coin_input() {
   read -ra RANGE_WITHDRAWAL_LIMITS_LEVEL <<< $(set -o posix ; set | grep "WITHDRAWAL_LIMITS_LEVEL_" | cut -c25 )
   read -ra VALUE_WITHDRAWAL_LIMITS_LEVEL <<< $(set -o posix ; set | grep "WITHDRAWAL_LIMITS_LEVEL_" | cut -f2 -d "=" )
 
+  COIN_WITHDRAWAL_LIMITS=$(join_array_to_json $(print_withdrawal_array_side_by_side))
+
   echo "*** Are you going to active the new coin you just configured? (y/n) [Default: y] ***"
   read answer
   
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
       
-    COIN_ACTIVE=false
+    COIN_ACTIVE='false'
   
   else
 
-    COIN_ACTIVE=true
+    COIN_ACTIVE='true'
 
   fi
 
@@ -1144,60 +1162,79 @@ function add_coin_input() {
     exit 1;
   
   fi
-
-  function join_array_to_json(){
-    local arr=( "$@" );
-    local len=${#arr[@]}
-
-    if [[ ${len} -eq 0 ]]; then
-            >&2 echo "Error: Length of input array needs to be at least 2.";
-            return 1;
-    fi
-
-    if [[ $((len%2)) -eq 1 ]]; then
-            >&2 echo "Error: Length of input array needs to be even (key/value pairs).";
-            return 1;
-    fi
-
-    local data="";
-    local foo=0;
-    for i in "${arr[@]}"; do
-            local char=","
-            if [ $((++foo%2)) -eq 0 ]; then
-            char=":";
-            fi
-
-            local first="${i:0:1}";  # read first charc
-
-            local app="\"$i\""
-
-            if [[ "$first" == "^" ]]; then
-            app="${i:1}"  # remove first char
-            fi
-
-            data="$data$char$app";
-
-    done
-
-    data="${data:1}";  # remove first char
-    echo "{$data}";    # add braces around the string
-  }
-
-
-  function print_deposit_array_side_by_side() {
-    for ((i=0; i<=${#RANGE_DEPOSIT_LIMITS_LEVEL[@]}; i++)); do
-    printf '%s %s\n' "${RANGE_DEPOSIT_LIMITS_LEVEL[i]}" "${VALUE_DEPOSIT_LIMITS_LEVEL[i]}"
-    done
-  }
-
-  COIN_DEPOSIT_LIMITS=$(join_array_to_json $(print_deposit_array_side_by_side))
-  COIN_WITHDRAWAL_LIMITS=$(join_array_to_json $(print_deposit_array_side_by_side))
-
 }
+
 
 function add_coin_exec() {
 
   if [[ "$USE_KUBERNETES" ]]; then
+
+
+    function generate_kubernetes_add_coin_values() {
+
+    # Generate Kubernetes Configmap
+    cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/add-coin.yaml <<EOL
+job:
+  enable: true
+  mode: add_coin
+  env:
+    coin_symbol: ${COIN_SYMBOL}
+    coin_fullname: ${COIN_FULLNAME}
+    coin_allow_deposit: ${COIN_ALLOW_DEPOSIT}
+    coin_allow_withdrawal: ${COIN_ALLOW_WITHDRAWAL}
+    coin_withdrawal_fee: ${COIN_WITHDRAWAL_FEE}
+    coin_min: ${COIN_MIN}
+    coin_max: ${COIN_MAX}
+    coin_increment_unit: ${COIN_INCREMENT_UNIT}
+    coin_deposit_limits: '${COIN_DEPOSIT_LIMITS}'
+    coin_withdrawal_limits: '${COIN_WITHDRAWAL_LIMITS}'
+    coin_active: ${COIN_ACTIVE}
+EOL
+
+    }
+
+    generate_kubernetes_add_coin_values;
+
+    echo "*** Adding new coin $COIN_SYMBOL on Kubernetes ***"
+    
+    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL --namespace $ENVIRONMENT_EXCHANGE_NAME --set job.enable="true" --set job.mode="add_coin" --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/add-coin.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server; then
+
+      echo "*** Kubernetes Job has been created for adding new coin $COIN_SYMBOL. ***"
+
+      echo "*** Waiting until Job get completely run ***"
+      sleep 30;
+
+    else 
+
+      echo "*** Failed to create Kubernetes Job for adding new coin $COIN_SYMBOL, Please confirm your input values and try again. ***"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
+
+    fi
+
+    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+
+      echo "*** Coin $COIN_SYMBOL has been successfully added on your exchange! ***"
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
+      
+      echo "*** Upgrading exchange with latest settings... ***"
+      hex upgrade --kube --no_verify
+
+      echo "*** Removing created Kubernetes Job for adding new coin... ***"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
+
+      echo "*** Updating settings file to add new $COIN_SYMBOL. ***"
+      for i in ${CONFIG_FILE_PATH[@]}; do
+
+      if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+          CONFIGMAP_FILE_PATH=$i
+          HEX_CONFIGMAP_CURRENCIES_OVERRIDE="${HEX_CONFIGMAP_CURRENCIES},${COIN_SYMBOL}"
+          sed -i.bak "s/$HEX_CONFIGMAP_CURRENCIES/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+          rm $CONFIGMAP_FILE_PATH.bak
+      fi
+
+      done
+
+    else
 
   echo "*** Adding new coin $COIN_SYMBOL on Kubernetes ***"
   helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL --namespace $ENVIRONMENT_EXCHANGE_NAME --set job.enable="true" --set job.mode="add_coin" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set job.env.coin_fullname="$COIN_FULLNAME" --set job.env.coin_symbol="$COIN_SYMBOL" --set job.env.coin_allow_deposit="$COIN_ALLOW_DEPOSIT" --set job.env.coin_allow_withdrawal="$COIN_WITHDRAWAL_FEE" --set job.env.coin_min="$COIN_MIN" --set job.env.coin_max="$COIN_MAX" --set job.env.coin_increment_unit="$COIN_INCREMENT_UNIT"  --set job.env.coin_deposit_limits="$COIN_DEPOSIT_LIMITS" --set job.env.coin_withdrawal_limits="$COIN_WITHDRAWAL_LIMITS" --set job.env.coin_active="$COIN_ACTIVE" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
@@ -1208,8 +1245,10 @@ function add_coin_exec() {
 
       IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
-      echo "*** Adding new coin $COIN_SYMBOL on local docker ***"
-      docker exec --env "COIN_FULLNAME=${COIN_FULLNAME}" --env "COIN_SYMBOL=${COIN_SYMBOL}" --env "COIN_ALLOW_DEPOSIT=${COIN_ALLOW_DEPOSIT}" --env "COIN_ALLOW_WITHDRAWAL=${COIN_ALLOW_WITHDRAWAL}" --env "COIN_WITHDRAWAL_FEE=${COIN_WITHDRAWAL_FEE}" --env "COIN_MIN=${COIN_MIN}" --env "COIN_MAX=${COIN_MAX}" --env "COIN_INCREMENT_UNIT=${COIN_INCREMENT_UNIT}" --env "COIN_DEPOSIT_LIMITS=${COIN_DEPOSIT_LIMITS}" --env "COIN_WITHDRAWAL_LIMITS=${COIN_WITHDRAWAL_LIMITS}" --env "COIN_ACTIVE=${COIN_ACTIVE}"  ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/addCoin.js
+      # Overriding container prefix for develop server
+      if [[ "$IS_DEVELOP" ]]; then
+        
+        CONTAINER_PREFIX=
 
 
       # Restarting containers after database init jobs.
@@ -1218,17 +1257,47 @@ function add_coin_exec() {
 
   fi
 
+        echo "*** Running database triggers ***"
+        docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js
 
-  for i in ${CONFIG_FILE_PATH[@]}; do
+        if  [[ "$IS_DEVELOP" ]]; then
 
-  if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
-      CONFIGMAP_FILE_PATH=$i
-      HEX_CONFIGMAP_CURRENCIES_OVERRIDE="${HEX_CONFIGMAP_CURRENCIES},${COIN_SYMBOL}"
-      sed -i.bak "s/$HEX_CONFIGMAP_CURRENCIES/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
-      rm $CONFIGMAP_FILE_PATH.bak
+        # Restarting containers after database init jobs.
+        echo "Restarting containers to apply database changes."
+        docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        else
+
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        fi
+
+        echo "*** Updating settings file to add new $COIN_SYMBOL. ***"
+        for i in ${CONFIG_FILE_PATH[@]}; do
+
+        if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+            CONFIGMAP_FILE_PATH=$i
+            HEX_CONFIGMAP_CURRENCIES_OVERRIDE="${HEX_CONFIGMAP_CURRENCIES},${COIN_SYMBOL}"
+            sed -i.bak "s/$HEX_CONFIGMAP_CURRENCIES/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+            rm $CONFIGMAP_FILE_PATH.bak
+        fi
+
+        done
+
+      else
+
+        echo "*** Failed to add new coin $COIN_SYMBOL on local exchange. Please confirm your input values and try again. ***"
+        exit 1;
+
+      fi
+
+      # Restarting containers after database init jobs.
+      echo "Restarting containers to apply database changes."
+      docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
   fi
-
-  done
 
 }
 
@@ -1267,33 +1336,440 @@ function remove_coin_exec() {
   if [[ "$USE_KUBERNETES" ]]; then
 
   echo "*** Removing existing coin $COIN_SYMBOL on Kubernetes ***"
-  kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- bash -c 'COIN_FULLNAME=$(echo $COIN_FULLNAME); echo "coin fullname: $COIN_FULLNAME"'
+    
+    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL \
+                --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                --set job.enable="true" \
+                --set job.mode="remove_coin" \
+                --set job.env.coin_symbol="$COIN_SYMBOL" \
+                --set DEPLOYMENT_MODE="api" \
+                --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" \
+                --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" \
+                --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml \
+                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml \
+                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server; then
+
+      echo "*** Kubernetes Job has been created for removing existing coin $COIN_SYMBOL. ***"
+
+      echo "*** Waiting until Job get completely run ***"
+      sleep 30;
+
+    else 
+
+      echo "*** Failed to create Kubernetes Job for removing existing coin $COIN_SYMBOL, Please confirm your input values and try again. ***"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
+
+    fi
+
+    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL \
+            --namespace $ENVIRONMENT_EXCHANGE_NAME \
+            -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+
+      echo "*** Coin $COIN_SYMBOL has been successfully removed on your exchange! ***"
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
+      
+      echo "*** Restarting containers... ***"
+      kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+
+      echo "*** Removing created Kubernetes Job for removing existing coin... ***"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
+
+      echo "*** Updating settings file to remove $COIN_SYMBOL. ***"
+      for i in ${CONFIG_FILE_PATH[@]}; do
+
+      if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+          CONFIGMAP_FILE_PATH=$i
+          if [[ "$COIN_SYMBOL" == "hex" ]]; then
+            HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_CURRENCIES//$COIN_SYMBOL,}")
+          else
+            HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_CURRENCIES//,$COIN_SYMBOL}")
+          fi
+          sed -i.bak "s/$HEX_CONFIGMAP_CURRENCIES/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+          rm $CONFIGMAP_FILE_PATH.bak
+      fi
+
+      done
+
+    else
+
+      echo "*** Failed to remove existing coin $COIN_SYMBOL! Please try again.***"
+      
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
+      
+    fi
 
   elif [[ ! "$USE_KUBERNETES" ]]; then
 
       IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
+      # Overriding container prefix for develop server
+      if [[ "$IS_DEVELOP" ]]; then
+        
+        CONTAINER_PREFIX=
+
+      fi
+
       echo "*** Removing new coin $COIN_SYMBOL on local docker ***"
-      docker exec --env "COIN_SYMBOL=${COIN_SYMBOL}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/removeCoin.js
+      if command docker exec --env "COIN_SYMBOL=${COIN_SYMBOL}" \
+                  ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
+                  node tools/dbs/removeCoin.js; then
 
-      # Restarting containers after database init jobs.
-      echo "Restarting containers to apply database changes."
-      docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+      if  [[ "$IS_DEVELOP" ]]; then
+
+        # Restarting containers after database init jobs.
+        echo "Restarting containers to apply database changes."
+        docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+      else
+
+        # Restarting containers after database init jobs.
+        echo "Restarting containers to apply database changes."
+        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+      fi
+
+      echo "*** Updating settings file to remove $COIN_SYMBOL. ***"
+      for i in ${CONFIG_FILE_PATH[@]}; do
+
+      if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+          CONFIGMAP_FILE_PATH=$i
+          if [[ "$COIN_SYMBOL" == "hex" ]]; then
+            HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_CURRENCIES//$COIN_SYMBOL,}")
+          else
+            HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_CURRENCIES//,$COIN_SYMBOL}")
+          fi
+          sed -i.bak "s/$HEX_CONFIGMAP_CURRENCIES/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+          rm $CONFIGMAP_FILE_PATH.bak
+      fi
+
+      done
+
+      else
+
+        echo "*** Failed to remove coin $COIN_SYMBOL on local exchange. Please confirm your input values and try again. ***"
+        exit 1;
+
+      fi
+
+  fi
+
+}
+
+function add_pair_input() {
+
+  echo "*** What is a full name of your new trading pair? [Default: eth-usdt] ***"
+  read answer
+
+  PAIR_NAME=${answer:-eth-usdt}
+  PAIR_BASE=$(echo $PAIR_NAME | cut -f1 -d '-')
+  PAIR_2=$(echo $PAIR_NAME | cut -f2 -d '-')
+
+  # Checking user level setup on settings file is set or not
+  if [[ ! "$HEX_CONFIGMAP_USER_LEVEL_NUMBER" ]]; then
+
+    echo "*** Warning: Settings value - HEX_CONFIGMAP_USER_LEVEL_NUMBER is not configured. Please confirm your settings files. ***"
+    exit 1;
+
+  fi
+
+  # Side-by-side printer 
+  function print_taker_fees_array_side_by_side() { #LEVEL FRIST, VALUE NEXT.
+    for ((i=0; i<=${#RANGE_TAKER_FEES_LEVEL[@]}; i++)); do
+    printf '%s %s\n' "${RANGE_TAKER_FEES_LEVEL[i]}" "${VALUE_TAKER_FEES_LEVEL[i]}"
+    done
+  }
+
+  # Side-by-side printer 
+  function print_maker_fees_array_side_by_side() { #LEVEL FRIST, VALUE NEXT.
+    for ((i=0; i<=${#RANGE_MAKER_FEES_LEVEL[@]}; i++)); do
+    printf '%s %s\n' "${RANGE_MAKER_FEES_LEVEL[i]}" "${VALUE_MAKER_FEES_LEVEL[i]}"
+    done
+  }
+
+  # Asking deposit limit of new coin per level
+  for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
+
+    do echo "*** What is a taker fee for user on LEVEL $i? ***" && read answer && export TAKER_FEES_LEVEL_$i=$answer
+  
+  done;
+
+  read -ra RANGE_TAKER_FEES_LEVEL <<< $(set -o posix ; set | grep "TAKER_FEES_LEVEL_" | cut -c18 )
+  read -ra VALUE_TAKER_FEES_LEVEL <<< $(set -o posix ; set | grep "TAKER_FEES_LEVEL_" | cut -f2 -d "=" )
+
+  TAKER_FEES=$(join_array_to_json $(print_taker_fees_array_side_by_side))
+
+  # Asking withdrawal limit of new coin per level
+  for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
+
+    do echo "*** What is a maker fee for user on LEVEL $i? ***" && read answer && export MAKER_FEES_LEVEL_$i=$answer
+  
+  done;
+
+  read -ra RANGE_MAKER_FEES_LEVEL <<< $(set -o posix ; set | grep "MAKER_FEES_LEVEL_" | cut -c18 )
+  read -ra VALUE_MAKER_FEES_LEVEL <<< $(set -o posix ; set | grep "MAKER_FEES_LEVEL_" | cut -f2 -d "=" )
+
+  MAKER_FEES=$(join_array_to_json $(print_maker_fees_array_side_by_side))
+
+  echo "*** What is the minimum size for trading of the new pair? [Default: 0.001] ***"
+  read answer
+
+  MIN_SIZE=${answer:-0.001}
+
+  echo "*** What is the maximum size for trading of the new pair? [Default: 20000000] ***"
+  read answer
+
+  MAX_SIZE=${answer:-20000000}
+
+  echo "*** What is the minimum price of the new pair? [Default: 0.0001] ***"
+  read answer
+
+  MIN_PRICE=${answer:-0.0001}
+
+  echo "*** What is the maximum price for trading of the new pair? [Default: 10] ***"
+  read answer
+
+  MAX_PRICE=${answer:-10}
+
+  echo "*** What is the increment size of the new pair? [Default: 0.001] ***"
+  read answer
+
+  INCREMENT_SIZE=${answer:-0.001}
+
+  echo "*** What is the increment price of the new pair? [Default: 1] ***"
+  read answer
+
+  INCREMENT_PRICE=${answer:-1}
+
+  echo "*** Are you going to active the new pair you just configured? (y/n) [Default: y] ***"
+  read answer
+  
+  if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
       
+    PAIR_ACTIVE=false
+  
+  else
+
+    PAIR_ACTIVE=true
+
   fi
 
+  function print_taker_fees_deposit_level(){ 
 
-  for i in ${CONFIG_FILE_PATH[@]}; do
+    for i in $(set -o posix ; set | grep "TAKER_FEES_LEVEL_");
 
-  if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
-      CONFIGMAP_FILE_PATH=$i
-      HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_CURRENCIES//,$COIN_SYMBOL}")
-      sed -i.bak "s/$HEX_CONFIGMAP_CURRENCIES/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
-      rm $CONFIGMAP_FILE_PATH.bak
+      do echo -e "$i"
+
+    done;
+
+  }
+
+  function print_maker_fees_withdrawal_level(){ 
+
+    for i in $(set -o posix ; set | grep "MAKER_FEES_LEVEL_");
+
+      do echo -e "$i"
+
+    done;
+
+  }
+  
+  echo "*********************************************"
+  echo "Full name: $PAIR_NAME"
+  echo "First currency: $PAIR_BASE"
+  echo "Second currency: $PAIR_2"
+  echo -e "Taker fees per level:\n$(print_taker_fees_deposit_level;)"
+  echo -e "Maker limits per level:\n$(print_maker_fees_withdrawal_level;)"
+  echo "Minimum size: $MIN_SIZE"
+  echo "Maximum size: $MAX_SIZE"
+  echo "Minimum price: $MIN_PRICE"
+  echo "Maximum price: $MAX_PRICE"
+  echo "Increment size: $INCREMENT_SIZE"
+  echo "Increment price: $INCREMENT_PRICE"
+  echo "Activation: $PAIR_ACTIVE"
+  echo "*********************************************"
+
+  echo "*** Are the values are all correct? (y/n) ***"
+  read answer
+
+  if [[ "$answer" = "${answer#[Yy]}" ]]; then
+      
+    echo "*** You chose false. Please confirm the values and re-run the command. ***"
+    exit 1;
+  
   fi
 
-  done
+}
 
+
+function add_pair_exec() {
+
+  if [[ "$USE_KUBERNETES" ]]; then
+
+    function generate_kubernetes_add_pair_values() {
+
+    # Generate Kubernetes Configmap
+    cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/add-pair.yaml <<EOL
+job:
+  enable: true
+  mode: add_pair
+  env:
+    pair_name: ${PAIR_NAME}
+    pair_base: ${PAIR_BASE}
+    pair_2: ${PAIR_2}
+    taker_fees: '${TAKER_FEES}'
+    maker_fees: '${MAKER_FEES}'
+    min_size: ${MIN_SIZE}
+    max_size: ${MAX_SIZE}
+    min_price: ${MIN_PRICE}
+    max_price: ${MAX_PRICE}
+    increment_size: ${INCREMENT_SIZE}
+    increment_price: ${INCREMENT_PRICE}
+    pair_active: ${PAIR_ACTIVE}
+EOL
+
+      }
+
+    generate_kubernetes_add_pair_values;
+
+    echo "*** Adding new pair $PAIR_NAME on Kubernetes ***"
+    
+    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME \
+                --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                --set job.enable="true" \
+                --set job.mode="add_pair" \
+                --set DEPLOYMENT_MODE="api" \
+                --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" \
+                --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" \
+                --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml \
+                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/add-pair.yaml \
+                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server; then
+
+      echo "*** Kubernetes Job has been created for adding new pair $PAIR_NAME. ***"
+
+      echo "*** Waiting until Job get completely run ***"
+      sleep 30;
+
+    else 
+
+      echo "*** Failed to create Kubernetes Job for adding new pair $PAIR_NAME, Please confirm your input values and try again. ***"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
+
+    fi
+
+    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME \
+            --namespace $ENVIRONMENT_EXCHANGE_NAME \
+            -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+
+      echo "*** Pair $PAIR_NAME has been successfully added on your exchange! ***"
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
+
+      echo "*** Updating settings file to add new $PAIR_NAME. ***"
+      for i in ${CONFIG_FILE_PATH[@]}; do
+
+      if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+          CONFIGMAP_FILE_PATH=$i
+          HEX_CONFIGMAP_PAIRS_OVERRIDE="${HEX_CONFIGMAP_PAIRS},${PAIR_NAME}"
+          sed -i.bak "s/$HEX_CONFIGMAP_PAIRS/$HEX_CONFIGMAP_PAIRS_OVERRIDE/" $CONFIGMAP_FILE_PATH
+          rm $CONFIGMAP_FILE_PATH.bak
+      fi
+
+      done
+
+      # Reading variable again
+      for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+      done;
+      
+      source $SCRIPTPATH/tools_generator.sh
+      load_config_variables;
+      
+      echo "*** Upgrading exchange with latest settings... ***"
+      hex upgrade --kube --no_verify
+
+      echo "*** Removing created Kubernetes Job for adding new coin... ***"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
+
+    else
+
+      echo "*** Failed to add new pair $PAIR_NAME! Please try again.***"
+      
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
+      
+    fi
+
+  elif [[ ! "$USE_KUBERNETES" ]]; then
+
+      if [[ ! $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE == "all" ]]; then
+
+          IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE}"
+          
+      fi
+
+      # Overriding container prefix for develop server
+      if [[ "$IS_DEVELOP" ]]; then
+        
+        CONTAINER_PREFIX=
+
+      fi
+
+      echo "*** Adding new pair $PAIR_NAME on local exchange ***"
+      if command docker exec --env "PAIR_NAME=${PAIR_NAME}" \
+                  --env "PAIR_BASE=${PAIR_BASE}" \
+                  --env "PAIR_2=${PAIR_2}" \
+                  --env "TAKER_FEES=${TAKER_FEES}" \
+                  --env "MAKER_FEES=${MAKER_FEES}" \
+                  --env "MIN_SIZE=${MIN_SIZE}" \
+                  --env "MAX_SIZE=${MAX_SIZE}" \
+                  --env "MIN_PRICE=${MIN_PRICE}" \
+                  --env "MAX_PRICE=${MAX_PRICE}" \
+                  --env "INCREMENT_SIZE=${INCREMENT_SIZE}" \
+                  --env "INCREMENT_PRICE=${INCREMENT_PRICE}"  \
+                  --env "PAIR_ACTIVE=${PAIR_ACTIVE}" \
+                  ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
+                  node tools/dbs/addPair.js; then
+
+        if  [[ "$IS_DEVELOP" ]]; then
+
+        # Restarting containers after database init jobs.
+        echo "Restarting containers to apply database changes."
+        docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        else
+
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        fi
+
+        echo "*** Updating settings file to add new $PAIR_NAME. ***"
+        for i in ${CONFIG_FILE_PATH[@]}; do
+
+        if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+            CONFIGMAP_FILE_PATH=$i
+            HEX_CONFIGMAP_PAIRS_OVERRIDE="${HEX_CONFIGMAP_PAIRS},${PAIR_NAME}"
+            sed -i.bak "s/$HEX_CONFIGMAP_PAIRS/$HEX_CONFIGMAP_PAIRS_OVERRIDE/" $CONFIGMAP_FILE_PATH
+            rm $CONFIGMAP_FILE_PATH.bak
+        fi
+
+        done
+
+      else
+
+        echo "*** Failed to add new pair $PAIR_NAME on local exchange. Please confirm your input values and try again. ***"
+        exit 1;
+
+      fi
+
+  fi
 
 }
 
