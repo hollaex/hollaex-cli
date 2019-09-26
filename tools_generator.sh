@@ -1905,6 +1905,11 @@ function launch_basic_settings_input() {
   read answer
 
   EXCHANGE_WEB_DOMAIN_OVERRIDE="${answer:-$DEFAULT_HEX_WEB_DOMAIN}"
+
+  echo "*** What is your number for user levels? [Default: $HEX_CONFIGMAP_USER_LEVEL_NUMBER] ***"
+  read answer
+
+  EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE=${answer:-$HEX_CONFIGMAP_USER_LEVEL_NUMBER}
   
   echo "*** What is your activation code? [Default: $HEX_SECRET_ACTIVATION_CODE] ***"
   read answer
@@ -1915,6 +1920,7 @@ function launch_basic_settings_input() {
   echo "Exchange Name: $EXCHANGE_NAME_OVERRIDE"
   echo "Server Domain: $EXCHANGE_SERVER_DOMAIN_OVERRIDE"
   echo "Web Domain: $EXCHANGE_WEB_DOMAIN_OVERRIDE"
+  echo "User levels: $EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE"
   echo "Activation Code: $EXCHANGE_ACTIVATION_CODE_OVERRIDE"
   echo "*********************************************"
 
@@ -1950,6 +1956,13 @@ function launch_basic_settings_input() {
     sed -i.bak "s/HEX_CONFIGMAP_DOMAIN=.*/HEX_CONFIGMAP_DOMAIN=https:\/\/$EXCHANGE_WEB_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
     rm $CONFIGMAP_FILE_PATH.bak
     fi
+    
+    # Update user levels
+    if command grep -q "HEX_CONFIGMAP_USER_LEVEL_NUMBER" $i > /dev/null ; then
+    CONFIGMAP_FILE_PATH=$i
+    sed -i.bak "s/HEX_CONFIGMAP_USER_LEVEL_NUMBER=$HEX_CONFIGMAP_USER_LEVEL_NUMBER/HEX_CONFIGMAP_USER_LEVEL_NUMBER=$EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    rm $CONFIGMAP_FILE_PATH.bak
+    fi
 
     # Update activation code
     if command grep -q "HEX_SECRET_ACTIVATION_CODE" $i > /dev/null ; then
@@ -1963,6 +1976,7 @@ function launch_basic_settings_input() {
   export ENVIRONMENT_EXCHANGE_NAME=$EXCHANGE_NAME_OVERRIDE
   export HEX_CONFIGMAP_API_HOST=$EXCHANGE_SERVER_DOMAIN_OVERRIDE
   export HEX_CONFIGMAP_DOMAIN=$EXCHANGE_WEB_DOMAIN_OVERRIDE
+  export HEX_CONFIGMAP_USER_LEVEL_NUMBER=$EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE
   export HEX_SECRET_ACTIVATION_CODE=$EXCHANGE_ACTIVATION_CODE_OVERRIDE
 
 }
