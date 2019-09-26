@@ -206,7 +206,7 @@ EOL
 
 done
 
-if [[ "$ENVIRONMENT_WEB_ENABLE" ]]; then 
+if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then 
 
   # Generate local nginx conf
   cat >> $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
@@ -500,14 +500,19 @@ EOL
 
 fi 
 
-if [[ "$ENVIRONMENT_WEB_ENABLE" ]]; then
+if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-web:
-    image: bitholla/hex-web:latest
+    image: bitholla/hex-web:${ENVIRONMENT_EXCHANGE_NAME}-$(date "+%Y%m%d%H%M%S")
+    build:
+      context: ${HEX_CLI_INIT_PATH}/web/
+      dockerfile: ${HEX_CLI_INIT_PATH}/web/docker/Dockerfile
     restart: always
     ports:
       - 8080:80
+    volumes:
+      - ${HEX_CLI_INIT_PATH}/mail:/app/mail
     environment:
       - PUBLIC_URL=${HEX_CONFIGMAP_DOMAIN}
       - REACT_APP_PUBLIC_URL=${HEX_CONFIGMAP_API_HOST}
@@ -517,8 +522,6 @@ if [[ "$ENVIRONMENT_WEB_ENABLE" ]]; then
       - REACT_APP_DEFAULT_LANGUAGE=${ENVIRONMENT_WEB_DEFAULT_LANGUAGE}
       - REACT_APP_DEFAULT_COUNTRY=${ENVIRONMENT_WEB_DEFAULT_COUNTRY}
       - REACT_APP_BASE_CURRENCY=${ENVIRONMENT_WEB_BASE_CURRENCY}
-    # depends_on:
-    #   - ${ENVIRONMENT_EXCHANGE_NAME}-nginx
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
 EOL
@@ -574,7 +577,7 @@ EOL
       - NGINX_PORT=80
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-server-${i}
-      $(if [[ "$ENVIRONMENT_WEB_ENABLE" ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-web"; fi)
+      $(if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-web"; fi)
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
       
@@ -679,7 +682,7 @@ spec:
   - host: ${HEX_CONFIGMAP_API_HOST}
     http:
       paths:
-      - path: /v0
+      - path: /v1
         backend:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
           servicePort: 10010
@@ -709,7 +712,7 @@ spec:
   - host: ${HEX_CONFIGMAP_API_HOST}
     http:
       paths:
-      - path: /v0/order
+      - path: /v1/order
         backend:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
           servicePort: 10010
@@ -735,7 +738,7 @@ spec:
   - host: ${HEX_CONFIGMAP_API_HOST}
     http:
       paths:
-      - path: /v0/admin
+      - path: /v1/admin
         backend:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
           servicePort: 10010
@@ -772,6 +775,43 @@ spec:
     hosts:
     - ${HEX_CONFIGMAP_API_HOST}
 EOL
+
+if [[ "$ENVIRONMENT_WEB_ENABLE" ]]; then
+
+local WEB_DOMAIN_FOR_INGRESS=$HEX_CONFIGMAP_DOMAIN
+
+  # Generate Kubernetes Secret
+cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress-web.yaml <<EOL
+
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-web
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo "certmanager.k8s.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
+    nginx.ingress.kubernetes.io/proxy-body-size: "2m"
+
+spec:
+  rules:
+  - host: ${WEB_DOMAIN_FOR_INGRESS}
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-web
+          servicePort: 80
+  
+  tls:
+  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-web-tls-cert
+    hosts:
+    - ${WEB_DOMAIN_FOR_INGRESS}
+
+EOL
+
+fi
 
 }
 
@@ -1820,7 +1860,7 @@ EOL
 
 function generate_hex_web_configmap() {
 
-cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-web-env.yaml <<EOL
+cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-web-configmap.yaml <<EOL
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -1841,4 +1881,88 @@ data:
   REACT_APP_BASE_CURRENCY: ${ENVIRONMENT_WEB_BASE_CURRENCY}
   
 EOL
+}
+
+
+function launch_basic_settings_input() {
+
+  echo "*** Provided values would be updated on your settings files automatically. ***"
+
+  echo "*** What is a name of your exchange? [Default: $ENVIRONMENT_EXCHANGE_NAME] ***"
+  echo "*** There should be no SPACE! ***"
+  read answer
+
+  EXCHANGE_NAME_OVERRIDE=${answer:-$ENVIRONMENT_EXCHANGE_NAME}
+
+  echo "*** What is a domain of your Exchange Server? [Default: $HEX_CONFIGMAP_API_HOST] ***"
+  read answer
+
+  EXCHANGE_SERVER_DOMAIN_OVERRIDE=${answer:-$HEX_CONFIGMAP_API_HOST}
+
+  
+  DEFAULT_HEX_WEB_DOMAIN=$(echo $HEX_CONFIGMAP_DOMAIN | cut -f 3 -d "/" )
+  echo "*** What is a domain of your Web client? [Default: $DEFAULT_HEX_WEB_DOMAIN] ***"
+  read answer
+
+  EXCHANGE_WEB_DOMAIN_OVERRIDE="${answer:-$DEFAULT_HEX_WEB_DOMAIN}"
+  
+  echo "*** What is your activation code? [Default: $HEX_SECRET_ACTIVATION_CODE] ***"
+  read answer
+
+  EXCHANGE_ACTIVATION_CODE_OVERRIDE=${answer:-$HEX_SECRET_ACTIVATION_CODE}
+
+  echo "*********************************************"
+  echo "Exchange Name: $EXCHANGE_NAME_OVERRIDE"
+  echo "Server Domain: $EXCHANGE_SERVER_DOMAIN_OVERRIDE"
+  echo "Web Domain: $EXCHANGE_WEB_DOMAIN_OVERRIDE"
+  echo "Activation Code: $EXCHANGE_ACTIVATION_CODE_OVERRIDE"
+  echo "*********************************************"
+
+  echo "*** Are the values are all correct? (y/n) ***"
+  read answer
+
+  if [[ "$answer" = "${answer#[Yy]}" ]]; then
+      
+    echo "*** You chose false. Please confirm the values and re-run the command. ***"
+    exit 1;
+  
+  fi
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+
+    # Update exchange name
+    if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+    CONFIGMAP_FILE_PATH=$i
+    sed -i.bak "s/ENVIRONMENT_EXCHANGE_NAME=$ENVIRONMENT_EXCHANGE_NAME/ENVIRONMENT_EXCHANGE_NAME=$EXCHANGE_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    rm $CONFIGMAP_FILE_PATH.bak
+    fi
+
+    # Update api domain
+    if command grep -q "HEX_CONFIGMAP_API_HOST" $i > /dev/null ; then
+    CONFIGMAP_FILE_PATH=$i
+    sed -i.bak "s/HEX_CONFIGMAP_API_HOST=$HEX_CONFIGMAP_API_HOST/HEX_CONFIGMAP_API_HOST=$EXCHANGE_SERVER_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    rm $CONFIGMAP_FILE_PATH.bak
+    fi
+
+    # Update client domain
+    if command grep -q "HEX_CONFIGMAP_DOMAIN" $i > /dev/null ; then
+    CONFIGMAP_FILE_PATH=$i
+    sed -i.bak "s/HEX_CONFIGMAP_DOMAIN=.*/HEX_CONFIGMAP_DOMAIN=https:\/\/$EXCHANGE_WEB_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    rm $CONFIGMAP_FILE_PATH.bak
+    fi
+
+    # Update activation code
+    if command grep -q "HEX_SECRET_ACTIVATION_CODE" $i > /dev/null ; then
+    SECRET_FILE_PATH=$i
+    sed -i.bak "s/HEX_SECRET_ACTIVATION_CODE=$HEX_SECRET_ACTIVATION_CODE/HEX_SECRET_ACTIVATION_CODE=$EXCHANGE_ACTIVATION_CODE_OVERRIDE/" $SECRET_FILE_PATH
+    rm $SECRET_FILE_PATH.bak
+    fi
+      
+  done
+
+  export ENVIRONMENT_EXCHANGE_NAME=$EXCHANGE_NAME_OVERRIDE
+  export HEX_CONFIGMAP_API_HOST=$EXCHANGE_SERVER_DOMAIN_OVERRIDE
+  export HEX_CONFIGMAP_DOMAIN=$EXCHANGE_WEB_DOMAIN_OVERRIDE
+  export HEX_SECRET_ACTIVATION_CODE=$EXCHANGE_ACTIVATION_CODE_OVERRIDE
+
 }
