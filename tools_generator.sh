@@ -1000,6 +1000,42 @@ function join_array_to_json(){
   local arr=( "$@" );
   local len=${#arr[@]}
 
+  if [[ ${len} -eq 0 ]]; then
+          >&2 echo "Error: Length of input array needs to be at least 2.";
+          return 1;
+  fi
+
+  if [[ $((len%2)) -eq 1 ]]; then
+          >&2 echo "Error: Length of input array needs to be even (key/value pairs).";
+          return 1;
+  fi
+
+  local data="";
+  local foo=0;
+  for i in "${arr[@]}"; do
+          local char=","
+          if [ $((++foo%2)) -eq 0 ]; then
+          char=":";
+          fi
+
+          local first="${i:0:1}";  # read first charc
+
+          local app="\"$i\""
+
+          if [[ "$first" == "^" ]]; then
+          app="${i:1}"  # remove first char
+          fi
+
+          data="$data$char$app";
+
+  done
+
+  data="${data:1}";  # remove first char
+  echo "{$data}";    # add braces around the string
+}
+
+function add_coin_input() {
+
   echo "*** What is a symbol of your new coin? [Default: eth] ***"
   read answer
 
