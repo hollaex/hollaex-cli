@@ -1299,6 +1299,13 @@ elif [[ "$1" == "restart" ]]; then
         echo "*** Removing $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster. ***"
         kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
+        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
+
+            echo "*** Removing ingress for web client on the namespace ***"
+            kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
+
+        fi
+
         echo "*** Applying latest configmap env on the cluster. ***"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
 
@@ -1313,6 +1320,13 @@ elif [[ "$1" == "restart" ]]; then
 
         echo "*** Applying $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster. ***"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
+
+            echo "*** Applying ingress for web client on the namespace ***"
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
+
+        fi
 
         echo "*** All done! ***"
         echo "*** Your $ENVIRONMENT_EXCHANGE_NAME ($HEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again. ***"
@@ -1366,12 +1380,14 @@ elif [[ "$1" == "restart" ]]; then
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
+            echo "Generating .env file for docker"
             generate_local_env;
 
         fi
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
 
+            echo "Generating docker-compose file"
             generate_local_docker_compose $ENVIRONMENT_EXCHANGE_RUN_MODE;
 
         fi
@@ -1379,6 +1395,7 @@ elif [[ "$1" == "restart" ]]; then
         # Generating nginx upstream.conf for exchange
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_NGINX_UPSTREAM" == true ]]; then
 
+            echo "Generating Nginx upstream conf"
             generate_nginx_upstream
         
         fi
@@ -1394,6 +1411,7 @@ elif [[ "$1" == "restart" ]]; then
         fi
         
         # Update nginx.conf to apply user own domains
+        echo "Updating nginx conf file based on user settings"
         apply_nginx_user_defined_values;
 
         echo "*** Restarting containers to apply new changes... ***"
@@ -1660,12 +1678,14 @@ elif [[ "$1" == "upgrade" ]]; then
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
+            echo "Generating .env file for docker"
             generate_local_env;
 
         fi
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
-
+            
+            echo "Generating docker-compose file"
             generate_local_docker_compose $ENVIRONMENT_EXCHANGE_RUN_MODE;
 
         fi
@@ -1673,6 +1693,7 @@ elif [[ "$1" == "upgrade" ]]; then
         # Generating nginx upstream.conf for exchange
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_NGINX_UPSTREAM" == true ]]; then
 
+            echo "Generating Nginx upstream conf"
             generate_nginx_upstream
         
         fi
@@ -1688,6 +1709,7 @@ elif [[ "$1" == "upgrade" ]]; then
         fi
         
         # Update nginx.conf to apply user own domains
+        echo "Updating nginx conf file based on user settings"
         apply_nginx_user_defined_values;
 
         echo "*** Restarting containers to apply new changes... ***"
