@@ -1236,26 +1236,39 @@ EOL
 
     else
 
-  echo "*** Adding new coin $COIN_SYMBOL on Kubernetes ***"
-  helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL --namespace $ENVIRONMENT_EXCHANGE_NAME --set job.enable="true" --set job.mode="add_coin" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set job.env.coin_fullname="$COIN_FULLNAME" --set job.env.coin_symbol="$COIN_SYMBOL" --set job.env.coin_allow_deposit="$COIN_ALLOW_DEPOSIT" --set job.env.coin_allow_withdrawal="$COIN_WITHDRAWAL_FEE" --set job.env.coin_min="$COIN_MIN" --set job.env.coin_max="$COIN_MAX" --set job.env.coin_increment_unit="$COIN_INCREMENT_UNIT"  --set job.env.coin_deposit_limits="$COIN_DEPOSIT_LIMITS" --set job.env.coin_withdrawal_limits="$COIN_WITHDRAWAL_LIMITS" --set job.env.coin_active="$COIN_ACTIVE" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
-  #helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL --namespace $ENVIRONMENT_EXCHANGE_NAME --set job.enable="true" --set job.mode="add_coin"  $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
+      echo "*** Failed to remove existing coin $COIN_SYMBOL! Please try again.***"
+      
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
+      
+    fi
 
-  elif [[ ! "$USE_KUBERNETES" ]]; then
+    elif [[ ! "$USE_KUBERNETES" ]]; then
 
 
       IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
-
+          
       # Overriding container prefix for develop server
       if [[ "$IS_DEVELOP" ]]; then
         
         CONTAINER_PREFIX=
 
+      fi
 
-      # Restarting containers after database init jobs.
-      echo "Restarting containers to apply database changes."
-      docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
-
-  fi
+      echo "*** Adding new coin $COIN_SYMBOL on local exchange ***"
+      if command docker exec --env "COIN_FULLNAME=${COIN_FULLNAME}" \
+                  --env "COIN_SYMBOL=${COIN_SYMBOL}" \
+                  --env "COIN_ALLOW_DEPOSIT=${COIN_ALLOW_DEPOSIT}" \
+                  --env "COIN_ALLOW_WITHDRAWAL=${COIN_ALLOW_WITHDRAWAL}" \
+                  --env "COIN_WITHDRAWAL_FEE=${COIN_WITHDRAWAL_FEE}" \
+                  --env "COIN_MIN=${COIN_MIN}" \
+                  --env "COIN_MAX=${COIN_MAX}" \
+                  --env "COIN_INCREMENT_UNIT=${COIN_INCREMENT_UNIT}" \
+                  --env "COIN_DEPOSIT_LIMITS=${COIN_DEPOSIT_LIMITS}" \
+                  --env "COIN_WITHDRAWAL_LIMITS=${COIN_WITHDRAWAL_LIMITS}" \
+                  --env "COIN_ACTIVE=${COIN_ACTIVE}"  \
+                  ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
+                  node tools/dbs/addCoin.js; then
 
         echo "*** Running database triggers ***"
         docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js
@@ -1707,12 +1720,8 @@ EOL
 
   elif [[ ! "$USE_KUBERNETES" ]]; then
 
-      if [[ ! $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE == "all" ]]; then
-
-          IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE}"
+      IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
           
-      fi
-
       # Overriding container prefix for develop server
       if [[ "$IS_DEVELOP" ]]; then
         
