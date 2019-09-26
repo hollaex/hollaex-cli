@@ -18,11 +18,7 @@ function local_database_init() {
     
     if [[ "$1" == "start" ]]; then
 
-      if [[ ! $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE == "all" ]]; then
-
-        IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE}"
-
-      fi
+      IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
       echo "*** Running sequelize db:migrate ***"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 sequelize db:migrate
@@ -41,11 +37,7 @@ function local_database_init() {
 
     elif [[ "$1" == 'upgrade' ]]; then
 
-       if [[ ! $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE == "all" ]]; then
-
-        IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE}"
-        
-      fi
+      IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
       echo "*** Running sequelize db:migrate ***"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:migrate
@@ -192,26 +184,12 @@ EOL
 }
 
 function generate_nginx_upstream() {
+
+IFS=',' read -ra LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE <<< "$ENVIRONMENT_EXCHANGE_RUN_MODE"
+
+for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
   
-if [[ "$LOCAL_DEPLOYMENT_MODE" == "all" ]]; then 
-
-  # Generate local nginx conf
-  cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
-  upstream api {
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server:10010;
-  }
-  upstream socket {
-    ip_hash;
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server:10080;
-  }
-EOL
-
-fi
-
-
-#IFS=',' read -ra LOCAL_DEPLOYMENT_MODE <<< "$1"
-
-if [[ "$LOCAL_DEPLOYMENT_MODE" == "api" ]] && [[ ! "$LOCAL_DEPLOYMENT_MODE" == "ws" ]]; then
+  if [[ "$i" == "api" ]]; then 
 
   # Generate local nginx conf
   cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
@@ -219,40 +197,38 @@ if [[ "$LOCAL_DEPLOYMENT_MODE" == "api" ]] && [[ ! "$LOCAL_DEPLOYMENT_MODE" == "
     server ${ENVIRONMENT_EXCHANGE_NAME}-server-api:10010;
   }
   upstream socket {
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server-api:10080;
+    ip_hash;
+    server ${ENVIRONMENT_EXCHANGE_NAME}-server-stream:10080;
   }
 EOL
 
-elif [[ ! "$LOCAL_DEPLOYMENT_MODE" == "api" ]] && [[ "$LOCAL_DEPLOYMENT_MODE" == "ws" ]]; then
+  fi
+
+done
+
+if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then 
 
   # Generate local nginx conf
-  cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
-  upstream api {
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server-ws:10010;
-  }
-  
-  upstream socket {
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server-ws:10080;
+  cat >> $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
+
+  upstream web {
+    server ${ENVIRONMENT_EXCHANGE_NAME}-web:80;
   }
 EOL
 
-fi
+  fi
 
-if [[ "$LOCAL_DEPLOYMENT_MODE" == "api" ]] && [[ "$LOCAL_DEPLOYMENT_MODE" == "ws" ]]; then
+}
 
-# Generate local nginx conf
-cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
-  upstream api {
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server-api:10010;
-  }
-  upstream socket {
-    ip_hash;
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server-ws:10080;
-  }
-EOL
+function apply_nginx_user_defined_values(){
+          #sed -i.bak "s/$ENVIRONMENT_DOCKER_IMAGE_VERSION/$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
-fi
+    sed -i.bak "s/server_name.*\#Server.*/server_name $HEX_CONFIGMAP_API_HOST; \#Server domain/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
+    rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
 
+    CLIENT_DOMAIN=$(echo $HEX_CONFIGMAP_DOMAIN | cut -f3 -d "/")
+    sed -i.bak "s/server_name.*\#Client.*/server_name $CLIENT_DOMAIN; \#Client domain/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
+    rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
 }
 
 function generate_nginx_config_for_plugin() {
@@ -465,6 +441,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]]; then
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-redis:
     image: redis:5.0.5-alpine
+    restart: always
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
     ports:
@@ -475,6 +452,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]]; then
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
 EOL
+
 fi
 
 if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then 
@@ -482,6 +460,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-db:
     image: postgres:10.9
+    restart: always
     ports:
       - 5432:5432
     environment:
@@ -499,6 +478,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" == "true" ]]; then
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-influxdb:
     image: influxdb:1.7-alpine
+    restart: always
     ports:
       - 8086:8086
     environment:
@@ -517,123 +497,127 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" == "true" ]]; then
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
 EOL
+
 fi 
 
-if [[ "$1" == "all" ]]; then
-
+if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
-  ${ENVIRONMENT_EXCHANGE_NAME}-server:
-    image: $ENVIRONMENT_DOCKER_IMAGE_REGISTRY:$ENVIRONMENT_DOCKER_IMAGE_VERSION
-    env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
-    entrypoint:
-      - pm2-runtime
-      - start
-      - ecosystem.config.js
-      - --env
-      - development
-    depends_on:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-db
-      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
-      - ${ENVIRONMENT_EXCHANGE_NAME}-influxdb
-    networks:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-network
-  ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
-    image: nginx:1.15.8-alpine
-    volumes:
-      - ./nginx:/etc/nginx
-      - ./logs/nginx:/var/log
-      - ./nginx/static/:/usr/share/nginx/html
+  ${ENVIRONMENT_EXCHANGE_NAME}-web:
+    image: bitholla/hex-web:${ENVIRONMENT_EXCHANGE_NAME}-$(date "+%Y%m%d%H%M%S")
+    build:
+      context: ${HEX_CLI_INIT_PATH}/web/
+      dockerfile: ${HEX_CLI_INIT_PATH}/web/docker/Dockerfile
+    restart: always
     ports:
-      - 80:80
+      - 8080:80
+    volumes:
+      - ${HEX_CLI_INIT_PATH}/mail:/app/mail
     environment:
-      - NGINX_PORT=80
-    depends_on:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-server
+      - PUBLIC_URL=${HEX_CONFIGMAP_DOMAIN}
+      - REACT_APP_PUBLIC_URL=${HEX_CONFIGMAP_API_HOST}
+      - REACT_APP_SERVER_ENDPOINT=${HEX_CONFIGMAP_API_HOST}
+      - REACT_APP_NETWORK=${HEX_CONFIGMAP_NETWORK}
+      - REACT_APP_CAPTCHA_SITE_KEY=${ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}
+      - REACT_APP_DEFAULT_LANGUAGE=${ENVIRONMENT_WEB_DEFAULT_LANGUAGE}
+      - REACT_APP_DEFAULT_COUNTRY=${ENVIRONMENT_WEB_DEFAULT_COUNTRY}
+      - REACT_APP_BASE_CURRENCY=${ENVIRONMENT_WEB_BASE_CURRENCY}
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
 EOL
 
+fi 
 
-elif [[ "$1" == "all" ]] && [[ ! "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]] && [[ ! "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]] && [[ ! "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" == "true" ]] ; then
+#LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE=$ENVIRONMENT_EXCHANGE_RUN_MODE
 
- # Generate docker-compose
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
-  ${ENVIRONMENT_EXCHANGE_NAME}-server:
-    image: $ENVIRONMENT_DOCKER_IMAGE_REGISTRY:$ENVIRONMENT_DOCKER_IMAGE_VERSION
-    env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
-    entrypoint:
-      - pm2-runtime
-      - start
-      - ecosystem.config.js
-      - --env
-      - development
-    networks:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-network
-  ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
-    image: nginx:1.15.8-alpine
-    volumes:
-      - ./nginx:/etc/nginx
-      - ./logs/nginx:/var/log
-      - ./nginx/static/:/usr/share/nginx/html
-    ports:
-      - 80:80
-    environment:
-      - NGINX_PORT=80
-    depends_on:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-server
-    networks:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-network
-EOL
+IFS=',' read -ra LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE <<< "$ENVIRONMENT_EXCHANGE_RUN_MODE"
 
-else
+for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
 
-#LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE=$ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE
-
-IFS=',' read -ra LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE <<< "$ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE"
-
-  for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
+  if [[ ! "$i" == "engine" ]]; then
 
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+
   ${ENVIRONMENT_EXCHANGE_NAME}-server-${i}:
     image: $ENVIRONMENT_DOCKER_IMAGE_REGISTRY:$ENVIRONMENT_DOCKER_IMAGE_VERSION
+    restart: always
     env_file:
       - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
     entrypoint:
-      - pm2-runtime
-      - start
-      - ecosystem.config.js
-      - --env
-      - development
-      - --only
-      - ${i}
-EOL
+      - /app/${i}-binary
+    $(if [[ "${i}" == "api" ]] || [[ "${i}" == "stream" ]]; then echo "ports:"; fi)
+      $(if [[ "${i}" == "api" ]]; then echo "- 10010:10010"; fi) 
+      $(if [[ "${i}" == "stream" ]]; then echo "- 10080:10080"; fi)
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+    $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" ]] || [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" ]] || [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" ]]; then echo "depends_on:"; fi)
+      $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-influxdb"; fi)
+      $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-redis"; fi)
+      $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-db"; fi)
 
-  if [[ "$i" == "api" ]]; then
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
-    ports:
-      - 10010:10010
-EOL
-
-  elif [[ "$i" == "ws" ]]; then
-
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
-    ports:
-      - 10080:10080
 EOL
 
   fi
+
+  if [[ "$i" == "api" ]]; then
+  # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
+    image: nginx:1.15.8-alpine
+    restart: always
+    volumes:
+      - ./nginx:/etc/nginx
+      - ./logs/nginx:/var/log
+      - ./nginx/static/:/usr/share/nginx/html
+    ports:
+      - 80:80
+    environment:
+      - NGINX_PORT=80
+    depends_on:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-server-${i}
+      $(if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-web"; fi)
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
+      
 EOL
 
-done
+  fi
 
-fi
+  if [[ "$i" == "engine" ]]; then
+
+  IFS=',' read -ra PAIRS <<< "$HEX_CONFIGMAP_PAIRS"    #Convert string to array
+
+  for j in "${PAIRS[@]}"; do
+    TRADE_PARIS_DEPLOYMENT=$(echo $j | cut -f1 -d ",")
+
+  # Generate docker-compose
+  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-${i}-$TRADE_PARIS_DEPLOYMENT:
+    image: $ENVIRONMENT_DOCKER_IMAGE_REGISTRY:$ENVIRONMENT_DOCKER_IMAGE_VERSION
+    restart: always
+    env_file:
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    environment:
+      - PAIR=${TRADE_PARIS_DEPLOYMENT}
+    entrypoint:
+      - /app/${i}-binary
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+    $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" ]] || [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" ]] || [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" ]]; then echo "depends_on:"; fi)
+      $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-influxdb"; fi)
+      $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-redis"; fi)
+      $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-db"; fi)
+      
+EOL
+
+  done
+
+  fi
+
+done
 
 # Generate docker-compose
 cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
@@ -698,7 +682,7 @@ spec:
   - host: ${HEX_CONFIGMAP_API_HOST}
     http:
       paths:
-      - path: /v0
+      - path: /v1
         backend:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
           servicePort: 10010
@@ -728,7 +712,7 @@ spec:
   - host: ${HEX_CONFIGMAP_API_HOST}
     http:
       paths:
-      - path: /v0/order
+      - path: /v1/order
         backend:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
           servicePort: 10010
@@ -754,7 +738,7 @@ spec:
   - host: ${HEX_CONFIGMAP_API_HOST}
     http:
       paths:
-      - path: /v0/admin
+      - path: /v1/admin
         backend:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
           servicePort: 10010
@@ -768,14 +752,14 @@ spec:
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
-  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-ws
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-stream
   namespace: ${ENVIRONMENT_EXCHANGE_NAME}
   annotations:
     kubernetes.io/ingress.class: "nginx"
     $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
     $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo "certmanager.k8s.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
     nginx.ingress.kubernetes.io/proxy-body-size: "2m"
-    nginx.org/websocket-services: "${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}-server-ws"
+    nginx.org/websocket-services: "${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}-server-stream"
 spec:
   rules:
   - host: ${HEX_CONFIGMAP_API_HOST}
@@ -783,7 +767,7 @@ spec:
       paths:
       - path: /socket.io
         backend:
-          serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-ws
+          serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-stream
           servicePort: 10080
   
   tls:
@@ -791,6 +775,43 @@ spec:
     hosts:
     - ${HEX_CONFIGMAP_API_HOST}
 EOL
+
+if [[ "$ENVIRONMENT_WEB_ENABLE" ]]; then
+
+local WEB_DOMAIN_FOR_INGRESS=$HEX_CONFIGMAP_DOMAIN
+
+  # Generate Kubernetes Secret
+cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress-web.yaml <<EOL
+
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-web
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo "certmanager.k8s.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
+    nginx.ingress.kubernetes.io/proxy-body-size: "2m"
+
+spec:
+  rules:
+  - host: ${WEB_DOMAIN_FOR_INGRESS}
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-web
+          servicePort: 80
+  
+  tls:
+  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-web-tls-cert
+    hosts:
+    - ${WEB_DOMAIN_FOR_INGRESS}
+
+EOL
+
+fi
 
 }
 
@@ -933,22 +954,22 @@ function helm_dynamic_trading_paris() {
     if [[ "$1" == "run" ]]; then
 
       #Running and Upgrading
-      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-queue-$TRADE_PARIS_DEPLOYMENT_NAME --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="queue $TRADE_PARIS_DEPLOYMENT" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
+      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="engine" --set PAIR="$TRADE_PARIS_DEPLOYMENT" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
 
     elif [[ "$1" == "scaleup" ]]; then
       
       #Scaling down queue deployments on Kubernetes
-      kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-queue-$TRADE_PARIS_DEPLOYMENT_NAME --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+      kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
     elif [[ "$1" == "scaledown" ]]; then
       
       #Scaling down queue deployments on Kubernetes
-      kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-queue-$TRADE_PARIS_DEPLOYMENT_NAME --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
+      kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
     elif [[ "$1" == "terminate" ]]; then
 
       #Terminating
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-queue-$TRADE_PARIS_DEPLOYMENT_NAME
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME
 
     fi
 
@@ -1059,6 +1080,11 @@ function add_coin_input() {
   read answer
 
   COIN_SYMBOL=${answer:-eth}
+
+  echo "*** What is a full name of your new coin? [Default: Ethereum] ***"
+  read answer
+
+  COIN_FULLNAME=${answer:-Ethereum}
 
   echo "*** What is a full name of your new coin? [Default: Ethereum] ***"
   read answer
@@ -1286,21 +1312,18 @@ EOL
 
     else
 
-      echo "*** Failed to add new coin $COIN_SYMBOL! Please try again.***"
+      echo "*** Failed to remove existing coin $COIN_SYMBOL! Please try again.***"
       
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
       
     fi
 
-  elif [[ ! "$USE_KUBERNETES" ]]; then
+    elif [[ ! "$USE_KUBERNETES" ]]; then
 
-      if [[ ! $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE == "all" ]]; then
 
-          IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE}"
+      IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
           
-      fi
-
       # Overriding container prefix for develop server
       if [[ "$IS_DEVELOP" ]]; then
         
@@ -1469,11 +1492,7 @@ function remove_coin_exec() {
 
   elif [[ ! "$USE_KUBERNETES" ]]; then
 
-      if [[ ! $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE == "all" ]]; then
-
-          IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE}"
-          
-      fi
+      IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
       # Overriding container prefix for develop server
       if [[ "$IS_DEVELOP" ]]; then
@@ -1777,12 +1796,8 @@ EOL
 
   elif [[ ! "$USE_KUBERNETES" ]]; then
 
-      if [[ ! $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE == "all" ]]; then
-
-          IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE}"
+      IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
           
-      fi
-
       # Overriding container prefix for develop server
       if [[ "$IS_DEVELOP" ]]; then
         
@@ -1843,167 +1858,111 @@ EOL
 
 }
 
-function remove_pair_input() {
+function generate_hex_web_configmap() {
 
-  echo "*** What is a name of your trading pair want to remove? ***"
+cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-web-configmap.yaml <<EOL
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-web-env
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+data:
+  PUBLIC_URL: ${HEX_CONFIGMAP_DOMAIN}
+  REACT_APP_PUBLIC_URL: https://${HEX_CONFIGMAP_API_HOST}
+  REACT_APP_SERVER_ENDPOINT: https://${HEX_CONFIGMAP_API_HOST}
+
+  REACT_APP_NETWORK: ${HEX_CONFIGMAP_NETWORK}
+
+  REACT_APP_CAPTCHA_SITE_KEY: ${ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}
+
+  REACT_APP_DEFAULT_LANGUAGE: ${ENVIRONMENT_WEB_DEFAULT_LANGUAGE}
+  REACT_APP_DEFAULT_COUNTRY: ${ENVIRONMENT_WEB_DEFAULT_COUNTRY}
+
+  REACT_APP_BASE_CURRENCY: ${ENVIRONMENT_WEB_BASE_CURRENCY}
+  
+EOL
+}
+
+
+function launch_basic_settings_input() {
+
+  echo "*** Provided values would be updated on your settings files automatically. ***"
+
+  echo "*** What is a name of your exchange? [Default: $ENVIRONMENT_EXCHANGE_NAME] ***"
+  echo "*** There should be no SPACE! ***"
   read answer
 
-  PAIR_NAME=$answer
+  EXCHANGE_NAME_OVERRIDE=${answer:-$ENVIRONMENT_EXCHANGE_NAME}
 
-  if [[ -z "$answer" ]]; then
+  echo "*** What is a domain of your Exchange Server? [Default: $HEX_CONFIGMAP_API_HOST] ***"
+  read answer
 
-    echo "*** Your value is empty. Please confirm your input and run the command again. ***"
-    exit 1;
+  EXCHANGE_SERVER_DOMAIN_OVERRIDE=${answer:-$HEX_CONFIGMAP_API_HOST}
+
   
-  fi
+  DEFAULT_HEX_WEB_DOMAIN=$(echo $HEX_CONFIGMAP_DOMAIN | cut -f 3 -d "/" )
+  echo "*** What is a domain of your Web client? [Default: $DEFAULT_HEX_WEB_DOMAIN] ***"
+  read answer
+
+  EXCHANGE_WEB_DOMAIN_OVERRIDE="${answer:-$DEFAULT_HEX_WEB_DOMAIN}"
   
+  echo "*** What is your activation code? [Default: $HEX_SECRET_ACTIVATION_CODE] ***"
+  read answer
+
+  EXCHANGE_ACTIVATION_CODE_OVERRIDE=${answer:-$HEX_SECRET_ACTIVATION_CODE}
+
   echo "*********************************************"
-  echo "Name: $PAIR_NAME"
+  echo "Exchange Name: $EXCHANGE_NAME_OVERRIDE"
+  echo "Server Domain: $EXCHANGE_SERVER_DOMAIN_OVERRIDE"
+  echo "Web Domain: $EXCHANGE_WEB_DOMAIN_OVERRIDE"
+  echo "Activation Code: $EXCHANGE_ACTIVATION_CODE_OVERRIDE"
   echo "*********************************************"
 
-  echo "*** Are the sure you want to remove this trading pair from your exchange? (y/n) ***"
+  echo "*** Are the values are all correct? (y/n) ***"
   read answer
 
   if [[ "$answer" = "${answer#[Yy]}" ]]; then
       
-    echo "*** You chose false. Please confirm the values and run the command again. ***"
+    echo "*** You chose false. Please confirm the values and re-run the command. ***"
     exit 1;
   
   fi
 
-}
+  for i in ${CONFIG_FILE_PATH[@]}; do
 
-function remove_pair_exec() {
-
-  if [[ "$USE_KUBERNETES" ]]; then
-
-    echo "*** Removing existing pair $PAIR_NAME on Kubernetes ***"
-      
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME \
-                --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                --set job.enable="true" \
-                --set job.mode="remove_pair" \
-                --set job.env.pair_name="$PAIR_NAME" \
-                --set DEPLOYMENT_MODE="api" \
-                --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" \
-                --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" \
-                --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
-                --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml \
-                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml \
-                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server; then
-
-      echo "*** Kubernetes Job has been created for removing existing pair $PAIR_NAME. ***"
-
-      echo "*** Waiting until Job get completely run ***"
-      sleep 30;
-
-    else 
-
-      echo "*** Failed to create Kubernetes Job for removing existing pair $PAIR_NAME, Please confirm your input values and try again. ***"
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
-
+    # Update exchange name
+    if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+    CONFIGMAP_FILE_PATH=$i
+    sed -i.bak "s/ENVIRONMENT_EXCHANGE_NAME=$ENVIRONMENT_EXCHANGE_NAME/ENVIRONMENT_EXCHANGE_NAME=$EXCHANGE_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    rm $CONFIGMAP_FILE_PATH.bak
     fi
 
-    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME \
-            --namespace $ENVIRONMENT_EXCHANGE_NAME \
-            -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
-
-      echo "*** Pair $PAIR_NAME has been successfully removed on your exchange! ***"
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
-
-      echo "*** Removing existing $PAIR_NAME container from Kubernetes ***"
-      PAIR_BASE=$(echo $PAIR_NAME | cut -f1 -d '-')
-      PAIR_2=$(echo $PAIR_NAME | cut -f2 -d '-')
-
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-queue-$PAIR_BASE$PAIR_2
-
-      echo "*** Restarting containers... ***"
-      kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
-
-      echo "*** Removing created Kubernetes Job for removing existing pair... ***"
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
-
-      echo "*** Updating settings file to add new $PAIR_NAME. ***"
-      for i in ${CONFIG_FILE_PATH[@]}; do
-
-      if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
-          CONFIGMAP_FILE_PATH=$i
-          if [[ "$PAIR_NAME" == "hex-usdt" ]]; then
-              HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_PAIRS//$PAIR_NAME,}")
-            else
-              HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_PAIRS//,$PAIR_NAME}")
-          fi
-          sed -i.bak "s/$HEX_CONFIGMAP_PAIRS/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
-          rm $CONFIGMAP_FILE_PATH.bak
-      fi
-
-      done
-
-    else
-
-      echo "*** Failed to remove existing pair $PAIR_NAME! Please try again.***"
-      
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
-      
+    # Update api domain
+    if command grep -q "HEX_CONFIGMAP_API_HOST" $i > /dev/null ; then
+    CONFIGMAP_FILE_PATH=$i
+    sed -i.bak "s/HEX_CONFIGMAP_API_HOST=$HEX_CONFIGMAP_API_HOST/HEX_CONFIGMAP_API_HOST=$EXCHANGE_SERVER_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    rm $CONFIGMAP_FILE_PATH.bak
     fi
 
-  elif [[ ! "$USE_KUBERNETES" ]]; then
+    # Update client domain
+    if command grep -q "HEX_CONFIGMAP_DOMAIN" $i > /dev/null ; then
+    CONFIGMAP_FILE_PATH=$i
+    sed -i.bak "s/HEX_CONFIGMAP_DOMAIN=.*/HEX_CONFIGMAP_DOMAIN=https:\/\/$EXCHANGE_WEB_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    rm $CONFIGMAP_FILE_PATH.bak
+    fi
 
-      if [[ ! $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE == "all" ]]; then
+    # Update activation code
+    if command grep -q "HEX_SECRET_ACTIVATION_CODE" $i > /dev/null ; then
+    SECRET_FILE_PATH=$i
+    sed -i.bak "s/HEX_SECRET_ACTIVATION_CODE=$HEX_SECRET_ACTIVATION_CODE/HEX_SECRET_ACTIVATION_CODE=$EXCHANGE_ACTIVATION_CODE_OVERRIDE/" $SECRET_FILE_PATH
+    rm $SECRET_FILE_PATH.bak
+    fi
+      
+  done
 
-          IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE}"
-          
-      fi
-
-      # Overriding container prefix for develop server
-      if [[ "$IS_DEVELOP" ]]; then
-        
-        CONTAINER_PREFIX=
-
-      fi
-
-      echo "*** Removing new pair $PAIR_NAME on local exchange ***"
-      if command docker exec --env "PAIR_NAME=${PAIR_NAME}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/removePair.js; then
-
-        if  [[ "$IS_DEVELOP" ]]; then
-
-        # Restarting containers after database init jobs.
-        echo "Restarting containers to apply database changes."
-        docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
-
-        else
-
-          # Restarting containers after database init jobs.
-          echo "Restarting containers to apply database changes."
-          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
-
-        fi
-
-        echo "*** Updating settings file to add new $PAIR_NAME. ***"
-        for i in ${CONFIG_FILE_PATH[@]}; do
-
-        if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
-            CONFIGMAP_FILE_PATH=$i
-            if [[ "$PAIR_NAME" == "hex-usdt" ]]; then
-              HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_PAIRS//$PAIR_NAME,}")
-            else
-              HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_PAIRS//,$PAIR_NAME}")
-            fi
-            sed -i.bak "s/$HEX_CONFIGMAP_PAIRS/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
-            rm $CONFIGMAP_FILE_PATH.bak
-        fi
-
-        done
-
-      else
-
-        echo "*** Failed to remove trading pair $PAIR_NAME on local exchange. Please confirm your input values and try again. ***"
-        exit 1;
-
-      fi
-
-  fi
+  export ENVIRONMENT_EXCHANGE_NAME=$EXCHANGE_NAME_OVERRIDE
+  export HEX_CONFIGMAP_API_HOST=$EXCHANGE_SERVER_DOMAIN_OVERRIDE
+  export HEX_CONFIGMAP_DOMAIN=$EXCHANGE_WEB_DOMAIN_OVERRIDE
+  export HEX_SECRET_ACTIVATION_CODE=$EXCHANGE_ACTIVATION_CODE_OVERRIDE
 
 }

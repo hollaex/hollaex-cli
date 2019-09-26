@@ -31,15 +31,20 @@ Options:
         --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying docker-compose setup.
 
-    start : Turning on the existing exchange which get stopped.
+    start : Turning on the existing exchange which get stopped while applying new settings.
         --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
         --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying docker-compose setup.
 
-    stop : Turning off the existing exchange which is already running.
+    stop : Turning off the existing exchange which is currently running.
         --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
         --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying connected kubernetes cluster.
+    
+    restart : Restarting the Exchange while applying new settings.
+        --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
+        --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
+        --no_verify, Run script without verifying docker-compose setup.
 
     upgrade : Upgrading the existing exchange to new version based on the settings files.
         --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
@@ -63,6 +68,7 @@ Options:
         --remove_coin, Remove exisiting currency from exhcnage.
         --add_trading_pair, Add new trading pair on ehchange.
         --remove_trading_pair, Remove existing trading pair from exchange.
+        --reconfigure_basic_settings, Reconfigure basic settings such as Server domain or Activation Code.
 
     version : Print out current installed version of hex-cli.
 
@@ -229,7 +235,7 @@ if [[ "$1" == 'dev' ]]; then
             generate_local_docker_compose_for_dev;
         fi
 
-        generate_nginx_upstream $LOCAL_DEPLOYMENT_MODE;
+        generate_nginx_upstream;
 
         if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
         
@@ -369,43 +375,9 @@ elif [[ "$1" == "launch" ]]; then
     
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
-
-    # Check Activation code is available
-    if [[ ! "$HEX_SECRET_ACTIVATION_CODE" ]]; then
-
-        echo "*** hex-cli failed to detect your activation code for the exchange. ***"
-        echo "*** Reading it manually... ***"
-        echo "What is your activation code?"
-        read activation_code
-
-        echo "*** Your activation code is : $activation_code"
-        echo "*** Is the value correct? (y/n) ***"
-        read answer
-
-        if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                echo "*** Exiting... ***"
-                exit 0;
-        fi
-
-        for i in ${CONFIG_FILE_PATH[@]}; do
-
-            if command grep -q "HEX_SECRET_ACTIVATION_CODE" $i > /dev/null ; then
-            SECRET_FILE_PATH=$i
-            sed -i.bak "s/HEX_SECRET_ACTIVATION_CODE=$HEX_SECRET_ACTIVATION_CODE/HEX_SECRET_ACTIVATION_CODE=$activation_code/" $SECRET_FILE_PATH
-            rm $SECRET_FILE_PATH.bak
-            fi
-            
-        done
-
-        for i in ${CONFIG_FILE_PATH[@]}; do
-            source $i
-        done;
-        
-        source $SCRIPTPATH/tools_generator.sh
-        load_config_variables;
-        
-    fi
-
+    
+    # Ask for basic necessary settings
+    launch_basic_settings_input;
 
     if [[ "$USE_KUBERNETES" ]]; then
 
@@ -470,6 +442,13 @@ elif [[ "$1" == "launch" ]]; then
 
         fi
 
+        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
+
+            echo "Generating Web client Configmap"
+            generate_hex_web_configmap;
+
+        fi
+
 
         if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
 
@@ -494,6 +473,13 @@ elif [[ "$1" == "launch" ]]; then
 
         echo "*** Applying secret on the namespace ***"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+
+        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
+        
+            echo "*** Applying web client configmap on the namespace ***"
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-web-configmap.yaml
+
+        fi
 
         if [[ "$ENVIRONMENT_KUBERNETES_RUN_REDIS" == true ]]; then
 
@@ -545,6 +531,14 @@ elif [[ "$1" == "launch" ]]; then
         echo "*** Applying ingress on the namespace ***"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
+        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
+
+            echo "*** Applying ingress for web client on the namespace ***"
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
+
+        fi
+
+
         if [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_USERNAME" ]] || [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_PASSWORD" ]] || [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL" ]]; then
 
             echo "*** One of your docker registry credentials are missing! ***"
@@ -586,11 +580,18 @@ elif [[ "$1" == "launch" ]]; then
         # FOR GENERATING NODESELECTOR VALUES
         generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hex
 
+        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
+
+            echo "*** Running $ENVIRONMENT_EXCHANGE_NAME web client container ***"
+            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-web --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set imageRegistry="$ENVIRONMENT_KUBERNETES_WEB_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION" --set stable.replicaCount="1" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-web-env" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-web/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-web
+
+        fi
+
         echo "*** Running $ENVIRONMENT_EXCHANGE_NAME workload containers ***"
 
         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="$ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
 
-        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-ws --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="ws" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
+        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="stream" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
 
         helm_dynamic_trading_paris run;
 
@@ -672,23 +673,29 @@ elif [[ "$1" == "launch" ]]; then
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
+            echo "Generating .env file for docker"
             generate_local_env;
 
         fi  
         
         # Generating docker-compose yaml for exchange
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
-
-            generate_local_docker_compose $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE;
+            
+            echo "Generating docker-compose file"
+            generate_local_docker_compose $ENVIRONMENT_EXCHANGE_RUN_MODE;
 
         fi
-
-        # Generating nginx upstream.conf for exchange
+        
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_NGINX_UPSTREAM" == true ]]; then
 
-            generate_nginx_upstream $LOCAL_DEPLOYMENT_MODE;
+            echo "Generating Nginx upstream conf"
+            generate_nginx_upstream;
         
         fi
+
+        # Update nginx.conf to apply user own domains
+        echo "Updating nginx conf file based on user settings"
+        apply_nginx_user_defined_values;
 
         # Generating nginx configurations for custom plugin
         if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
@@ -701,7 +708,6 @@ elif [[ "$1" == "launch" ]]; then
 
         fi
 
-        # Actual part of running docker-compose command
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND
         
         # Running database init
@@ -830,13 +836,50 @@ elif [[ "$1" == "start" ]]; then
 
         fi
 
+        #Generating and updating settings
+
+        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
+
+            echo "Generating Kubernetes Configmap"
+            generate_kubernetes_configmap;
+
+        fi
+
+        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]]; then
+
+            echo "Generating Kubernetes Secret"
+            generate_kubernetes_secret;
+
+        fi
+
+
+        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
+
+            echo "Generating Kubernetes Ingress"
+            generate_kubernetes_ingress;
+
+        fi
+
+        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == true ]]; then
+
+            echo "Generating Kubernetes Ingress for custom plugins"
+            generate_nginx_config_for_plugin;
+
+        fi
+
+        echo "*** Applying configmap on the namespace ***"
+        kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+
+        echo "*** Applying secret on the namespace ***"
+        kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+
         # For scaling up exisitng Exchange on Kubernetes
         if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
             echo "*** Scaling up containers on the cluster... ***"
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=$ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-ws --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
             helm_dynamic_trading_paris scaleup;
 
@@ -881,9 +924,9 @@ elif [[ "$1" == "start" ]]; then
         fi
 
         # Exit hex-cli If docker_compose 
-        if [[ ! "$ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE" ]]; then
+        if [[ ! "$ENVIRONMENT_EXCHANGE_RUN_MODE" ]]; then
 
-            echo "Your ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE value is missing! Please reconfirm your settings files."
+            echo "Your ENVIRONMENT_EXCHANGE_RUN_MODE value is missing! Please reconfirm your settings files."
             exit 1;
 
         fi
@@ -925,22 +968,35 @@ elif [[ "$1" == "start" ]]; then
             fi
 
         fi
+
+        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
+
+            echo "Generating .env file for docker"
+            generate_local_env;
+
+        fi  
         
-        # Generate docker-compose.yaml and nginx upstream.conf in case of they are missing.
-        if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml" ]]; then
-
-            generate_local_docker_compose $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE;
-
-        fi
-
-        if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf" ]]; then
-
-            generate_nginx_upstream $LOCAL_DEPLOYMENT_MODE;
+        # Generating docker-compose yaml for exchange
+        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
+            
+            echo "Generating docker-compose file"
+            generate_local_docker_compose $ENVIRONMENT_EXCHANGE_RUN_MODE;
 
         fi
+        
+        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_NGINX_UPSTREAM" == true ]]; then
 
-        # Generate plugins.conf in case of the file is missing while the ENV true.
-        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]] && [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf" ]]; then
+            echo "Generating Nginx upstream conf"
+            generate_nginx_upstream;
+        
+        fi
+
+        # Update nginx.conf to apply user own domains
+        echo "Updating nginx conf file based on user settings"
+        apply_nginx_user_defined_values;
+
+        # Generating nginx configurations for custom plugin
+        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
         
             generate_nginx_config_for_plugin;
 
@@ -1058,7 +1114,7 @@ elif [[ "$1" == "stop" ]]; then
         echo "*** Scaling down containers on the cluster... ***"
         kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-ws --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
+        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
         helm_dynamic_trading_paris scaledown;
 
@@ -1108,6 +1164,240 @@ elif [[ "$1" == "stop" ]]; then
         fi
 
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+
+        exit 0;
+
+    fi
+
+elif [[ "$1" == "restart" ]]; then
+
+    while true; do
+        [[ $# -eq 0 ]] && break
+        case $1 in
+            --settings)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HEX_CLI_INIT_PATH=$1
+                echo "Your initialized exchange path : $HEX_CLI_INIT_PATH."
+                shift; continue
+                ;;
+            --kube)
+                USE_KUBERNETES=true
+                echo "hex-cli will use your Kubernetes cluster as a target."
+                shift; continue
+                ;;
+            --no_verify)
+                RUN_WITH_VERIFY=false
+                echo "Running it wihtout verify the config."
+                shift; continue
+                ;;
+            --*) 
+                err_msg "Invalid option: $1"
+                print_usage;
+                exit 1;
+                ;;
+        esac
+        shift
+    done
+
+    if [[ ! "$HEX_CLI_INIT_PATH" ]]; then
+
+        HEX_CLI_INIT_PATH=$(pwd)
+        CONFIG_FILE_PATH=$(pwd)/settings/*
+        TEMPLATE_GENERATE_PATH=$(pwd)/templates
+        INIT_PATH_CHECK=$(pwd)/.hex
+
+    fi
+
+    if [[ "$HEX_CLI_INIT_PATH" ]]; then
+
+        CONFIG_FILE_PATH=$HEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HEX_CLI_INIT_PATH/.hex
+        
+    fi
+    
+    #Quit if necessary flags are missing
+    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
+
+        echo "*** Failed to detect hex-cli initialized directory! Please re-check your path. ***"
+        print_usage;
+        exit 1;
+
+    fi
+
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
+    
+    source $SCRIPTPATH/tools_generator.sh
+    load_config_variables;
+
+    if [[ "$USE_KUBERNETES" ]]; then
+
+        #Checking Kubernetes dependencies
+        check_kubernetes_dependencies;
+
+        #Creating kubernetes_config directory for generating config for Kubernetes.
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
+        fi
+
+        if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION"  ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME"  ]] ; then
+            echo "Error : Please define exchange name and Docker image version on config file before running hex-cli."
+            print_usage
+            exit 1;
+        fi
+
+        check_empty_values_on_settings;
+
+        echo "*** Verifying current KUBECONFIG on the machine ***"
+        kubectl get nodes
+
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+            echo "*** !! Exchange service will be unavailable during the restart !! ***"
+            echo "*** Are you sure you want to restart $ENVIRONMENT_EXCHANGE_NAME on this cluster? (y/n) ***"
+
+            read answer
+
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                echo "*** Exiting... ***"
+                exit 0;
+            fi
+
+        fi
+
+        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
+
+            echo "Generating Kubernetes Configmap"
+            generate_kubernetes_configmap;
+
+        fi
+
+        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]]; then
+
+            echo "Generating Kubernetes Secret"
+            generate_kubernetes_secret;
+
+        fi
+
+        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
+
+            echo "Generating Kubernetes Ingress"
+            generate_kubernetes_ingress;
+
+        fi
+
+        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == true ]]; then
+
+            echo "Generating Kubernetes Ingress for custom plugins"
+            generate_nginx_config_for_plugin;
+
+        fi
+
+        echo "*** Removing $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster. ***"
+        kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+        echo "*** Applying latest configmap env on the cluster. ***"
+        kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+
+        echo "*** Applying latest secret on the cluster ***"
+        kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+
+        # FOR GENERATING NODESELECTOR VALUES
+        generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hex
+
+        echo "*** Restarting all exchange containers on cluster ***"
+        kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+
+        echo "*** Applying $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster. ***"
+        kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+        echo "*** All done! ***"
+        echo "*** Your $ENVIRONMENT_EXCHANGE_NAME ($HEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again. ***"
+
+        exit 0;
+    
+    fi
+
+    if [[ ! "$USE_KUBERNETES" ]]; then
+
+        # Checking docker-compose is installed on this machine.
+        if command docker-compose version > /dev/null 2>&1; then
+
+            echo "*** docker-compose detected ***"
+            echo "version: $(docker-compose version)"
+
+        else
+
+            echo "*** hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli. ***"
+            exit 1;
+
+        fi
+
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local;
+        fi
+
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local/nginx;
+        fi
+
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
+        fi
+
+        check_empty_values_on_settings;
+
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+            
+            echo "*** !! Exchange service will be unavailable during the restart !! ***"
+            echo "*** Are you sure you want to restart $ENVIRONMENT_EXCHANGE_NAME on your local? (y/n) ***"
+
+            read answer
+
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                echo "*** Exiting... ***"
+                exit 0;
+            fi
+
+        fi
+
+        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
+
+            generate_local_env;
+
+        fi
+
+        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
+
+            generate_local_docker_compose $ENVIRONMENT_EXCHANGE_RUN_MODE;
+
+        fi
+
+        # Generating nginx upstream.conf for exchange
+        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_NGINX_UPSTREAM" == true ]]; then
+
+            generate_nginx_upstream
+        
+        fi
+
+        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
+
+            generate_nginx_config_for_plugin;
+
+        elif [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "false" ]]; then
+
+            rm -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf
+
+        fi
+        
+        # Update nginx.conf to apply user own domains
+        apply_nginx_user_defined_values;
+
+        echo "*** Restarting containers to apply new changes... ***"
+        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
 
         exit 0;
 
@@ -1241,6 +1531,14 @@ elif [[ "$1" == "upgrade" ]]; then
 
         fi
 
+        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
+
+            echo "Generating Web client Configmap"
+            generate_hex_web_configmap;
+
+        fi
+
+
         if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
 
             echo "Generating Kubernetes Ingress"
@@ -1264,21 +1562,42 @@ elif [[ "$1" == "upgrade" ]]; then
         echo "*** Applying latest secret on the cluster ***"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
+        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
+        
+            echo "*** Applying web client configmap on the namespace ***"
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-web-configmap.yaml
+
+        fi
+
         # FOR GENERATING NODESELECTOR VALUES
         generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hex
 
         echo "*** Upgrading $ENVIRONMENT_EXCHANGE_NAME Pods on Kubernetes. ***"
         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="2" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
 
-        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-ws --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="ws" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
+        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="stream" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
         
         helm_dynamic_trading_paris run;
 
+        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
+
+            echo "*** Running $ENVIRONMENT_EXCHANGE_NAME web client container ***"
+            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-web --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set imageRegistry="$ENVIRONMENT_KUBERNETES_WEB_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION" --set stable.replicaCount="1" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-web-env" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-web/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-web
+
+        fi
+        
         # Running database job for Kubernetes
         kubernetes_database_init upgrade;
 
         echo "*** Applying $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster. ***"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
+
+            echo "*** Applying ingress for web client on the namespace ***"
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
+
+        fi
 
 
         echo "*** All done! ***"
@@ -1347,14 +1666,14 @@ elif [[ "$1" == "upgrade" ]]; then
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
 
-            generate_local_docker_compose $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE;
+            generate_local_docker_compose $ENVIRONMENT_EXCHANGE_RUN_MODE;
 
         fi
 
         # Generating nginx upstream.conf for exchange
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_NGINX_UPSTREAM" == true ]]; then
 
-            generate_nginx_upstream $LOCAL_DEPLOYMENT_MODE;
+            generate_nginx_upstream
         
         fi
 
@@ -1367,12 +1686,24 @@ elif [[ "$1" == "upgrade" ]]; then
             rm -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf
 
         fi
+        
+        # Update nginx.conf to apply user own domains
+        apply_nginx_user_defined_values;
 
         echo "*** Restarting containers to apply new changes... ***"
-        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+        if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d; then
 
-        RUN_WITH_VERIFY=false
-        local_database_init upgrade;
+            RUN_WITH_VERIFY=false
+            local_database_init upgrade;
+
+            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        else
+
+            echo "*** Failed to upgrade exchange! Please review your settings and try again. ***"
+            exit 1;
+
+        fi
 
         exit 0;
 
@@ -1466,15 +1797,28 @@ elif [[ "$1" == "terminate" ]]; then
         echo "*** Removing $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster. ***"
         kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
+        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
+            
+            echo "*** Removing $ENVIRONMENT_EXCHANGE_NAME ingress rule for web client on the cluster. ***"
+            kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
+
+        fi
+
         echo "*** Removing helm packages on the cluster. ***"
         helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-api
-        helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-ws
+        helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-stream
         
         helm_dynamic_trading_paris terminate;
 
         helm del --purge $ENVIRONMENT_EXCHANGE_NAME-redis 
         helm del --purge $ENVIRONMENT_EXCHANGE_NAME-db
         helm del --purge $ENVIRONMENT_EXCHANGE_NAME-influxdb
+
+        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
+
+            helm del --purge $ENVIRONMENT_EXCHANGE_NAME-web
+
+        fi
 
         echo "*** Removing $ENVIRONMENT_EXCHANGE_NAME namespace. ***"
         kubectl delete ns $ENVIRONMENT_EXCHANGE_NAME
@@ -1598,6 +1942,12 @@ elif [[ "$1" == "toolbox" ]]; then
                 REMOVE_TRADING_PAIR=true
                 TOOLBOX_ENABLE=true
                 echo "hex-cli will proceed to remove trading pair on your existing exchange."
+                shift; continue
+                ;;
+            --reconfigure_basic_settings)
+                RECONFIGURE_BASIC_SETTINGS=true
+                TOOLBOX_ENABLE=true
+                echo "hex-cli will proceed to reconfigure your exchange's basic settings."
                 shift; continue
                 ;;
             --no_verify)
@@ -1784,7 +2134,7 @@ elif [[ "$1" == "toolbox" ]]; then
             echo "*** All workload containers will be restarted once the upgrade process is done. ***"
 
             echo "*** Regenerating docker-compose file... ***"
-            generate_local_docker_compose $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE
+            generate_local_docker_compose $ENVIRONMENT_EXCHANGE_RUN_MODE
 
             echo "*** Restarting containers... ***"
             docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND
@@ -2035,6 +2385,14 @@ elif [[ "$1" == "toolbox" ]]; then
         remove_pair_input;
 
         remove_pair_exec;
+    
+    elif [[ "$RECONFIGURE_BASIC_SETTINGS" ]]; then
+
+        # Ask for basic necessary settings
+        launch_basic_settings_input;
+
+        echo "*** Make sure to check your settings files been successfully updated by following your provided values. ***"
+        echo "*** Once it's all good, then you can proceed to actually update your exchange by using 'hex upgrade' command"
         
     fi
 
