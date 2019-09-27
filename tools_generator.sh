@@ -216,7 +216,23 @@ if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
   }
 EOL
 
-  fi
+fi
+
+#Upstream generator for dev environments
+if [[ "$IS_DEVELOP" ]]; then
+
+ # Generate local nginx conf
+  cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
+  upstream api {
+    server ${ENVIRONMENT_EXCHANGE_NAME}-server:10010;
+  }
+  upstream socket {
+    ip_hash;
+    server ${ENVIRONMENT_EXCHANGE_NAME}-server:10080;
+  }
+EOL
+
+fi
 
 }
 
