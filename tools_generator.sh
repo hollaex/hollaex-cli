@@ -1382,10 +1382,19 @@ EOL
 
       fi
 
-      # Restarting containers after database init jobs.
-      echo "Restarting containers to apply database changes."
-      docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+      # # Restarting containers after database init jobs.
+      # echo "Restarting containers to apply database changes."
 
+      # if  [[ "$IS_DEVELOP" ]]; then
+
+      #   docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+      # else
+
+      #   docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+      # fi
+      
   fi
 
 }
