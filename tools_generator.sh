@@ -589,6 +589,7 @@ EOL
       - ./nginx/static/:/usr/share/nginx/html
     ports:
       - 80:80
+      - 443:443
     environment:
       - NGINX_PORT=80
     depends_on:

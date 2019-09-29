@@ -24,7 +24,7 @@ Usage :
 Options:
     init : Generating the initialized exchange folder for your new exchange.
         --name, Name of your exchange.
-        --path, Path to create init directory for hex-cli, Default is current directory.
+        --standalone, Initialize exchange directory without pulling hex-kit repo remotely (Not recommended).
 
     launch : Bringing up your new exchange for the first time.
         --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
@@ -69,6 +69,8 @@ Options:
         --add_trading_pair, Add new trading pair on ehchange.
         --remove_trading_pair, Remove existing trading pair from exchange.
         --reconfigure_basic_settings, Reconfigure basic settings such as Server domain or Activation Code.
+        --issue_ssl_cert, Issue SSL certificate on local Nginx by using Let's Encrypt.
+        --renew_ssl_cert, Renew SSL certificate on local Nginx by using Let's Encrypt.
 
     version : Print out current installed version of hex-cli.
 
@@ -275,6 +277,12 @@ elif [[ "$1" == "init" ]]; then
                 echo "Name of your Exchange : $ENVIRONMENT_EXCHANGE_NAME."
                 shift; continue
                 ;;
+            --standalone)
+                shift 
+                HEX_INIT_STANDALONE=true
+                echo "hex-cli will proceed to generate initialized directory without pulling HEX-Kit repo."
+                shift; continue
+                ;;
         esac
         shift
     done
@@ -288,32 +296,68 @@ elif [[ "$1" == "init" ]]; then
 
     fi
 
-    HEX_CLI_INIT_PATH=$(pwd)/$ENVIRONMENT_EXCHANGE_NAME
+    if [[ ! "$HEX_INIT_STANDALONE" ]]; then
 
-    if [[ -d "$HEX_CLI_INIT_PATH" ]]; then
+        echo "*** Pulling remote HEX KIT repo on $(pwd) ***"
+        if command git clone https://github.com/bitholla/hex-kit.git; then
+            
+            HEX_CLI_INIT_PATH=$(pwd)/hex-kit
+            CONFIG_FILE_PATH=$(pwd)/hex-kit/settings/*
+            TEMPLATE_GENERATE_PATH=$(pwd)/hex-kit/templates
+            INIT_PATH_CHECK=$(pwd)/hex-kit/.hex
 
-        echo "*** Init path exists! hex-cli can't override exsiting exchange files. ***"
-        exit 1;
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                # Update exchange name
+                if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+                CONFIGMAP_FILE_PATH=$i
+                sed -i.bak "s/ENVIRONMENT_EXCHANGE_NAME=.*/ENVIRONMENT_EXCHANGE_NAME=$ENVIRONMENT_EXCHANGE_NAME/" $CONFIGMAP_FILE_PATH
+                rm $CONFIGMAP_FILE_PATH.bak
+                fi
+
+            done
+
+            echo "*** Done. HEX KIT directory is now available on $(pwd)/hex-kit. ***"
+            echo "*** Please go to the pulled path and customize based on your needs. ***"
+            
+
+        else 
+
+            echo "*** Failed to pull HEX KIT repo. Please check your internet connectivity. ***"
+            exit 1;
+
+        fi
+
+    else 
+
+        HEX_CLI_INIT_PATH=$(pwd)/$ENVIRONMENT_EXCHANGE_NAME
+
+        if [[ -d "$HEX_CLI_INIT_PATH" ]]; then
+
+            echo "*** Init path exists! hex-cli can't override exsiting exchange files. ***"
+            exit 1;
+        fi
+
+        echo "*** Initializing new Exchange - $ENVIRONMENT_EXCHANGE_NAME on $HEX_CLI_INIT_PATH ... ***"
+
+        mkdir $HEX_CLI_INIT_PATH
+
+        cp -r $SCRIPTPATH/settings $HEX_CLI_INIT_PATH/settings
+        cp -r $SCRIPTPATH/plugins $HEX_CLI_INIT_PATH/plugins
+        cp -r $SCRIPTPATH/templates $HEX_CLI_INIT_PATH/templates
+        touch $HEX_CLI_INIT_PATH/.hex
+        echo "Initialized by using hex-cli v$(cat $SCRIPTPATH/version)" >> $HEX_CLI_INIT_PATH/.hex
+
+        grep -v ENVIRONMENT_EXCHANGE_NAME= $HEX_CLI_INIT_PATH/settings/configmap > temp.init && mv temp.init $HEX_CLI_INIT_PATH/settings/configmap
+
+        (echo "ENVIRONMENT_EXCHANGE_NAME=$ENVIRONMENT_EXCHANGE_NAME" && cat $HEX_CLI_INIT_PATH/settings/configmap) > temp.init && mv temp.init $HEX_CLI_INIT_PATH/settings/configmap
+
+        echo "*** All done! ***"
+        echo "*** To run hex-cli commands further, Please get into initialized path first to let hex-cli reads settings. ***"
+
     fi
-
-    echo "*** Initializing new Exchange - $ENVIRONMENT_EXCHANGE_NAME on $HEX_CLI_INIT_PATH ... ***"
-
-    mkdir $HEX_CLI_INIT_PATH
-
-    cp -r $SCRIPTPATH/settings $HEX_CLI_INIT_PATH/settings
-    cp -r $SCRIPTPATH/plugins $HEX_CLI_INIT_PATH/plugins
-    cp -r $SCRIPTPATH/templates $HEX_CLI_INIT_PATH/templates
-    touch $HEX_CLI_INIT_PATH/.hex
-    echo "Initialized by using hex-cli v$(cat $SCRIPTPATH/version)" >> $HEX_CLI_INIT_PATH/.hex
-
-    grep -v ENVIRONMENT_EXCHANGE_NAME= $HEX_CLI_INIT_PATH/settings/configmap > temp.init && mv temp.init $HEX_CLI_INIT_PATH/settings/configmap
-
-    (echo "ENVIRONMENT_EXCHANGE_NAME=$ENVIRONMENT_EXCHANGE_NAME" && cat $HEX_CLI_INIT_PATH/settings/configmap) > temp.init && mv temp.init $HEX_CLI_INIT_PATH/settings/configmap
-
-    echo "*** All done! ***"
-    echo "*** To run hex-cli commands further, Please get into initialized path first to let hex-cli reads settings. ***"
-
-    exit 0;
+        
+        exit 0;
     
 elif [[ "$1" == "launch" ]]; then
     while true; do
@@ -1982,6 +2026,18 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "hex-cli will proceed to reconfigure your exchange's basic settings."
                 shift; continue
                 ;;
+            --issue_ssl_cert)
+                ISSUE_SSL_CERT=true
+                TOOLBOX_ENABLE=true
+                echo "hex-cli will proceed to issue SSL certificate by using Let's Encrypt for local exchange."
+                shift; continue
+                ;;
+            --renew_ssl_cert)
+                RENEW_SSL_CERT=true
+                TOOLBOX_ENABLE=true
+                echo "hex-cli will proceed to renew SSL certificate by using Let's Encrypt for local exchange."
+                shift; continue
+                ;;
             --no_verify)
                 RUN_WITH_VERIFY=false
                 echo "Running it wihtout verify the config."
@@ -2425,6 +2481,46 @@ elif [[ "$1" == "toolbox" ]]; then
 
         echo "*** Make sure to check your settings files been successfully updated by following your provided values. ***"
         echo "*** Once it's all good, then you can proceed to actually update your exchange by using 'hex upgrade' command"
+    
+
+    elif [[ "$ISSUE_SSL_CERT" ]]; then
+
+        echo "*** Issuing SSL certificate requires full restart of exchange. This would cause few minutes of downtime. ***"
+        echo "*** Would you like to continue? (y/n) ***"
+        read answer
+
+        if [[ "$answer" = "${answer#[Yy]}" ]]; then
+            echo "*** Exiting... ***"
+            exit 0;
+        fi
+
+        docker run --rm -it --name certbot-$ENVIRONMENT_EXCHANGE_NAME \
+                --entrypoint "/bin/sh" \
+                -v $TEMPLATE_GENERATE_PATH/local/nginx:/etc/nginx \
+                -v $TEMPLATE_GENERATE_PATH/local/letsencrypt:/etc/letsencrypt \
+                -v $TEMPLATE_GENERATE_PATH/local/logs:/var/logs \
+                --network local_$ENVIRONMENT_EXCHANGE_NAME-network \
+                certbot/certbot -c "pip install certbot-nginx && apk add --no-cache nginx && certbot --nginx"
+    
+    elif [[ "$RENEW_SSL_CERT" ]]; then
+
+        echo "*** Renewing SSL certificate requires full restart of exchange. This would cause few minutes of downtime. ***"
+        echo "*** Would you like to continue? (y/n) ***"
+        read answer
+
+        if [[ "$answer" = "${answer#[Yy]}" ]]; then
+            echo "*** Exiting... ***"
+            exit 0;
+        fi
+
+        docker run --rm -it --name certbot-$ENVIRONMENT_EXCHANGE_NAME \
+                --entrypoint "/bin/sh" \
+                -v $TEMPLATE_GENERATE_PATH/local/nginx:/etc/nginx \
+                -v $TEMPLATE_GENERATE_PATH/local/letsencrypt:/etc/letsencrypt \
+                -v $TEMPLATE_GENERATE_PATH/local/logs:/var/logs \
+                --network local_$ENVIRONMENT_EXCHANGE_NAME-network \
+                certbot/certbot -c "pip install certbot-nginx && apk add --no-cache nginx && certbot --nginx"
+      
         
     fi
 
