@@ -1900,35 +1900,121 @@ function remove_pair_exec() {
 
   if [[ "$USE_KUBERNETES" ]]; then
 
-  echo "Removing existing pair $COIN_SYMBOL on Kubernetes"
-  kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- bash -c 'COIN_FULLNAME=$(echo $COIN_FULLNAME); echo "coin fullname: $COIN_FULLNAME"'
+    echo "*** Removing existing pair $PAIR_NAME on Kubernetes ***"
+      
+    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME \
+                --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                --set job.enable="true" \
+                --set job.mode="remove_pair" \
+                --set job.env.pair_name="$PAIR_NAME" \
+                --set DEPLOYMENT_MODE="api" \
+                --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" \
+                --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" \
+                --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml \
+                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml \
+                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server; then
 
-  elif [[ ! "$USE_KUBERNETES" ]]; then
+      echo "*** Kubernetes Job has been created for removing existing pair $PAIR_NAME. ***"
 
-      if [[ ! $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE == "all" ]]; then
+      echo "*** Waiting until Job get completely run ***"
+      sleep 30;
 
-          IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE}"
-          
-      fi
+    else 
 
-      echo "Removing new pair $PAIR_NAME on local exchange"
-      if command docker exec --env "PAIR_NAME=${PAIR_NAME}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/removePair.js; then
+      echo "*** Failed to create Kubernetes Job for removing existing pair $PAIR_NAME, Please confirm your input values and try again. ***"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
 
-      # Restarting containers after database init jobs.
-      echo "Restarting containers to apply database changes."
-      docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+    fi
 
-      echo "Updating settings file to add new $COIN_SYMBOL."
+    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME \
+            --namespace $ENVIRONMENT_EXCHANGE_NAME \
+            -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+
+      echo "*** Pair $PAIR_NAME has been successfully removed on your exchange! ***"
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
+
+      echo "*** Removing existing $PAIR_NAME container from Kubernetes ***"
+      PAIR_BASE=$(echo $PAIR_NAME | cut -f1 -d '-')
+      PAIR_2=$(echo $PAIR_NAME | cut -f2 -d '-')
+
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-queue-$PAIR_BASE$PAIR_2
+
+      echo "*** Restarting containers... ***"
+      kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+
+      echo "*** Removing created Kubernetes Job for removing existing pair... ***"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
+
+      echo "*** Updating settings file to remove existing $PAIR_NAME. ***"
       for i in ${CONFIG_FILE_PATH[@]}; do
 
       if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
           CONFIGMAP_FILE_PATH=$i
-          HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_PAIRS//,$PAIR_NAME}")
+          if [[ "$PAIR_NAME" == "hex-usdt" ]]; then
+              HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_PAIRS//$PAIR_NAME,}")
+            else
+              HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_PAIRS//,$PAIR_NAME}")
+          fi
           sed -i.bak "s/$HEX_CONFIGMAP_PAIRS/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
           rm $CONFIGMAP_FILE_PATH.bak
       fi
 
       done
+
+    else
+
+      echo "*** Failed to remove existing pair $PAIR_NAME! Please try again.***"
+      
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
+      
+    fi
+
+  elif [[ ! "$USE_KUBERNETES" ]]; then
+
+      IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+
+      # Overriding container prefix for develop server
+      if [[ "$IS_DEVELOP" ]]; then
+        
+        CONTAINER_PREFIX=
+
+      fi
+
+      echo "*** Removing new pair $PAIR_NAME on local exchange ***"
+      if command docker exec --env "PAIR_NAME=${PAIR_NAME}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/removePair.js; then
+
+        if  [[ "$IS_DEVELOP" ]]; then
+
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        else
+
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        fi
+
+        echo "*** Updating settings file to remove existing $PAIR_NAME. ***"
+        for i in ${CONFIG_FILE_PATH[@]}; do
+
+        if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+            CONFIGMAP_FILE_PATH=$i
+            if [[ "$PAIR_NAME" == "hex-usdt" ]]; then
+              HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_PAIRS//$PAIR_NAME,}")
+            else
+              HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_PAIRS//,$PAIR_NAME}")
+            fi
+            sed -i.bak "s/$HEX_CONFIGMAP_PAIRS/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+            rm $CONFIGMAP_FILE_PATH.bak
+        fi
+
+        done
 
       else
 
