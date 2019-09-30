@@ -5,12 +5,12 @@ function local_database_init() {
 
     if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-        echo "*** Are you sure you want to run database init jobs for your local $ENVIRONMENT_EXCHANGE_NAME db? (y/n) ***"
+        echo "Are you sure you want to run database init jobs for your local $ENVIRONMENT_EXCHANGE_NAME db? (y/n)"
 
         read answer
 
       if [[ "$answer" = "${answer#[Yy]}" ]]; then
-        echo "*** Exiting... ***"
+        echo "Exiting..."
         exit 0;
       fi
 
@@ -20,16 +20,16 @@ function local_database_init() {
 
       IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
-      echo "*** Running sequelize db:migrate ***"
+      echo "Running sequelize db:migrate"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 sequelize db:migrate
 
-      echo "*** Running database triggers ***"
+      echo "Running database triggers"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js
 
-      echo "*** Running sequelize db:seed:all ***"
+      echo "Running sequelize db:seed:all"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 sequelize db:seed:all
 
-      echo "*** Running InfluxDB migrations ***"
+      echo "Running InfluxDB migrations"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/createInflux.js
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/migrateInflux.js
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/initializeInflux.js
@@ -39,27 +39,27 @@ function local_database_init() {
 
       IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
-      echo "*** Running sequelize db:migrate ***"
+      echo "Running sequelize db:migrate"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:migrate
 
-      echo "*** Running database triggers ***"
+      echo "Running database triggers"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/runTriggers.js
 
-      echo "*** Running InfluxDB initialization ***"
+      echo "Running InfluxDB initialization"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/initializeInflux.js
     
     elif [[ "$1" == 'dev' ]]; then
 
-      echo "*** Running sequelize db:migrate ***"
+      echo "Running sequelize db:migrate"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server_1 sequelize db:migrate
 
-      echo "*** Running database triggers ***"
+      echo "Running database triggers"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server_1 node tools/dbs/runTriggers.js
 
-      echo "*** Running sequelize db:seed:all ***"
+      echo "Running sequelize db:seed:all"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server_1 sequelize db:seed:all
 
-      echo "*** Running InfluxDB migrations ***"
+      echo "Running InfluxDB migrations"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server_1 node tools/dbs/createInflux.js
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server_1 node tools/dbs/migrateInflux.js
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server_1 node tools/dbs/initializeInflux.js
@@ -75,49 +75,49 @@ function kubernetes_database_init() {
       sleep 10;
   done;
 
-  echo "*** API container become ready to run Database initialization jobs! ***"
+  echo "API container become ready to run Database initialization jobs!"
   sleep 10;
 
   if [[ "$1" == "launch" ]]; then
 
-    echo "*** Running sequelize db:migrate ***"
+    echo "Running sequelize db:migrate"
     kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:migrate 
 
-    echo "*** Running Database Triggers ***"
+    echo "Running Database Triggers"
     kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/runTriggers.js
 
-    echo "*** Running sequelize db:seed:all ***"
+    echo "Running sequelize db:seed:all"
     kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:seed:all 
 
-    echo "*** Running InfluxDB migrations ***"
+    echo "Running InfluxDB migrations"
     kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/createInflux.js
     kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/migrateInflux.js
     kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
 
   elif [[ "$1" == "upgrade" ]]; then
 
-    echo "*** Running sequelize db:migrate ***"
+    echo "Running sequelize db:migrate"
     kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:migrate 
 
-    echo "*** Running Database Triggers ***"
+    echo "Running Database Triggers"
     kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/runTriggers.js
 
-    echo "*** Running InfluxDB migrations ***"
+    echo "Running InfluxDB migrations"
     kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
 
   fi
 
-  echo "*** Restarting all containers to apply latest database changes... ***"
+  echo "Restarting all containers to apply latest database changes..."
   kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
 
-  echo "*** Waiting for the containers get fully ready... ***"
+  echo "Waiting for the containers get fully ready..."
   sleep 30;
 
 }
 
 function local_code_test() {
 
-    echo "*** Running mocha code test ***"
+    echo "Running mocha code test"
     docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-api_1 mocha --exit
 
     exit 0;
@@ -128,11 +128,11 @@ function check_kubernetes_dependencies() {
     # Checking kubectl and helm are installed on this machine.
     if command kubectl version > /dev/null 2>&1 && command helm version > /dev/null 2>&1; then
 
-         echo "*** kubectl and helm detected ***"
+         echo "kubectl and helm detected"
 
     else
 
-         echo "*** hex-cli failed to detect kubectl or helm installed on this machine. Please install it before running hex-cli. ***"
+         echo "hex-cli failed to detect kubectl or helm installed on this machine. Please install it before running hex-cli."
          exit 1;
 
     fi
@@ -851,7 +851,7 @@ for j in ${CONFIG_FILE_PATH[@]}; do
 
     if [[ ! -z "$HEX_SECRET_ADMIN_PASSWORD" ]] ; then
   
-      echo "*** Pre-generated secrets are detected on your secert file! ***"
+      echo "Pre-generated secrets are detected on your secert file!"
       echo "Are you sure you want to override them? (y/n)"
 
       read answer
@@ -895,7 +895,7 @@ EOL
 
       else
 
-        echo "*** Skipping... ***"
+        echo "Skipping..."
 
       fi
 
@@ -1093,22 +1093,17 @@ function join_array_to_json(){
 
 function add_coin_input() {
 
-  echo "*** What is a symbol of your new coin? [Default: eth] ***"
+  echo "Coin Symbol: (eth)"
   read answer
 
   COIN_SYMBOL=${answer:-eth}
 
-  echo "*** What is a full name of your new coin? [Default: Ethereum] ***"
+  echo "Full Name of Coin: (Ethereum)"
   read answer
 
   COIN_FULLNAME=${answer:-Ethereum}
 
-  echo "*** What is a full name of your new coin? [Default: Ethereum] ***"
-  read answer
-
-  COIN_FULLNAME=${answer:-Ethereum}
-
-  echo "*** Are you going to allow deposit to your new coin? (y/n) [Default: y] ***"
+  echo "Allow deposit: (Y/n)"
   read answer
   
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
@@ -1121,7 +1116,7 @@ function add_coin_input() {
 
   fi
 
-  echo "*** Are you going to allow withdrawal to your new coin? (y/n) [Default: y] ***"
+  echo "Allow Withdrawal: (Y/n)"
   read answer
   
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
@@ -1134,22 +1129,22 @@ function add_coin_input() {
 
   fi
   
-  echo "*** What is the fee of new coin withdrawal? [Default: 0.001] ***"
+  echo "Fee for Withdrawal: (0.001)"
   read answer
 
   COIN_WITHDRAWAL_FEE=${answer:-0.001}
 
-  echo "*** What is the minimum price of the new coin? [Default: 0.001] ***"
+  echo "Minimum Price: (0.001)"
   read answer
 
   COIN_MIN=${answer:-0.001}
 
-  echo "*** What is the maximum price of the new coin? [Default: 10000] ***"
+  echo "Maximum Price: (10000)"
   read answer
 
   COIN_MAX=${answer:-10000}
 
-  echo "*** What is the increment size of the new coin? [Default: 0.001] ***"
+  echo "Increment Size: (0.001)]"
   read answer
 
   COIN_INCREMENT_UNIT=${answer:-0.001}
@@ -1157,7 +1152,7 @@ function add_coin_input() {
   # Checking user level setup on settings file is set or not
   if [[ ! "$HEX_CONFIGMAP_USER_LEVEL_NUMBER" ]]; then
 
-    echo "*** Warning: Settings value - HEX_CONFIGMAP_USER_LEVEL_NUMBER is not configured. Please confirm your settings files. ***"
+    echo "Warning: Settings value - HEX_CONFIGMAP_USER_LEVEL_NUMBER is not configured. Please confirm your settings files."
     exit 1;
 
   fi
@@ -1179,7 +1174,7 @@ function add_coin_input() {
   # Asking deposit limit of new coin per level
   for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
 
-    do echo "*** What is a deposit limit for user on LEVEL $i? ***" && read answer && export DEPOSIT_LIMITS_LEVEL_$i=$answer
+    do echo "Deposit limit of user level $i:" && read answer && export DEPOSIT_LIMITS_LEVEL_$i=$answer
   
   done;
 
@@ -1191,7 +1186,7 @@ function add_coin_input() {
   # Asking withdrawal limit of new coin per level
   for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
 
-    do echo "*** What is a withdrawal limit for user on LEVEL $i? ***" && read answer && export WITHDRAWAL_LIMITS_LEVEL_$i=$answer
+    do echo "Withdrawal limit of user level $i" && read answer && export WITHDRAWAL_LIMITS_LEVEL_$i=$answer
   
   done;
 
@@ -1200,7 +1195,7 @@ function add_coin_input() {
 
   COIN_WITHDRAWAL_LIMITS=$(join_array_to_json $(print_withdrawal_array_side_by_side))
 
-  echo "*** Are you going to active the new coin you just configured? (y/n) [Default: y] ***"
+  echo "Activate Coin: (Y/n)"
   read answer
   
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
@@ -1241,17 +1236,17 @@ function add_coin_input() {
   echo "Minimum price: $COIN_MIN"
   echo "Maximum price: $COIN_MAX"
   echo "Increment size: $COIN_INCREMENT_UNIT"
-  echo -e "Deposit limits per level:\n$(print_coin_add_deposit_level;)"
-  echo -e "Withdrawal limits per level:\n$(print_coin_add_withdrawal_level;)"
+  echo "Deposit limits per level: $COIN_DEPOSIT_LIMITS"
+  echo "Withdrawal limits per level: $COIN_WITHDRAWAL_LIMITS"
   echo "Activation: $COIN_ACTIVE"
   echo "*********************************************"
 
-  echo "*** Are the values are all correct? (y/n) ***"
+  echo "Are the values are all correct? (Y/n)"
   read answer
 
   if [[ "$answer" = "${answer#[Yy]}" ]]; then
       
-    echo "*** You chose false. Please confirm the values and re-run the command. ***"
+    echo "You chose false. Please confirm the values and re-run the command."
     exit 1;
   
   fi
@@ -1288,34 +1283,34 @@ EOL
 
     generate_kubernetes_add_coin_values;
 
-    echo "*** Adding new coin $COIN_SYMBOL on Kubernetes ***"
+    echo "Adding new coin $COIN_SYMBOL on Kubernetes"
     
     if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL --namespace $ENVIRONMENT_EXCHANGE_NAME --set job.enable="true" --set job.mode="add_coin" --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/add-coin.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server; then
 
-      echo "*** Kubernetes Job has been created for adding new coin $COIN_SYMBOL. ***"
+      echo "Kubernetes Job has been created for adding new coin $COIN_SYMBOL."
 
-      echo "*** Waiting until Job get completely run ***"
+      echo "Waiting until Job get completely run"
       sleep 30;
 
     else 
 
-      echo "*** Failed to create Kubernetes Job for adding new coin $COIN_SYMBOL, Please confirm your input values and try again. ***"
+      echo "Failed to create Kubernetes Job for adding new coin $COIN_SYMBOL, Please confirm your input values and try again."
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
 
     fi
 
     if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
 
-      echo "*** Coin $COIN_SYMBOL has been successfully added on your exchange! ***"
+      echo "Coin $COIN_SYMBOL has been successfully added on your exchange!"
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
       
-      echo "*** Upgrading exchange with latest settings... ***"
+      echo "Upgrading exchange with latest settings..."
       hex upgrade --kube --no_verify
 
-      echo "*** Removing created Kubernetes Job for adding new coin... ***"
+      echo "Removing created Kubernetes Job for adding new coin..."
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
 
-      echo "*** Updating settings file to add new $COIN_SYMBOL. ***"
+      echo "Updating settings file to add new $COIN_SYMBOL."
       for i in ${CONFIG_FILE_PATH[@]}; do
 
       if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
@@ -1329,7 +1324,7 @@ EOL
 
     else
 
-      echo "*** Failed to remove existing coin $COIN_SYMBOL! Please try again.***"
+      echo "Failed to remove existing coin $COIN_SYMBOL! Please try again.***"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
@@ -1348,7 +1343,7 @@ EOL
 
       fi
 
-      echo "*** Adding new coin $COIN_SYMBOL on local exchange ***"
+      echo "Adding new coin $COIN_SYMBOL on local exchange"
       if command docker exec --env "COIN_FULLNAME=${COIN_FULLNAME}" \
                   --env "COIN_SYMBOL=${COIN_SYMBOL}" \
                   --env "COIN_ALLOW_DEPOSIT=${COIN_ALLOW_DEPOSIT}" \
@@ -1363,7 +1358,7 @@ EOL
                   ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
                   node tools/dbs/addCoin.js; then
 
-        echo "*** Running database triggers ***"
+        echo "Running database triggers"
         docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js
 
         if  [[ "$IS_DEVELOP" ]]; then
@@ -1380,7 +1375,7 @@ EOL
 
         fi
 
-        echo "*** Updating settings file to add new $COIN_SYMBOL. ***"
+        echo "Updating settings file to add new $COIN_SYMBOL."
         for i in ${CONFIG_FILE_PATH[@]}; do
 
         if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
@@ -1394,23 +1389,10 @@ EOL
 
       else
 
-        echo "*** Failed to add new coin $COIN_SYMBOL on local exchange. Please confirm your input values and try again. ***"
+        echo "Failed to add new coin $COIN_SYMBOL on local exchange. Please confirm your input values and try again."
         exit 1;
 
       fi
-
-      # # Restarting containers after database init jobs.
-      # echo "Restarting containers to apply database changes."
-
-      # if  [[ "$IS_DEVELOP" ]]; then
-
-      #   docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
-
-      # else
-
-      #   docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
-
-      # fi
       
   fi
 
@@ -1418,14 +1400,14 @@ EOL
 
 function remove_coin_input() {
 
-  echo "*** What is a symbol of your want to remove? ***"
+  echo "Coin Symbol: "
   read answer
 
   COIN_SYMBOL=$answer
 
   if [[ -z "$answer" ]]; then
 
-    echo "*** Your value is empty. Please confirm your input and run the command again. ***"
+    echo "Your value is empty. Please confirm your input and run the command again."
     exit 1;
   
   fi
@@ -1434,12 +1416,12 @@ function remove_coin_input() {
   echo "Symbol: $COIN_SYMBOL"
   echo "*********************************************"
 
-  echo "*** Are the sure you want to remove this coin from your exchange? (y/n) ***"
+  echo "Are the sure you want to remove this coin from your exchange? (y/n)"
   read answer
 
   if [[ "$answer" = "${answer#[Yy]}" ]]; then
       
-    echo "*** You chose false. Please confirm the values and run the command again. ***"
+    echo "You chose false. Please confirm the values and run the command again."
     exit 1;
   
   fi
@@ -1450,7 +1432,7 @@ function remove_coin_exec() {
 
   if [[ "$USE_KUBERNETES" ]]; then
 
-  echo "*** Removing existing coin $COIN_SYMBOL on Kubernetes ***"
+  echo "Removing existing coin $COIN_SYMBOL on Kubernetes"
     
     if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL \
                 --namespace $ENVIRONMENT_EXCHANGE_NAME \
@@ -1466,14 +1448,14 @@ function remove_coin_exec() {
                 -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml \
                 $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server; then
 
-      echo "*** Kubernetes Job has been created for removing existing coin $COIN_SYMBOL. ***"
+      echo "Kubernetes Job has been created for removing existing coin $COIN_SYMBOL."
 
-      echo "*** Waiting until Job get completely run ***"
+      echo "Waiting until Job get completely run"
       sleep 30;
 
     else 
 
-      echo "*** Failed to create Kubernetes Job for removing existing coin $COIN_SYMBOL, Please confirm your input values and try again. ***"
+      echo "Failed to create Kubernetes Job for removing existing coin $COIN_SYMBOL, Please confirm your input values and try again."
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
 
     fi
@@ -1482,16 +1464,16 @@ function remove_coin_exec() {
             --namespace $ENVIRONMENT_EXCHANGE_NAME \
             -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
 
-      echo "*** Coin $COIN_SYMBOL has been successfully removed on your exchange! ***"
+      echo "Coin $COIN_SYMBOL has been successfully removed on your exchange!"
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
       
-      echo "*** Restarting containers... ***"
+      echo "Restarting containers..."
       kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
 
-      echo "*** Removing created Kubernetes Job for removing existing coin... ***"
+      echo "Removing created Kubernetes Job for removing existing coin..."
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
 
-      echo "*** Updating settings file to remove $COIN_SYMBOL. ***"
+      echo "Updating settings file to remove $COIN_SYMBOL."
       for i in ${CONFIG_FILE_PATH[@]}; do
 
       if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
@@ -1509,7 +1491,7 @@ function remove_coin_exec() {
 
     else
 
-      echo "*** Failed to remove existing coin $COIN_SYMBOL! Please try again.***"
+      echo "Failed to remove existing coin $COIN_SYMBOL! Please try again.***"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
@@ -1527,7 +1509,7 @@ function remove_coin_exec() {
 
       fi
 
-      echo "*** Removing new coin $COIN_SYMBOL on local docker ***"
+      echo "Removing new coin $COIN_SYMBOL on local docker"
       if command docker exec --env "COIN_SYMBOL=${COIN_SYMBOL}" \
                   ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
                   node tools/dbs/removeCoin.js; then
@@ -1547,7 +1529,7 @@ function remove_coin_exec() {
 
       fi
 
-      echo "*** Updating settings file to remove $COIN_SYMBOL. ***"
+      echo "Updating settings file to remove $COIN_SYMBOL."
       for i in ${CONFIG_FILE_PATH[@]}; do
 
       if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
@@ -1565,7 +1547,7 @@ function remove_coin_exec() {
 
       else
 
-        echo "*** Failed to remove coin $COIN_SYMBOL on local exchange. Please confirm your input values and try again. ***"
+        echo "Failed to remove coin $COIN_SYMBOL on local exchange. Please confirm your input values and try again."
         exit 1;
 
       fi
@@ -1576,7 +1558,7 @@ function remove_coin_exec() {
 
 function add_pair_input() {
 
-  echo "*** What is a full name of your new trading pair? [Default: eth-usdt] ***"
+  echo "What is a full name of your new trading pair? [Default: eth-usdt]"
   read answer
 
   PAIR_NAME=${answer:-eth-usdt}
@@ -1586,7 +1568,7 @@ function add_pair_input() {
   # Checking user level setup on settings file is set or not
   if [[ ! "$HEX_CONFIGMAP_USER_LEVEL_NUMBER" ]]; then
 
-    echo "*** Warning: Settings value - HEX_CONFIGMAP_USER_LEVEL_NUMBER is not configured. Please confirm your settings files. ***"
+    echo "Warning: Settings value - HEX_CONFIGMAP_USER_LEVEL_NUMBER is not configured. Please confirm your settings files."
     exit 1;
 
   fi
@@ -1608,7 +1590,7 @@ function add_pair_input() {
   # Asking deposit limit of new coin per level
   for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
 
-    do echo "*** What is a taker fee for user on LEVEL $i? ***" && read answer && export TAKER_FEES_LEVEL_$i=$answer
+    do echo "What is a taker fee for user on LEVEL $i?" && read answer && export TAKER_FEES_LEVEL_$i=$answer
   
   done;
 
@@ -1620,7 +1602,7 @@ function add_pair_input() {
   # Asking withdrawal limit of new coin per level
   for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
 
-    do echo "*** What is a maker fee for user on LEVEL $i? ***" && read answer && export MAKER_FEES_LEVEL_$i=$answer
+    do echo "What is a maker fee for user on LEVEL $i?" && read answer && export MAKER_FEES_LEVEL_$i=$answer
   
   done;
 
@@ -1629,37 +1611,37 @@ function add_pair_input() {
 
   MAKER_FEES=$(join_array_to_json $(print_maker_fees_array_side_by_side))
 
-  echo "*** What is the minimum size for trading of the new pair? [Default: 0.001] ***"
+  echo "What is the minimum size for trading of the new pair? [Default: 0.001]"
   read answer
 
   MIN_SIZE=${answer:-0.001}
 
-  echo "*** What is the maximum size for trading of the new pair? [Default: 20000000] ***"
+  echo "What is the maximum size for trading of the new pair? [Default: 20000000]"
   read answer
 
   MAX_SIZE=${answer:-20000000}
 
-  echo "*** What is the minimum price of the new pair? [Default: 0.0001] ***"
+  echo "What is the minimum price of the new pair? [Default: 0.0001]"
   read answer
 
   MIN_PRICE=${answer:-0.0001}
 
-  echo "*** What is the maximum price for trading of the new pair? [Default: 10] ***"
+  echo "What is the maximum price for trading of the new pair? [Default: 10]"
   read answer
 
   MAX_PRICE=${answer:-10}
 
-  echo "*** What is the increment size of the new pair? [Default: 0.001] ***"
+  echo "What is the increment size of the new pair? [Default: 0.001]"
   read answer
 
   INCREMENT_SIZE=${answer:-0.001}
 
-  echo "*** What is the increment price of the new pair? [Default: 1] ***"
+  echo "What is the increment price of the new pair? [Default: 1]"
   read answer
 
   INCREMENT_PRICE=${answer:-1}
 
-  echo "*** Are you going to active the new pair you just configured? (y/n) [Default: y] ***"
+  echo "Are you going to active the new pair you just configured? (y/n) [Default: y]"
   read answer
   
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
@@ -1707,12 +1689,12 @@ function add_pair_input() {
   echo "Activation: $PAIR_ACTIVE"
   echo "*********************************************"
 
-  echo "*** Are the values are all correct? (y/n) ***"
+  echo "Are the values are all correct? (y/n)"
   read answer
 
   if [[ "$answer" = "${answer#[Yy]}" ]]; then
       
-    echo "*** You chose false. Please confirm the values and re-run the command. ***"
+    echo "You chose false. Please confirm the values and re-run the command."
     exit 1;
   
   fi
@@ -1750,7 +1732,7 @@ EOL
 
     generate_kubernetes_add_pair_values;
 
-    echo "*** Adding new pair $PAIR_NAME on Kubernetes ***"
+    echo "Adding new pair $PAIR_NAME on Kubernetes"
     
     if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME \
                 --namespace $ENVIRONMENT_EXCHANGE_NAME \
@@ -1766,14 +1748,14 @@ EOL
                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/add-pair.yaml \
                 $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server; then
 
-      echo "*** Kubernetes Job has been created for adding new pair $PAIR_NAME. ***"
+      echo "Kubernetes Job has been created for adding new pair $PAIR_NAME."
 
-      echo "*** Waiting until Job get completely run ***"
+      echo "Waiting until Job get completely run"
       sleep 30;
 
     else 
 
-      echo "*** Failed to create Kubernetes Job for adding new pair $PAIR_NAME, Please confirm your input values and try again. ***"
+      echo "Failed to create Kubernetes Job for adding new pair $PAIR_NAME, Please confirm your input values and try again."
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
 
     fi
@@ -1782,10 +1764,10 @@ EOL
             --namespace $ENVIRONMENT_EXCHANGE_NAME \
             -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
 
-      echo "*** Pair $PAIR_NAME has been successfully added on your exchange! ***"
+      echo "Pair $PAIR_NAME has been successfully added on your exchange!"
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
 
-      echo "*** Updating settings file to add new $PAIR_NAME. ***"
+      echo "Updating settings file to add new $PAIR_NAME."
       for i in ${CONFIG_FILE_PATH[@]}; do
 
       if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
@@ -1805,15 +1787,15 @@ EOL
       source $SCRIPTPATH/tools_generator.sh
       load_config_variables;
       
-      echo "*** Upgrading exchange with latest settings... ***"
+      echo "Upgrading exchange with latest settings..."
       hex upgrade --kube --no_verify
 
-      echo "*** Removing created Kubernetes Job for adding new coin... ***"
+      echo "Removing created Kubernetes Job for adding new coin..."
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
 
     else
 
-      echo "*** Failed to add new pair $PAIR_NAME! Please try again.***"
+      echo "Failed to add new pair $PAIR_NAME! Please try again.***"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
@@ -1831,7 +1813,7 @@ EOL
 
       fi
 
-      echo "*** Adding new pair $PAIR_NAME on local exchange ***"
+      echo "Adding new pair $PAIR_NAME on local exchange"
       if command docker exec --env "PAIR_NAME=${PAIR_NAME}" \
                   --env "PAIR_BASE=${PAIR_BASE}" \
                   --env "PAIR_2=${PAIR_2}" \
@@ -1861,7 +1843,7 @@ EOL
 
         fi
 
-        echo "*** Updating settings file to add new $PAIR_NAME. ***"
+        echo "Updating settings file to add new $PAIR_NAME."
         for i in ${CONFIG_FILE_PATH[@]}; do
 
         if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
@@ -1875,7 +1857,82 @@ EOL
 
       else
 
-        echo "*** Failed to add new pair $PAIR_NAME on local exchange. Please confirm your input values and try again. ***"
+        echo "Failed to add new pair $PAIR_NAME on local exchange. Please confirm your input values and try again."
+        exit 1;
+
+      fi
+
+  fi
+
+}
+
+function remove_pair_input() {
+
+  echo "Pair name to remove: "
+  read answer
+
+  PAIR_NAME=$answer
+
+  if [[ -z "$answer" ]]; then
+
+    echo "Your value is empty. Please confirm your input and run the command again."
+    exit 1;
+  
+  fi
+  
+  echo "*********************************************"
+  echo "Name: $PAIR_NAME"
+  echo "*********************************************"
+
+  echo "Are the sure you want to remove this trading pair from your exchange? (y/n)"
+  read answer
+
+  if [[ "$answer" = "${answer#[Yy]}" ]]; then
+      
+    echo "You chose false. Please confirm the values and run the command again."
+    exit 1;
+  
+  fi
+
+}
+
+function remove_pair_exec() {
+
+  if [[ "$USE_KUBERNETES" ]]; then
+
+  echo "Removing existing pair $COIN_SYMBOL on Kubernetes"
+  kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- bash -c 'COIN_FULLNAME=$(echo $COIN_FULLNAME); echo "coin fullname: $COIN_FULLNAME"'
+
+  elif [[ ! "$USE_KUBERNETES" ]]; then
+
+      if [[ ! $ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE == "all" ]]; then
+
+          IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_DOCKER_COMPOSE_RUN_MODE}"
+          
+      fi
+
+      echo "Removing new pair $PAIR_NAME on local exchange"
+      if command docker exec --env "PAIR_NAME=${PAIR_NAME}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/removePair.js; then
+
+      # Restarting containers after database init jobs.
+      echo "Restarting containers to apply database changes."
+      docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+      echo "Updating settings file to add new $COIN_SYMBOL."
+      for i in ${CONFIG_FILE_PATH[@]}; do
+
+      if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+          CONFIGMAP_FILE_PATH=$i
+          HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_PAIRS//,$PAIR_NAME}")
+          sed -i.bak "s/$HEX_CONFIGMAP_PAIRS/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+          rm $CONFIGMAP_FILE_PATH.bak
+      fi
+
+      done
+
+      else
+
+        echo "Failed to remove trading pair $PAIR_NAME on local exchange. Please confirm your input values and try again."
         exit 1;
 
       fi
@@ -1912,53 +1969,60 @@ EOL
 
 function launch_basic_settings_input() {
 
-  echo "*** Provided values would be updated on your settings files automatically. ***"
+  /bin/cat << EOF
+  
+Please fill up the interaction form to laucnh your own exchange.
 
-  echo "*** What is a name of your exchange? [Default: $ENVIRONMENT_EXCHANGE_NAME] ***"
-  echo "*** There should be no SPACE! ***"
+If you don't have activation code for HEX Core yet, We also provide trial license.
+Please visit bitholla.com to see more details.
+
+EOF
+
+  echo "Exchange name: ($ENVIRONMENT_EXCHANGE_NAME)"
   read answer
 
   EXCHANGE_NAME_OVERRIDE=${answer:-$ENVIRONMENT_EXCHANGE_NAME}
 
-  echo "*** What is a domain of your Exchange Server? [Default: $HEX_CONFIGMAP_API_HOST] ***"
-  read answer
-
-  EXCHANGE_SERVER_DOMAIN_OVERRIDE=${answer:-$HEX_CONFIGMAP_API_HOST}
-
-  
   DEFAULT_HEX_WEB_DOMAIN=$(echo $HEX_CONFIGMAP_DOMAIN | cut -f 3 -d "/" )
-  echo "*** What is a domain of your Web client? [Default: $DEFAULT_HEX_WEB_DOMAIN] ***"
+  echo "Exchange URL: ($DEFAULT_HEX_WEB_DOMAIN)"
   read answer
 
   EXCHANGE_WEB_DOMAIN_OVERRIDE="${answer:-$DEFAULT_HEX_WEB_DOMAIN}"
 
-  echo "*** What is your number for user levels? [Default: $HEX_CONFIGMAP_USER_LEVEL_NUMBER] ***"
+  echo "Exchange API URL: ($HEX_CONFIGMAP_API_HOST)"
+  read answer
+
+  EXCHANGE_SERVER_DOMAIN_OVERRIDE=${answer:-$HEX_CONFIGMAP_API_HOST}
+
+  echo "User levels: ($HEX_CONFIGMAP_USER_LEVEL_NUMBER)"
   read answer
 
   EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE=${answer:-$HEX_CONFIGMAP_USER_LEVEL_NUMBER}
   
-  echo "*** What is your activation code? [Default: $HEX_SECRET_ACTIVATION_CODE] ***"
+  echo "Activation Code: ($HEX_SECRET_ACTIVATION_CODE)"
   read answer
 
   EXCHANGE_ACTIVATION_CODE_OVERRIDE=${answer:-$HEX_SECRET_ACTIVATION_CODE}
 
   echo "*********************************************"
   echo "Exchange Name: $EXCHANGE_NAME_OVERRIDE"
-  echo "Server Domain: $EXCHANGE_SERVER_DOMAIN_OVERRIDE"
-  echo "Web Domain: $EXCHANGE_WEB_DOMAIN_OVERRIDE"
+  echo "Exchange URL: $EXCHANGE_WEB_DOMAIN_OVERRIDE"
+  echo "Exchange API URL: $EXCHANGE_SERVER_DOMAIN_OVERRIDE"
   echo "User levels: $EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE"
   echo "Activation Code: $EXCHANGE_ACTIVATION_CODE_OVERRIDE"
   echo "*********************************************"
 
-  echo "*** Are the values are all correct? (y/n) ***"
+  echo "Are the values are all correct? (Y/n)"
   read answer
 
-  if [[ "$answer" = "${answer#[Yy]}" ]]; then
+  if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
       
-    echo "*** You chose false. Please confirm the values and re-run the command. ***"
+    echo "You chose false. Please confirm the values and re-run the command."
     exit 1;
   
   fi
+
+  echo "Provided values would be updated on your settings files automatically."
 
   for i in ${CONFIG_FILE_PATH[@]}; do
 

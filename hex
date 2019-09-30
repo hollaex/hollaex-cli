@@ -149,7 +149,7 @@ if [[ "$1" == 'dev' ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "*** Failed to detect hex-cli initialized directory! Please re-check your path. ***"
+        echo "Failed to detect hex-cli initialized directory! Please re-check your path."
         print_usage;
         exit 1;
 
@@ -167,12 +167,12 @@ if [[ "$1" == 'dev' ]]; then
         # Checking docker-compose is installed on this machine.
         if command docker-compose version > /dev/null 2>&1; then
 
-            echo "*** docker-compose detected ***"
+            echo "docker-compose detected"
             echo "version: $(docker-compose version)"
 
         else
 
-            echo "*** hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli. ***"
+            echo "hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli."
             exit 1;
 
         fi
@@ -193,7 +193,7 @@ if [[ "$1" == 'dev' ]]; then
         #Quit if necessary flags are missing
         if [[ ! "$LOCAL_COMMAND" ]] && [[ ! "$LOCAL_DATABASE_INIT" ]]; then
 
-            echo "*** Make sure to specify --command flag for dev commands ***"
+            echo "Make sure to specify --command flag for dev commands"
             print_usage;
             exit 1;
 
@@ -210,12 +210,12 @@ if [[ "$1" == 'dev' ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "*** Are you sure you want to run $ENVIRONMENT_EXCHANGE_NAME - $LOCAL_COMMAND on your local machine? (y/n) ***"
+            echo "Are you sure you want to run $ENVIRONMENT_EXCHANGE_NAME - $LOCAL_COMMAND on your local machine? (y/n)"
 
             read answer
 
             if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                echo "*** Exiting... ***"
+                echo "Exiting..."
                 exit 0;
             fi
 
@@ -290,7 +290,7 @@ elif [[ "$1" == "init" ]]; then
     #Quit if name of exchange is missing
     if [[ ! "$ENVIRONMENT_EXCHANGE_NAME" ]]; then
 
-        echo "*** You must specify the name of your Exchange! Use `--name` flag to pass name. ***"
+        echo "You must specify the name of your Exchange! Use `--name` flag to pass name."
         print_usage;
         exit 1;
 
@@ -298,7 +298,7 @@ elif [[ "$1" == "init" ]]; then
 
     if [[ ! "$HEX_INIT_STANDALONE" ]]; then
 
-        echo "*** Pulling remote HEX KIT repo on $(pwd) ***"
+        echo "Pulling remote HEX KIT repo on $(pwd)"
         if command git clone https://github.com/bitholla/hex-kit.git; then
             
             HEX_CLI_INIT_PATH=$(pwd)/hex-kit
@@ -317,13 +317,13 @@ elif [[ "$1" == "init" ]]; then
 
             done
 
-            echo "*** Done. HEX KIT directory is now available on $(pwd)/hex-kit. ***"
-            echo "*** Please go to the pulled path and customize based on your needs. ***"
+            echo "Done. HEX KIT directory is now available on $(pwd)/hex-kit."
+            echo "Please go to the pulled path and customize based on your needs."
             
 
         else 
 
-            echo "*** Failed to pull HEX KIT repo. Please check your internet connectivity. ***"
+            echo "Failed to pull HEX KIT repo. Please check your internet connectivity."
             exit 1;
 
         fi
@@ -334,11 +334,11 @@ elif [[ "$1" == "init" ]]; then
 
         if [[ -d "$HEX_CLI_INIT_PATH" ]]; then
 
-            echo "*** Init path exists! hex-cli can't override exsiting exchange files. ***"
+            echo "Init path exists! hex-cli can't override exsiting exchange files."
             exit 1;
         fi
 
-        echo "*** Initializing new Exchange - $ENVIRONMENT_EXCHANGE_NAME on $HEX_CLI_INIT_PATH ... ***"
+        echo "Initializing new Exchange - $ENVIRONMENT_EXCHANGE_NAME on $HEX_CLI_INIT_PATH ..."
 
         mkdir $HEX_CLI_INIT_PATH
 
@@ -352,8 +352,8 @@ elif [[ "$1" == "init" ]]; then
 
         (echo "ENVIRONMENT_EXCHANGE_NAME=$ENVIRONMENT_EXCHANGE_NAME" && cat $HEX_CLI_INIT_PATH/settings/configmap) > temp.init && mv temp.init $HEX_CLI_INIT_PATH/settings/configmap
 
-        echo "*** All done! ***"
-        echo "*** To run hex-cli commands further, Please get into initialized path first to let hex-cli reads settings. ***"
+        echo "All done!"
+        echo "To run hex-cli commands further, Please get into initialized path first to let hex-cli reads settings."
 
     fi
         
@@ -409,7 +409,7 @@ elif [[ "$1" == "launch" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "*** Failed to detect hex-cli initialized directory! Please re-check your path. ***"
+        echo "Failed to detect hex-cli initialized directory! Please re-check your path."
         print_usage;
         exit 1;
 
@@ -444,26 +444,26 @@ elif [[ "$1" == "launch" ]]; then
         
         check_empty_values_on_settings;
 
-        echo "*** Verifying current KUBECONFIG on the machine ***"
+        echo "Verifying current KUBECONFIG on the machine"
         kubectl get nodes
 
         if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
-            echo "*** Alert: hex-cli detected that $ENVIRONMENT_EXCHANGE_NAME exchange exists on your remote Kubernetes environment. ***"
-            echo "*** You can't run launch process multiple times for existing exchange. This could break up system badly. ***"
-            echo "*** Exiting... ***"
+            echo "Alert: hex-cli detected that $ENVIRONMENT_EXCHANGE_NAME exchange exists on your remote Kubernetes environment."
+            echo "You can't run launch process multiple times for existing exchange. This could break up system badly."
+            echo "Exiting..."
             exit 1;
 
         fi
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "*** Are you sure you want to launch $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HEX_CONFIGMAP_API_HOST) with automatic database initalization on this cluster? (y/n) ***"
+            echo "Are you sure you want to launch $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HEX_CONFIGMAP_API_HOST) with automatic database initalization on this cluster? (y/n)"
 
             read answer
 
             if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                echo "*** Exiting... ***"
+                echo "Exiting..."
                 exit 0;
             fi
 
@@ -511,18 +511,18 @@ elif [[ "$1" == "launch" ]]; then
         fi
         
 
-        echo "*** Creating namespace on Kubernetes ***"
+        echo "Creating namespace on Kubernetes"
         kubectl create ns $ENVIRONMENT_EXCHANGE_NAME
 
-        echo "*** Applying configmap on the namespace ***"
+        echo "Applying configmap on the namespace"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
 
-        echo "*** Applying secret on the namespace ***"
+        echo "Applying secret on the namespace"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
         if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
         
-            echo "*** Applying web client configmap on the namespace ***"
+            echo "Applying web client configmap on the namespace"
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-web-configmap.yaml
 
         fi
@@ -531,7 +531,7 @@ elif [[ "$1" == "launch" ]]; then
 
             generate_nodeselector_values $ENVIRONMENT_KUBERNETES_REDIS_NODESELECTOR redis
 
-            echo "*** Running Redis ***"
+            echo "Running Redis"
             
             if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS" == true ]]; then
 
@@ -547,7 +547,7 @@ elif [[ "$1" == "launch" ]]; then
         if [[ "$ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB" == true ]]; then
 
             generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
-            echo "*** Running PostgreSQL DB ***"
+            echo "Running PostgreSQL DB"
 
             if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS" == true ]]; then
 
@@ -569,17 +569,17 @@ elif [[ "$1" == "launch" ]]; then
 
             fi
 
-            echo "*** Running InfluxDB ***"
+            echo "Running InfluxDB"
             helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-influxdb --namespace $ENVIRONMENT_EXCHANGE_NAME --set setCustomUser.enabled="true" --set setCustomUser.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set persistence.size="$ENVIRONMENT_KUBERNETES_INFLUXDB_VOLUMESIZE" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-influxdb/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-influxdb.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-influxdb
 
         fi
 
-        echo "*** Applying ingress on the namespace ***"
+        echo "Applying ingress on the namespace"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
         if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
 
-            echo "*** Applying ingress for web client on the namespace ***"
+            echo "Applying ingress for web client on the namespace"
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
 
         fi
@@ -587,7 +587,7 @@ elif [[ "$1" == "launch" ]]; then
 
         if [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_USERNAME" ]] || [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_PASSWORD" ]] || [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL" ]]; then
 
-            echo "*** One of your docker registry credentials are missing! ***"
+            echo "One of your docker registry credentials are missing!"
 
             echo "Docker registry username :"
             read username
@@ -605,22 +605,22 @@ elif [[ "$1" == "launch" ]]; then
 
             ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL=$email
 
-            echo "*** Your docker registry credentials ***"
+            echo "Your docker registry credentials"
             echo "USERNAME - $ENVIRONMENT_KUBERNETES_DOCKER_HUB_USERNAME"
             echo "PASSWORD - $ENVIRONMENT_KUBERNETES_DOCKER_HUB_PASSWORD" 
             echo "EMAIL - $ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL"
-            echo "** Are you sure you want to proceed with this credentials? (y/n) ***"
+            echo "** Are you sure you want to proceed with this credentials? (y/n)"
 
             read answer
 
             if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                echo "*** Exiting... ***"
+                echo "Exiting..."
                 exit 0;
             fi
 
         fi
 
-        echo "*** Creating Docker registry secret on $ENVIRONMENT_EXCHANGE_NAME namespace ***"
+        echo "Creating Docker registry secret on $ENVIRONMENT_EXCHANGE_NAME namespace"
         kubectl create secret docker-registry bitholla-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME --docker-server=docker.io --docker-username=$ENVIRONMENT_KUBERNETES_DOCKER_HUB_USERNAME --docker-password=$ENVIRONMENT_KUBERNETES_DOCKER_HUB_PASSWORD --docker-email=$ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL
 
         # FOR GENERATING NODESELECTOR VALUES
@@ -628,12 +628,12 @@ elif [[ "$1" == "launch" ]]; then
 
         if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
 
-            echo "*** Running $ENVIRONMENT_EXCHANGE_NAME web client container ***"
+            echo "Running $ENVIRONMENT_EXCHANGE_NAME web client container"
             helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-web --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set imageRegistry="$ENVIRONMENT_KUBERNETES_WEB_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION" --set stable.replicaCount="1" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-web-env" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-web/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-web
 
         fi
 
-        echo "*** Running $ENVIRONMENT_EXCHANGE_NAME workload containers ***"
+        echo "Running $ENVIRONMENT_EXCHANGE_NAME workload containers"
 
         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="$ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
 
@@ -645,8 +645,8 @@ elif [[ "$1" == "launch" ]]; then
 
         kubernetes_database_init launch;
         
-        echo "*** All done! ***"
-        echo "*** Your $ENVIRONMENT_EXCHANGE_NAME ($HEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again. ***"
+        echo "All done!"
+        echo "Your $ENVIRONMENT_EXCHANGE_NAME ($HEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again."
 
         exit 0;
 
@@ -657,21 +657,21 @@ elif [[ "$1" == "launch" ]]; then
         # Checking docker-compose is installed on this machine.
         if command docker-compose version > /dev/null 2>&1; then
 
-            echo "*** docker-compose detected ***"
+            echo "docker-compose detected"
             echo "version: $(docker-compose version)"
 
         else
 
-            echo "*** hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli. ***"
+            echo "hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli."
             exit 1;
 
         fi
 
         if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
-            echo "*** Alert: hex-cli detected that $ENVIRONMENT_EXCHANGE_NAME exchange exists on your local machine. ***"
-            echo "*** You can't run launch process multiple times for existing exchange. This could break up system badly. ***"
-            echo "*** Exiting... ***"
+            echo "Alert: hex-cli detected that $ENVIRONMENT_EXCHANGE_NAME exchange exists on your local machine."
+            echo "You can't run launch process multiple times for existing exchange. This could break up system badly."
+            echo "Exiting..."
             exit 1;
 
         fi
@@ -695,7 +695,7 @@ elif [[ "$1" == "launch" ]]; then
         #Quit if necessary flags are missing
         if [[ ! "$LOCAL_COMMAND" ]]; then
 
-            echo "*** Some necessary flags are missing! Please check agian your command. ***"
+            echo "Some necessary flags are missing! Please check agian your command."
             print_usage;
             exit 1;
 
@@ -703,12 +703,12 @@ elif [[ "$1" == "launch" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "*** Are you sure you want to run $ENVIRONMENT_EXCHANGE_NAME on your local machine? (y/n) ***"
+            echo "Are you sure you want to run $ENVIRONMENT_EXCHANGE_NAME on your local machine? (y/n)"
 
             read answer
 
             if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                echo "*** Exiting... ***"
+                echo "Exiting..."
                 exit 0;
             fi
 
@@ -767,7 +767,7 @@ elif [[ "$1" == "launch" ]]; then
 
         else 
 
-            echo "*** hex-cli failed to launch containers. Please review your settings and try again. ***"
+            echo "hex-cli failed to launch containers. Please review your settings and try again."
             exit 1;
        
         fi
@@ -841,7 +841,7 @@ elif [[ "$1" == "start" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "*** Failed to detect hex-cli initialized directory! Please re-check your path. ***"
+        echo "Failed to detect hex-cli initialized directory! Please re-check your path."
         print_usage;
         exit 1;
 
@@ -873,18 +873,18 @@ elif [[ "$1" == "start" ]]; then
 
         check_empty_values_on_settings;
 
-        echo "*** Verifying current KUBECONFIG on the machine ***"
+        echo "Verifying current KUBECONFIG on the machine"
         kubectl get nodes
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
 
-            echo "*** Are you sure you want to start (scale up) $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HEX_CONFIGMAP_API_HOST) on this cluster? (y/n) ***"
+            echo "Are you sure you want to start (scale up) $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HEX_CONFIGMAP_API_HOST) on this cluster? (y/n)"
 
             read answer
 
             if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                echo "*** Exiting... ***"
+                echo "Exiting..."
                 exit 0;
             fi
 
@@ -921,16 +921,16 @@ elif [[ "$1" == "start" ]]; then
 
         fi
 
-        echo "*** Applying configmap on the namespace ***"
+        echo "Applying configmap on the namespace"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
 
-        echo "*** Applying secret on the namespace ***"
+        echo "Applying secret on the namespace"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
         # For scaling up exisitng Exchange on Kubernetes
         if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
-            echo "*** Scaling up containers on the cluster... ***"
+            echo "Scaling up containers on the cluster..."
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=$ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS --namespace $ENVIRONMENT_EXCHANGE_NAME
 
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
@@ -943,18 +943,18 @@ elif [[ "$1" == "start" ]]; then
 
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-influxdb --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
             
-            echo "*** Applying Ingress rules... ***"
+            echo "Applying Ingress rules..."
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
-            echo "*** All done! ***"
-            echo "*** Containers successfully scaled up ***"
+            echo "All done!"
+            echo "Containers successfully scaled up"
 
             exit 0;
 
         else 
 
-            echo "*** hex-cli failed to detect existing exchange running on this Kubernetes. ***"
-            echo "*** Please review your settings files and targeted Kubernetes. ***"
+            echo "hex-cli failed to detect existing exchange running on this Kubernetes."
+            echo "Please review your settings files and targeted Kubernetes."
 
             exit 1;
 
@@ -967,12 +967,12 @@ elif [[ "$1" == "start" ]]; then
         # Checking docker-compose is installed on this machine.
         if command docker-compose version > /dev/null 2>&1; then
 
-            echo "*** docker-compose detected ***"
+            echo "docker-compose detected"
             echo "version: $(docker-compose version)"
 
         else
 
-            echo "*** hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli. ***"
+            echo "hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli."
             exit 1;
 
         fi
@@ -1004,7 +1004,7 @@ elif [[ "$1" == "start" ]]; then
         #Quit if necessary flags are missing
         if [[ ! "$LOCAL_COMMAND" ]]; then
 
-            echo "*** Some necessary flags are missing! Please check agian your command. ***"
+            echo "Some necessary flags are missing! Please check agian your command."
             print_usage;
             exit 1;
 
@@ -1012,12 +1012,12 @@ elif [[ "$1" == "start" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "*** Are you sure you want to run $ENVIRONMENT_EXCHANGE_NAME on your local machine? (y/n) ***"
+            echo "Are you sure you want to run $ENVIRONMENT_EXCHANGE_NAME on your local machine? (y/n)"
 
             read answer
 
             if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                echo "*** Exiting... ***"
+                echo "Exiting..."
                 exit 0;
             fi
 
@@ -1126,7 +1126,7 @@ elif [[ "$1" == "stop" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "*** Failed to detect hex-cli initialized directory! Please re-check your path. ***"
+        echo "Failed to detect hex-cli initialized directory! Please re-check your path."
         print_usage;
         exit 1;
 
@@ -1146,33 +1146,33 @@ elif [[ "$1" == "stop" ]]; then
          #Checking Kubernetes dependencies
         check_kubernetes_dependencies;
 
-        echo "*** Verifying current KUBECONFIG on the machine ***"
+        echo "Verifying current KUBECONFIG on the machine"
         kubectl get nodes
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "*** Are you sure you want to stop (scale down) $ENVIRONMENT_EXCHANGE_NAME on this cluster? (y/n) ***"
+            echo "Are you sure you want to stop (scale down) $ENVIRONMENT_EXCHANGE_NAME on this cluster? (y/n)"
 
             read answer
 
             if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                echo "*** Exiting... ***"
+                echo "Exiting..."
                 exit 0;
             fi
 
         fi
 
-        echo "*** Removing $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster. ***"
+        echo "Removing $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster."
         kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
-        echo "*** Scaling down containers on the cluster... ***"
+        echo "Scaling down containers on the cluster..."
         kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
         kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
         helm_dynamic_trading_paris scaledown;
 
-        echo "*** Scaling down backend components... ***"
+        echo "Scaling down backend components..."
 
         kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
@@ -1180,8 +1180,8 @@ elif [[ "$1" == "stop" ]]; then
 
         kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-influxdb --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-        echo "*** All done! ***"
-        echo "*** Containers successfully scaled down ***"
+        echo "All done!"
+        echo "Containers successfully scaled down"
 
         exit 0;
 
@@ -1192,12 +1192,12 @@ elif [[ "$1" == "stop" ]]; then
         # Checking docker-compose is installed on this machine.
         if command docker-compose version > /dev/null 2>&1; then
 
-            echo "*** docker-compose detected ***"
+            echo "docker-compose detected"
             echo "version: $(docker-compose version)"
 
         else
 
-            echo "*** hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli. ***"
+            echo "hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli."
             exit 1;
 
         fi 
@@ -1206,12 +1206,12 @@ elif [[ "$1" == "stop" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "*** Are you sure you want to stop $ENVIRONMENT_EXCHANGE_NAME - $LOCAL_DEPLOYMENT_MODE which running on your local? (y/n) ***"
+            echo "Are you sure you want to stop $ENVIRONMENT_EXCHANGE_NAME - $LOCAL_DEPLOYMENT_MODE which running on your local? (y/n)"
 
             read answer
 
             if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                echo "*** Exiting... ***"
+                echo "Exiting..."
                 exit 0;
             fi
 
@@ -1274,7 +1274,7 @@ elif [[ "$1" == "restart" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "*** Failed to detect hex-cli initialized directory! Please re-check your path. ***"
+        echo "Failed to detect hex-cli initialized directory! Please re-check your path."
         print_usage;
         exit 1;
 
@@ -1305,18 +1305,18 @@ elif [[ "$1" == "restart" ]]; then
 
         check_empty_values_on_settings;
 
-        echo "*** Verifying current KUBECONFIG on the machine ***"
+        echo "Verifying current KUBECONFIG on the machine"
         kubectl get nodes
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "*** !! Exchange service will be unavailable during the restart !! ***"
-            echo "*** Are you sure you want to restart $ENVIRONMENT_EXCHANGE_NAME on this cluster? (y/n) ***"
+            echo "Warning: Exchange service will be unavailable during the restart!"
+            echo "Are you sure you want to restart $ENVIRONMENT_EXCHANGE_NAME on this cluster? (y/n)"
 
             read answer
 
             if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                echo "*** Exiting... ***"
+                echo "Exiting..."
                 exit 0;
             fi
 
@@ -1350,40 +1350,40 @@ elif [[ "$1" == "restart" ]]; then
 
         fi
 
-        echo "*** Removing $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster. ***"
+        echo "Removing $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster."
         kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
         if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
 
-            echo "*** Removing ingress for web client on the namespace ***"
+            echo "Removing ingress for web client on the namespace"
             kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
 
         fi
 
-        echo "*** Applying latest configmap env on the cluster. ***"
+        echo "Applying latest configmap env on the cluster."
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
 
-        echo "*** Applying latest secret on the cluster ***"
+        echo "Applying latest secret on the cluster"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
         # FOR GENERATING NODESELECTOR VALUES
         generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hex
 
-        echo "*** Restarting all exchange containers on cluster ***"
+        echo "Restarting all exchange containers on cluster"
         kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
 
-        echo "*** Applying $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster. ***"
+        echo "Applying $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster."
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
         if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
 
-            echo "*** Applying ingress for web client on the namespace ***"
+            echo "Applying ingress for web client on the namespace"
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
 
         fi
 
-        echo "*** All done! ***"
-        echo "*** Your $ENVIRONMENT_EXCHANGE_NAME ($HEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again. ***"
+        echo "All done!"
+        echo "Your $ENVIRONMENT_EXCHANGE_NAME ($HEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again."
 
         exit 0;
     
@@ -1394,12 +1394,12 @@ elif [[ "$1" == "restart" ]]; then
         # Checking docker-compose is installed on this machine.
         if command docker-compose version > /dev/null 2>&1; then
 
-            echo "*** docker-compose detected ***"
+            echo "docker-compose detected"
             echo "version: $(docker-compose version)"
 
         else
 
-            echo "*** hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli. ***"
+            echo "hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli."
             exit 1;
 
         fi
@@ -1420,13 +1420,13 @@ elif [[ "$1" == "restart" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
             
-            echo "*** !! Exchange service will be unavailable during the restart !! ***"
-            echo "*** Are you sure you want to restart $ENVIRONMENT_EXCHANGE_NAME on your local? (y/n) ***"
+            echo "Warning: Exchange service will be unavailable during the restart!"
+            echo "Are you sure you want to restart $ENVIRONMENT_EXCHANGE_NAME on your local? (y/n)"
 
             read answer
 
             if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                echo "*** Exiting... ***"
+                echo "Exiting..."
                 exit 0;
             fi
 
@@ -1468,7 +1468,7 @@ elif [[ "$1" == "restart" ]]; then
         echo "Updating nginx conf file based on user settings"
         apply_nginx_user_defined_values;
 
-        echo "*** Restarting containers to apply new changes... ***"
+        echo "Restarting containers to apply new changes..."
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
 
         exit 0;
@@ -1533,7 +1533,7 @@ elif [[ "$1" == "upgrade" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "*** Failed to detect hex-cli initialized directory! Please re-check your path. ***"
+        echo "Failed to detect hex-cli initialized directory! Please re-check your path."
         print_usage;
         exit 1;
 
@@ -1572,18 +1572,18 @@ elif [[ "$1" == "upgrade" ]]; then
 
         check_empty_values_on_settings;
 
-        echo "*** Verifying current KUBECONFIG on the machine ***"
+        echo "Verifying current KUBECONFIG on the machine"
         kubectl get nodes
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "*** !! Exchange service will be unavailable during the upgrade !! ***"
-            echo "*** Are you sure you want to upgrade $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION with $ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS api containers on this cluster? (y/n) ***"
+            echo "Warning: Exchange service will be unavailable during the upgrade!"
+            echo "Are you sure you want to upgrade $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION with $ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS api containers on this cluster? (y/n)"
 
             read answer
 
             if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                echo "*** Exiting... ***"
+                echo "Exiting..."
                 exit 0;
             fi
 
@@ -1625,18 +1625,18 @@ elif [[ "$1" == "upgrade" ]]; then
 
         fi
 
-        echo "*** Removing $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster. ***"
+        echo "Removing $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster."
         kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
-        echo "*** Applying latest configmap env on the cluster. ***"
+        echo "Applying latest configmap env on the cluster."
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
 
-        echo "*** Applying latest secret on the cluster ***"
+        echo "Applying latest secret on the cluster"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
         if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
         
-            echo "*** Applying web client configmap on the namespace ***"
+            echo "Applying web client configmap on the namespace"
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-web-configmap.yaml
 
         fi
@@ -1644,7 +1644,7 @@ elif [[ "$1" == "upgrade" ]]; then
         # FOR GENERATING NODESELECTOR VALUES
         generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hex
 
-        echo "*** Upgrading $ENVIRONMENT_EXCHANGE_NAME Pods on Kubernetes. ***"
+        echo "Upgrading $ENVIRONMENT_EXCHANGE_NAME Pods on Kubernetes."
         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="2" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
 
         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="stream" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
@@ -1653,7 +1653,7 @@ elif [[ "$1" == "upgrade" ]]; then
 
         if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
 
-            echo "*** Running $ENVIRONMENT_EXCHANGE_NAME web client container ***"
+            echo "Running $ENVIRONMENT_EXCHANGE_NAME web client container"
             helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-web --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set imageRegistry="$ENVIRONMENT_KUBERNETES_WEB_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION" --set stable.replicaCount="1" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-web-env" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-web/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-web
 
         fi
@@ -1661,19 +1661,19 @@ elif [[ "$1" == "upgrade" ]]; then
         # Running database job for Kubernetes
         kubernetes_database_init upgrade;
 
-        echo "*** Applying $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster. ***"
+        echo "Applying $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster."
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
         if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
 
-            echo "*** Applying ingress for web client on the namespace ***"
+            echo "Applying ingress for web client on the namespace"
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
 
         fi
 
 
-        echo "*** All done! ***"
-        echo "*** Your $ENVIRONMENT_EXCHANGE_NAME ($HEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again. ***"
+        echo "All done!"
+        echo "Your $ENVIRONMENT_EXCHANGE_NAME ($HEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again."
 
         exit 0;
     
@@ -1684,12 +1684,12 @@ elif [[ "$1" == "upgrade" ]]; then
         # Checking docker-compose is installed on this machine.
         if command docker-compose version > /dev/null 2>&1; then
 
-            echo "*** docker-compose detected ***"
+            echo "docker-compose detected"
             echo "version: $(docker-compose version)"
 
         else
 
-            echo "*** hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli. ***"
+            echo "hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli."
             exit 1;
 
         fi
@@ -1710,13 +1710,13 @@ elif [[ "$1" == "upgrade" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
             
-            echo "*** !! Exchange service will be unavailable during the upgrade !! ***"
-            echo "*** Are you sure you want to upgrade $ENVIRONMENT_EXCHANGE_NAME on your local? (y/n) ***"
+            echo "Warning: Exchange service will be unavailable during the upgrade!"
+            echo "Are you sure you want to upgrade $ENVIRONMENT_EXCHANGE_NAME on your local? (y/n)"
 
             read answer
 
             if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                echo "*** Exiting... ***"
+                echo "Exiting..."
                 exit 0;
             fi
 
@@ -1766,7 +1766,7 @@ elif [[ "$1" == "upgrade" ]]; then
         echo "Updating nginx conf file based on user settings"
         apply_nginx_user_defined_values;
 
-        echo "*** Restarting containers to apply new changes... ***"
+        echo "Restarting containers to apply new changes..."
         if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d; then
 
             RUN_WITH_VERIFY=false
@@ -1776,7 +1776,7 @@ elif [[ "$1" == "upgrade" ]]; then
 
         else
 
-            echo "*** Failed to upgrade exchange! Please review your settings and try again. ***"
+            echo "Failed to upgrade exchange! Please review your settings and try again."
             exit 1;
 
         fi
@@ -1836,7 +1836,7 @@ elif [[ "$1" == "terminate" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "*** Failed to detect hex-cli initialized directory! Please re-check your path. ***"
+        echo "Failed to detect hex-cli initialized directory! Please re-check your path."
         print_usage;
         exit 1;
 
@@ -1854,33 +1854,33 @@ elif [[ "$1" == "terminate" ]]; then
         #Checking Kubernetes dependencies
         check_kubernetes_dependencies;
 
-        echo "*** Verifying current KUBECONFIG on the machine ***"
+        echo "Verifying current KUBECONFIG on the machine"
         kubectl get nodes
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "*** Are you sure you want to terminate $ENVIRONMENT_EXCHANGE_NAME on this cluster? (y/n) ***"
+            echo "Are you sure you want to terminate $ENVIRONMENT_EXCHANGE_NAME on this cluster? (y/n)"
 
             read answer
 
             if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                echo "*** Exiting... ***"
+                echo "Exiting..."
                 exit 0;
             fi
 
         fi
 
-        echo "*** Removing $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster. ***"
+        echo "Removing $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster."
         kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
         if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
             
-            echo "*** Removing $ENVIRONMENT_EXCHANGE_NAME ingress rule for web client on the cluster. ***"
+            echo "Removing $ENVIRONMENT_EXCHANGE_NAME ingress rule for web client on the cluster."
             kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
 
         fi
 
-        echo "*** Removing helm packages on the cluster. ***"
+        echo "Removing helm packages on the cluster."
         helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-api
         helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-stream
         
@@ -1896,11 +1896,11 @@ elif [[ "$1" == "terminate" ]]; then
 
         fi
 
-        echo "*** Removing $ENVIRONMENT_EXCHANGE_NAME namespace. ***"
+        echo "Removing $ENVIRONMENT_EXCHANGE_NAME namespace."
         kubectl delete ns $ENVIRONMENT_EXCHANGE_NAME
 
-        echo "*** All done! ***"
-        echo "*** $ENVIRONMENT_EXCHANGE_NAME ($HEX_CONFIGMAP_API_HOST) has been successfully removed. If there's an issue, please review logs and try it again. ***"
+        echo "All done!"
+        echo "$ENVIRONMENT_EXCHANGE_NAME ($HEX_CONFIGMAP_API_HOST) has been successfully removed. If there's an issue, please review logs and try it again."
 
         exit 0;
 
@@ -1911,12 +1911,12 @@ elif [[ "$1" == "terminate" ]]; then
         # Checking docker-compose is installed on this machine.
         if command docker-compose version > /dev/null 2>&1; then
 
-            echo "*** docker-compose detected ***"
+            echo "docker-compose detected"
             echo "version: $(docker-compose version)"
 
         else
 
-            echo "*** hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli. ***"
+            echo "hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli."
             exit 1;
 
         fi
@@ -1926,7 +1926,7 @@ elif [[ "$1" == "terminate" ]]; then
         #Quit if necessary flags are missing
         if [[ ! "$LOCAL_COMMAND" ]]; then
 
-            echo "*** Some necessary flags are missing! Please check agian your command. ***"
+            echo "Some necessary flags are missing! Please check agian your command."
             print_usage;
             exit 1;
 
@@ -1934,12 +1934,12 @@ elif [[ "$1" == "terminate" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "*** Are you sure you want to terminate $ENVIRONMENT_EXCHANGE_NAME - $LOCAL_DEPLOYMENT_MODE which running on your local? (y/n) ***"
+            echo "Are you sure you want to terminate $ENVIRONMENT_EXCHANGE_NAME - $LOCAL_DEPLOYMENT_MODE which running on your local? (y/n)"
 
             read answer
 
             if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                echo "*** Exiting... ***"
+                echo "Exiting..."
                 exit 0;
             fi
 
@@ -2094,7 +2094,7 @@ elif [[ "$1" == "toolbox" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "*** Failed to detect hex-cli initialized directory! Please re-check your path. ***"
+        echo "Failed to detect hex-cli initialized directory! Please re-check your path."
         print_usage;
         exit 1;
 
@@ -2103,7 +2103,7 @@ elif [[ "$1" == "toolbox" ]]; then
     if [[ ! "$TOOLBOX_ENABLE" ]]; then
     
         print_usage;
-        echo "*** NO features are enabled for toolbox. Please recheck the command. ***"
+        echo "NO features are enabled for toolbox. Please recheck the command."
         exit 1;
 
     fi
@@ -2121,7 +2121,7 @@ elif [[ "$1" == "toolbox" ]]; then
         check_kubernetes_dependencies;
 
         #Verify remote Kubernetes cluster is correct.
-        echo "*** Verifying current KUBECONFIG on the machine ***"
+        echo "Verifying current KUBECONFIG on the machine"
         kubectl get nodes
 
     fi
@@ -2129,32 +2129,32 @@ elif [[ "$1" == "toolbox" ]]; then
     # Features
     if [[ "$UPGRADE_BACKENDS" ]]; then 
 
-        echo "*** !! Exchange service will be unavailable during the upgrade !! ***"
+        echo "Warning: Exchange service will be unavailable during the upgrade!"
 
-        echo "*** All workload containers will be restarted once the upgrade process is done. ***"
+        echo "All workload containers will be restarted once the upgrade process is done."
     
         if [[ "$USE_KUBERNETES" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "*** Are you sure you want to upgrade backends (PostgreSQL, Redis, InfluxDB) to latest compatible on this cluster? (y/n) ***"
+                echo "Are you sure you want to upgrade backends (PostgreSQL, Redis, InfluxDB) to latest compatible on this cluster? (y/n)"
 
                 read answer
 
                 if [[ "$answer" = "${answer#[Yy]}" ]]; then
-                    echo "*** Exiting... ***"
+                    echo "Exiting..."
                     exit 0;
                 fi
 
             fi
 
-            echo "*** Deleting Ingress rules for the exchange... ***"
+            echo "Deleting Ingress rules for the exchange..."
             kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
             
             if [[ "$ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB" ]]; then
 
-                echo "*** Upgrading PostgreSQL DB ***"
+                echo "Upgrading PostgreSQL DB"
                 generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
 
                 if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS" == true ]]; then
@@ -2171,7 +2171,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if [[ "$ENVIRONMENT_KUBERNETES_RUN_REDIS" ]]; then
 
-                echo "*** Upgrading Redis ***"
+                echo "Upgrading Redis"
                 generate_nodeselector_values $ENVIRONMENT_KUBERNETES_REDIS_NODESELECTOR redis
 
                  if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS" == true ]]; then
@@ -2194,12 +2194,12 @@ elif [[ "$1" == "toolbox" ]]; then
 
             fi
 
-            echo "*** Restarting all workload containers... ***"
+            echo "Restarting all workload containers..."
             kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
 
             sleep 10;
 
-            echo "*** Applying Ingress rules for the exchange... ***"
+            echo "Applying Ingress rules for the exchange..."
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
             exit 0;
@@ -2208,23 +2208,23 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "*** Are you sure you want to upgrade backends (PostgreSQL, Redis, InfluxDB) to latest compatible on this machine? (y/n) ***"
+                echo "Are you sure you want to upgrade backends (PostgreSQL, Redis, InfluxDB) to latest compatible on this machine? (y/n)"
 
                 read answer
 
                 if [[ "$answer" = "${answer#[Yy]}" ]]; then
-                    echo "*** Exiting... ***"
+                    echo "Exiting..."
                     exit 0;
                 fi
 
             fi
 
-            echo "*** All workload containers will be restarted once the upgrade process is done. ***"
+            echo "All workload containers will be restarted once the upgrade process is done."
 
-            echo "*** Regenerating docker-compose file... ***"
+            echo "Regenerating docker-compose file..."
             generate_local_docker_compose $ENVIRONMENT_EXCHANGE_RUN_MODE
 
-            echo "*** Restarting containers... ***"
+            echo "Restarting containers..."
             docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND
 
             exit 0;
@@ -2236,13 +2236,13 @@ elif [[ "$1" == "toolbox" ]]; then
         # Check pg_dump is available on your local
         if command pg_dumpall --version > /dev/null 2>&1; then
 
-            echo "*** pg_dump detected on your machine! ***"
+            echo "pg_dump detected on your machine!"
             pg_dumpall --version
 
         else 
 
-            echo "*** hex-cli failed to detect pg_dump on your local ***"
-            echo "*** Please make sure that you already installed pg_dump ***"
+            echo "hex-cli failed to detect pg_dump on your local"
+            echo "Please make sure that you already installed pg_dump"
 
             exit 1;
 
@@ -2252,26 +2252,26 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "*** Are you sure you want to run full PostgreSQL database backup (pg_dumpall) on this cluster? (y/n) ***"
+                echo "Are you sure you want to run full PostgreSQL database backup (pg_dumpall) on this cluster? (y/n)"
 
                 read answer
 
                 if [[ "$answer" = "${answer#[Yy]}" ]]; then
-                    echo "*** Exiting... ***"
+                    echo "Exiting..."
                     exit 0;
                 fi
 
             fi
 
-            echo "*** hex-cli will open proxy tunnel between your local and remote proxy with kubectl proxy. ***"
+            echo "hex-cli will open proxy tunnel between your local and remote proxy with kubectl proxy."
 
-            echo "*** Opening local proxy on 5432 port of your local... ***"
+            echo "Opening local proxy on 5432 port of your local..."
             kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-db" -o name | sed 's/pod\///' | head -n 1) 5432:5432 &
 
-            echo "*** Waiting for the proxy tunnel get fully ready... ***"
+            echo "Waiting for the proxy tunnel get fully ready..."
             sleep 10;
             
-            echo "*** Running pg_dumpall... ***"
+            echo "Running pg_dumpall..."
             export PGUSER=$HEX_SECRET_DB_USERNAME
             export PGPASSWORD=$HEX_SECRET_DB_PASSWORD
             export PGDATABASE=$HEX_SECRET_DB_NAME
@@ -2284,9 +2284,9 @@ elif [[ "$1" == "toolbox" ]]; then
             unset PGDATABASE
             unset PGHOST
 
-            echo "*** Dump data is saved as $HEX_CLI_INIT_PATH/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump"
+            echo "Dump data is saved as $HEX_CLI_INIT_PATH/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump"
 
-            echo "*** Killing the opened proxy tunnel... ***"
+            echo "Killing the opened proxy tunnel..."
             kill $(ps -ef | grep "kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME" | awk '{print $2}' | head -n 1)
 
             exit 0;
@@ -2297,20 +2297,20 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "*** Are you sure you want to run full PostgreSQL database backup (pg_dumpall) on this machine? (y/n) ***"
+                echo "Are you sure you want to run full PostgreSQL database backup (pg_dumpall) on this machine? (y/n)"
 
                 read answer
 
                 if [[ "$answer" = "${answer#[Yy]}" ]]; then
-                    echo "*** Exiting... ***"
+                    echo "Exiting..."
                     exit 0;
                 fi
 
             fi
 
-            echo "*** hex-cli will backup your local PostgreSQL DB. ***"
+            echo "hex-cli will backup your local PostgreSQL DB."
 
-            echo "*** Running pg_dumpall... ***"
+            echo "Running pg_dumpall..."
             
             export PGUSER=$HEX_SECRET_DB_USERNAME
             export PGPASSWORD=$HEX_SECRET_DB_PASSWORD
@@ -2323,7 +2323,7 @@ elif [[ "$1" == "toolbox" ]]; then
             unset PGDATABASE
             unset PGHOST
 
-            echo "*** Dump data is saved as $HEX_CLI_INIT_PATH/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump"
+            echo "Dump data is saved as $HEX_CLI_INIT_PATH/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump"
 
             exit 0;
 
@@ -2331,27 +2331,27 @@ elif [[ "$1" == "toolbox" ]]; then
         
     elif [[ "$FLUSH_REDIS" ]]; then
 
-        echo "*** !! Exchange service will be unavailable during the upgrade !! ***"
+        echo "Warning: Exchange service will be unavailable during the upgrade!"
 
         if [[ "$USE_KUBERNETES" ]] ; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "*** Are you sure you want to run flush Redis data on this cluster? (y/n) ***"
+                echo "Are you sure you want to run flush Redis data on this cluster? (y/n)"
 
                 read answer
 
                 if [[ "$answer" = "${answer#[Yy]}" ]]; then
-                    echo "*** Exiting... ***"
+                    echo "Exiting..."
                     exit 0;
                 fi
 
             fi
 
-            echo "*** Flushing Redis... ***"
+            echo "Flushing Redis..."
             kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/flushRedis.js
 
-            echo "*** Restarting all workload containers... ***"
+            echo "Restarting all workload containers..."
             kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
 
             exit 0;
@@ -2360,29 +2360,29 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "*** Are you sure you want to to run flush Redis data on this machine? (y/n) ***"
+                echo "Are you sure you want to to run flush Redis data on this machine? (y/n)"
 
                 read answer
 
                 if [[ "$answer" = "${answer#[Yy]}" ]]; then
-                    echo "*** Exiting... ***"
+                    echo "Exiting..."
                     exit 0;
                 fi
 
             fi
 
-            echo "*** Deleting Ingress rules for the exchange... ***"
+            echo "Deleting Ingress rules for the exchange..."
             kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
             
-            echo "*** Flushing Redis... ***"
+            echo "Flushing Redis..."
             docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/flushRedis.js
 
-            echo "*** Restarting all workload containers... ***"
+            echo "Restarting all workload containers..."
             docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
 
             sleep 10;
             
-            echo "*** Applying Ingress rules for the exchange... ***"
+            echo "Applying Ingress rules for the exchange..."
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
             exit 0;
@@ -2394,13 +2394,13 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "*** Are you sure you want to do rolling upgrade for $ENVIRONMENT_EXCHANGE_NAME api pods to v$ENVIRONMENT_DOCKER_IMAGE_VERSION on this cluster? (y/n) ***"
-                echo "*** Configmap values would be updated either while on the rolling upgrade ***"
+                echo "Are you sure you want to do rolling upgrade for $ENVIRONMENT_EXCHANGE_NAME api pods to v$ENVIRONMENT_DOCKER_IMAGE_VERSION on this cluster? (y/n)"
+                echo "Configmap values would be updated either while on the rolling upgrade"
 
                 read answer
 
                 if [[ "$answer" = "${answer#[Yy]}" ]]; then
-                    echo "*** Exiting... ***"
+                    echo "Exiting..."
                     exit 0;
                 fi
 
@@ -2413,25 +2413,25 @@ elif [[ "$1" == "toolbox" ]]; then
 
             fi
 
-            echo "*** Applying latest configmap env on the cluster. ***"
+            echo "Applying latest configmap env on the cluster."
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
 
-            echo "*** Applying $ENVIRONMENT_EXCHANGE_NAME API pods only on Kubernetes. ***"
+            echo "Applying $ENVIRONMENT_EXCHANGE_NAME API pods only on Kubernetes."
 
 
-            echo "*** Upgrading $ENVIRONMENT_EXCHANGE_NAME API pods only on Kubernetes. ***"
+            echo "Upgrading $ENVIRONMENT_EXCHANGE_NAME API pods only on Kubernetes."
             helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="2" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
 
-            echo "*** Rolling upgrade process has been finished. ***"
-            echo "*** It would take few minutes to Kubernetes replace api pods to new version completely. Please check the status constantly. ***"
+            echo "Rolling upgrade process has been finished."
+            echo "It would take few minutes to Kubernetes replace api pods to new version completely. Please check the status constantly."
             
             exit 0;
             
         
         elif [[ ! "$USE_KUBERNETES" ]] ; then
 
-            echo "*** hex-cli only supports rolling-upgrade for api contianers on Kubernets environment. ***"
-            echo "*** Please use --kube flag to point Kubernetes. ***"
+            echo "hex-cli only supports rolling-upgrade for api contianers on Kubernets environment."
+            echo "Please use --kube flag to point Kubernetes."
 
             exit 1;
 
@@ -2440,8 +2440,8 @@ elif [[ "$1" == "toolbox" ]]; then
 
     elif [[ "$ADD_COIN" ]]; then
 
-        echo "*** Warning: Adding new coin requires full restart of the exchange! ***"
-        echo "*** Please double confirm that you are good to proceed ***"
+        echo "Warning: Adding new coin requires full restart of the exchange!"
+        echo "Please double confirm that you are good to proceed"
         
         add_coin_input;
 
@@ -2449,8 +2449,8 @@ elif [[ "$1" == "toolbox" ]]; then
         
     elif [[ "$REMOVE_COIN" ]]; then
 
-        echo "*** Warning: Removing new coin requires full restart of the exchange! ***"
-        echo "*** Please double confirm that you are good to proceed ***"
+        echo "Warning: Removing new coin requires full restart of the exchange!"
+        echo "Please double confirm that you are good to proceed"
         
         remove_coin_input;
 
@@ -2458,8 +2458,8 @@ elif [[ "$1" == "toolbox" ]]; then
     
     elif [[ "$ADD_TRADING_PAIR" ]]; then
 
-        echo "*** Warning: Adding new pair requires full restart of the exchange! ***"
-        echo "*** Please double confirm that you are good to proceed ***"
+        echo "Warning: Adding new pair requires full restart of the exchange!"
+        echo "Please double confirm that you are good to proceed"
         
         add_pair_input;
 
@@ -2467,8 +2467,8 @@ elif [[ "$1" == "toolbox" ]]; then
 
     elif [[ "$REMOVE_TRADING_PAIR" ]]; then
 
-        echo "*** Warning: Removing new pair requires full restart of the exchange! ***"
-        echo "*** Please double confirm that you are good to proceed ***"
+        echo "Warning: Removing new pair requires full restart of the exchange!"
+        echo "Please double confirm that you are good to proceed"
         
         remove_pair_input;
 
@@ -2479,18 +2479,18 @@ elif [[ "$1" == "toolbox" ]]; then
         # Ask for basic necessary settings
         launch_basic_settings_input;
 
-        echo "*** Make sure to check your settings files been successfully updated by following your provided values. ***"
-        echo "*** Once it's all good, then you can proceed to actually update your exchange by using 'hex upgrade' command"
+        echo "Make sure to check your settings files been successfully updated by following your provided values."
+        echo "Once it's all good, then you can proceed to actually update your exchange by using 'hex upgrade' command"
     
 
     elif [[ "$ISSUE_SSL_CERT" ]]; then
 
-        echo "*** Issuing SSL certificate requires full restart of exchange. This would cause few minutes of downtime. ***"
-        echo "*** Would you like to continue? (y/n) ***"
+        echo "Issuing SSL certificate requires full restart of exchange. This would cause few minutes of downtime."
+        echo "Would you like to continue? (y/n)"
         read answer
 
         if [[ "$answer" = "${answer#[Yy]}" ]]; then
-            echo "*** Exiting... ***"
+            echo "Exiting..."
             exit 0;
         fi
 
@@ -2504,12 +2504,12 @@ elif [[ "$1" == "toolbox" ]]; then
     
     elif [[ "$RENEW_SSL_CERT" ]]; then
 
-        echo "*** Renewing SSL certificate requires full restart of exchange. This would cause few minutes of downtime. ***"
-        echo "*** Would you like to continue? (y/n) ***"
+        echo "Renewing SSL certificate requires full restart of exchange. This would cause few minutes of downtime."
+        echo "Would you like to continue? (y/n)"
         read answer
 
         if [[ "$answer" = "${answer#[Yy]}" ]]; then
-            echo "*** Exiting... ***"
+            echo "Exiting..."
             exit 0;
         fi
 
@@ -2526,8 +2526,19 @@ elif [[ "$1" == "toolbox" ]]; then
 
 
 elif [[ "$1" == "version" ]]; then
+    
+    /bin/cat << EOF
 
-    echo "hex-cli : v$(cat $SCRIPTPATH/version), Made with <3 by bitHolla Inc."
+██╗  ██╗███████╗██╗  ██╗      ██████╗██╗     ██╗
+██║  ██║██╔════╝╚██╗██╔╝     ██╔════╝██║     ██║
+███████║█████╗   ╚███╔╝█████╗██║     ██║     ██║
+██╔══██║██╔══╝   ██╔██╗╚════╝██║     ██║     ██║
+██║  ██║███████╗██╔╝ ██╗     ╚██████╗███████╗██║
+╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝      ╚═════╝╚══════╝╚═╝
+
+hex-cli : v$(cat $SCRIPTPATH/version), Made with <3 by bitHolla Inc.
+
+EOF
 
 else
 
