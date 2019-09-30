@@ -5,7 +5,7 @@ function local_database_init() {
 
     if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-        echo "Are you sure you want to run database init jobs for your local $ENVIRONMENT_EXCHANGE_NAME db? (y/n)"
+        echo "Are you sure you want to run database init jobs for your local $ENVIRONMENT_EXCHANGE_NAME db? (y/N)"
 
         read answer
 
@@ -1241,7 +1241,7 @@ function add_coin_input() {
   echo "Activation: $COIN_ACTIVE"
   echo "*********************************************"
 
-  echo "Are the values are all correct? (Y/n)"
+  echo "Are the values are all correct? (y/N)"
   read answer
 
   if [[ "$answer" = "${answer#[Yy]}" ]]; then
@@ -1416,7 +1416,7 @@ function remove_coin_input() {
   echo "Symbol: $COIN_SYMBOL"
   echo "*********************************************"
 
-  echo "Are the sure you want to remove this coin from your exchange? (y/n)"
+  echo "Are the sure you want to remove this coin from your exchange? (y/N)"
   read answer
 
   if [[ "$answer" = "${answer#[Yy]}" ]]; then
@@ -1558,7 +1558,7 @@ function remove_coin_exec() {
 
 function add_pair_input() {
 
-  echo "What is a full name of your new trading pair? [Default: eth-usdt]"
+  echo "Name of new Trading Pair : (eth-usdt)"
   read answer
 
   PAIR_NAME=${answer:-eth-usdt}
@@ -1590,7 +1590,7 @@ function add_pair_input() {
   # Asking deposit limit of new coin per level
   for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
 
-    do echo "What is a taker fee for user on LEVEL $i?" && read answer && export TAKER_FEES_LEVEL_$i=$answer
+    do echo "Taker fee of user level $i?" && read answer && export TAKER_FEES_LEVEL_$i=$answer
   
   done;
 
@@ -1602,7 +1602,7 @@ function add_pair_input() {
   # Asking withdrawal limit of new coin per level
   for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
 
-    do echo "What is a maker fee for user on LEVEL $i?" && read answer && export MAKER_FEES_LEVEL_$i=$answer
+    do echo "Maker fee of user level $i?" && read answer && export MAKER_FEES_LEVEL_$i=$answer
   
   done;
 
@@ -1611,37 +1611,37 @@ function add_pair_input() {
 
   MAKER_FEES=$(join_array_to_json $(print_maker_fees_array_side_by_side))
 
-  echo "What is the minimum size for trading of the new pair? [Default: 0.001]"
+  echo "Minimum Size: (0.001)"
   read answer
 
   MIN_SIZE=${answer:-0.001}
 
-  echo "What is the maximum size for trading of the new pair? [Default: 20000000]"
+  echo "Maximum Size: (20000000)"
   read answer
 
   MAX_SIZE=${answer:-20000000}
 
-  echo "What is the minimum price of the new pair? [Default: 0.0001]"
+  echo "Minimum Price: (0.0001)"
   read answer
 
   MIN_PRICE=${answer:-0.0001}
 
-  echo "What is the maximum price for trading of the new pair? [Default: 10]"
+  echo "Maximum Price: (10)"
   read answer
 
   MAX_PRICE=${answer:-10}
 
-  echo "What is the increment size of the new pair? [Default: 0.001]"
+  echo "Increment Size: (0.001)"
   read answer
 
   INCREMENT_SIZE=${answer:-0.001}
 
-  echo "What is the increment price of the new pair? [Default: 1]"
+  echo "Increment Price: (1)"
   read answer
 
   INCREMENT_PRICE=${answer:-1}
 
-  echo "Are you going to active the new pair you just configured? (y/n) [Default: y]"
+  echo "Activate: (Y/n) [Default: y]"
   read answer
   
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
@@ -1678,8 +1678,8 @@ function add_pair_input() {
   echo "Full name: $PAIR_NAME"
   echo "First currency: $PAIR_BASE"
   echo "Second currency: $PAIR_2"
-  echo -e "Taker fees per level:\n$(print_taker_fees_deposit_level;)"
-  echo -e "Maker limits per level:\n$(print_maker_fees_withdrawal_level;)"
+  echo "Taker fees per level: $TAKER_FEES"
+  echo "Maker limits per level: $MAKER_FEES"
   echo "Minimum size: $MIN_SIZE"
   echo "Maximum size: $MAX_SIZE"
   echo "Minimum price: $MIN_PRICE"
@@ -1689,7 +1689,7 @@ function add_pair_input() {
   echo "Activation: $PAIR_ACTIVE"
   echo "*********************************************"
 
-  echo "Are the values are all correct? (y/n)"
+  echo "Are the values are all correct? (y/N)"
   read answer
 
   if [[ "$answer" = "${answer#[Yy]}" ]]; then
@@ -1884,7 +1884,7 @@ function remove_pair_input() {
   echo "Name: $PAIR_NAME"
   echo "*********************************************"
 
-  echo "Are the sure you want to remove this trading pair from your exchange? (y/n)"
+  echo "Are the sure you want to remove this trading pair from your exchange? (y/N)"
   read answer
 
   if [[ "$answer" = "${answer#[Yy]}" ]]; then

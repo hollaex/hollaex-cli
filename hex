@@ -2486,7 +2486,7 @@ elif [[ "$1" == "toolbox" ]]; then
     elif [[ "$ISSUE_SSL_CERT" ]]; then
 
         echo "Issuing SSL certificate requires full restart of exchange. This would cause few minutes of downtime."
-        echo "Would you like to continue? (y/n)"
+        echo "Would you like to continue? (y/N)"
         read answer
 
         if [[ "$answer" = "${answer#[Yy]}" ]]; then
@@ -2494,18 +2494,30 @@ elif [[ "$1" == "toolbox" ]]; then
             exit 0;
         fi
 
-        docker run --rm -it --name certbot-$ENVIRONMENT_EXCHANGE_NAME \
+        if command docker run --rm -it --name certbot-$ENVIRONMENT_EXCHANGE_NAME \
                 --entrypoint "/bin/sh" \
                 -v $TEMPLATE_GENERATE_PATH/local/nginx:/etc/nginx \
                 -v $TEMPLATE_GENERATE_PATH/local/letsencrypt:/etc/letsencrypt \
                 -v $TEMPLATE_GENERATE_PATH/local/logs:/var/logs \
                 --network local_$ENVIRONMENT_EXCHANGE_NAME-network \
-                certbot/certbot -c "pip install certbot-nginx && apk add --no-cache nginx && certbot --nginx"
+                certbot/certbot -c "pip install certbot-nginx && apk add --no-cache nginx && certbot --nginx"; then
+            
+            echo "Reloading Nginx..."
+            docker exec $(docker ps | grep nginx | cut -f1 -d " ") nginx -s reload
+
+        else 
+
+            echo "Failed to issue SSL certificate by using Certbot. Please confirm your settings and try again."
+            exit 1;
+
+        fi
+ 
+        
     
     elif [[ "$RENEW_SSL_CERT" ]]; then
 
         echo "Renewing SSL certificate requires full restart of exchange. This would cause few minutes of downtime."
-        echo "Would you like to continue? (y/n)"
+        echo "Would you like to continue? (y/N)"
         read answer
 
         if [[ "$answer" = "${answer#[Yy]}" ]]; then
@@ -2513,13 +2525,23 @@ elif [[ "$1" == "toolbox" ]]; then
             exit 0;
         fi
 
-        docker run --rm -it --name certbot-$ENVIRONMENT_EXCHANGE_NAME \
+        if command docker run --rm -it --name certbot-$ENVIRONMENT_EXCHANGE_NAME \
                 --entrypoint "/bin/sh" \
                 -v $TEMPLATE_GENERATE_PATH/local/nginx:/etc/nginx \
                 -v $TEMPLATE_GENERATE_PATH/local/letsencrypt:/etc/letsencrypt \
                 -v $TEMPLATE_GENERATE_PATH/local/logs:/var/logs \
                 --network local_$ENVIRONMENT_EXCHANGE_NAME-network \
-                certbot/certbot -c "pip install certbot-nginx && apk add --no-cache nginx && certbot --nginx"
+                certbot/certbot -c "pip install certbot-nginx && apk add --no-cache nginx && certbot renew"; then
+        
+            echo "Reloading Nginx..."
+            docker exec $(docker ps | grep nginx | cut -f1 -d " ") nginx -s reload
+
+        else 
+
+            echo "Failed to issue SSL certificate by using Certbot. Please confirm your settings and try again."
+            exit 1;
+
+        fi
       
         
     fi
