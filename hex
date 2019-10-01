@@ -210,7 +210,7 @@ if [[ "$1" == 'dev' ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to run $ENVIRONMENT_EXCHANGE_NAME - $LOCAL_COMMAND on your local machine? (y/n)"
+            echo "Are you sure you want to run $ENVIRONMENT_EXCHANGE_NAME - $LOCAL_COMMAND on your machine? (y/n)"
 
             read answer
 
@@ -669,7 +669,7 @@ elif [[ "$1" == "launch" ]]; then
 
         if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
-            echo "Alert: hex-cli detected that $ENVIRONMENT_EXCHANGE_NAME exchange exists on your local machine."
+            echo "Alert: hex-cli detected that $ENVIRONMENT_EXCHANGE_NAME exchange exists on your machine."
             echo "You can't run launch process multiple times for existing exchange. This could break up system badly."
             echo "Exiting..."
             exit 1;
@@ -703,7 +703,7 @@ elif [[ "$1" == "launch" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to run $ENVIRONMENT_EXCHANGE_NAME on your local machine? (y/n)"
+            echo "Are you sure you want to run $ENVIRONMENT_EXCHANGE_NAME on your machine? (y/n)"
 
             read answer
 
@@ -1012,7 +1012,7 @@ elif [[ "$1" == "start" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to run $ENVIRONMENT_EXCHANGE_NAME on your local machine? (y/n)"
+            echo "Are you sure you want to run $ENVIRONMENT_EXCHANGE_NAME on your machine? (y/n)"
 
             read answer
 
@@ -1206,7 +1206,7 @@ elif [[ "$1" == "stop" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to stop $ENVIRONMENT_EXCHANGE_NAME - $LOCAL_DEPLOYMENT_MODE which running on your local? (y/n)"
+            echo "Are you sure you want to stop $ENVIRONMENT_EXCHANGE_NAME - $LOCAL_DEPLOYMENT_MODE which running on your machine? (y/n)"
 
             read answer
 
@@ -1421,7 +1421,7 @@ elif [[ "$1" == "restart" ]]; then
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
             
             echo "Warning: Exchange service will be unavailable during the restart!"
-            echo "Are you sure you want to restart $ENVIRONMENT_EXCHANGE_NAME on your local? (y/n)"
+            echo "Are you sure you want to restart $ENVIRONMENT_EXCHANGE_NAME on your machine? (y/n)"
 
             read answer
 
@@ -1711,7 +1711,7 @@ elif [[ "$1" == "upgrade" ]]; then
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
             
             echo "Warning: Exchange service will be unavailable during the upgrade!"
-            echo "Are you sure you want to upgrade $ENVIRONMENT_EXCHANGE_NAME on your local? (y/n)"
+            echo "Are you sure you want to upgrade $ENVIRONMENT_EXCHANGE_NAME on your machine? (y/n)"
 
             read answer
 
@@ -1934,7 +1934,7 @@ elif [[ "$1" == "terminate" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to terminate $ENVIRONMENT_EXCHANGE_NAME - $LOCAL_DEPLOYMENT_MODE which running on your local? (y/n)"
+            echo "Are you sure you want to terminate $ENVIRONMENT_EXCHANGE_NAME on your machine? (y/n)"
 
             read answer
 
@@ -2241,7 +2241,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         else 
 
-            echo "hex-cli failed to detect pg_dump on your local"
+            echo "hex-cli failed to detect pg_dump on your machine"
             echo "Please make sure that you already installed pg_dump"
 
             exit 1;
@@ -2263,9 +2263,9 @@ elif [[ "$1" == "toolbox" ]]; then
 
             fi
 
-            echo "hex-cli will open proxy tunnel between your local and remote proxy with kubectl proxy."
+            echo "hex-cli will open proxy tunnel between your machine and remote proxy with kubectl proxy."
 
-            echo "Opening local proxy on 5432 port of your local..."
+            echo "Opening local proxy on 5432 port of your machine..."
             kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-db" -o name | sed 's/pod\///' | head -n 1) 5432:5432 &
 
             echo "Waiting for the proxy tunnel get fully ready..."
