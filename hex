@@ -2608,7 +2608,8 @@ elif [[ "$1" == "toolbox" ]]; then
 
         if command docker exec -it $(docker ps | grep nginx | cut -f1 -d " ") certbot --nginx; then
             
-            echo "SSL has been successfully set!"
+            echo "SSL cert has been successfully set."
+            echo "All Let's encrypt related files can be found at ./templates/local/letsencrypt."
 
         else 
 
@@ -2630,16 +2631,10 @@ elif [[ "$1" == "toolbox" ]]; then
             exit 0;
         fi
 
-        if command docker run --rm -it --name certbot-$ENVIRONMENT_EXCHANGE_NAME \
-                --entrypoint "/bin/sh" \
-                -v $TEMPLATE_GENERATE_PATH/local/nginx:/etc/nginx \
-                -v $TEMPLATE_GENERATE_PATH/local/letsencrypt:/etc/letsencrypt \
-                -v $TEMPLATE_GENERATE_PATH/local/logs:/var/logs \
-                --network local_$ENVIRONMENT_EXCHANGE_NAME-network \
-                certbot/certbot -c "pip install certbot-nginx && apk add --no-cache nginx && certbot renew"; then
+        if command docker exec -it $(docker ps | grep nginx | cut -f1 -d " ") certbot renew; then
         
-            echo "Reloading Nginx..."
-            docker exec $(docker ps | grep nginx | cut -f1 -d " ") nginx -s reload
+            echo "SSL cert has been successfully renewed."
+            echo "All Let's encrypt related files can be found at ./templates/local/letsencrypt."
 
         else 
 
