@@ -271,13 +271,13 @@ elif [[ "$1" == "init" ]]; then
     while true; do
         [[ $# -eq 0 ]] && break
         case $1 in
-            --name)
-                shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                ENVIRONMENT_EXCHANGE_NAME=$1
-                echo "Name of your Exchange : $ENVIRONMENT_EXCHANGE_NAME."
-                shift; continue
-                ;;
+            # --name)
+            #     shift 
+            #     case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+            #     ENVIRONMENT_EXCHANGE_NAME=$1
+            #     echo "Name of your Exchange : $ENVIRONMENT_EXCHANGE_NAME."
+            #     shift; continue
+            #     ;;
             --standalone)
                 shift 
                 HEX_INIT_STANDALONE=true
@@ -288,14 +288,14 @@ elif [[ "$1" == "init" ]]; then
         shift
     done
 
-    #Quit if name of exchange is missing
-    if [[ ! "$ENVIRONMENT_EXCHANGE_NAME" ]]; then
+    # #Quit if name of exchange is missing
+    # if [[ ! "$ENVIRONMENT_EXCHANGE_NAME" ]]; then
 
-        echo "You must specify the name of your Exchange! Use `--name` flag to pass name."
-        print_usage;
-        exit 1;
+    #     echo "You must specify the name of your Exchange! Use `--name` flag to pass name."
+    #     print_usage;
+    #     exit 1;
 
-    fi
+    # fi
 
     if [[ ! "$HEX_INIT_STANDALONE" ]]; then
 
@@ -306,17 +306,6 @@ elif [[ "$1" == "init" ]]; then
             CONFIG_FILE_PATH=$(pwd)/hex-kit/settings/*
             TEMPLATE_GENERATE_PATH=$(pwd)/hex-kit/templates
             INIT_PATH_CHECK=$(pwd)/hex-kit/.hex
-
-            for i in ${CONFIG_FILE_PATH[@]}; do
-
-                # Update exchange name
-                if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
-                CONFIGMAP_FILE_PATH=$i
-                sed -i.bak "s/ENVIRONMENT_EXCHANGE_NAME=.*/ENVIRONMENT_EXCHANGE_NAME=$ENVIRONMENT_EXCHANGE_NAME/" $CONFIGMAP_FILE_PATH
-                rm $CONFIGMAP_FILE_PATH.bak
-                fi
-
-            done
 
             echo "Done. hex-kit directory is now available on $(pwd)/hex-kit."
             echo "Please go to the pulled path and customize based on your needs."
@@ -349,9 +338,9 @@ elif [[ "$1" == "init" ]]; then
         touch $HEX_CLI_INIT_PATH/.hex
         echo "Initialized by using hex-cli v$(cat $SCRIPTPATH/version)" >> $HEX_CLI_INIT_PATH/.hex
 
-        grep -v ENVIRONMENT_EXCHANGE_NAME= $HEX_CLI_INIT_PATH/settings/configmap > temp.init && mv temp.init $HEX_CLI_INIT_PATH/settings/configmap
+        # grep -v ENVIRONMENT_EXCHANGE_NAME= $HEX_CLI_INIT_PATH/settings/configmap > temp.init && mv temp.init $HEX_CLI_INIT_PATH/settings/configmap
 
-        (echo "ENVIRONMENT_EXCHANGE_NAME=$ENVIRONMENT_EXCHANGE_NAME" && cat $HEX_CLI_INIT_PATH/settings/configmap) > temp.init && mv temp.init $HEX_CLI_INIT_PATH/settings/configmap
+        # (echo "ENVIRONMENT_EXCHANGE_NAME=$ENVIRONMENT_EXCHANGE_NAME" && cat $HEX_CLI_INIT_PATH/settings/configmap) > temp.init && mv temp.init $HEX_CLI_INIT_PATH/settings/configmap
 
         echo "All done!"
         echo "To run hex-cli commands further, Please get into initialized path first to let hex-cli reads settings."
