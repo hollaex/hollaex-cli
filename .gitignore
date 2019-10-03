@@ -4,3 +4,5 @@ local/*.local
 local/*.yaml
 local/nginx/conf.d/*
 local/logs/*
+local/letsencrypt/*
+!local/letsencrypt/.gitkeep
