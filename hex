@@ -20,13 +20,13 @@ function print_usage() {
 /bin/cat << EOF
 
 Usage : 
-    hex [ init ] [ start ] [ stop ] [ upgrade ] [ terminate ] [ toolbox ] (--flags)
+    hex [ init ] [ setup ] [ start ] [ stop ] [ upgrade ] [ terminate ] [ toolbox ] [ version ] (--flags)
 Options:
     init : Generating the initialized exchange folder for your new exchange.
         --name, Name of your exchange.
         --standalone, Initialize exchange directory without pulling hex-kit repo remotely (Not recommended).
 
-    launch : Bringing up your new exchange for the first time.
+    setup : Bringing up your new exchange for the first time.
         --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
         --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying docker-compose setup.
@@ -359,7 +359,7 @@ elif [[ "$1" == "init" ]]; then
         
         exit 0;
     
-elif [[ "$1" == "launch" ]]; then
+elif [[ "$1" == "setup" ]]; then
     while true; do
         [[ $# -eq 0 ]] && break
         case $1 in
@@ -421,9 +421,6 @@ elif [[ "$1" == "launch" ]]; then
     
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
-    
-    # Ask for basic necessary settings
-    launch_basic_settings_input;
 
     if [[ "$USE_KUBERNETES" ]]; then
 
@@ -468,6 +465,9 @@ elif [[ "$1" == "launch" ]]; then
             fi
 
         fi
+
+         # Ask for basic necessary settings
+        launch_basic_settings_input;
 
 
         #Generating random values for passwords and update config file to contain it;
@@ -648,8 +648,6 @@ elif [[ "$1" == "launch" ]]; then
         echo "All done!"
         echo "Your $ENVIRONMENT_EXCHANGE_NAME ($HEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again."
 
-        exit 0;
-
     fi
 
     if [[ ! "$USE_KUBERNETES" ]]; then
@@ -675,6 +673,9 @@ elif [[ "$1" == "launch" ]]; then
             exit 1;
 
         fi
+
+         # Ask for basic necessary settings
+        launch_basic_settings_input;
 
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local;
@@ -722,13 +723,28 @@ elif [[ "$1" == "launch" ]]; then
             echo "Generating $ENVIRONMENT_EXCHANGE_NAME.env.local file for docker"
             generate_local_env;
 
-        fi  
+        fi
+
+         if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
+
+            echo "Generating .env for Web Client"
+            generate_hex_web_local_env
+
+            echo "Generating Nginx conf for Web Client"
+            generate_hex_web_local_nginx_conf
+
+        elif [[ "$ENVIRONMENT_WEB_ENABLE" == false ]]; then
+
+            echo "Cleaning up Nginx conf for Web Client"
+            cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf 
+
+        fi
         
         # Generating docker-compose yaml for exchange
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
             
             echo "Generating docker-compose file"
-            generate_local_docker_compose $ENVIRONMENT_EXCHANGE_RUN_MODE;
+            generate_local_docker_compose
 
         fi
         
@@ -771,6 +787,58 @@ elif [[ "$1" == "launch" ]]; then
             exit 1;
        
         fi
+        
+        echo "*********************************************"
+        echo "You exchange is all set!"
+        echo "You can proceed to add your own currencies, trading pairs right away from now on."
+        echo "It doesn't matter you want to skip it for now. You can always add new currencies and trading pairs with 'hex toolbox' command."
+        echo "Do you want to proceed? (Y/n)"
+        read answer
+
+        if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+      
+            echo "Finishing the setup process..."
+            echo "Shutting down the exchange"
+            echo "To start the exchange, Please use 'hex start' command"
+            hex stop --no_verify
+            exit 0;
+        
+        fi
+
+        while true;
+        do read -r -p "Do you want to add new currency? (Y/n)" answer   
+            if [[ "$answer" = "${answer#[Nn]}" ]];
+            then
+                if [[ "$USE_KUBERNETES" ]]; then
+                    hex toolbox --add_coin --kube
+               
+                elif [[ ! "$USE_KUBERNETES" ]]; then
+                    hex toolbox --add_coin
+                fi
+            else
+                while true;
+                    do read -r -p "Do you want to add new trading pair? (Y/n)" answer   
+                        if [[ "$answer" = "${answer#[Nn]}" ]];
+                        then
+                            if [[ "$USE_KUBERNETES" ]]; then
+                                hex toolbox --add_trading_pair --kube
+                            elif [[ ! "$USE_KUBERNETES" ]]; then
+                                hex toolbox --add_trading_pair
+                            fi
+                        else   
+                            echo "Finishing the setup process..."
+                            echo "Shutting down the exchange"
+                            if [[ "$USE_KUBERNETES" ]]; then
+                                hex stop --kube --no_verify
+                            elif [[ ! "$USE_KUBERNETES" ]]; then
+                                hex stop --no_verify
+                            fi
+                            exit 0;
+                        fi
+                    done
+            fi
+
+        done
 
         exit 0;
 
@@ -920,6 +988,7 @@ elif [[ "$1" == "start" ]]; then
             generate_nginx_config_for_plugin;
 
         fi
+        
 
         echo "Applying configmap on the namespace"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
@@ -936,6 +1005,8 @@ elif [[ "$1" == "start" ]]; then
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
             helm_dynamic_trading_paris scaleup;
+
+            helm_dynamic_trading_paris run;
 
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
@@ -999,7 +1070,7 @@ elif [[ "$1" == "start" ]]; then
 
         check_empty_values_on_settings;
         
-        LOCAL_COMMAND="start"
+        LOCAL_COMMAND="up -d"
 
         #Quit if necessary flags are missing
         if [[ ! "$LOCAL_COMMAND" ]]; then
@@ -1029,12 +1100,27 @@ elif [[ "$1" == "start" ]]; then
             generate_local_env;
 
         fi  
+
+         if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
+
+            echo "Generating .env for Web Client"
+            generate_hex_web_local_env
+
+            echo "Generating Nginx conf for Web Client"
+            generate_hex_web_local_nginx_conf
+
+        elif [[ "$ENVIRONMENT_WEB_ENABLE" == false ]]; then
+
+            echo "Cleaning up Nginx conf for Web Client"
+            cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf 
+
+        fi
         
         # Generating docker-compose yaml for exchange
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
             
             echo "Generating docker-compose file"
-            generate_local_docker_compose $ENVIRONMENT_EXCHANGE_RUN_MODE;
+            generate_local_docker_compose
 
         fi
         
@@ -1442,7 +1528,7 @@ elif [[ "$1" == "restart" ]]; then
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
 
             echo "Generating docker-compose file"
-            generate_local_docker_compose $ENVIRONMENT_EXCHANGE_RUN_MODE;
+            generate_local_docker_compose
 
         fi
 
@@ -1740,7 +1826,7 @@ elif [[ "$1" == "upgrade" ]]; then
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
             
             echo "Generating docker-compose file"
-            generate_local_docker_compose $ENVIRONMENT_EXCHANGE_RUN_MODE;
+            generate_local_docker_compose
 
         fi
 
@@ -1750,6 +1836,21 @@ elif [[ "$1" == "upgrade" ]]; then
             echo "Generating Nginx upstream conf"
             generate_nginx_upstream
         
+        fi
+
+        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
+
+            echo "Generating .env for Web Client"
+            generate_hex_web_local_env
+
+            echo "Generating Nginx conf for Web Client"
+            generate_hex_web_local_nginx_conf
+
+        elif [[ "$ENVIRONMENT_WEB_ENABLE" == false ]]; then
+
+            echo "Cleaning up Nginx conf for Web Client"
+            cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf 
+
         fi
 
         if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then

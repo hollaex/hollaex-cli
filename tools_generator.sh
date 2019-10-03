@@ -240,10 +240,10 @@ function apply_nginx_user_defined_values(){
           #sed -i.bak "s/$ENVIRONMENT_DOCKER_IMAGE_VERSION/$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
     sed -i.bak "s/server_name.*\#Server.*/server_name $HEX_CONFIGMAP_API_HOST; \#Server domain/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
-    rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
+    rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf.bak
 
     CLIENT_DOMAIN=$(echo $HEX_CONFIGMAP_DOMAIN | cut -f3 -d "/")
-    sed -i.bak "s/server_name.*\#Client.*/server_name $CLIENT_DOMAIN; \#Client domain/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
+    sed -i.bak "s/server_name.*\#Client.*/server_name $CLIENT_DOMAIN; \#Client domain/" $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
     rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
 }
 
@@ -520,7 +520,7 @@ if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-web:
-    image: bitholla/hex-web:${ENVIRONMENT_EXCHANGE_NAME}-$(date "+%Y%m%d%H%M%S")
+    image: bitholla/hex-web:${ENVIRONMENT_EXCHANGE_NAME}
     build:
       context: ${HEX_CLI_INIT_PATH}/web/
       dockerfile: ${HEX_CLI_INIT_PATH}/web/docker/Dockerfile
@@ -852,7 +852,7 @@ function generate_random_values() {
 function update_random_values_to_config() {
 
 
-GENERATE_VALUES_LIST=( "HEX_SECRET_ADMIN_PASSWORD" "HEX_SECRET_SUPERVISOR_PASSWORD" "HEX_SECRET_SUPPORT_PASSWORD" "HEX_SECRET_KYC_PASSWORD" "HEX_SECRET_QUICK_TRADE_SECRET" "HEX_SECRET_SECRET" )
+GENERATE_VALUES_LIST=( "HEX_SECRET_SUPERVISOR_PASSWORD" "HEX_SECRET_SUPPORT_PASSWORD" "HEX_SECRET_KYC_PASSWORD" "HEX_SECRET_QUICK_TRADE_SECRET" "HEX_SECRET_SECRET" )
 
 for j in ${CONFIG_FILE_PATH[@]}; do
 
@@ -860,7 +860,7 @@ for j in ${CONFIG_FILE_PATH[@]}; do
 
     SECRET_CONFIG_FILE_PATH=$j
 
-    if [[ ! -z "$HEX_SECRET_ADMIN_PASSWORD" ]] ; then
+    if [[ ! -z "$HEX_SECRET_SECRET" ]] ; then
   
       echo "Pre-generated secrets are detected on your secert file!"
       echo "Are you sure you want to override them? (y/n)"
@@ -910,7 +910,7 @@ EOL
 
       fi
 
-    elif [[ -z "$HEX_SECRET_ADMIN_PASSWORD" ]] ; then
+    elif [[ -z "$HEX_SECRET_SECRET" ]] ; then
 
       for k in ${GENERATE_VALUES_LIST[@]}; do
 
@@ -1155,7 +1155,7 @@ function add_coin_input() {
 
   COIN_MAX=${answer:-10000}
 
-  echo "Increment Size: (0.001)]"
+  echo "Increment Size: (0.001)"
   read answer
 
   COIN_INCREMENT_UNIT=${answer:-0.001}
@@ -1385,7 +1385,6 @@ EOL
           docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
 
         fi
-
         echo "Updating settings file to add new $COIN_SYMBOL."
         for i in ${CONFIG_FILE_PATH[@]}; do
 
@@ -1525,6 +1524,9 @@ function remove_coin_exec() {
                   ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
                   node tools/dbs/removeCoin.js; then
 
+      # Running database triggers
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js;
+
 
       if  [[ "$IS_DEVELOP" ]]; then
 
@@ -1545,12 +1547,15 @@ function remove_coin_exec() {
 
       if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
           CONFIGMAP_FILE_PATH=$i
-          if [[ "$COIN_SYMBOL" == "hex" ]]; then
-            HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_CURRENCIES//$COIN_SYMBOL,}")
-          else
-            HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_CURRENCIES//,$COIN_SYMBOL}")
-          fi
-          sed -i.bak "s/$HEX_CONFIGMAP_CURRENCIES/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+          IFS="," read -ra CURRENCIES_TO_ARRAY <<< "${HEX_CONFIGMAP_CURRENCIES}"
+          local REVOME_SELECTED_CURRENCY=${CURRENCIES_TO_ARRAY[@]/$COIN_SYMBOL}
+          local CURRENCIES_ARRAY_TO_STRING=$(echo ${REVOME_SELECTED_CURRENCY[@]} | tr -d ' ') 
+          local CURRENCIES_STRING_TO_COMMNA_SEPARATED=${CURRENCIES_ARRAY_TO_STRING// /,}
+
+          sed -i.bak "s/$HEX_CONFIGMAP_CURRENCIES/$CURRENCIES_STRING_TO_COMMNA_SEPARATED/" $CONFIGMAP_FILE_PATH
+
+          export HEX_CONFIGMAP_CURRENCIES=$CURRENCIES_STRING_TO_COMMNA_SEPARATED
+
           rm $CONFIGMAP_FILE_PATH.bak
       fi
 
@@ -1840,31 +1845,39 @@ EOL
                   ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
                   node tools/dbs/addPair.js; then
 
-        if  [[ "$IS_DEVELOP" ]]; then
+           # Running database triggers
+          docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js;
 
-        # Restarting containers after database init jobs.
-        echo "Restarting containers to apply database changes."
-        docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+          echo "Updating settings file to add new $PAIR_NAME."
+          for i in ${CONFIG_FILE_PATH[@]}; do
 
-        else
+          if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+              CONFIGMAP_FILE_PATH=$i
+              HEX_CONFIGMAP_PAIRS_OVERRIDE="${HEX_CONFIGMAP_PAIRS},${PAIR_NAME}"
+              sed -i.bak "s/$HEX_CONFIGMAP_PAIRS/$HEX_CONFIGMAP_PAIRS_OVERRIDE/" $CONFIGMAP_FILE_PATH
+              export HEX_CONFIGMAP_PAIRS="$HEX_CONFIGMAP_PAIRS_OVERRIDE"
+              rm $CONFIGMAP_FILE_PATH.bak
+          fi
 
-          # Restarting containers after database init jobs.
-          echo "Restarting containers to apply database changes."
-          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+          done
 
-        fi
+          if  [[ "$IS_DEVELOP" ]]; then
 
-        echo "Updating settings file to add new $PAIR_NAME."
-        for i in ${CONFIG_FILE_PATH[@]}; do
+            # Restarting containers after database init jobs.
+            echo "Restarting containers to apply database changes."
+            docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+            generate_local_docker_compose;
+            docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
-        if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
-            CONFIGMAP_FILE_PATH=$i
-            HEX_CONFIGMAP_PAIRS_OVERRIDE="${HEX_CONFIGMAP_PAIRS},${PAIR_NAME}"
-            sed -i.bak "s/$HEX_CONFIGMAP_PAIRS/$HEX_CONFIGMAP_PAIRS_OVERRIDE/" $CONFIGMAP_FILE_PATH
-            rm $CONFIGMAP_FILE_PATH.bak
-        fi
+          else
 
-        done
+            # Restarting containers after database init jobs.
+            echo "Restarting containers to apply database changes."
+            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+            generate_local_docker_compose;
+            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+
+          fi
 
       else
 
@@ -1997,35 +2010,47 @@ function remove_pair_exec() {
       echo "*** Removing new pair $PAIR_NAME on local exchange ***"
       if command docker exec --env "PAIR_NAME=${PAIR_NAME}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/removePair.js; then
 
+        # Running database triggers
+        docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js;
+
+        echo "*** Updating settings file to remove existing $PAIR_NAME. ***"
+        for i in ${CONFIG_FILE_PATH[@]}; do
+
+        if command grep -q "HEX_CONFIGMAP_PAIRS" $i > /dev/null ; then
+            CONFIGMAP_FILE_PATH=$i
+
+            IFS="," read -ra PAIRS_TO_ARRAY <<< "${HEX_CONFIGMAP_PAIRS}"
+            local REVOME_SELECTED_PAIR=${PAIRS_TO_ARRAY[@]/$PAIR_NAME}
+            local PAIRS_ARRAY_TO_STRING=$(echo ${REVOME_SELECTED_PAIR[@]} | tr -d ' ') 
+            local PAIRS_STRING_TO_COMMNA_SEPARATED=${PAIRS_ARRAY_TO_STRING// /,}
+
+            sed -i.bak "s/$HEX_CONFIGMAP_PAIRS/$PAIRS_STRING_TO_COMMNA_SEPARATED/" $CONFIGMAP_FILE_PATH
+
+            export HEX_CONFIGMAP_PAIRS=$PAIRS_STRING_TO_COMMNA_SEPARATED
+
+            rm $CONFIGMAP_FILE_PATH.bak
+        fi
+
+        done
+
+
         if  [[ "$IS_DEVELOP" ]]; then
 
           # Restarting containers after database init jobs.
           echo "Restarting containers to apply database changes."
           docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+          generate_local_docker_compose;
+          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
 
         else
 
           # Restarting containers after database init jobs.
           echo "Restarting containers to apply database changes."
           docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+          generate_local_docker_compose;
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
 
         fi
-
-        echo "*** Updating settings file to remove existing $PAIR_NAME. ***"
-        for i in ${CONFIG_FILE_PATH[@]}; do
-
-        if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
-            CONFIGMAP_FILE_PATH=$i
-            if [[ "$PAIR_NAME" == "hex-usdt" ]]; then
-              HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_PAIRS//$PAIR_NAME,}")
-            else
-              HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_PAIRS//,$PAIR_NAME}")
-            fi
-            sed -i.bak "s/$HEX_CONFIGMAP_PAIRS/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
-            rm $CONFIGMAP_FILE_PATH.bak
-        fi
-
-        done
 
       else
 
@@ -2037,6 +2062,43 @@ function remove_pair_exec() {
   fi
 
 }
+
+function generate_hex_web_local_env() {
+
+cat > $HEX_CLI_INIT_PATH/web/.env <<EOL
+
+NODE_ENV=production
+
+PUBLIC_URL=${HEX_CONFIGMAP_DOMAIN}
+REACT_APP_PUBLIC_URL=${HEX_CONFIGMAP_DOMAIN}
+REACT_APP_SERVER_ENDPOINT=https://${HEX_CONFIGMAP_API_HOST}
+REACT_APP_NETWORK=${HEX_CONFIGMAP_NETWORK}
+
+REACT_APP_EXCHANGE_NAME=${ENVIRONMENT_EXCHANGE_NAME}
+
+REACT_APP_CAPTCHA_SITE_KEY=${ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}
+
+REACT_APP_DEFAULT_LANGUAGE=${ENVIRONMENT_WEB_DEFAULT_LANGUAGE}
+REACT_APP_DEFAULT_COUNTRY=${ENVIRONMENT_WEB_DEFAULT_COUNTRY}
+
+REACT_APP_BASE_CURRENCY=${ENVIRONMENT_WEB_BASE_CURRENCY}
+
+EOL
+}
+
+function generate_hex_web_local_nginx_conf() {
+
+cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf <<EOL
+server_name hex.exchange; #Client domain
+access_log   /var/log/web.access.log  main;
+      
+location / {
+  proxy_pass      http://web;
+}
+
+EOL
+}
+
 
 function generate_hex_web_configmap() {
 
@@ -2068,46 +2130,203 @@ function launch_basic_settings_input() {
 
   /bin/cat << EOF
   
-Please fill up the interaction form to laucnh your own exchange.
+Please fill up the interaction form to launch your own exchange.
 
 If you don't have activation code for HEX Core yet, We also provide trial license.
-Please visit bitholla.com to see more details.
+Please visit dash.bitholla.com to see more details.
+
+For setting up the exchange name, You should only use alphanumeric. No space or special character allowed.
 
 EOF
 
-  echo "Exchange name: ($ENVIRONMENT_EXCHANGE_NAME)"
+  # Exchange name (API_NAME)
+  echo "Exchange name: ($HEX_CONFIGMAP_API_NAME)"
   read answer
 
-  EXCHANGE_NAME_OVERRIDE=${answer:-$ENVIRONMENT_EXCHANGE_NAME}
+  local PARSE_CHARACTERS_FOR_API_NAME=$(echo $answer | tr -d ' ')
+  local EXCHANGE_API_NAME_OVERRIDE=${PARSE_CHARACTERS_FOR_API_NAME:-$HEX_CONFIGMAP_API_NAME}
+  local EXCHANGE_NAME_OVERRIDE=$(echo $EXCHANGE_API_NAME_OVERRIDE | tr '[:upper:]' '[:lower:]' )
 
-  DEFAULT_HEX_WEB_DOMAIN=$(echo $HEX_CONFIGMAP_DOMAIN | cut -f 3 -d "/" )
-  echo "Exchange URL: ($DEFAULT_HEX_WEB_DOMAIN)"
-  read answer
-
-  EXCHANGE_WEB_DOMAIN_OVERRIDE="${answer:-$DEFAULT_HEX_WEB_DOMAIN}"
-
-  echo "Exchange API URL: ($HEX_CONFIGMAP_API_HOST)"
-  read answer
-
-  EXCHANGE_SERVER_DOMAIN_OVERRIDE=${answer:-$HEX_CONFIGMAP_API_HOST}
-
-  echo "User levels: ($HEX_CONFIGMAP_USER_LEVEL_NUMBER)"
-  read answer
-
-  EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE=${answer:-$HEX_CONFIGMAP_USER_LEVEL_NUMBER}
-  
+  # Activation Code
   echo "Activation Code: ($HEX_SECRET_ACTIVATION_CODE)"
   read answer
 
-  EXCHANGE_ACTIVATION_CODE_OVERRIDE=${answer:-$HEX_SECRET_ACTIVATION_CODE}
+  local EXCHANGE_ACTIVATION_CODE_OVERRIDE=${answer:-$HEX_SECRET_ACTIVATION_CODE}
 
-  echo "*********************************************"
-  echo "Exchange Name: $EXCHANGE_NAME_OVERRIDE"
-  echo "Exchange URL: $EXCHANGE_WEB_DOMAIN_OVERRIDE"
-  echo "Exchange API URL: $EXCHANGE_SERVER_DOMAIN_OVERRIDE"
-  echo "User levels: $EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE"
-  echo "Activation Code: $EXCHANGE_ACTIVATION_CODE_OVERRIDE"
-  echo "*********************************************"
+  # Web Domain
+  local DEFAULT_HEX_WEB_DOMAIN=$(echo $HEX_CONFIGMAP_DOMAIN | cut -f 3 -d "/" )
+  echo "Exchange URL: ($DEFAULT_HEX_WEB_DOMAIN)"
+  read answer
+  
+  local EXCHANGE_WEB_DOMAIN_OVERRIDE="${answer:-$DEFAULT_HEX_WEB_DOMAIN}"
+
+  # Light Logo Path
+  echo "Exchange Light Logo Path: ($HEX_CONFIGMAP_LOGO_PATH)"
+  echo "- Image always should be png"
+  read answer
+
+  local ESCAPED_HEX_CONFIGMAP_LOGO_PATH=${HEX_CONFIGMAP_LOGO_PATH//\//\\/}
+
+  local ORIGINAL_CHARACTER_FOR_LOGO_PATH="${answer:-$HEX_CONFIGMAP_LOGO_PATH}"
+  local PARSE_CHARACTER_FOR_LOGO_PATH=${ORIGINAL_CHARACTER_FOR_LOGO_PATH//\//\\/}
+  local HEX_CONFIGMAP_LOGO_PATH_OVERRIDE="$PARSE_CHARACTER_FOR_LOGO_PATH"
+
+  # Dark Logo Path
+  echo "Exchange Dark Logo Path: ($HEX_CONFIGMAP_LOGO_BLACK_PATH)"
+  echo "- Image always should be png"
+  read answer
+
+  local ESCAPED_HEX_CONFIGMAP_LOGO_BLACK_PATH=${HEX_CONFIGMAP_LOGO_BLACK_PATH//\//\\/}}
+
+  local ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH="${answer:-$HEX_CONFIGMAP_LOGO_BLACK_PATH}"
+  local PARSE_CHARACTER_FOR_LOGO_BLACK_PATH=${ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH//\//\\/}
+  local HEX_CONFIGMAP_LOGO_BLACK_PATH_OVERRIDE="$PARSE_CHARACTER_FOR_LOGO_BLAKC_PATH"
+
+  # WEB CAPTCHA SITE KEY
+  echo "Exchange Web Google reCpatcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
+  read answer
+
+  local ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}"
+
+  # Server CAPTCHA Secret key
+  echo "Exchange API Server Google reCpatcha Secretkey: ($HEX_SECRET_CAPTCHA_SECRET_KEY)"
+  read answer
+
+  local HEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE="${answer:-$HEX_SECRET_CAPTCHA_SECRET_KEY}"
+
+  # Web default country
+  echo "Default Country: ($ENVIRONMENT_WEB_DEFAULT_COUNTRY)"
+  read answer
+
+  local ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_DEFAULT_COUNTRY}"
+
+  # Emails timezone
+  echo "Timezone: ($HEX_CONFIGMAP_EMAILS_TIMEZONE)"
+  read answer
+
+  local ESCAPED_HEX_CONFIGMAP_EMAILS_TIMEZONE=${HEX_CONFIGMAP_EMAILS_TIMEZONE/\//\\/}
+
+  local ORIGINAL_CHARACTER_FOR_TIMEZONE="${answer:-$HEX_CONFIGMAP_EMAILS_TIMEZONE}"
+  local PARSE_CHARACTER_FOR_TIMEZONE=${ORIGINAL_CHARACTER_FOR_TIMEZONE/\//\\/}
+  local HEX_CONFIGMAP_EMAILS_TIMEZONE_OVERRIDE="$PARSE_CHARACTER_FOR_TIMEZONE"
+
+  # Valid languages
+  echo "Valid Languages: ($HEX_CONFIGMAP_VALID_LANGUAGES)"
+  echo "- Separate with comma (,)"
+  read answer
+
+  local HEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE="${answer:-$HEX_CONFIGMAP_VALID_LANGUAGES}"
+
+  # Default language
+  echo "Default Language: ($HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE)"
+  read answer
+
+  local HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE="${answer:-$HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE}"
+
+  # Default theme
+  echo "Default Theme: ($HEX_CONFIGMAP_DEFAULT_THEME)"
+  echo "- Between light and dark."
+  read answer
+
+  local HEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE="${answer:-$HEX_CONFIGMAP_DEFAULT_THEME}"
+
+  # API Domain
+  echo "Exchange Server API URL: ($HEX_CONFIGMAP_API_HOST)"
+  read answer
+
+  local EXCHANGE_SERVER_DOMAIN_OVERRIDE="${answer:-$HEX_CONFIGMAP_API_HOST}"
+
+  # User tier number
+  echo "Number of User Tiers: ($HEX_CONFIGMAP_USER_LEVEL_NUMBER)"
+  read answer
+
+  local EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE=${answer:-$HEX_CONFIGMAP_USER_LEVEL_NUMBER}
+
+  # Admin Email
+  echo "Admin Email: ($HEX_CONFIGMAP_ADMIN_EMAIL)"
+  read answer
+
+  local HEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE=${answer:-$HEX_CONFIGMAP_ADMIN_EMAIL}
+
+  # Admin Password
+  echo "Admin Password: ($HEX_SECRET_ADMIN_PASSWORD)"
+  read answer
+
+  local HEX_SECRET_ADMIN_PASSWORD_OVERRIDE=${answer:-$HEX_SECRET_ADMIN_PASSWORD}
+
+  # Supervisor Email
+  echo "Supervisor Email: ($HEX_CONFIGMAP_SUPERVISOR_EMAIL)"
+  read answer
+
+  local HEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE=${answer:-$HEX_CONFIGMAP_SUPERVISOR_EMAIL}
+
+  # KYC email
+  echo "KYC Email: ($HEX_CONFIGMAP_KYC_EMAIL)"
+  read answer
+
+  local HEX_CONFIGMAP_KYC_EMAIL_OVERRIDE=${answer:-$HEX_CONFIGMAP_KYC_EMAIL}
+
+  # Support Email
+  echo "Support Email: ($HEX_CONFIGMAP_SUPPORT_EMAIL)"
+  read answer
+
+  local HEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE=${answer:-$HEX_CONFIGMAP_SUPPORT_EMAIL}
+
+  # Sender Email
+  echo "Sender Email: ($HEX_CONFIGMAP_SENDER_EMAIL)"
+  read answer
+
+  local HEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE=${answer:-$HEX_CONFIGMAP_SENDER_EMAIL}
+
+  # New user is activated
+  echo "Allow New User Signup?: (Y/n)"
+  read answer
+
+  if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+      
+    HEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE=false
+  
+  else
+
+    HEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE=true
+
+  fi
+
+  /bin/cat << EOF
+  
+*********************************************
+Exchange Name: $EXCHANGE_API_NAME_OVERRIDE
+Activation Code: $EXCHANGE_ACTIVATION_CODE_OVERRIDE
+
+Exchange URL: $EXCHANGE_WEB_DOMAIN_OVERRIDE
+
+Light Logo Path: $ORIGINAL_CHARACTER_FOR_LOGO_PATH
+Dark Logo Path: $ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH
+
+Web Captcha Sitekey: $ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE
+Server Captcha Secretkey: $HEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE
+
+Default Country: $ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE
+Timezone: $ORIGINAL_CHARACTER_FOR_TIMEZONE
+Valid Languages: $HEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE
+Default Language: $HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE
+Default Theme: $HEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE
+
+Exchange API URL: $EXCHANGE_SERVER_DOMAIN_OVERRIDE
+
+User Tiers: $EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE
+
+Admin Email: $HEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE
+Admin Password: $HEX_SECRET_ADMIN_PASSWORD_OVERRIDE
+Supervisor Email: $HEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE
+KYC Email: $HEX_CONFIGMAP_KYC_EMAIL_OVERRIDE
+Support Email: $HEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE
+Sender Email: $HEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE
+
+Allow New User Signup: $HEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE
+*********************************************
+
+EOF
 
   echo "Are the values are all correct? (Y/n)"
   read answer
@@ -2127,27 +2346,27 @@ EOF
     if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
     CONFIGMAP_FILE_PATH=$i
     sed -i.bak "s/ENVIRONMENT_EXCHANGE_NAME=$ENVIRONMENT_EXCHANGE_NAME/ENVIRONMENT_EXCHANGE_NAME=$EXCHANGE_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    rm $CONFIGMAP_FILE_PATH.bak
-    fi
-
-    # Update api domain
-    if command grep -q "HEX_CONFIGMAP_API_HOST" $i > /dev/null ; then
-    CONFIGMAP_FILE_PATH=$i
-    sed -i.bak "s/HEX_CONFIGMAP_API_HOST=$HEX_CONFIGMAP_API_HOST/HEX_CONFIGMAP_API_HOST=$EXCHANGE_SERVER_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    rm $CONFIGMAP_FILE_PATH.bak
-    fi
-
-    # Update client domain
-    if command grep -q "HEX_CONFIGMAP_DOMAIN" $i > /dev/null ; then
-    CONFIGMAP_FILE_PATH=$i
+    sed -i.bak "s/ENVIRONMENT_API_NAME=$ENVIRONMENT_API_NAME/ENVIRONMENT_API_NAME=$EXCHANGE_API_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/HEX_CONFIGMAP_DOMAIN=.*/HEX_CONFIGMAP_DOMAIN=https:\/\/$EXCHANGE_WEB_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    rm $CONFIGMAP_FILE_PATH.bak
-    fi
-    
-    # Update user levels
-    if command grep -q "HEX_CONFIGMAP_USER_LEVEL_NUMBER" $i > /dev/null ; then
-    CONFIGMAP_FILE_PATH=$i
+
+    sed -i.bak "s/ESCAPED_HEX_CONFIGMAP_LOGO_PATH=$ESCAPED_HEX_CONFIGMAP_LOGO_PATH/ESCAPED_HEX_CONFIGMAP_LOGO_PATH=$HEX_CONFIGMAP_LOGO_PATH_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/ESCAPED_HEX_CONFIGMAP_LOGO_BLACK_PATH=$ESCAPED_HEX_CONFIGMAP_LOGO_BLACK_PATH/ESCAPED_HEX_CONFIGMAP_LOGO_BLACK_PATH=$HEX_CONFIGMAP_LOGO_BLACK_PATH_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY/ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/ESCAPED_HEX_CONFIGMAP_EMAILS_TIMEZONE=$ESCAPED_HEX_CONFIGMAP_EMAILS_TIMEZONE/ESCAPED_HEX_CONFIGMAP_EMAILS_TIMEZONE=$HEX_CONFIGMAP_EMAILS_TIMEZONE_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HEX_CONFIGMAP_VALID_LANGUAGES=$HEX_CONFIGMAP_VALID_LANGUAGES/HEX_CONFIGMAP_VALID_LANGUAGES=$HEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/ENVIRONMENT_WEB_DEFAULT_LANGUAGE=$ENVIRONMENT_WEB_DEFAULT_LANGUAGE/ENVIRONMENT_WEB_DEFAULT_LANGUAGE=$HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE=$HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE/HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE=$HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HEX_CONFIGMAP_DEFAULT_THEME=$HEX_CONFIGMAP_DEFAULT_THEME/HEX_CONFIGMAP_DEFAULT_THEME=$HEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE/" $CONFIGMAP_FILE_PATH
+
+    sed -i.bak "s/HEX_CONFIGMAP_API_HOST=$HEX_CONFIGMAP_API_HOST/HEX_CONFIGMAP_API_HOST=$EXCHANGE_SERVER_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/HEX_CONFIGMAP_USER_LEVEL_NUMBER=$HEX_CONFIGMAP_USER_LEVEL_NUMBER/HEX_CONFIGMAP_USER_LEVEL_NUMBER=$EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HEX_CONFIGMAP_ADMIN_EMAIL=$HEX_CONFIGMAP_ADMIN_EMAIL/HEX_CONFIGMAP_ADMIN_EMAIL=$HEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HEX_CONFIGMAP_SUPERVISOR_EMAIL=$HEX_CONFIGMAP_SUPERVISOR_EMAIL/HEX_CONFIGMAP_SUPERVISOR_EMAIL=$HEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HEX_CONFIGMAP_KYC_EMAIL=$HEX_CONFIGMAP_KYC_EMAIL/HEX_CONFIGMAP_KYC_EMAIL=$HEX_CONFIGMAP_KYC_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HEX_CONFIGMAP_SUPPORT_EMAIL=$HEX_CONFIGMAP_SUPPORT_EMAIL/HEX_CONFIGMAP_SUPPORT_EMAIL=$HEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HEX_CONFIGMAP_SENDER_EMAIL=$HEX_CONFIGMAP_SENDER_EMAIL/HEX_CONFIGMAP_SENDER_EMAIL=$HEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HEX_CONFIGMAP_NEW_USER_IS_ACTIVATED=$HEX_CONFIGMAP_NEW_USER_IS_ACTIVATED/HEX_CONFIGMAP_NEW_USER_IS_ACTIVATED=$HEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE/" $CONFIGMAP_FILE_PATH
     rm $CONFIGMAP_FILE_PATH.bak
     fi
 
@@ -2155,15 +2374,39 @@ EOF
     if command grep -q "HEX_SECRET_ACTIVATION_CODE" $i > /dev/null ; then
     SECRET_FILE_PATH=$i
     sed -i.bak "s/HEX_SECRET_ACTIVATION_CODE=$HEX_SECRET_ACTIVATION_CODE/HEX_SECRET_ACTIVATION_CODE=$EXCHANGE_ACTIVATION_CODE_OVERRIDE/" $SECRET_FILE_PATH
+    sed -i.bak "s/HEX_SECRET_CAPTCHA_SECRET_KEY=$HEX_SECRET_CAPTCHA_SECRET_KEY/HEX_SECRET_CAPTCHA_SECRET_KEY=$HEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE/" $SECRET_FILE_PATH
+    sed -i.bak "s/HEX_SECRET_ADMIN_PASSWORD=$HEX_SECRET_ADMIN_PASSWORD/HEX_SECRET_ADMIN_PASSWORD=$HEX_SECRET_ADMIN_PASSWORD_OVERRIDE/" $SECRET_FILE_PATH
     rm $SECRET_FILE_PATH.bak
     fi
       
   done
 
   export ENVIRONMENT_EXCHANGE_NAME=$EXCHANGE_NAME_OVERRIDE
-  export HEX_CONFIGMAP_API_HOST=$EXCHANGE_SERVER_DOMAIN_OVERRIDE
-  export HEX_CONFIGMAP_DOMAIN=$EXCHANGE_WEB_DOMAIN_OVERRIDE
-  export HEX_CONFIGMAP_USER_LEVEL_NUMBER=$EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE
   export HEX_SECRET_ACTIVATION_CODE=$EXCHANGE_ACTIVATION_CODE_OVERRIDE
+
+  export HEX_CONFIGMAP_DOMAIN=$EXCHANGE_WEB_DOMAIN_OVERRIDE
+
+  export HEX_CONFIGMAP_LOGO_PATH="$HEX_CONFIGMAP_LOGO_PATH_OVERRIDE"
+  export HEX_CONFIGMAP_LOGO_BLACK_PATH="$HEX_CONFIGMAP_LOGO_BLACK_PATH_OVERRIDE"
+
+  export ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE
+  export HEX_SECRET_CAPTCHA_SECRET_KEY=$HEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE
+
+  export ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE
+  export HEX_CONFIGMAP_EMAILS_TIMEZONE=$ORIGINAL_CHARACTER_FOR_TIMEZONE
+  export HEX_CONFIGMAP_VALID_LANGUAGES=$HEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE
+  export HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE=$HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE
+  export ENVIRONMENT_WEB_DEFAULT_LANGUAGE=$HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE
+  export HEX_CONFIGMAP_DEFAULT_THEME=$HEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE
+
+  export HEX_CONFIGMAP_API_HOST=$EXCHANGE_SERVER_DOMAIN_OVERRIDE
+  export HEX_CONFIGMAP_USER_LEVEL_NUMBER=$EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE
+
+  export HEX_CONFIGMAP_ADMIN_EMAIL=$HEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE
+  export HEX_SECRET_ADMIN_PASSWORD=$HEX_SECRET_ADMIN_PASSWORD_OVERRIDE
+  export HEX_CONFIGMAP_SUPERVISOR_EMAIL=$HEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE
+  export HEX_CONFIGMAP_KYC_EMAIL=$HEX_CONFIGMAP_KYC_EMAIL_OVERRIDE
+  export HEX_CONFIGMAP_SUPPORT_EMAIL=$HEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE
+  export HEX_CONFIGMAP_SENDER_EMAIL=$HEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE
 
 }
