@@ -244,10 +244,10 @@ fi
 function apply_nginx_user_defined_values(){
           #sed -i.bak "s/$ENVIRONMENT_DOCKER_IMAGE_VERSION/$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
-    sed -i.bak "s/server_name.*\#Server.*/server_name $HEX_CONFIGMAP_API_HOST; \#Server domain/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
-    if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf.bak" ]]; then 
+    if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then 
+      sed -i.bak "s/server_name.*\#Server.*/server_name $HEX_CONFIGMAP_API_HOST; \#Server domain/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
       rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf.bak
-    fi
+    fi 
 
     CLIENT_DOMAIN=$(echo $HEX_CONFIGMAP_DOMAIN | cut -f3 -d "/")
     sed -i.bak "s/server_name.*\#Client.*/server_name $CLIENT_DOMAIN; \#Client domain/" $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
@@ -599,12 +599,13 @@ EOL
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
 
   ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
-    image: nginx:1.15.8-alpine
+    image: bitholla/nginx-with-certbot:1.15.8
     restart: always
     volumes:
       - ./nginx:/etc/nginx
       - ./logs/nginx:/var/log
       - ./nginx/static/:/usr/share/nginx/html
+      - ./letsencrypt:/etc/letsencrypt
     ports:
       - 80:80
       - 443:443

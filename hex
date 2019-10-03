@@ -1076,7 +1076,7 @@ elif [[ "$1" == "start" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to run $ENVIRONMENT_EXCHANGE_NAME on your machine? (y/n)"
+            echo "Are you sure you want to start $ENVIRONMENT_EXCHANGE_NAME on your machine? (y/n)"
 
             read answer
 
@@ -1105,7 +1105,14 @@ elif [[ "$1" == "start" ]]; then
         elif [[ "$ENVIRONMENT_WEB_ENABLE" == false ]]; then
 
             echo "Cleaning up Nginx conf for Web Client"
-            cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf 
+
+            if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
+
+                touch $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
+
+            fi 
+
+            cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
 
         fi
         
@@ -2599,16 +2606,9 @@ elif [[ "$1" == "toolbox" ]]; then
             exit 0;
         fi
 
-        if command docker run --rm -it --name certbot-$ENVIRONMENT_EXCHANGE_NAME \
-                --entrypoint "/bin/sh" \
-                -v $TEMPLATE_GENERATE_PATH/local/nginx:/etc/nginx \
-                -v $TEMPLATE_GENERATE_PATH/local/letsencrypt:/etc/letsencrypt \
-                -v $TEMPLATE_GENERATE_PATH/local/logs:/var/logs \
-                --network local_$ENVIRONMENT_EXCHANGE_NAME-network \
-                certbot/certbot -c "pip install certbot-nginx && apk add --no-cache nginx && certbot --nginx"; then
+        if command docker exec -it $(docker ps | grep nginx | cut -f1 -d " ") certbot --nginx; then
             
-            echo "Reloading Nginx..."
-            docker exec $(docker ps | grep nginx | cut -f1 -d " ") nginx -s reload
+            echo "SSL has been successfully set!"
 
         else 
 
