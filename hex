@@ -584,44 +584,47 @@ elif [[ "$1" == "setup" ]]; then
 
         fi
 
+        if [[ "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_CREDENTIALS_CREATE" == true ]]; then
 
-        if [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_USERNAME" ]] || [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_PASSWORD" ]] || [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL" ]]; then
+            if [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_USERNAME" ]] || [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_PASSWORD" ]] || [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL" ]]; then
 
-            echo "One of your docker registry credentials are missing!"
+                echo "One of your docker registry credentials are missing!"
 
-            echo "Docker registry username :"
-            read username
-                
-            ENVIRONMENT_KUBERNETES_DOCKER_HUB_USERNAME=$username
+                echo "Docker registry username :"
+                read username
+                    
+                ENVIRONMENT_KUBERNETES_DOCKER_HUB_USERNAME=$username
 
 
-            echo "Docker registry password :"
-            read password
+                echo "Docker registry password :"
+                read password
 
-            ENVIRONMENT_KUBERNETES_DOCKER_HUB_PASSWORD=$password
+                ENVIRONMENT_KUBERNETES_DOCKER_HUB_PASSWORD=$password
 
-            echo "Docker registry email :"
-            read email
+                echo "Docker registry email :"
+                read email
 
-            ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL=$email
+                ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL=$email
 
-            echo "Your docker registry credentials"
-            echo "USERNAME - $ENVIRONMENT_KUBERNETES_DOCKER_HUB_USERNAME"
-            echo "PASSWORD - $ENVIRONMENT_KUBERNETES_DOCKER_HUB_PASSWORD" 
-            echo "EMAIL - $ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL"
-            echo "** Are you sure you want to proceed with this credentials? (y/n)"
+                echo "Your docker registry credentials"
+                echo "USERNAME - $ENVIRONMENT_KUBERNETES_DOCKER_HUB_USERNAME"
+                echo "PASSWORD - $ENVIRONMENT_KUBERNETES_DOCKER_HUB_PASSWORD" 
+                echo "EMAIL - $ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL"
+                echo "** Are you sure you want to proceed with this credentials? (y/n)"
 
-            read answer
+                read answer
 
-            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                echo "Exiting..."
-                exit 0;
+                if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                    echo "Exiting..."
+                    exit 0;
+                fi
+
             fi
 
-        fi
+            echo "Creating Docker registry secret on $ENVIRONMENT_EXCHANGE_NAME namespace"
+            kubectl create secret docker-registry bitholla-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME --docker-server=docker.io --docker-username=$ENVIRONMENT_KUBERNETES_DOCKER_HUB_USERNAME --docker-password=$ENVIRONMENT_KUBERNETES_DOCKER_HUB_PASSWORD --docker-email=$ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL
 
-        echo "Creating Docker registry secret on $ENVIRONMENT_EXCHANGE_NAME namespace"
-        kubectl create secret docker-registry bitholla-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME --docker-server=docker.io --docker-username=$ENVIRONMENT_KUBERNETES_DOCKER_HUB_USERNAME --docker-password=$ENVIRONMENT_KUBERNETES_DOCKER_HUB_PASSWORD --docker-email=$ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL
+        fi
 
         # FOR GENERATING NODESELECTOR VALUES
         generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hex
@@ -1731,7 +1734,7 @@ elif [[ "$1" == "upgrade" ]]; then
         generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hex
 
         echo "Upgrading $ENVIRONMENT_EXCHANGE_NAME Pods on Kubernetes."
-        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="2" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
+        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --wait --recreate-pods --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="2" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
 
         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="stream" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
         
