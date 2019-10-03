@@ -603,7 +603,7 @@ EOL
     restart: always
     volumes:
       - ./nginx:/etc/nginx
-      - ./logs/nginx:/var/log
+      - ./logs/nginx:/var/log/nginx
       - ./nginx/static/:/usr/share/nginx/html
       - ./letsencrypt:/etc/letsencrypt
     ports:
