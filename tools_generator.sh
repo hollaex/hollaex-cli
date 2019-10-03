@@ -2148,9 +2148,9 @@ EOF
   echo "Exchange name: ($HEX_CONFIGMAP_API_NAME)"
   read answer
 
-  local PARSE_CHARACTERS_FOR_API_NAME=$(echo $answer | tr -d ' ')
+  local PARSE_CHARACTERS_FOR_API_NAME=$(echo $answer | tr -dc '[:alnum:]' | tr -d ' ')
   local EXCHANGE_API_NAME_OVERRIDE=${PARSE_CHARACTERS_FOR_API_NAME:-$HEX_CONFIGMAP_API_NAME}
-  local EXCHANGE_NAME_OVERRIDE=$(echo $EXCHANGE_API_NAME_OVERRIDE | tr '[:upper:]' '[:lower:]' )
+  local EXCHANGE_NAME_OVERRIDE=$(echo $EXCHANGE_API_NAME_OVERRIDE | tr '[:upper:]' '[:lower:]')
 
   # Activation Code
   echo "Activation Code: ($HEX_SECRET_ACTIVATION_CODE)"
@@ -2415,3 +2415,113 @@ EOF
   export HEX_CONFIGMAP_SENDER_EMAIL=$HEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE
 
 }
+
+function reactivate_exchange() {
+  
+echo "Are the sure your want to reactivate your exchange? (y/N)"
+echo "Make sure you already updated your Activation Code, Exchange Name, or API Server URL."
+read answer
+
+if [[ "$answer" = "${answer#[Yy]}" ]]; then
+    
+  echo "You chose false. Please confirm the values and re-run the command."
+  exit 1;
+
+fi
+
+if [[ "$USE_KUBERNETES" ]]; then
+
+  echo "Reactivating the exchange..."
+
+  if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange \
+                --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                --set DEPLOYMENT_MODE="api" \
+                --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" \
+                --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" \
+                --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml \
+                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/add-pair.yaml \
+                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server; then
+
+    echo "Kubernetes Job has been created for reactivating your exchange."
+
+    echo "Waiting until Job get completely run"
+    sleep 30;
+
+  else 
+
+    echo "Failed to create Kubernetes Job for reactivating your exchange, Please confirm your input values and try again."
+    helm del --purge $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
+  
+  fi
+
+  if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange \
+            --namespace $ENVIRONMENT_EXCHANGE_NAME \
+            -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+
+    echo "Successfully reactivated your exchange!"
+    kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
+
+    echo "Removing created Kubernetes Job for adding new coin..."
+    helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
+
+    echo "Restarting the exchange..."
+    kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$$ENVIRONMENT_EXCHANGE_NAME
+  
+  else 
+
+    echo "Failed to create Kubernetes Job for reactivating your exchange, Please confirm your input values and try again."
+    helm del --purge $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
+  
+  fi
+
+elif [[ ! "$USE_KUBERNETES" ]]; then
+
+  IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+
+  # Overriding container prefix for develop server
+  if [[ "$IS_DEVELOP" ]]; then
+    
+    CONTAINER_PREFIX=
+
+  fi
+
+  echo "Reactivating the exchange..."
+  if command docker exec --env "API_HOST=${PAIR_NAME}" \
+                  --env "API_NA<E=${PAIR_BASE}" \
+                  --env "ACTIVATION_CODE=${PAIR_2}" \
+                  ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
+                  node tools/dbs/setExchange.js; then
+  
+    echo "Restarting the exchange to apply changes."
+
+    if  [[ "$IS_DEVELOP" ]]; then
+
+      # Restarting containers after database init jobs.
+      echo "Restarting containers to apply database changes."
+      docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+    else
+
+      # Restarting containers after database init jobs.
+      echo "Restarting containers to apply database changes."
+      docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+    fi
+
+    echo "Successfully reactivated the exchange."
+  
+  else 
+
+    echo "Failed to reactivate the exchange. Please review your configurations and try again."
+    exit 1;
+
+  fi
+
+fi
+
+exit 0;
+
+} 

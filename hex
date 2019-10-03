@@ -69,6 +69,7 @@ Options:
         --add_trading_pair, Add new trading pair on ehchange.
         --remove_trading_pair, Remove existing trading pair from exchange.
         --reconfigure_basic_settings, Reconfigure basic settings such as Server domain or Activation Code.
+        --reactivate_exchange, Reactivate the exchange with new Activation Code.
         --issue_ssl_cert, Issue SSL certificate on local Nginx by using Let's Encrypt.
         --renew_ssl_cert, Renew SSL certificate on local Nginx by using Let's Encrypt.
 
@@ -2130,6 +2131,12 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "hex-cli will proceed to reconfigure your exchange's basic settings."
                 shift; continue
                 ;;
+            --reactivate_exchange)
+                REACTIVATE_EXCHANGE=true
+                TOOLBOX_ENABLE=true
+                echo "hex-cli will proceed to reactivate your exchange with new activate information."
+                shift; continue
+                ;;
             --issue_ssl_cert)
                 ISSUE_SSL_CERT=true
                 TOOLBOX_ENABLE=true
@@ -2584,7 +2591,12 @@ elif [[ "$1" == "toolbox" ]]; then
         launch_basic_settings_input;
 
         echo "Make sure to check your settings files been successfully updated by following your provided values."
-        echo "Once it's all good, then you can proceed to actually update your exchange by using 'hex upgrade' command"
+        echo "Once it's all good, then you can proceed to actually update your exchange by using 'hex upgrade' command."
+        echo "If you also updated activation code for the exchange, make sure to run 'hex toolbox --reactivate_exchange' command after 'hex upgrade'."
+
+    elif [[ "$REACTIVATE_EXCHANGE" ]]; then
+
+        reactivate_exchange;
     
 
     elif [[ "$ISSUE_SSL_CERT" ]]; then
