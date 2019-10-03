@@ -244,14 +244,14 @@ fi
 function apply_nginx_user_defined_values(){
           #sed -i.bak "s/$ENVIRONMENT_DOCKER_IMAGE_VERSION/$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
-    if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then 
       sed -i.bak "s/server_name.*\#Server.*/server_name $HEX_CONFIGMAP_API_HOST; \#Server domain/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
-      rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf.bak
-    fi 
+      rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
 
-    CLIENT_DOMAIN=$(echo $HEX_CONFIGMAP_DOMAIN | cut -f3 -d "/")
-    sed -i.bak "s/server_name.*\#Client.*/server_name $CLIENT_DOMAIN; \#Client domain/" $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
-    rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
+    if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then 
+      CLIENT_DOMAIN=$(echo $HEX_CONFIGMAP_DOMAIN | cut -f3 -d "/")
+      sed -i.bak "s/server_name.*\#Client.*/server_name $CLIENT_DOMAIN; \#Client domain/" $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
+      rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf.bak
+    fi
 }
 
 function generate_nginx_config_for_plugin() {
@@ -2098,7 +2098,7 @@ function generate_hex_web_local_nginx_conf() {
 
 cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf <<EOL
 server_name hex.exchange; #Client domain
-access_log   /var/log/web.access.log  main;
+access_log   /var/log/nginx/web.access.log  main;
       
 location / {
   proxy_pass      http://web;
