@@ -211,17 +211,6 @@ EOL
 
 done
 
-if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then 
-
-  # Generate local nginx conf
-  cat >> $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
-
-  upstream web {
-    server ${ENVIRONMENT_EXCHANGE_NAME}-web:80;
-  }
-EOL
-
-fi
 
 #Upstream generator for dev environments
 if [[ "$IS_DEVELOP" ]]; then
@@ -238,6 +227,18 @@ if [[ "$IS_DEVELOP" ]]; then
 EOL
 
 fi
+
+}
+
+function generate_nginx_upstream_for_web(){
+
+  # Generate local nginx conf
+  cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-web.conf <<EOL
+
+  upstream web {
+    server host.docker.internal:8080;
+  }
+EOL
 
 }
 
@@ -523,45 +524,6 @@ EOL
 
 fi 
 
-if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
-  # Generate docker-compose
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
-  ${ENVIRONMENT_EXCHANGE_NAME}-web:
-    image: bitholla/hex-web:${ENVIRONMENT_EXCHANGE_NAME}
-    build:
-      context: ${HEX_CLI_INIT_PATH}/web/
-      dockerfile: ${HEX_CLI_INIT_PATH}/web/docker/Dockerfile
-      args:
-      - NODE_ENV=production
-      - PUBLIC_URL=${HEX_CONFIGMAP_DOMAIN}
-      - REACT_APP_PUBLIC_URL=${HEX_CONFIGMAP_API_HOST}
-      - REACT_APP_SERVER_ENDPOINT=${HEX_CONFIGMAP_API_HOST}
-      - REACT_APP_NETWORK=${HEX_CONFIGMAP_NETWORK}
-      - REACT_APP_CAPTCHA_SITE_KEY=${ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}
-      - REACT_APP_DEFAULT_LANGUAGE=${ENVIRONMENT_WEB_DEFAULT_LANGUAGE}
-      - REACT_APP_DEFAULT_COUNTRY=${ENVIRONMENT_WEB_DEFAULT_COUNTRY}
-      - REACT_APP_BASE_CURRENCY=${ENVIRONMENT_WEB_BASE_CURRENCY}
-    restart: always
-    ports:
-      - 8080:80
-    volumes:
-      - ${HEX_CLI_INIT_PATH}/mail:/app/mail
-    environment:
-      - NODE_ENV=production
-      - PUBLIC_URL=${HEX_CONFIGMAP_DOMAIN}
-      - REACT_APP_PUBLIC_URL=${HEX_CONFIGMAP_API_HOST}
-      - REACT_APP_SERVER_ENDPOINT=${HEX_CONFIGMAP_API_HOST}
-      - REACT_APP_NETWORK=${HEX_CONFIGMAP_NETWORK}
-      - REACT_APP_CAPTCHA_SITE_KEY=${ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}
-      - REACT_APP_DEFAULT_LANGUAGE=${ENVIRONMENT_WEB_DEFAULT_LANGUAGE}
-      - REACT_APP_DEFAULT_COUNTRY=${ENVIRONMENT_WEB_DEFAULT_COUNTRY}
-      - REACT_APP_BASE_CURRENCY=${ENVIRONMENT_WEB_BASE_CURRENCY}
-    networks:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-network
-EOL
-
-fi 
-
 #LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE=$ENVIRONMENT_EXCHANGE_RUN_MODE
 
 IFS=',' read -ra LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE <<< "$ENVIRONMENT_EXCHANGE_RUN_MODE"
@@ -663,6 +625,34 @@ networks:
 EOL
 
 }
+
+function generate_local_docker_compose_for_web() {
+
+# Generate docker-compose
+cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose-web.yaml <<EOL
+version: '3'
+services:
+EOL
+
+if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
+  # Generate docker-compose
+  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose-web.yaml <<EOL
+  ${ENVIRONMENT_EXCHANGE_NAME}-web:
+    image: bitholla/hex-web:${ENVIRONMENT_EXCHANGE_NAME}
+    build:
+      context: ${HEX_CLI_INIT_PATH}/web/
+      dockerfile: ${HEX_CLI_INIT_PATH}/web/docker/Dockerfile
+    restart: always
+    ports:
+      - 8080:80
+    volumes:
+      - ${HEX_CLI_INIT_PATH}/mail:/app/mail
+EOL
+
+fi
+
+}
+
 
 function generate_kubernetes_configmap() {
 
@@ -2079,7 +2069,7 @@ NODE_ENV=production
 
 PUBLIC_URL=${HEX_CONFIGMAP_DOMAIN}
 REACT_APP_PUBLIC_URL=${HEX_CONFIGMAP_DOMAIN}
-REACT_APP_SERVER_ENDPOINT=https://${HEX_CONFIGMAP_API_HOST}
+REACT_APP_SERVER_ENDPOINT=http://${HEX_CONFIGMAP_API_HOST}
 REACT_APP_NETWORK=${HEX_CONFIGMAP_NETWORK}
 
 REACT_APP_EXCHANGE_NAME=${ENVIRONMENT_EXCHANGE_NAME}
@@ -2417,6 +2407,105 @@ EOF
   export HEX_CONFIGMAP_KYC_EMAIL=$HEX_CONFIGMAP_KYC_EMAIL_OVERRIDE
   export HEX_CONFIGMAP_SUPPORT_EMAIL=$HEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE
   export HEX_CONFIGMAP_SENDER_EMAIL=$HEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE
+
+}
+
+function basic_settings_for_web_client_input() {
+
+  /bin/cat << EOF
+  
+Please fill up the interaction form to setup your Web Client.
+
+Make sure to you already setup HEX exchange first before setup the web client.
+Web client relies on HEX exchange to function.
+
+Please visit docs.bitholla.com to see the details or need any help.
+
+EOF
+
+  # Web Domain
+  local DEFAULT_HEX_WEB_DOMAIN=$(echo $HEX_CONFIGMAP_DOMAIN | cut -f 3 -d "/" )
+  echo "Exchange URL: ($DEFAULT_HEX_WEB_DOMAIN)"
+  read answer
+  
+  local EXCHANGE_WEB_DOMAIN_OVERRIDE="${answer:-$DEFAULT_HEX_WEB_DOMAIN}"
+
+  # WEB CAPTCHA SITE KEY
+  echo "Exchange Web Google reCpatcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
+  read answer
+
+  local ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}"
+
+  # Web default country
+  echo "Default Country: ($ENVIRONMENT_WEB_DEFAULT_COUNTRY)"
+  read answer
+
+  local ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_DEFAULT_COUNTRY}"
+
+  # Default language
+  echo "Default Language: ($ENVIRONMENT_WEB_DEFAULT_LANGUAGE)"
+  read answer
+
+  local ENVIRONMENT_WEB_DEFAULT_LANGUAGE_OVERRIDE="${answer:-$ENVIRONMENT_WEB_DEFAULT_LANGUAGE}"
+
+  # Default language
+  echo "Default Currency: ($ENVIRONMENT_WEB_BASE_CURRENCY)"
+  read answer
+
+  local ENVIRONMENT_WEB_BASE_CURRENCY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_BASE_CURRENCY}"
+
+  /bin/cat << EOF
+  
+*********************************************
+Exchange URL: $EXCHANGE_WEB_DOMAIN_OVERRIDE
+
+Web Captcha Sitekey: $ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE
+
+Default Country: $ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE
+
+Default Language: $ENVIRONMENT_WEB_DEFAULT_LANGUAGE_OVERRIDE
+
+Default Currency: $ENVIRONMENT_WEB_BASE_CURRENCY_OVERRIDE
+*********************************************
+
+EOF
+
+  echo "Are the values are all correct? (Y/n)"
+  read answer
+
+  if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+      
+    echo "You chose false. Please confirm the values and re-run the command."
+    exit 1;
+  
+  fi
+
+  echo "Provided values would be updated on your settings files automatically."
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+
+    # Update exchange name
+    if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+    CONFIGMAP_FILE_PATH=$i
+    sed -i.bak "s/HEX_CONFIGMAP_DOMAIN=.*/HEX_CONFIGMAP_DOMAIN=http:\/\/$EXCHANGE_WEB_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY/ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/ENVIRONMENT_WEB_DEFAULT_LANGUAGE=$ENVIRONMENT_WEB_DEFAULT_LANGUAGE/ENVIRONMENT_WEB_DEFAULT_LANGUAGE=$ENVIRONMENT_WEB_DEFAULT_LANGUAGE_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/ENVIRONMENT_WEB_BASE_CURRENCY=$ENVIRONMENT_WEB_BASE_CURRENCY/ENVIRONMENT_WEB_BASE_CURRENCY=$ENVIRONMENT_WEB_BASE_CURRENCY_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    rm $CONFIGMAP_FILE_PATH.bak
+    fi
+      
+  done
+
+  export HEX_CONFIGMAP_DOMAIN=$EXCHANGE_WEB_DOMAIN_OVERRIDE
+
+  export ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE
+  
+  export ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE
+
+  export ENVIRONMENT_WEB_DEFAULT_LANGUAGE=$ENVIRONMENT_WEB_DEFAULT_LANGUAGE_OVERRIDE
+
+  export ENVIRONMENT_WEB_BASE_CURRENCY=$ENVIRONMENT_WEB_BASE_CURRENCY_OVERRIDE
 
 }
 

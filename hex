@@ -20,41 +20,50 @@ function print_usage() {
 /bin/cat << EOF
 
 Usage : 
-    hex [ init ] [ setup ] [ start ] [ stop ] [ upgrade ] [ terminate ] [ toolbox ] [ version ] (--flags)
+    hex [ init ] [ setup ] [ start ] [ stop ] [ upgrade ] [ terminate ] [ web ] [ toolbox ] [ version ] (--flags)
 Options:
-    init : Generating the initialized exchange folder for your new exchange.
+    init : Generate the initialized exchange folder for your new exchange.
         --name, Name of your exchange.
         --standalone, Initialize exchange directory without pulling hex-kit repo remotely (Not recommended).
 
-    setup : Bringing up your new exchange for the first time.
+    setup : Setup the web client for the first launch.
         --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
         --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying docker-compose setup.
 
-    start : Turning on the existing exchange which get stopped while applying new settings.
+    start : Start the exchange which already been setup.
         --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
         --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying docker-compose setup.
 
-    stop : Turning off the existing exchange which is currently running.
+    stop : Stop the existing exchagne which already been running.
         --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
         --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying connected kubernetes cluster.
     
-    restart : Restarting the Exchange while applying new settings.
+    restart : Restart the existing exchange.
         --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
         --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying docker-compose setup.
 
-    upgrade : Upgrading the existing exchange to new version based on the settings files.
+    upgrade : Upgrade the existing exchange to new version.
         --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
+        --version, Version number of HEX Core to upgrade.
         --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying connected kubernetes cluster.
 
-    terminate : TERMINATING the existing exchange. THIS COMMAND WILL COMPLETELY REMOVE YOUR EXCHANGE ENVIRONMENT.
+    terminate : TERMINATE the existing exchange. THIS COMMAND WILL COMPLETELY REMOVE YOUR EXCHANGE ENVIRONMENT.
         --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
         --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --no_verify, Run script without verifying connected kubernetes cluster.
+    
+    web: Run web client for the exchange.
+        --setup, Setup the web client for the first launch.
+        --start, Start the web client which already been setup.
+        --stop, Stop the web client.
+        --restart, Restart the web client.
+        --rebuild, Rebuild the web client and upgrade.
+        --terminate, TERMINATE the web client.
 
     toolbox: Toolbox with advanced features which could be helpful for your exchange operations.
         --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
@@ -445,7 +454,7 @@ elif [[ "$1" == "setup" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to launch $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HEX_CONFIGMAP_API_HOST) with automatic database initalization on this cluster? (y/n)"
+            echo "Are you sure you want to launch $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HEX_CONFIGMAP_API_HOST) on this cluster? (y/n)"
 
             read answer
 
@@ -717,21 +726,9 @@ elif [[ "$1" == "setup" ]]; then
             generate_local_env;
 
         fi
-
-         if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
-
-            echo "Generating .env for Web Client"
-            generate_hex_web_local_env
-
-            echo "Generating Nginx conf for Web Client"
-            generate_hex_web_local_nginx_conf
-
-        elif [[ "$ENVIRONMENT_WEB_ENABLE" == false ]]; then
-
-            echo "Cleaning up Nginx conf for Web Client"
-            cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf 
-
-        fi
+        
+        echo "Cleaning up Nginx conf for Web Client"
+        cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf 
         
         # Generating docker-compose yaml for exchange
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
@@ -1689,13 +1686,6 @@ elif [[ "$1" == "upgrade" ]]; then
 
         fi
 
-        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
-
-            echo "Generating Web client Configmap"
-            generate_hex_web_configmap;
-
-        fi
-
 
         if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
 
@@ -2049,6 +2039,490 @@ elif [[ "$1" == "terminate" ]]; then
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND
         exit 0;
 
+    fi
+
+elif [[ "$1" == "web" ]]; then
+
+    while true; do
+        [[ $# -eq 0 ]] && break
+        case $1 in
+            --settings)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HEX_CLI_INIT_PATH=$1
+                echo "Your initialized exchange path : $HEX_CLI_INIT_PATH."
+                shift; continue
+                ;;
+            --kube)
+                USE_KUBERNETES=true
+                echo "hex-cli will use your Kubernetes cluster as a target."
+                shift; continue
+                ;;
+            --no_verify)
+                RUN_WITH_VERIFY=false
+                echo "Running it wihtout verify the config."
+                shift; continue
+                ;;
+            --setup)
+                WEB_CLIENT_SETUP=true
+                echo "Setup the web client."
+                shift; continue
+                ;;
+            --start)
+                WEB_CLIENT_START=true
+                echo "Start the web client."
+                shift; continue
+                ;;
+            --stop)
+                WEB_CLIENT_STOP=true
+                echo "Stop the web client."
+                shift; continue
+                ;;
+            --restart)
+                WEB_CLIENT_RESTART=true
+                echo "Restart the web client."
+                shift; continue
+                ;;
+            --rebuild)
+                WEB_CLIENT_REBUILD=true
+                echo "Rebuild the web client."
+                shift; continue
+                ;;
+            --terminate)
+                WEB_CLIENT_TERMINATE=true
+                echo "Terminate the web client."
+                shift; continue
+                ;;
+            --*) 
+                err_msg "Invalid option: $1"
+                print_usage;
+                exit 1;
+                ;;
+        esac
+        shift
+    done
+
+    if [[ ! "$HEX_CLI_INIT_PATH" ]]; then
+
+        HEX_CLI_INIT_PATH=$(pwd)
+        CONFIG_FILE_PATH=$(pwd)/settings/*
+        TEMPLATE_GENERATE_PATH=$(pwd)/templates
+        INIT_PATH_CHECK=$(pwd)/.hex
+
+    fi
+
+    if [[ "$HEX_CLI_INIT_PATH" ]]; then
+
+        CONFIG_FILE_PATH=$HEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HEX_CLI_INIT_PATH/.hex
+        
+    fi
+
+    #Quit if necessary flags are missing
+    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
+
+        echo "Failed to detect hex-cli initialized directory! Please re-check your path."
+        print_usage;
+        exit 1;
+
+    fi
+
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
+    
+    source $SCRIPTPATH/tools_generator.sh
+    load_config_variables;
+
+    # Setting web operation enabled command to true.
+    ENVIRONMENT_WEB_ENABLE=true
+    
+    # hex web --setup
+    if [[ "$WEB_CLIENT_SETUP" ]]; then
+
+        basic_settings_for_web_client_input;
+
+        echo "Values has been successfull set!"
+        echo "Do you want to build a new docker image for Web Client based on new values? (Y/n)"
+        echo "You can always rebuild the image by using 'hex web --rebuild' command anytime you want."
+
+        read answer
+
+        if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+            echo "Exiting..."
+            exit 0;
+        fi
+
+        hex web --rebuild --no_verify
+        hex web --stop --no_verify
+
+        exit 0;
+
+    fi
+
+    if [[ "$WEB_CLIENT_START" ]]; then
+
+        if [[ "$USE_KUBERNETES" ]]; then
+
+            echo "Starting the web client on Kubernetes..."
+
+            echo "Generating Web client Configmap"
+            generate_hex_web_configmap;
+
+
+        elif [[ ! "$USE_KUBERNETES" ]]; then
+
+            # Checking docker-compose is installed on this machine.
+            if command docker-compose version > /dev/null 2>&1; then
+
+                echo "docker-compose detected"
+                echo "version: $(docker-compose version)"
+
+            else
+
+                echo "hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli."
+                exit 1;
+
+            fi
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "Are you sure you want to start web client for the exchange on this machine? (y/n)"
+
+                read answer
+
+                if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                    echo "Exiting..."
+                    exit 0;
+                fi
+
+            fi
+
+            echo "Generating docker-compose file for Web Client"
+            generate_local_docker_compose_for_web
+
+            echo "Generating .env for Web Client"
+            generate_hex_web_local_env
+
+            echo "Generating Nginx conf for Web Client"
+            generate_hex_web_local_nginx_conf
+
+            echo "Generating Nginx Upstream for Web Client"
+            generate_nginx_upstream_for_web
+
+            echo "Updating nginx conf file based on user settings"
+            apply_nginx_user_defined_values
+
+            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client up -d; then
+
+                if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " " > /dev/null 2>&1; then 
+
+                    echo "Reloading Nginx..."
+                    docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
+
+                    echo "Web is up!"
+                    echo "Web is now reachable both from $HEX_CONFIGMAP_DOMAIN and localhost:8080".
+                
+                else
+
+                    echo "Failed to reload Nginx. Please review your configurations and try again."
+                
+                fi
+
+            else 
+
+                echo "hex-cli failed to launch containers. Please review your settings and try again."
+                exit 1;
+            
+            fi
+
+            exit 0;
+
+        fi
+    fi
+
+    if [[ "$WEB_CLIENT_STOP" ]]; then
+
+        if [[ "$USE_KUBERNETES" ]]; then
+        echo "Stopping the web client on Kubernetes..."
+
+        elif [[ ! "$USE_KUBERNETES" ]]; then
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "Are you sure you want to stop web client for the exchange on this machine? (y/n)"
+
+                read answer
+
+                if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                    echo "Exiting..."
+                    exit 0;
+                fi
+
+            fi
+
+            echo "Generating docker-compose file for Web Client"
+            generate_local_docker_compose_for_web
+
+            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client stop; then
+
+                if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " " > /dev/null 2>&1; then 
+
+                    echo "Reloading Nginx..."
+                    docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
+
+                    echo "Web is up!"
+                    echo "Web is now reachable both from $HEX_CONFIGMAP_DOMAIN and localhost:8080".
+                
+                else
+
+                    echo "Failed to reload Nginx. Please review your configurations and try again."
+                
+                fi
+
+                echo "Successfully stopped web client."
+                echo "To bring it up, Use 'hex web --start' command".
+
+            else 
+
+                echo "hex-cli failed to stop containers. Please review your settings and try again."
+                exit 1;
+            
+            fi
+
+        fi
+
+        exit 0;
+        
+    fi
+
+    if [[ "$WEB_CLIENT_RESTART" ]]; then
+
+        if [[ "$USE_KUBERNETES" ]]; then
+
+            echo "Starting the web client on Kubernetes..."
+
+            echo "Generating Web client Configmap"
+            generate_hex_web_configmap;
+
+
+        elif [[ ! "$USE_KUBERNETES" ]]; then
+
+            # Checking docker-compose is installed on this machine.
+            if command docker-compose version > /dev/null 2>&1; then
+
+                echo "docker-compose detected"
+                echo "version: $(docker-compose version)"
+
+            else
+
+                echo "hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli."
+                exit 1;
+
+            fi
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "Are you sure you want to restart web client for the exchange on this machine? (y/n)"
+
+                read answer
+
+                if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                    echo "Exiting..."
+                    exit 0;
+                fi
+
+            fi
+
+            echo "Generating docker-compose file for Web Client"
+            generate_local_docker_compose_for_web
+
+            echo "Generating .env for Web Client"
+            generate_hex_web_local_env
+
+            echo "Generating Nginx conf for Web Client"
+            generate_hex_web_local_nginx_conf
+
+            echo "Updating nginx conf file based on user settings"
+            apply_nginx_user_defined_values
+
+            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client restart; then
+
+                if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " " > /dev/null 2>&1; then 
+
+                    echo "Reloading Nginx..."
+                    docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
+
+                    echo "Web is up!"
+                    echo "Web is now reachable both from $HEX_CONFIGMAP_DOMAIN and localhost:8080".
+                
+                else
+
+                    echo "Failed to reload Nginx. Please review your configurations and try again."
+                
+                fi
+
+                echo "Web is up!"
+                echo "Web is now reachable both from $HEX_CONFIGMAP_DOMAIN and localhost:8080".
+
+            else 
+
+                echo "hex-cli failed to restart containers. Please review your settings and try again."
+                exit 1;
+            
+            fi
+
+            exit 0;
+
+        fi
+    fi
+
+    if [[ "$WEB_CLIENT_REBUILD" ]]; then
+
+        if [[ "$USE_KUBERNETES" ]]; then
+
+            echo "Starting the web client on Kubernetes..."
+
+            echo "Generating Web client Configmap"
+            generate_hex_web_configmap;
+
+
+        elif [[ ! "$USE_KUBERNETES" ]]; then
+
+            # Checking docker-compose is installed on this machine.
+            if command docker-compose version > /dev/null 2>&1; then
+
+                echo "docker-compose detected"
+                echo "version: $(docker-compose version)"
+
+            else
+
+                echo "hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli."
+                exit 1;
+
+            fi
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "Are you sure you want to rebuild and bring up web client for the exchange on this machine? (y/n)"
+
+                read answer
+
+                if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                    echo "Exiting..."
+                    exit 0;
+                fi
+
+            fi
+
+            echo "Generating docker-compose file for Web Client"
+            generate_local_docker_compose_for_web
+
+            echo "Generating .env for Web Client"
+            generate_hex_web_local_env
+
+            echo "Generating Nginx conf for Web Client"
+            generate_hex_web_local_nginx_conf
+
+            echo "Updating nginx conf file based on user settings"
+            apply_nginx_user_defined_values
+
+            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client up -d --build; then
+
+                if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " " > /dev/null 2>&1; then 
+
+                    echo "Reloading Nginx..."
+                    docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
+
+                    echo "Web is up!"
+                    echo "Web is now reachable both from $HEX_CONFIGMAP_DOMAIN and localhost:8080".
+                
+                else
+
+                    echo "Failed to reload Nginx. Please review your configurations and try again."
+                
+                fi
+
+                echo "Web is up!"
+                echo "Web is now reachable both from $HEX_CONFIGMAP_DOMAIN and localhost:8080".
+
+            else 
+
+                echo "hex-cli failed to launch containers. Please review your settings and try again."
+                exit 1;
+            
+            fi
+
+            exit 0;
+
+        fi
+    fi
+
+    if [[ "$WEB_CLIENT_TERMINATE" ]]; then
+
+        if [[ "$USE_KUBERNETES" ]]; then
+
+            echo "TERMINATEing the web client on Kubernetes..."
+
+
+        elif [[ ! "$USE_KUBERNETES" ]]; then
+
+            # Checking docker-compose is installed on this machine.
+            if command docker-compose version > /dev/null 2>&1; then
+
+                echo "docker-compose detected"
+                echo "version: $(docker-compose version)"
+
+            else
+
+                echo "hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli."
+                exit 1;
+
+            fi
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "Are you sure you want to TERMINATE web client for the exchange on this machine? (y/n)"
+                echo "This can't be undo."
+
+                read answer
+
+                if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                    echo "Exiting..."
+                    exit 0;
+                fi
+
+            fi
+
+            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client down; then
+
+                if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " " > /dev/null 2>&1; then 
+
+                    echo "Reloading Nginx..."
+                    docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
+
+                    echo "Web is up!"
+                    echo "Web is now reachable both from $HEX_CONFIGMAP_DOMAIN and localhost:8080".
+                
+                else
+
+                    echo "Failed to reload Nginx. Please review your configurations and try again."
+                
+                fi
+
+                echo "Web has been successfully terminated."
+
+            else 
+
+                echo "hex-cli failed to terminate containers. Please review your settings and try again."
+                exit 1;
+            
+            fi
+
+            exit 0;
+
+        fi
     fi
 
 elif [[ "$1" == "toolbox" ]]; then
