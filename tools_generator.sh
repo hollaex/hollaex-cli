@@ -1292,6 +1292,9 @@ EOL
 
     generate_kubernetes_add_coin_values;
 
+    echo "Blocking exchange external connections"
+    kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
     echo "Adding new coin $COIN_SYMBOL on Kubernetes"
     
     if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL --namespace $ENVIRONMENT_EXCHANGE_NAME --set job.enable="true" --set job.mode="add_coin" --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/add-coin.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server; then
@@ -1305,6 +1308,10 @@ EOL
 
       echo "Failed to create Kubernetes Job for adding new coin $COIN_SYMBOL, Please confirm your input values and try again."
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
+
+      echo "Allowing exchange external connections"
+      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
 
     fi
 
@@ -1331,12 +1338,18 @@ EOL
 
       done
 
+      echo "Allowing exchange external connections"
+      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
     else
 
       echo "Failed to remove existing coin $COIN_SYMBOL! Please try again.***"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
+
+      echo "Allowing exchange external connections"
+      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
       
     fi
 
@@ -1351,6 +1364,9 @@ EOL
         CONTAINER_PREFIX=
 
       fi
+
+      echo "Shutting down Nginx to block exchange external access"
+      docker stop $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ")
 
       echo "Adding new coin $COIN_SYMBOL on local exchange"
       if command docker exec --env "COIN_FULLNAME=${COIN_FULLNAME}" \
@@ -1372,9 +1388,9 @@ EOL
 
         if  [[ "$IS_DEVELOP" ]]; then
 
-        # Restarting containers after database init jobs.
-        echo "Restarting containers to apply database changes."
-        docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
 
         else
 
@@ -1383,6 +1399,7 @@ EOL
           docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
 
         fi
+
         echo "Updating settings file to add new $COIN_SYMBOL."
         for i in ${CONFIG_FILE_PATH[@]}; do
 
@@ -1398,6 +1415,21 @@ EOL
       else
 
         echo "Failed to add new coin $COIN_SYMBOL on local exchange. Please confirm your input values and try again."
+
+        if  [[ "$IS_DEVELOP" ]]; then
+
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        else
+
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        fi
+
         exit 1;
 
       fi
@@ -1440,6 +1472,9 @@ function remove_coin_exec() {
 
   if [[ "$USE_KUBERNETES" ]]; then
 
+  echo "Blocking exchange external connections"
+  kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
   echo "Removing existing coin $COIN_SYMBOL on Kubernetes"
     
     if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL \
@@ -1465,6 +1500,9 @@ function remove_coin_exec() {
 
       echo "Failed to create Kubernetes Job for removing existing coin $COIN_SYMBOL, Please confirm your input values and try again."
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
+
+      echo "Allowing exchange external connections"
+      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
     fi
 
@@ -1497,12 +1535,18 @@ function remove_coin_exec() {
 
       done
 
+      echo "Allowing exchange external connections"
+      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
     else
 
       echo "Failed to remove existing coin $COIN_SYMBOL! Please try again.***"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
+
+      echo "Allowing exchange external connections"
+      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
       
     fi
 
@@ -1516,6 +1560,9 @@ function remove_coin_exec() {
         CONTAINER_PREFIX=
 
       fi
+
+      echo "Shutting down Nginx to block exchange external access"
+      docker stop $(docker ps -a | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ")
 
       echo "Removing new coin $COIN_SYMBOL on local docker"
       if command docker exec --env "COIN_SYMBOL=${COIN_SYMBOL}" \
@@ -1563,6 +1610,20 @@ function remove_coin_exec() {
 
         echo "Failed to remove coin $COIN_SYMBOL on local exchange. Please confirm your input values and try again."
         exit 1;
+
+        if  [[ "$IS_DEVELOP" ]]; then
+
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        else
+
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        fi
 
       fi
 
@@ -1746,6 +1807,9 @@ EOL
 
     generate_kubernetes_add_pair_values;
 
+    echo "Blocking exchange external connections"
+    kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
     echo "Adding new pair $PAIR_NAME on Kubernetes"
     
     if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME \
@@ -1771,6 +1835,9 @@ EOL
 
       echo "Failed to create Kubernetes Job for adding new pair $PAIR_NAME, Please confirm your input values and try again."
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
+
+      echo "Allowing exchange external connections"
+      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
     fi
 
@@ -1813,6 +1880,9 @@ EOL
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
+
+      echo "Allowing exchange external connections"
+      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
       
     fi
 
@@ -1826,6 +1896,9 @@ EOL
         CONTAINER_PREFIX=
 
       fi
+
+      echo "Shutting down Nginx to block exchange external access"
+      docker stop $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ")
 
       echo "Adding new pair $PAIR_NAME on local exchange"
       if command docker exec --env "PAIR_NAME=${PAIR_NAME}" \
@@ -1880,6 +1953,21 @@ EOL
       else
 
         echo "Failed to add new pair $PAIR_NAME on local exchange. Please confirm your input values and try again."
+
+        if  [[ "$IS_DEVELOP" ]]; then
+
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        else
+
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        fi
+
         exit 1;
 
       fi
@@ -1922,6 +2010,10 @@ function remove_pair_exec() {
 
   if [[ "$USE_KUBERNETES" ]]; then
 
+    echo "Blocking exchange external connections"
+    kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+
     echo "*** Removing existing pair $PAIR_NAME on Kubernetes ***"
       
     if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME \
@@ -1947,6 +2039,9 @@ function remove_pair_exec() {
 
       echo "*** Failed to create Kubernetes Job for removing existing pair $PAIR_NAME, Please confirm your input values and try again. ***"
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
+
+      echo "Allowing exchange external connections"
+      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
     fi
 
@@ -1985,12 +2080,18 @@ function remove_pair_exec() {
 
       done
 
+      echo "Allowing exchange external connections"
+      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
     else
 
       echo "*** Failed to remove existing pair $PAIR_NAME! Please try again.***"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
+
+      echo "Allowing exchange external connections"
+      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
       
     fi
 
@@ -2004,6 +2105,9 @@ function remove_pair_exec() {
         CONTAINER_PREFIX=
 
       fi
+
+      echo "Shutting down Nginx to block exchange external access"
+      docker stop $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ")
 
       echo "*** Removing new pair $PAIR_NAME on local exchange ***"
       if command docker exec --env "PAIR_NAME=${PAIR_NAME}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/removePair.js; then
@@ -2053,6 +2157,21 @@ function remove_pair_exec() {
       else
 
         echo "Failed to remove trading pair $PAIR_NAME on local exchange. Please confirm your input values and try again."
+
+        if  [[ "$IS_DEVELOP" ]]; then
+
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        else
+
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        fi
+        
         exit 1;
 
       fi
