@@ -2363,9 +2363,6 @@ elif [[ "$1" == "web" ]]; then
                 
                 fi
 
-                echo "Web is up!"
-                echo "Web is now reachable both from $HEX_CONFIGMAP_DOMAIN and localhost:8080".
-
             else 
 
                 echo "hex-cli failed to restart containers. Please review your settings and try again."
@@ -2443,9 +2440,6 @@ elif [[ "$1" == "web" ]]; then
                     echo "Failed to reload Nginx. Please review your configurations and try again."
                 
                 fi
-
-                echo "Web is up!"
-                echo "Web is now reachable both from $HEX_CONFIGMAP_DOMAIN and localhost:8080".
 
             else 
 
