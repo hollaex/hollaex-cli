@@ -2954,8 +2954,8 @@ elif [[ "$1" == "toolbox" ]]; then
 
             fi
 
-            echo "Deleting Ingress rules for the exchange..."
-            kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+            echo "Shutting down Nginx to block exchange external access"
+            docker stop $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ")
             
             echo "Flushing Redis..."
             docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/flushRedis.js
@@ -2964,9 +2964,6 @@ elif [[ "$1" == "toolbox" ]]; then
             docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
 
             sleep 10;
-            
-            echo "Applying Ingress rules for the exchange..."
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
             exit 0;
         fi
