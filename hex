@@ -2267,7 +2267,7 @@ elif [[ "$1" == "web" ]]; then
 
             echo "Cleaning up Nginx Conf for Web"
             cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
-            cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web-upstream.conf
+            cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-web.conf
 
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client stop; then
 
@@ -2499,7 +2499,7 @@ elif [[ "$1" == "web" ]]; then
 
                     echo "Cleaning up Nginx Conf for Web"
                     cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
-                    cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web-upstream.conf
+                    cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-web.conf
 
                     echo "Reloading Nginx..."
                     docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
