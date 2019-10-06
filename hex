@@ -2265,6 +2265,9 @@ elif [[ "$1" == "web" ]]; then
             echo "Generating docker-compose file for Web Client"
             generate_local_docker_compose_for_web
 
+            echo "Cleaning up Nginx Conf for Web"
+            cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
+
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client stop; then
 
                 if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " " > /dev/null 2>&1; then 
@@ -2493,11 +2496,14 @@ elif [[ "$1" == "web" ]]; then
 
                 if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " " > /dev/null 2>&1; then 
 
+                    echo "Cleaning up Nginx Conf for Web"
+                    cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
+
                     echo "Reloading Nginx..."
                     docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
 
-                    echo "Web is up!"
-                    echo "Web is now reachable both from $HEX_CONFIGMAP_DOMAIN and localhost:8080".
+                    echo "Web is down!"
+                    echo "Web container has been successfully removed."
                 
                 else
 
