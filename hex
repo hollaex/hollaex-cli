@@ -667,7 +667,7 @@ elif [[ "$1" == "setup" ]]; then
 
         fi
 
-        if command docker ps | grep -r $ENVIRONMENT_EXCHANGE_NAME | grep -v $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null 2>&1; then
+        if command docker ps | grep local_$ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
             echo "Alert: hex-cli detected that $ENVIRONMENT_EXCHANGE_NAME exchange exists on your machine."
             echo "You can't run launch process multiple times for existing exchange. This could break up system badly."

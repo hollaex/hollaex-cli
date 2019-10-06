@@ -1187,8 +1187,11 @@ function add_coin_input() {
   
   done;
 
-  read -ra RANGE_DEPOSIT_LIMITS_LEVEL <<< $(set -o posix ; set | grep "DEPOSIT_LIMITS_LEVEL_" | cut -c22 )
-  read -ra VALUE_DEPOSIT_LIMITS_LEVEL <<< $(set -o posix ; set | grep "DEPOSIT_LIMITS_LEVEL_" | cut -f2 -d "=" )
+  local PARSE_RANGE_DEPOSIT_LIMITS_LEVEL=$(set -o posix ; set | grep "DEPOSIT_LIMITS_LEVEL_" | cut -c22 )
+  local PARSE_VALUE_DEPOSIT_LIMITS_LEVEL=$(set -o posix ; set | grep "DEPOSIT_LIMITS_LEVEL_" | cut -f2 -d "=" )
+
+  read -ra RANGE_DEPOSIT_LIMITS_LEVEL <<< ${PARSE_RANGE_DEPOSIT_LIMITS_LEVEL[@]}
+  read -ra VALUE_DEPOSIT_LIMITS_LEVEL <<< ${PARSE_VALUE_DEPOSIT_LIMITS_LEVEL[@]}
 
   COIN_DEPOSIT_LIMITS=$(join_array_to_json $(print_deposit_array_side_by_side))
 
@@ -1199,8 +1202,11 @@ function add_coin_input() {
   
   done;
 
-  read -ra RANGE_WITHDRAWAL_LIMITS_LEVEL <<< $(set -o posix ; set | grep "WITHDRAWAL_LIMITS_LEVEL_" | cut -c25 )
-  read -ra VALUE_WITHDRAWAL_LIMITS_LEVEL <<< $(set -o posix ; set | grep "WITHDRAWAL_LIMITS_LEVEL_" | cut -f2 -d "=" )
+  local PARSE_RANGE_WITHDRAWAL_LIMITS_LEVEL=$(set -o posix ; set | grep "WITHDRAWAL_LIMITS_LEVEL_" | cut -c25 )
+  local PARSE_VALUE_WITHDRAWAL_LIMITS_LEVEL=$(set -o posix ; set | grep "WITHDRAWAL_LIMITS_LEVEL_" | cut -f2 -d "=" )
+
+  read -ra RANGE_WITHDRAWAL_LIMITS_LEVEL <<< ${PARSE_RANGE_WITHDRAWAL_LIMITS_LEVEL[@]}
+  read -ra VALUE_WITHDRAWAL_LIMITS_LEVEL <<< ${PARSE_VALUE_WITHDRAWAL_LIMITS_LEVEL[@]}
 
   COIN_WITHDRAWAL_LIMITS=$(join_array_to_json $(print_withdrawal_array_side_by_side))
 
@@ -1669,8 +1675,11 @@ function add_pair_input() {
   
   done;
 
-  read -ra RANGE_TAKER_FEES_LEVEL <<< $(set -o posix ; set | grep "TAKER_FEES_LEVEL_" | cut -c18 )
-  read -ra VALUE_TAKER_FEES_LEVEL <<< $(set -o posix ; set | grep "TAKER_FEES_LEVEL_" | cut -f2 -d "=" )
+  local PARSE_RANGE_TAKER_FEES_LEVEL=$(set -o posix ; set | grep "TAKER_FEES_LEVEL_" | cut -c18 )
+  local PARSE_VALUE_TAKER_FEES_LEVEL=$(set -o posix ; set | grep "TAKER_FEES_LEVEL_" | cut -f2 -d "=" )
+
+  read -ra RANGE_TAKER_FEES_LEVEL <<< ${PARSE_RANGE_TAKER_FEES_LEVEL[@]}
+  read -ra VALUE_TAKER_FEES_LEVEL <<< ${PARSE_VALUE_TAKER_FEES_LEVEL[@]}
 
   TAKER_FEES=$(join_array_to_json $(print_taker_fees_array_side_by_side))
 
@@ -1681,8 +1690,11 @@ function add_pair_input() {
   
   done;
 
-  read -ra RANGE_MAKER_FEES_LEVEL <<< $(set -o posix ; set | grep "MAKER_FEES_LEVEL_" | cut -c18 )
-  read -ra VALUE_MAKER_FEES_LEVEL <<< $(set -o posix ; set | grep "MAKER_FEES_LEVEL_" | cut -f2 -d "=" )
+  local PARSE_RANGE_MAKER_FEES_LEVEL=$(set -o posix ; set | grep "MAKER_FEES_LEVEL_" | cut -c18 )
+  local PARSE_VALUE_MAKER_FEES_LEVEL=$(set -o posix ; set | grep "MAKER_FEES_LEVEL_" | cut -f2 -d "=" )
+
+  read -ra RANGE_MAKER_FEES_LEVEL <<< ${PARSE_RANGE_MAKER_FEES_LEVEL[@]}
+  read -ra VALUE_MAKER_FEES_LEVEL <<< ${PARSE_VALUE_MAKER_FEES_LEVEL[@]}
 
   MAKER_FEES=$(join_array_to_json $(print_maker_fees_array_side_by_side))
 
