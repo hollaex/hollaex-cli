@@ -2267,6 +2267,7 @@ elif [[ "$1" == "web" ]]; then
 
             echo "Cleaning up Nginx Conf for Web"
             cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
+            cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web-upstream.conf
 
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client stop; then
 
@@ -2275,8 +2276,8 @@ elif [[ "$1" == "web" ]]; then
                     echo "Reloading Nginx..."
                     docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
 
-                    echo "Web is up!"
-                    echo "Web is now reachable both from $HEX_CONFIGMAP_DOMAIN and localhost:8080".
+                    echo "Web is down!"
+                    echo "Web container has been successfully stopped".
                 
                 else
 
@@ -2498,6 +2499,7 @@ elif [[ "$1" == "web" ]]; then
 
                     echo "Cleaning up Nginx Conf for Web"
                     cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
+                    cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web-upstream.conf
 
                     echo "Reloading Nginx..."
                     docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
