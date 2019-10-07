@@ -577,7 +577,7 @@ EOL
     entrypoint: 
       - /bin/sh
       - -c 
-      - ip -4 route list match 0/0 | awk '{print $3 "host.access"}' >> /etc/hosts && nginx -g "daemon off;"
+      - ip -4 route list match 0/0 | awk '{print \$\$3 " host.access"}' >> /etc/hosts && nginx -g "daemon off;"
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-server-${i}
       $(if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-web"; fi)
