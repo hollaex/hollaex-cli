@@ -236,7 +236,7 @@ function generate_nginx_upstream_for_web(){
   cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-web.conf <<EOL
 
   upstream web {
-    server host.docker.internal:8080;
+    server host.access:8080;
   }
 EOL
 
@@ -245,7 +245,7 @@ EOL
 function apply_nginx_user_defined_values(){
           #sed -i.bak "s/$ENVIRONMENT_DOCKER_IMAGE_VERSION/$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
-      local SERVER_DOMAIN=$(echo $PARSE_HEX_CONFIGMAP_API_HOST | cut -f3 -d "/")
+      local SERVER_DOMAIN=$(echo $HEX_CONFIGMAP_API_HOST | cut -f3 -d "/")
       sed -i.bak "s/server_name.*\#Server.*/server_name $SERVER_DOMAIN; \#Server domain/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
       rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
 
@@ -574,6 +574,10 @@ EOL
       - 443:443
     environment:
       - NGINX_PORT=80
+    entrypoint: 
+      - /bin/sh
+      - -c 
+      - ip -4 route list match 0/0 | awk '{print $3 "host.access"}' >> /etc/hosts && nginx -g "daemon off;"
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-server-${i}
       $(if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-web"; fi)
@@ -2219,11 +2223,15 @@ EOL
 function generate_hex_web_local_nginx_conf() {
 
 cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf <<EOL
-server_name hex.exchange; #Client domain
-access_log   /var/log/nginx/web.access.log  main;
-      
-location / {
-  proxy_pass      http://web;
+server {
+    listen 80;
+    server_name hex.exchange; #Client domain
+    access_log   /var/log/nginx/web.access.log;
+        
+    location / {
+    proxy_pass      http://web;
+    }
+
 }
 
 EOL
