@@ -245,7 +245,8 @@ EOL
 function apply_nginx_user_defined_values(){
           #sed -i.bak "s/$ENVIRONMENT_DOCKER_IMAGE_VERSION/$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
-      sed -i.bak "s/server_name.*\#Server.*/server_name $HEX_CONFIGMAP_API_HOST; \#Server domain/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
+      local SERVER_DOMAIN=$(echo $PARSE_HEX_CONFIGMAP_API_HOST | cut -f3 -d "/")
+      sed -i.bak "s/server_name.*\#Server.*/server_name $SERVER_DOMAIN; \#Server domain/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
       rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
 
     if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then 
