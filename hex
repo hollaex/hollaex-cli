@@ -733,9 +733,7 @@ elif [[ "$1" == "setup" ]]; then
             generate_local_env;
 
         fi
-        
-        echo "Cleaning up Nginx conf for Web Client"
-        cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf 
+    
         
         # Generating docker-compose yaml for exchange
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
@@ -1101,28 +1099,6 @@ elif [[ "$1" == "start" ]]; then
             generate_local_env;
 
         fi  
-
-         if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
-
-            echo "Generating .env for Web Client"
-            generate_hex_web_local_env
-
-            echo "Generating Nginx conf for Web Client"
-            generate_hex_web_local_nginx_conf
-
-        elif [[ "$ENVIRONMENT_WEB_ENABLE" == false ]]; then
-
-            echo "Cleaning up Nginx conf for Web Client"
-
-            if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
-
-                touch $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
-
-            fi 
-
-            cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
-
-        fi
         
         # Generating docker-compose yaml for exchange
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
@@ -1234,9 +1210,10 @@ elif [[ "$1" == "stop" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
+    #check_empty_values_on_settings
+
     if [[ "$USE_KUBERNETES" ]]; then
         
-        # check_empty_values_on_settings;
 
          #Checking Kubernetes dependencies
         check_kubernetes_dependencies;
@@ -1300,8 +1277,6 @@ elif [[ "$1" == "stop" ]]; then
             exit 1;
 
         fi 
-
-        check_empty_values_on_settings;
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 

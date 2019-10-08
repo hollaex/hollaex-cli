@@ -2938,7 +2938,47 @@ fi
 
 if [[ "$USE_KUBERNETES" ]]; then
 
+
+  echo "*********************************************"
+  echo "Verifying current KUBECONFIG on the machine"
+  kubectl get nodes
+  echo "*********************************************"
+
+  if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+
+      echo "Is this a correct Kubernetes cluster? (Y/n)"
+
+      read answer
+
+      if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+          echo "Exiting..."
+          exit 0;
+      fi
+
+  fi
+
   echo "Reactivating the exchange..."
+  
+  # Generate Kubernetes Configmap
+    cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/reactivate-exchange.yaml <<EOL
+job:
+  enable: true
+  mode: reactivate_exchange
+EOL
+
+
+  echo "Generating Kubernetes Configmap"
+  generate_kubernetes_configmap;
+
+  echo "Generating Kubernetes Secret"
+  generate_kubernetes_secret;
+
+  echo "Applying configmap on the namespace"
+  kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+
+  echo "Applying secret on the namespace"
+  kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
   if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange \
                 --namespace $ENVIRONMENT_EXCHANGE_NAME \
@@ -2949,13 +2989,14 @@ if [[ "$USE_KUBERNETES" ]]; then
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml \
                 -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml \
-                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/add-pair.yaml \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/reactivate-exchange.yaml \
                 $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server; then
 
     echo "Kubernetes Job has been created for reactivating your exchange."
 
     echo "Waiting until Job get completely run"
     sleep 30;
+
 
   else 
 
@@ -2971,7 +3012,7 @@ if [[ "$USE_KUBERNETES" ]]; then
     echo "Successfully reactivated your exchange!"
     kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
 
-    echo "Removing created Kubernetes Job for adding new coin..."
+    echo "Removing created Kubernetes Job for reactivating the exchange..."
     helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
 
     echo "Restarting the exchange..."
@@ -3008,13 +3049,15 @@ elif [[ ! "$USE_KUBERNETES" ]]; then
 
       # Restarting containers after database init jobs.
       echo "Restarting containers to apply database changes."
-      docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+      docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+      docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
     else
 
       # Restarting containers after database init jobs.
       echo "Restarting containers to apply database changes."
-      docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+      docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+      docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
     fi
 
