@@ -1130,7 +1130,7 @@ function add_coin_input() {
 
   COIN_MAX=${answer:-10000}
 
-  echo "Increment Size: (0.001)"
+  echo "Increment Amount: (0.001)"
   read answer
 
   COIN_INCREMENT_UNIT=${answer:-0.001}
@@ -1160,7 +1160,7 @@ function add_coin_input() {
   # Asking deposit limit of new coin per level
   for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
 
-    do echo "Deposit limit of user level $i:" && read answer && export DEPOSIT_LIMITS_LEVEL_$i=$answer
+    do echo "Deposit limit of user level $i: (1)" && read answer && export DEPOSIT_LIMITS_LEVEL_$i=${answer:-1}
   
   done;
 
@@ -1175,7 +1175,7 @@ function add_coin_input() {
   # Asking withdrawal limit of new coin per level
   for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
 
-    do echo "Withdrawal limit of user level $i" && read answer && export WITHDRAWAL_LIMITS_LEVEL_$i=$answer
+    do echo "Withdrawal limit of user level $i (1)" && read answer && export WITHDRAWAL_LIMITS_LEVEL_$i=${answer:-1}
   
   done;
 
@@ -1367,7 +1367,7 @@ EOL
                   node tools/dbs/addCoin.js; then
 
         echo "Running database triggers"
-        docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js
+        docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null 2>&1
 
         echo "Updating settings file to add new $COIN_SYMBOL."
         for i in ${CONFIG_FILE_PATH[@]}; do
@@ -1565,7 +1565,7 @@ function remove_coin_exec() {
                   node tools/dbs/removeCoin.js; then
 
       # Running database triggers
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js;
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null 2>&1
 
 
       echo "Updating settings file to remove $COIN_SYMBOL."
@@ -1671,7 +1671,10 @@ function add_pair_input() {
   # Asking deposit limit of new coin per level
   for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
 
-    do echo "Taker fee of user level $i?" && read answer && export TAKER_FEES_LEVEL_$i=$answer
+    do echo "Taker fee of user level $i? (0.2)"
+       echo "- As Percentage %, Number only." 
+       read answer 
+       export TAKER_FEES_LEVEL_$i=${answer:-0.2}
   
   done;
 
@@ -1686,7 +1689,10 @@ function add_pair_input() {
   # Asking withdrawal limit of new coin per level
   for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
 
-    do echo "Maker fee of user level $i?" && read answer && export MAKER_FEES_LEVEL_$i=$answer
+    do echo "Maker fee of user level $i? (0.2)"
+       echo "- As Percentage %, Number only."
+       read answer
+       export MAKER_FEES_LEVEL_$i=${answer:-0.2}
   
   done;
 
@@ -1698,12 +1704,12 @@ function add_pair_input() {
 
   MAKER_FEES=$(join_array_to_json $(print_maker_fees_array_side_by_side))
 
-  echo "Minimum Size: (0.001)"
+  echo "Minimum Amount: (0.001)"
   read answer
 
   MIN_SIZE=${answer:-0.001}
 
-  echo "Maximum Size: (20000000)"
+  echo "Maximum Amount: (20000000)"
   read answer
 
   MAX_SIZE=${answer:-20000000}
@@ -1718,7 +1724,7 @@ function add_pair_input() {
 
   MAX_PRICE=${answer:-10}
 
-  echo "Increment Size: (0.001)"
+  echo "Increment Amount: (0.001)"
   read answer
 
   INCREMENT_SIZE=${answer:-0.001}
@@ -1929,7 +1935,7 @@ EOL
                   node tools/dbs/addPair.js; then
 
            # Running database triggers
-          docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js;
+          docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null 2>&1
 
           echo "Updating settings file to add new $PAIR_NAME."
           for i in ${CONFIG_FILE_PATH[@]}; do
@@ -1944,20 +1950,24 @@ EOL
 
           done
 
+          echo "Current Trading Pairs: ${HEX_CONFIGMAP_PAIRS}"
+          #Regenerating env based on changes of PAIRs
+          load_config_variables;
+          generate_local_env;
+          generate_local_docker_compose;
+
           if  [[ "$IS_DEVELOP" ]]; then
 
             # Restarting containers after database init jobs.
             echo "Restarting containers to apply database changes."
-            docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
-            generate_local_docker_compose;
+            docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
             docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
           else
 
             # Restarting containers after database init jobs.
             echo "Restarting containers to apply database changes."
-            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
-            generate_local_docker_compose;
+            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
             docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
           fi
@@ -2125,7 +2135,7 @@ function remove_pair_exec() {
       if command docker exec --env "PAIR_NAME=${PAIR_NAME}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/removePair.js; then
 
         # Running database triggers
-        docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js;
+        docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null 2>&1
 
         echo "*** Updating settings file to remove existing $PAIR_NAME. ***"
         for i in ${CONFIG_FILE_PATH[@]}; do
@@ -2147,21 +2157,25 @@ function remove_pair_exec() {
 
         done
 
+        echo "Current Trading Pairs: ${HEX_CONFIGMAP_PAIRS}"
+        #Regenerating env based on changes of PAIRs
+        load_config_variables;
+        generate_local_env;
+        generate_local_docker_compose;
+
 
         if  [[ "$IS_DEVELOP" ]]; then
 
           # Restarting containers after database init jobs.
           echo "Restarting containers to apply database changes."
-          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
-          generate_local_docker_compose;
+          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
           docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
 
         else
 
           # Restarting containers after database init jobs.
           echo "Restarting containers to apply database changes."
-          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
-          generate_local_docker_compose;
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
           docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
 
         fi
@@ -2436,10 +2450,22 @@ EOF
   echo "***************************************************************"
   echo -e "\n"
   echo "Admin Password: ($HEX_SECRET_ADMIN_PASSWORD)"
+  echo "- Should be longer than 9 characters"
   read answer
   echo -e "\n"
 
   local HEX_SECRET_ADMIN_PASSWORD_OVERRIDE=${answer:-$HEX_SECRET_ADMIN_PASSWORD}
+
+  while true;
+    do if [[ "${#HEX_SECRET_ADMIN_PASSWORD_OVERRIDE}" -lt 9 ]]; then
+      echo "Your password is too short. Make sure to input at least 9 characters."
+      echo "New Admin Password: "
+      read answer
+      local HEX_SECRET_ADMIN_PASSWORD_OVERRIDE=${answer}
+    else
+      break;
+    fi
+  done
 
   # Supervisor Email
   echo "***************************************************************"
