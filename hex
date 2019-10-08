@@ -1236,7 +1236,7 @@ elif [[ "$1" == "stop" ]]; then
 
     if [[ "$USE_KUBERNETES" ]]; then
         
-        check_empty_values_on_settings;
+        # check_empty_values_on_settings;
 
          #Checking Kubernetes dependencies
         check_kubernetes_dependencies;

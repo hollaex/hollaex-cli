@@ -988,7 +988,7 @@ function check_empty_values_on_settings() {
 
     if [[ -z $PARSED_CONFIGMAP_VARIABLES ]]; then
 
-      echo -e "\nWarning! Configmap - \"$(echo $i | cut -f1 -d '=')\" got an empty value! Please reconfirm the settings files.\n"
+      echo -e "Info: Configmap - \"$(echo $i | cut -f1 -d '=')\" got an empty value! Please reconfirm the settings files.\n"
 
     fi
   
@@ -1002,7 +1002,7 @@ function check_empty_values_on_settings() {
 
     if [[ -z $PARSED_SECRET_VARIABLES ]]; then
 
-      echo -e "\nWarning! Secret - \"$(echo $i | cut -f1 -d '=')\" got an empty value! Please reconfirm the settings files."
+      echo -e "Info: Secret - \"$(echo $i | cut -f1 -d '=')\" got an empty value! Please reconfirm the settings files."
 
       for k in "${GENERATE_VALUES_LIST[@]}"; do
 
