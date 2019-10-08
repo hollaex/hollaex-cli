@@ -1079,17 +1079,27 @@ function join_array_to_json(){
 
 function add_coin_input() {
 
+  echo "***************************************************************"
   echo "Coin Symbol: (eth)"
+  echo -e "\n"
   read answer
+
+  echo "✅"
 
   COIN_SYMBOL=${answer:-eth}
 
+  echo "***************************************************************"
   echo "Full Name of Coin: (Ethereum)"
+  echo -e "\n"
   read answer
+
+  echo "✅"
 
   COIN_FULLNAME=${answer:-Ethereum}
 
+  echo "***************************************************************"
   echo "Allow deposit: (Y/n)"
+  echo -e "\n"
   read answer
   
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
@@ -1102,7 +1112,11 @@ function add_coin_input() {
 
   fi
 
+  echo "✅"
+
+  echo "***************************************************************"
   echo "Allow Withdrawal: (Y/n)"
+  echo -e "\n"
   read answer
   
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
@@ -1114,26 +1128,44 @@ function add_coin_input() {
     COIN_ALLOW_WITHDRAWAL='true'
 
   fi
-  
+
+  echo "✅"
+
+  echo "***************************************************************"
   echo "Fee for Withdrawal: (0.001)"
+  echo -e "\n"
   read answer
 
   COIN_WITHDRAWAL_FEE=${answer:-0.001}
 
+  echo "✅"
+
+  echo "***************************************************************"
   echo "Minimum Price: (0.001)"
+  echo -e "\n"
   read answer
 
   COIN_MIN=${answer:-0.001}
 
-  echo "Maximum Price: (10000)"
-  read answer
+  echo "✅"
 
+  echo "***************************************************************"
+  echo "Maximum Price: (10000)"
+  echo -e "\n"
+  read answer
+  
   COIN_MAX=${answer:-10000}
 
+  echo "✅"
+
+  echo "***************************************************************"
   echo "Increment Amount: (0.001)"
+  echo -e "\n"
   read answer
 
   COIN_INCREMENT_UNIT=${answer:-0.001}
+
+  echo "✅"
 
   # Checking user level setup on settings file is set or not
   if [[ ! "$HEX_CONFIGMAP_USER_LEVEL_NUMBER" ]]; then
@@ -1160,7 +1192,12 @@ function add_coin_input() {
   # Asking deposit limit of new coin per level
   for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
 
-    do echo "Deposit limit of user level $i: (1)" && read answer && export DEPOSIT_LIMITS_LEVEL_$i=${answer:-1}
+    do echo "***************************************************************"
+       echo "Deposit limit of user level $i: (1)"
+       echo -e "\n"
+       read answer
+       export DEPOSIT_LIMITS_LEVEL_$i=${answer:-1}
+       echo "✅"
   
   done;
 
@@ -1175,7 +1212,12 @@ function add_coin_input() {
   # Asking withdrawal limit of new coin per level
   for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
 
-    do echo "Withdrawal limit of user level $i (1)" && read answer && export WITHDRAWAL_LIMITS_LEVEL_$i=${answer:-1}
+    do echo "***************************************************************"
+       echo "Withdrawal limit of user level $i: (1)"
+       echo -e "\n"
+       read answer
+       export WITHDRAWAL_LIMITS_LEVEL_$i=${answer:-1}
+       echo "✅"
   
   done;
 
@@ -1187,6 +1229,7 @@ function add_coin_input() {
 
   COIN_WITHDRAWAL_LIMITS=$(join_array_to_json $(print_withdrawal_array_side_by_side))
 
+  echo "***************************************************************"
   echo "Activate Coin: (Y/n)"
   read answer
   
@@ -1199,6 +1242,8 @@ function add_coin_input() {
     COIN_ACTIVE='true'
 
   fi
+
+  echo "✅"
 
   function print_coin_add_deposit_level(){ 
 
@@ -1230,7 +1275,7 @@ function add_coin_input() {
   echo "Increment size: $COIN_INCREMENT_UNIT"
   echo "Deposit limits per level: $COIN_DEPOSIT_LIMITS"
   echo "Withdrawal limits per level: $COIN_WITHDRAWAL_LIMITS"
-  echo "Activation: $COIN_ACTIVE"
+  echo "Active: $COIN_ACTIVE"
   echo "*********************************************"
 
   echo "Are the values are all correct? (y/N)"
@@ -1366,7 +1411,6 @@ EOL
                   ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
                   node tools/dbs/addCoin.js; then
 
-        echo "Running database triggers"
         docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null 2>&1
 
         echo "Updating settings file to add new $COIN_SYMBOL."
@@ -1382,7 +1426,7 @@ EOL
         done
 
         export HEX_CONFIGMAP_CURRENCIES=$HEX_CONFIGMAP_CURRENCIES_OVERRIDE
-        echo "Current setup currencies: ${HEX_CONFIGMAP_CURRENCIES}"
+        echo "Current Currencies: ${HEX_CONFIGMAP_CURRENCIES}"
 
         load_config_variables;
         generate_local_env;
@@ -1435,8 +1479,12 @@ EOL
 
 function remove_coin_input() {
 
+  echo "***************************************************************"
   echo "Coin Symbol: "
+  echo -e "\n"
   read answer
+
+  echo "✅"
 
   COIN_SYMBOL=$answer
 
@@ -1587,7 +1635,7 @@ function remove_coin_exec() {
 
       done
       
-      echo "Current Trading Pairs: ${HEX_CONFIGMAP_CURRENCIES}"
+      echo "Current Currencies: ${HEX_CONFIGMAP_CURRENCIES}"
 
       #Regenerating env based on changes of PAIRs
       load_config_variables;
@@ -1639,8 +1687,12 @@ function remove_coin_exec() {
 
 function add_pair_input() {
 
+  echo "***************************************************************"
   echo "Name of new Trading Pair : (eth-usdt)"
+  echo -e "\n"
   read answer
+
+  echo "✅"
 
   PAIR_NAME=${answer:-eth-usdt}
   PAIR_BASE=$(echo $PAIR_NAME | cut -f1 -d '-')
@@ -1673,7 +1725,9 @@ function add_pair_input() {
 
     do echo "Taker fee of user level $i? (0.2)"
        echo "- As Percentage %, Number only." 
-       read answer 
+       echo -e "\n"
+       read answer
+       echo "✅"
        export TAKER_FEES_LEVEL_$i=${answer:-0.2}
   
   done;
@@ -1688,10 +1742,12 @@ function add_pair_input() {
 
   # Asking withdrawal limit of new coin per level
   for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
-
-    do echo "Maker fee of user level $i? (0.2)"
+    do echo "***************************************************************"
+       echo "Maker fee of user level $i? (0.2)"
        echo "- As Percentage %, Number only."
+       echo -e "\n"
        read answer
+       echo "✅"
        export MAKER_FEES_LEVEL_$i=${answer:-0.2}
   
   done;
@@ -1704,38 +1760,59 @@ function add_pair_input() {
 
   MAKER_FEES=$(join_array_to_json $(print_maker_fees_array_side_by_side))
 
+  echo "***************************************************************"
   echo "Minimum Amount: (0.001)"
+  echo -e "\n"
   read answer
-
+  echo "✅"
+  
   MIN_SIZE=${answer:-0.001}
 
+  echo "***************************************************************"
   echo "Maximum Amount: (20000000)"
+  echo -e "\n"
   read answer
+  echo "✅"
 
   MAX_SIZE=${answer:-20000000}
 
+  echo "***************************************************************"
   echo "Minimum Price: (0.0001)"
+  echo -e "\n"
   read answer
+  echo "✅"
 
   MIN_PRICE=${answer:-0.0001}
 
+  echo "***************************************************************"
   echo "Maximum Price: (10)"
+  echo -e "\n"
   read answer
+  echo "✅"
 
   MAX_PRICE=${answer:-10}
 
+  echo "***************************************************************"
   echo "Increment Amount: (0.001)"
+  echo -e "\n"
   read answer
+  echo "✅"
 
   INCREMENT_SIZE=${answer:-0.001}
 
+  echo "***************************************************************"
   echo "Increment Price: (1)"
+  echo -e "\n"
   read answer
+  echo "✅"
 
   INCREMENT_PRICE=${answer:-1}
 
+  echo "***************************************************************"
   echo "Activate: (Y/n) [Default: y]"
+  echo -e "\n"
   read answer
+  echo "✅"
   
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
       
@@ -1779,7 +1856,7 @@ function add_pair_input() {
   echo "Maximum price: $MAX_PRICE"
   echo "Increment size: $INCREMENT_SIZE"
   echo "Increment price: $INCREMENT_PRICE"
-  echo "Activation: $PAIR_ACTIVE"
+  echo "Active: $PAIR_ACTIVE"
   echo "*********************************************"
 
   echo "Are the values are all correct? (y/N)"
@@ -1934,7 +2011,7 @@ EOL
                   ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
                   node tools/dbs/addPair.js; then
 
-           # Running database triggers
+          # Running database triggers
           docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null 2>&1
 
           echo "Updating settings file to add new $PAIR_NAME."
@@ -2000,8 +2077,11 @@ EOL
 
 function remove_pair_input() {
 
+  echo "***************************************************************"
   echo "Pair name to remove: "
+  echo -e "\n"
   read answer
+  echo "✅"
 
   PAIR_NAME=$answer
 
@@ -2286,31 +2366,32 @@ EOF
 
   # Exchange name (API_NAME)
   echo "***************************************************************"
-  echo -e "\n"
   echo "Exchange name: ($HEX_CONFIGMAP_API_NAME)"
-  echo "- Alphanumeric only. No space or special character allowed."
-  read answer
+  echo "- Alphanumeric only. No space or special character allowed." 
   echo -e "\n"
+  read answer
 
   local PARSE_CHARACTERS_FOR_API_NAME=$(echo $answer | tr -dc '[:alnum:]' | tr -d ' ')
   local EXCHANGE_API_NAME_OVERRIDE=${PARSE_CHARACTERS_FOR_API_NAME:-$HEX_CONFIGMAP_API_NAME}
   local EXCHANGE_NAME_OVERRIDE=$(echo $EXCHANGE_API_NAME_OVERRIDE | tr '[:upper:]' '[:lower:]')
 
+  echo "✅"
+
   # Activation Code
   echo "***************************************************************"
-  echo -e "\n"
   echo "Activation Code: ($HEX_SECRET_ACTIVATION_CODE)"
-  read answer
   echo -e "\n"
+  read answer
 
   local EXCHANGE_ACTIVATION_CODE_OVERRIDE=${answer:-$HEX_SECRET_ACTIVATION_CODE}
 
+  echo "✅"
+
   # Web Domain
   echo "***************************************************************"
-  echo -e "\n"
   echo "Exchange URL: ($HEX_CONFIGMAP_DOMAIN)"
-  read answer
   echo -e "\n"
+  read answer
 
   local ESCAPED_HEX_CONFIGMAP_DOMAIN=${HEX_CONFIGMAP_DOMAIN//\//\\/}
 
@@ -2318,13 +2399,14 @@ EOF
   local PARSE_CHARACTER_FOR_HEX_CONFIGMAP_DOMAIN=${ORIGINAL_CHARACTER_FOR_HEX_CONFIGMAP_DOMAIN//\//\\/}
   local EXCHANGE_WEB_DOMAIN_OVERRIDE="$PARSE_CHARACTER_FOR_HEX_CONFIGMAP_DOMAIN"
 
+  echo "✅"
+
   # Light Logo Path
   echo "***************************************************************"
-  echo -e "\n"
   echo "Exchange Light Logo Path: ($HEX_CONFIGMAP_LOGO_PATH)"
   echo "- Image always should be png"
-  read answer
   echo -e "\n"
+  read answer
 
   local ESCAPED_HEX_CONFIGMAP_LOGO_PATH=${HEX_CONFIGMAP_LOGO_PATH//\//\\/}
 
@@ -2332,13 +2414,14 @@ EOF
   local PARSE_CHARACTER_FOR_LOGO_PATH=${ORIGINAL_CHARACTER_FOR_LOGO_PATH//\//\\/}
   local HEX_CONFIGMAP_LOGO_PATH_OVERRIDE="$PARSE_CHARACTER_FOR_LOGO_PATH"
 
+  echo "✅"
+
   # Dark Logo Path
   echo "***************************************************************"
-  echo -e "\n"
   echo "Exchange Dark Logo Path: ($HEX_CONFIGMAP_LOGO_BLACK_PATH)"
   echo "- Image always should be png"
-  read answer
   echo -e "\n"
+  read answer
 
   local ESCAPED_HEX_CONFIGMAP_LOGO_BLACK_PATH=${HEX_CONFIGMAP_LOGO_BLACK_PATH//\//\\/}}
 
@@ -2346,39 +2429,43 @@ EOF
   local PARSE_CHARACTER_FOR_LOGO_BLACK_PATH=${ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH//\//\\/}
   local HEX_CONFIGMAP_LOGO_BLACK_PATH_OVERRIDE="$PARSE_CHARACTER_FOR_LOGO_BLAKC_PATH"
 
+  echo "✅"
+
   # WEB CAPTCHA SITE KEY
   echo "***************************************************************"
-  echo -e "\n"
   echo "Exchange Web Google reCpatcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
-  read answer
   echo -e "\n"
+  read answer
 
   local ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}"
+  
+  echo "✅"
 
   # Server CAPTCHA Secret key
   echo "***************************************************************"
-  echo -e "\n"
   echo "Exchange API Server Google reCpatcha Secretkey: ($HEX_SECRET_CAPTCHA_SECRET_KEY)"
-  read answer
   echo -e "\n"
+  read answer
 
   local HEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE="${answer:-$HEX_SECRET_CAPTCHA_SECRET_KEY}"
 
+  echo "✅"
+
   # Web default country
   echo "***************************************************************"
-  echo -e "\n"
   echo "Default Country: ($ENVIRONMENT_WEB_DEFAULT_COUNTRY)"
-  read answer
   echo -e "\n"
+  read answer
 
   local ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_DEFAULT_COUNTRY}"
 
+  echo "✅"
+
   # Emails timezone
   echo "***************************************************************"
-  echo -e "\n"
   echo "Timezone: ($HEX_CONFIGMAP_EMAILS_TIMEZONE)"
-  read answer
   echo -e "\n"
+  read answer
 
   local ESCAPED_HEX_CONFIGMAP_EMAILS_TIMEZONE=${HEX_CONFIGMAP_EMAILS_TIMEZONE/\//\\/}
 
@@ -2386,41 +2473,45 @@ EOF
   local PARSE_CHARACTER_FOR_TIMEZONE=${ORIGINAL_CHARACTER_FOR_TIMEZONE/\//\\/}
   local HEX_CONFIGMAP_EMAILS_TIMEZONE_OVERRIDE="$PARSE_CHARACTER_FOR_TIMEZONE"
 
+  echo "✅"
+
   # Valid languages
   echo "***************************************************************"
-  echo -e "\n"
   echo "Valid Languages: ($HEX_CONFIGMAP_VALID_LANGUAGES)"
   echo "- Separate with comma (,)"
-  read answer
   echo -e "\n"
+  read answer
 
   local HEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE="${answer:-$HEX_CONFIGMAP_VALID_LANGUAGES}"
 
+  echo "✅"
+
   # Default language
   echo "***************************************************************"
-  echo -e "\n"
   echo "Default Language: ($HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE)"
-  read answer
   echo -e "\n"
+  read answer
 
   local HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE="${answer:-$HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE}"
 
+  echo "✅"
+
   # Default theme
   echo "***************************************************************"
-  echo -e "\n"
   echo "Default Theme: ($HEX_CONFIGMAP_DEFAULT_THEME)"
   echo "- Between light and dark."
-  read answer
   echo -e "\n"
+  read answer
 
   local HEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE="${answer:-$HEX_CONFIGMAP_DEFAULT_THEME}"
 
+  echo "✅"
+
   # API Domain
   echo "***************************************************************"
-  echo -e "\n"
   echo "Exchange Server API URL: ($HEX_CONFIGMAP_API_HOST)"
-  read answer
   echo -e "\n"
+  read answer
 
   local ESCAPED_HEX_CONFIGMAP_API_HOST=${HEX_CONFIGMAP_API_HOST//\//\\/}
 
@@ -2428,31 +2519,34 @@ EOF
   local PARSE_CHARACTER_FOR_HEX_CONFIGMAP_API_HOST=${ORIGINAL_CHARACTER_FOR_HEX_CONFIGMAP_API_HOST//\//\\/}
   local EXCHANGE_SERVER_DOMAIN_OVERRIDE="$PARSE_CHARACTER_FOR_HEX_CONFIGMAP_API_HOST"
 
+  echo "✅"
+
   # User tier number
   echo "***************************************************************"
-  echo -e "\n"
   echo "Number of User Tiers: ($HEX_CONFIGMAP_USER_LEVEL_NUMBER)"
-  read answer
   echo -e "\n"
+  read answer
 
   local EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE=${answer:-$HEX_CONFIGMAP_USER_LEVEL_NUMBER}
 
+  echo "✅"
+
   # Admin Email
   echo "***************************************************************"
-  echo -e "\n"
   echo "Admin Email: ($HEX_CONFIGMAP_ADMIN_EMAIL)"
-  read answer
   echo -e "\n"
+  read answer
 
   local HEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE=${answer:-$HEX_CONFIGMAP_ADMIN_EMAIL}
 
+  echo "✅"
+
   # Admin Password
   echo "***************************************************************"
-  echo -e "\n"
   echo "Admin Password: ($HEX_SECRET_ADMIN_PASSWORD)"
   echo "- Should be longer than 9 characters"
-  read answer
   echo -e "\n"
+  read answer
 
   local HEX_SECRET_ADMIN_PASSWORD_OVERRIDE=${answer:-$HEX_SECRET_ADMIN_PASSWORD}
 
@@ -2467,48 +2561,53 @@ EOF
     fi
   done
 
+  echo "✅"
+
   # Supervisor Email
   echo "***************************************************************"
-  echo -e "\n"
   echo "Supervisor Email: ($HEX_CONFIGMAP_SUPERVISOR_EMAIL)"
-  read answer
   echo -e "\n"
+  read answer
 
   local HEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE=${answer:-$HEX_CONFIGMAP_SUPERVISOR_EMAIL}
 
+  echo "✅"
+
   # KYC email
   echo "***************************************************************"
-  echo -e "\n"
   echo "KYC Email: ($HEX_CONFIGMAP_KYC_EMAIL)"
-  read answer
   echo -e "\n"
+  read answer
 
   local HEX_CONFIGMAP_KYC_EMAIL_OVERRIDE=${answer:-$HEX_CONFIGMAP_KYC_EMAIL}
 
+  echo "✅"
+
   # Support Email
   echo "***************************************************************"
-  echo -e "\n"
   echo "Support Email: ($HEX_CONFIGMAP_SUPPORT_EMAIL)"
-  read answer
   echo -e "\n"
+  read answer
 
   local HEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE=${answer:-$HEX_CONFIGMAP_SUPPORT_EMAIL}
 
+  echo "✅"
+
   # Sender Email
   echo "***************************************************************"
-  echo -e "\n"
   echo "Sender Email: ($HEX_CONFIGMAP_SENDER_EMAIL)"
-  read answer
   echo -e "\n"
+  read answer
 
   local HEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE=${answer:-$HEX_CONFIGMAP_SENDER_EMAIL}
 
+  echo "✅"
+
   # New user is activated
   echo "***************************************************************"
-  echo -e "\n"
   echo "Allow New User Signup?: (Y/n)"
-  read answer
   echo -e "\n"
+  read answer
 
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
       
@@ -2519,6 +2618,8 @@ EOF
     HEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE=true
 
   fi
+
+  echo "✅"
 
   /bin/cat << EOF
   
@@ -2653,8 +2754,12 @@ Please visit docs.bitholla.com to see the details or need any help.
 
 EOF
   # Web Domain
+  echo "***************************************************************"
   echo "Exchange URL: ($HEX_CONFIGMAP_DOMAIN)"
+  echo -e "\n"
   read answer
+
+  echo "✅"
 
   local ESCAPED_HEX_CONFIGMAP_DOMAIN=${HEX_CONFIGMAP_DOMAIN//\//\\/}
 
@@ -2663,20 +2768,32 @@ EOF
   local EXCHANGE_WEB_DOMAIN_OVERRIDE="$PARSE_CHARACTER_FOR_HEX_CONFIGMAP_DOMAIN"
 
   # WEB CAPTCHA SITE KEY
+  echo "***************************************************************"
   echo "Exchange Web Google reCpatcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
+  echo -e "\n"
   read answer
+
+  echo "✅"
 
   local ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}"
 
   # Web default country
+  echo "***************************************************************"
   echo "Default Country: ($ENVIRONMENT_WEB_DEFAULT_COUNTRY)"
+  echo -e "\n"
   read answer
+
+  echo "✅"
 
   local ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_DEFAULT_COUNTRY}"
 
   # Default language
+  echo "***************************************************************"
   echo "Default Language: ($ENVIRONMENT_WEB_DEFAULT_LANGUAGE)"
+  echo -e "\n"
   read answer
+
+  echo "✅"
 
   local ENVIRONMENT_WEB_DEFAULT_LANGUAGE_OVERRIDE="${answer:-$ENVIRONMENT_WEB_DEFAULT_LANGUAGE}"
 

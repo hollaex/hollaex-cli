@@ -159,7 +159,7 @@ if [[ "$1" == 'dev' ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "Failed to detect hex-cli initialized directory! Please re-check your path."
+        echo "Failed to detect hex-kit directory! Please re-check your path."
         print_usage;
         exit 1;
 
@@ -409,7 +409,7 @@ elif [[ "$1" == "setup" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "Failed to detect hex-cli initialized directory! Please re-check your path."
+        echo "Failed to detect hex-kit directory! Please re-check your path."
         print_usage;
         exit 1;
 
@@ -612,7 +612,7 @@ elif [[ "$1" == "setup" ]]; then
                 echo "USERNAME - $ENVIRONMENT_KUBERNETES_DOCKER_HUB_USERNAME"
                 echo "PASSWORD - $ENVIRONMENT_KUBERNETES_DOCKER_HUB_PASSWORD" 
                 echo "EMAIL - $ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL"
-                echo "** Are you sure you want to proceed with this credentials? (y/n)"
+                echo "Are you sure you want to proceed with this credentials? (y/n)"
 
                 read answer
 
@@ -775,8 +775,8 @@ elif [[ "$1" == "setup" ]]; then
 
              # Restarting containers after database init jobs.
             echo "Restarting containers to apply database changes."
-            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
-
+            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
         else 
 
@@ -906,7 +906,7 @@ elif [[ "$1" == "start" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "Failed to detect hex-cli initialized directory! Please re-check your path."
+        echo "Failed to detect hex-kit directory! Please re-check your path."
         print_usage;
         exit 1;
 
@@ -1155,7 +1155,8 @@ elif [[ "$1" == "start" ]]; then
         fi
 
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND
-
+        
+        echo "All done!"
         exit 0;
 
     fi
@@ -1198,7 +1199,7 @@ elif [[ "$1" == "stop" ]]; then
         shift
     done
     
-    # Export hex-cli initialized directory
+    # Export hex-kit directory
 
     if [[ ! "$HEX_CLI_INIT_PATH" ]]; then
 
@@ -1220,7 +1221,7 @@ elif [[ "$1" == "stop" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "Failed to detect hex-cli initialized directory! Please re-check your path."
+        echo "Failed to detect hex-kit directory! Please re-check your path."
         print_usage;
         exit 1;
 
@@ -1304,7 +1305,7 @@ elif [[ "$1" == "stop" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to stop $ENVIRONMENT_EXCHANGE_NAME - $LOCAL_DEPLOYMENT_MODE which running on your machine? (y/N)"
+            echo "Are you sure you want to stop $ENVIRONMENT_EXCHANGE_NAME running on your machine? (y/N)"
 
             read answer
 
@@ -1317,6 +1318,7 @@ elif [[ "$1" == "stop" ]]; then
 
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
 
+        echo "All done!"
         exit 0;
 
     fi
@@ -1372,7 +1374,7 @@ elif [[ "$1" == "restart" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "Failed to detect hex-cli initialized directory! Please re-check your path."
+        echo "Failed to detect hex-kit directory! Please re-check your path."
         print_usage;
         exit 1;
 
@@ -1574,7 +1576,8 @@ elif [[ "$1" == "restart" ]]; then
         echo "Restarting containers to apply new changes..."
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
-
+        
+        echo "All done!"
         exit 0;
 
     fi
@@ -1637,7 +1640,7 @@ elif [[ "$1" == "upgrade" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "Failed to detect hex-cli initialized directory! Please re-check your path."
+        echo "Failed to detect hex-kit directory! Please re-check your path."
         print_usage;
         exit 1;
 
@@ -1952,7 +1955,7 @@ elif [[ "$1" == "terminate" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "Failed to detect hex-cli initialized directory! Please re-check your path."
+        echo "Failed to detect hex-kit directory! Please re-check your path."
         print_usage;
         exit 1;
 
@@ -2151,7 +2154,7 @@ elif [[ "$1" == "web" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "Failed to detect hex-cli initialized directory! Please re-check your path."
+        echo "Failed to detect hex-kit directory! Please re-check your path."
         print_usage;
         exit 1;
 
@@ -2496,7 +2499,7 @@ elif [[ "$1" == "web" ]]; then
 
         if [[ "$USE_KUBERNETES" ]]; then
 
-            echo "TERMINATEing the web client on Kubernetes..."
+            echo "Terminate the web client on Kubernetes..."
 
 
         elif [[ ! "$USE_KUBERNETES" ]]; then
@@ -2518,7 +2521,7 @@ elif [[ "$1" == "web" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to TERMINATE web client for the exchange on this machine? (y/N)"
+                echo "Are you sure you want to terminate web client for the exchange on this machine? (y/N)"
                 echo "This can't be undo."
 
                 read answer
@@ -2714,7 +2717,7 @@ elif [[ "$1" == "toolbox" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo "Failed to detect hex-cli initialized directory! Please re-check your path."
+        echo "Failed to detect hex-kit directory! Please re-check your path."
         print_usage;
         exit 1;
 
@@ -2723,7 +2726,7 @@ elif [[ "$1" == "toolbox" ]]; then
     if [[ ! "$TOOLBOX_ENABLE" ]]; then
     
         print_usage;
-        echo "NO features are enabled for toolbox. Please recheck the command."
+        echo "No features are enabled for toolbox. Please recheck the command."
         exit 1;
 
     fi
