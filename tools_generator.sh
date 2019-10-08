@@ -133,7 +133,13 @@ function check_kubernetes_dependencies() {
     # Checking kubectl and helm are installed on this machine.
     if command kubectl version > /dev/null 2>&1 && command helm version > /dev/null 2>&1; then
 
+         echo "*********************************************"
          echo "kubectl and helm detected"
+         echo "# kubectl version:"
+         echo "$(kubectl version)"
+         echo "# helm version:"
+         echo "$(helm version)"
+         echo "*********************************************"
 
     else
 
@@ -866,18 +872,21 @@ for j in ${CONFIG_FILE_PATH[@]}; do
     if [[ ! -z "$HEX_SECRET_SECRET" ]] ; then
   
       echo "Pre-generated secrets are detected on your secert file!"
-      echo "Are you sure you want to override them? (y/n)"
+      echo "Are you sure you want to override them? (y/N)"
 
       read answer
 
-      if [[ "$answer" == "${answer#[Nn]}" ]]; then
+     if [[ ! "$answer" = "${answer#[Yy]}" ]] ;then
+
+        echo "Generating random secrets..."
 
         for k in ${GENERATE_VALUES_LIST[@]}; do
 
           grep -v $k $SECRET_CONFIG_FILE_PATH > temp && mv temp $SECRET_CONFIG_FILE_PATH
+          #echo $SECRET_CONFIG_FILE_PATH
 
           # Using special form to generate both API_KEYS keys and secret
-          if [[ "$k" == "HEX_SECRET_API_KEYS" ]]; then
+          if [[ "$k" == "HEX_SECRET_SECRET" ]]; then
 
             cat >> $SECRET_CONFIG_FILE_PATH <<EOL
 $k=$(generate_random_values):$(generate_random_values)
@@ -912,44 +921,7 @@ EOL
         echo "Skipping..."
 
       fi
-
-    elif [[ -z "$HEX_SECRET_SECRET" ]] ; then
-
-      for k in ${GENERATE_VALUES_LIST[@]}; do
-
-          grep -v $k $SECRET_CONFIG_FILE_PATH > temp && mv temp $SECRET_CONFIG_FILE_PATH
-
-          # Using special form to generate both API_KEYS keys and secret
-          if [[ "$k" == "HEX_SECRET_API_KEYS" ]]; then
-
-            cat >> $SECRET_CONFIG_FILE_PATH <<EOL
-$k=$(generate_random_values):$(generate_random_values)
-EOL
-
-          else 
-
-            cat >> $SECRET_CONFIG_FILE_PATH <<EOL
-$k=$(generate_random_values)
-EOL
-
-          fi
-        
-        done
-
-        unset k
-        unset GENERATE_VALUES_LIST
-        unset HEX_CONFIGMAP_VARIABLES
-        unset HEX_SECRET_VARIABLES
-        unset HEX_SECRET_VARIABLES_BASE64
-        unset HEX_SECRET_VARIABLES_YAML
-        unset HEX_CONFIGMAP_VARIABLES_YAML
-
-        for i in ${CONFIG_FILE_PATH[@]}; do
-            source $i
-        done;
-
-        load_config_variables;
-
+    
     fi
     
   fi
@@ -1397,20 +1369,6 @@ EOL
         echo "Running database triggers"
         docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js
 
-        if  [[ "$IS_DEVELOP" ]]; then
-
-          # Restarting containers after database init jobs.
-          echo "Restarting containers to apply database changes."
-          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
-
-        else
-
-          # Restarting containers after database init jobs.
-          echo "Restarting containers to apply database changes."
-          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
-
-        fi
-
         echo "Updating settings file to add new $COIN_SYMBOL."
         for i in ${CONFIG_FILE_PATH[@]}; do
 
@@ -1423,6 +1381,30 @@ EOL
 
         done
 
+        export HEX_CONFIGMAP_CURRENCIES=$HEX_CONFIGMAP_CURRENCIES_OVERRIDE
+        echo "Current setup currencies: ${HEX_CONFIGMAP_CURRENCIES}"
+
+        load_config_variables;
+        generate_local_env;
+
+        if  [[ "$IS_DEVELOP" ]]; then
+
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+          
+
+        else
+
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+          
+
+        fi
+
       else
 
         echo "Failed to add new coin $COIN_SYMBOL on local exchange. Please confirm your input values and try again."
@@ -1431,13 +1413,15 @@ EOL
 
           # Restarting containers after database init jobs.
           echo "Restarting containers to apply database changes."
-          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
         else
 
           # Restarting containers after database init jobs.
           echo "Restarting containers to apply database changes."
-          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
         fi
 
@@ -1584,20 +1568,6 @@ function remove_coin_exec() {
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js;
 
 
-      if  [[ "$IS_DEVELOP" ]]; then
-
-        # Restarting containers after database init jobs.
-        echo "Restarting containers to apply database changes."
-        docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
-
-      else
-
-        # Restarting containers after database init jobs.
-        echo "Restarting containers to apply database changes."
-        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
-
-      fi
-
       echo "Updating settings file to remove $COIN_SYMBOL."
       for i in ${CONFIG_FILE_PATH[@]}; do
 
@@ -1616,6 +1586,29 @@ function remove_coin_exec() {
       fi
 
       done
+      
+      echo "Current Trading Pairs: ${HEX_CONFIGMAP_CURRENCIES}"
+
+      #Regenerating env based on changes of PAIRs
+      load_config_variables;
+      generate_local_env;
+
+      if  [[ "$IS_DEVELOP" ]]; then
+
+        # Restarting containers after database init jobs.
+        echo "Restarting containers to apply database changes."
+        docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+        docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+
+
+      else
+
+        # Restarting containers after database init jobs.
+        echo "Restarting containers to apply database changes."
+        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+
+      fi
 
       else
 
@@ -1626,13 +1619,15 @@ function remove_coin_exec() {
 
           # Restarting containers after database init jobs.
           echo "Restarting containers to apply database changes."
-          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
         else
 
           # Restarting containers after database init jobs.
           echo "Restarting containers to apply database changes."
-          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
         fi
 
@@ -2258,7 +2253,7 @@ data:
   REACT_APP_DEFAULT_LANGUAGE: ${ENVIRONMENT_WEB_DEFAULT_LANGUAGE}
   REACT_APP_DEFAULT_COUNTRY: ${ENVIRONMENT_WEB_DEFAULT_COUNTRY}
 
-  REACT_APP_BASE_CURRENCY: ${ENVIRONMENT_WEB_BASE_CURRENCY}
+  REACT_APP_BASE_CURRENCY: usdt
   
 EOL
 }
@@ -2273,27 +2268,35 @@ Please fill up the interaction form to launch your own exchange.
 If you don't have activation code for HEX Core yet, We also provide trial license.
 Please visit dash.bitholla.com to see more details.
 
-For setting up the exchange name, You should only use alphanumeric. No space or special character allowed.
-
 EOF
 
   # Exchange name (API_NAME)
+  echo "***************************************************************"
+  echo -e "\n"
   echo "Exchange name: ($HEX_CONFIGMAP_API_NAME)"
+  echo "- Alphanumeric only. No space or special character allowed."
   read answer
+  echo -e "\n"
 
   local PARSE_CHARACTERS_FOR_API_NAME=$(echo $answer | tr -dc '[:alnum:]' | tr -d ' ')
   local EXCHANGE_API_NAME_OVERRIDE=${PARSE_CHARACTERS_FOR_API_NAME:-$HEX_CONFIGMAP_API_NAME}
   local EXCHANGE_NAME_OVERRIDE=$(echo $EXCHANGE_API_NAME_OVERRIDE | tr '[:upper:]' '[:lower:]')
 
   # Activation Code
+  echo "***************************************************************"
+  echo -e "\n"
   echo "Activation Code: ($HEX_SECRET_ACTIVATION_CODE)"
   read answer
+  echo -e "\n"
 
   local EXCHANGE_ACTIVATION_CODE_OVERRIDE=${answer:-$HEX_SECRET_ACTIVATION_CODE}
 
   # Web Domain
+  echo "***************************************************************"
+  echo -e "\n"
   echo "Exchange URL: ($HEX_CONFIGMAP_DOMAIN)"
   read answer
+  echo -e "\n"
 
   local ESCAPED_HEX_CONFIGMAP_DOMAIN=${HEX_CONFIGMAP_DOMAIN//\//\\/}
 
@@ -2302,9 +2305,12 @@ EOF
   local EXCHANGE_WEB_DOMAIN_OVERRIDE="$PARSE_CHARACTER_FOR_HEX_CONFIGMAP_DOMAIN"
 
   # Light Logo Path
+  echo "***************************************************************"
+  echo -e "\n"
   echo "Exchange Light Logo Path: ($HEX_CONFIGMAP_LOGO_PATH)"
   echo "- Image always should be png"
   read answer
+  echo -e "\n"
 
   local ESCAPED_HEX_CONFIGMAP_LOGO_PATH=${HEX_CONFIGMAP_LOGO_PATH//\//\\/}
 
@@ -2313,9 +2319,12 @@ EOF
   local HEX_CONFIGMAP_LOGO_PATH_OVERRIDE="$PARSE_CHARACTER_FOR_LOGO_PATH"
 
   # Dark Logo Path
+  echo "***************************************************************"
+  echo -e "\n"
   echo "Exchange Dark Logo Path: ($HEX_CONFIGMAP_LOGO_BLACK_PATH)"
   echo "- Image always should be png"
   read answer
+  echo -e "\n"
 
   local ESCAPED_HEX_CONFIGMAP_LOGO_BLACK_PATH=${HEX_CONFIGMAP_LOGO_BLACK_PATH//\//\\/}}
 
@@ -2324,26 +2333,38 @@ EOF
   local HEX_CONFIGMAP_LOGO_BLACK_PATH_OVERRIDE="$PARSE_CHARACTER_FOR_LOGO_BLAKC_PATH"
 
   # WEB CAPTCHA SITE KEY
+  echo "***************************************************************"
+  echo -e "\n"
   echo "Exchange Web Google reCpatcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
   read answer
+  echo -e "\n"
 
   local ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}"
 
   # Server CAPTCHA Secret key
+  echo "***************************************************************"
+  echo -e "\n"
   echo "Exchange API Server Google reCpatcha Secretkey: ($HEX_SECRET_CAPTCHA_SECRET_KEY)"
   read answer
+  echo -e "\n"
 
   local HEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE="${answer:-$HEX_SECRET_CAPTCHA_SECRET_KEY}"
 
   # Web default country
+  echo "***************************************************************"
+  echo -e "\n"
   echo "Default Country: ($ENVIRONMENT_WEB_DEFAULT_COUNTRY)"
   read answer
+  echo -e "\n"
 
   local ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_DEFAULT_COUNTRY}"
 
   # Emails timezone
+  echo "***************************************************************"
+  echo -e "\n"
   echo "Timezone: ($HEX_CONFIGMAP_EMAILS_TIMEZONE)"
   read answer
+  echo -e "\n"
 
   local ESCAPED_HEX_CONFIGMAP_EMAILS_TIMEZONE=${HEX_CONFIGMAP_EMAILS_TIMEZONE/\//\\/}
 
@@ -2352,28 +2373,40 @@ EOF
   local HEX_CONFIGMAP_EMAILS_TIMEZONE_OVERRIDE="$PARSE_CHARACTER_FOR_TIMEZONE"
 
   # Valid languages
+  echo "***************************************************************"
+  echo -e "\n"
   echo "Valid Languages: ($HEX_CONFIGMAP_VALID_LANGUAGES)"
   echo "- Separate with comma (,)"
   read answer
+  echo -e "\n"
 
   local HEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE="${answer:-$HEX_CONFIGMAP_VALID_LANGUAGES}"
 
   # Default language
+  echo "***************************************************************"
+  echo -e "\n"
   echo "Default Language: ($HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE)"
   read answer
+  echo -e "\n"
 
   local HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE="${answer:-$HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE}"
 
   # Default theme
+  echo "***************************************************************"
+  echo -e "\n"
   echo "Default Theme: ($HEX_CONFIGMAP_DEFAULT_THEME)"
   echo "- Between light and dark."
   read answer
+  echo -e "\n"
 
   local HEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE="${answer:-$HEX_CONFIGMAP_DEFAULT_THEME}"
 
   # API Domain
+  echo "***************************************************************"
+  echo -e "\n"
   echo "Exchange Server API URL: ($HEX_CONFIGMAP_API_HOST)"
   read answer
+  echo -e "\n"
 
   local ESCAPED_HEX_CONFIGMAP_API_HOST=${HEX_CONFIGMAP_API_HOST//\//\\/}
 
@@ -2382,50 +2415,74 @@ EOF
   local EXCHANGE_SERVER_DOMAIN_OVERRIDE="$PARSE_CHARACTER_FOR_HEX_CONFIGMAP_API_HOST"
 
   # User tier number
+  echo "***************************************************************"
+  echo -e "\n"
   echo "Number of User Tiers: ($HEX_CONFIGMAP_USER_LEVEL_NUMBER)"
   read answer
+  echo -e "\n"
 
   local EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE=${answer:-$HEX_CONFIGMAP_USER_LEVEL_NUMBER}
 
   # Admin Email
+  echo "***************************************************************"
+  echo -e "\n"
   echo "Admin Email: ($HEX_CONFIGMAP_ADMIN_EMAIL)"
   read answer
+  echo -e "\n"
 
   local HEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE=${answer:-$HEX_CONFIGMAP_ADMIN_EMAIL}
 
   # Admin Password
+  echo "***************************************************************"
+  echo -e "\n"
   echo "Admin Password: ($HEX_SECRET_ADMIN_PASSWORD)"
   read answer
+  echo -e "\n"
 
   local HEX_SECRET_ADMIN_PASSWORD_OVERRIDE=${answer:-$HEX_SECRET_ADMIN_PASSWORD}
 
   # Supervisor Email
+  echo "***************************************************************"
+  echo -e "\n"
   echo "Supervisor Email: ($HEX_CONFIGMAP_SUPERVISOR_EMAIL)"
   read answer
+  echo -e "\n"
 
   local HEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE=${answer:-$HEX_CONFIGMAP_SUPERVISOR_EMAIL}
 
   # KYC email
+  echo "***************************************************************"
+  echo -e "\n"
   echo "KYC Email: ($HEX_CONFIGMAP_KYC_EMAIL)"
   read answer
+  echo -e "\n"
 
   local HEX_CONFIGMAP_KYC_EMAIL_OVERRIDE=${answer:-$HEX_CONFIGMAP_KYC_EMAIL}
 
   # Support Email
+  echo "***************************************************************"
+  echo -e "\n"
   echo "Support Email: ($HEX_CONFIGMAP_SUPPORT_EMAIL)"
   read answer
+  echo -e "\n"
 
   local HEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE=${answer:-$HEX_CONFIGMAP_SUPPORT_EMAIL}
 
   # Sender Email
+  echo "***************************************************************"
+  echo -e "\n"
   echo "Sender Email: ($HEX_CONFIGMAP_SENDER_EMAIL)"
   read answer
+  echo -e "\n"
 
   local HEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE=${answer:-$HEX_CONFIGMAP_SENDER_EMAIL}
 
   # New user is activated
+  echo "***************************************************************"
+  echo -e "\n"
   echo "Allow New User Signup?: (Y/n)"
   read answer
+  echo -e "\n"
 
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
       
@@ -2439,7 +2496,7 @@ EOF
 
   /bin/cat << EOF
   
-*********************************************
+***************************************************************
 Exchange Name: $EXCHANGE_API_NAME_OVERRIDE
 Activation Code: $EXCHANGE_ACTIVATION_CODE_OVERRIDE
 
@@ -2469,7 +2526,7 @@ Support Email: $HEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE
 Sender Email: $HEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE
 
 Allow New User Signup: $HEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE
-*********************************************
+***************************************************************
 
 EOF
 
@@ -2597,11 +2654,11 @@ EOF
 
   local ENVIRONMENT_WEB_DEFAULT_LANGUAGE_OVERRIDE="${answer:-$ENVIRONMENT_WEB_DEFAULT_LANGUAGE}"
 
-  # Default language
-  echo "Default Currency: ($ENVIRONMENT_WEB_BASE_CURRENCY)"
-  read answer
+  # # Default language
+  # echo "Default Currency: ($ENVIRONMENT_WEB_BASE_CURRENCY)"
+  # read answer
 
-  local ENVIRONMENT_WEB_BASE_CURRENCY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_BASE_CURRENCY}"
+  # local ENVIRONMENT_WEB_BASE_CURRENCY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_BASE_CURRENCY}"
 
   /bin/cat << EOF
   
@@ -2614,7 +2671,7 @@ Default Country: $ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE
 
 Default Language: $ENVIRONMENT_WEB_DEFAULT_LANGUAGE_OVERRIDE
 
-Default Currency: $ENVIRONMENT_WEB_BASE_CURRENCY_OVERRIDE
+Default Currency: usdt (Forced)
 *********************************************
 
 EOF

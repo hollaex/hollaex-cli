@@ -176,12 +176,12 @@ if [[ "$1" == 'dev' ]]; then
 
         # Checking docker-compose is installed on this machine.
         if command docker-compose version > /dev/null 2>&1; then
-
+            echo "*********************************************"
             echo "docker-compose detected"
             echo "version: $(docker-compose version)"
+            echo "*********************************************"
 
         else
-
             echo "hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli."
             exit 1;
 
@@ -202,8 +202,9 @@ if [[ "$1" == 'dev' ]]; then
 
         #Quit if necessary flags are missing
         if [[ ! "$LOCAL_COMMAND" ]] && [[ ! "$LOCAL_DATABASE_INIT" ]]; then
-
+            echo "*********************************************"
             echo "Make sure to specify --command flag for dev commands"
+            echo "*********************************************"
             print_usage;
             exit 1;
 
@@ -440,8 +441,10 @@ elif [[ "$1" == "setup" ]]; then
         
         check_empty_values_on_settings;
 
+        echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
         kubectl get nodes
+        echo "*********************************************"
 
         if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
@@ -454,11 +457,11 @@ elif [[ "$1" == "setup" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to launch $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HEX_CONFIGMAP_API_HOST) on this cluster? (y/n)"
+            echo "Are you sure you want to launch $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HEX_CONFIGMAP_API_HOST) on this cluster? (Y/n)"
 
             read answer
 
-            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
                 echo "Exiting..."
                 exit 0;
             fi
@@ -657,8 +660,10 @@ elif [[ "$1" == "setup" ]]; then
         # Checking docker-compose is installed on this machine.
         if command docker-compose version > /dev/null 2>&1; then
 
-            echo "docker-compose detected"
+            echo "*********************************************"
+            echo "docker-compose detected"  
             echo "version: $(docker-compose version)"
+            echo "*********************************************"
 
         else
 
@@ -669,9 +674,11 @@ elif [[ "$1" == "setup" ]]; then
 
         if command docker ps | grep local_$ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
+            echo "*********************************************"
             echo "Alert: hex-cli detected that $ENVIRONMENT_EXCHANGE_NAME exchange exists on your machine."
             echo "You can't run launch process multiple times for existing exchange. This could break up system badly."
             echo "Exiting..."
+            echo "*********************************************"
             exit 1;
 
         fi
@@ -697,7 +704,7 @@ elif [[ "$1" == "setup" ]]; then
 
         #Quit if necessary flags are missing
         if [[ ! "$LOCAL_COMMAND" ]]; then
-
+            
             echo "Some necessary flags are missing! Please check agian your command."
             print_usage;
             exit 1;
@@ -706,11 +713,11 @@ elif [[ "$1" == "setup" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to run $ENVIRONMENT_EXCHANGE_NAME on your machine? (y/n)"
+            echo "Are you sure you want to run $ENVIRONMENT_EXCHANGE_NAME on your machine? (Y/n)"
 
             read answer
 
-            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
                 echo "Exiting..."
                 exit 0;
             fi
@@ -796,8 +803,8 @@ elif [[ "$1" == "setup" ]]; then
         fi
 
         while true;
-        do read -r -p "Do you want to add new currency? (Y/n)" answer   
-            if [[ "$answer" = "${answer#[Nn]}" ]];
+        do read -r -p "Do you want to add new currency? (y/N)" answer   
+            if [[ ! "$answer" = "${answer#[Yy]}" ]];
             then
                 if [[ "$USE_KUBERNETES" ]]; then
                     hex toolbox --add_coin --kube
@@ -807,8 +814,8 @@ elif [[ "$1" == "setup" ]]; then
                 fi
             else
                 while true;
-                    do read -r -p "Do you want to add new trading pair? (Y/n)" answer   
-                        if [[ "$answer" = "${answer#[Nn]}" ]];
+                    do read -r -p "Do you want to add new trading pair? (y/N)" answer   
+                        if [[ ! "$answer" = "${answer#[Yy]}" ]];
                         then
                             if [[ "$USE_KUBERNETES" ]]; then
                                 hex toolbox --add_trading_pair --kube
@@ -931,17 +938,19 @@ elif [[ "$1" == "start" ]]; then
 
         check_empty_values_on_settings;
 
+        echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
         kubectl get nodes
+        echo "*********************************************"
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
 
-            echo "Are you sure you want to start (scale up) $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HEX_CONFIGMAP_API_HOST) on this cluster? (y/n)"
+            echo "Are you sure you want to start (scale up) $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HEX_CONFIGMAP_API_HOST) on this cluster? (Y/n)"
 
             read answer
 
-            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
                 echo "Exiting..."
                 exit 0;
             fi
@@ -1028,8 +1037,10 @@ elif [[ "$1" == "start" ]]; then
         # Checking docker-compose is installed on this machine.
         if command docker-compose version > /dev/null 2>&1; then
 
+            echo "*********************************************"
             echo "docker-compose detected"
             echo "version: $(docker-compose version)"
+            echo "*********************************************"
 
         else
 
@@ -1073,11 +1084,11 @@ elif [[ "$1" == "start" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to start $ENVIRONMENT_EXCHANGE_NAME on your machine? (y/n)"
+            echo "Are you sure you want to start $ENVIRONMENT_EXCHANGE_NAME on your machine? (Y/n)"
 
             read answer
 
-            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
                 echo "Exiting..."
                 exit 0;
             fi
@@ -1229,12 +1240,14 @@ elif [[ "$1" == "stop" ]]; then
          #Checking Kubernetes dependencies
         check_kubernetes_dependencies;
 
+        echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
         kubectl get nodes
+        echo "*********************************************"
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to stop (scale down) $ENVIRONMENT_EXCHANGE_NAME on this cluster? (y/n)"
+            echo "Are you sure you want to stop (scale down) $ENVIRONMENT_EXCHANGE_NAME on this cluster? (y/N)"
 
             read answer
 
@@ -1275,8 +1288,10 @@ elif [[ "$1" == "stop" ]]; then
         # Checking docker-compose is installed on this machine.
         if command docker-compose version > /dev/null 2>&1; then
 
+            echo "*********************************************"
             echo "docker-compose detected"
             echo "version: $(docker-compose version)"
+            echo "*********************************************"
 
         else
 
@@ -1289,7 +1304,7 @@ elif [[ "$1" == "stop" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to stop $ENVIRONMENT_EXCHANGE_NAME - $LOCAL_DEPLOYMENT_MODE which running on your machine? (y/n)"
+            echo "Are you sure you want to stop $ENVIRONMENT_EXCHANGE_NAME - $LOCAL_DEPLOYMENT_MODE which running on your machine? (y/N)"
 
             read answer
 
@@ -1388,13 +1403,15 @@ elif [[ "$1" == "restart" ]]; then
 
         check_empty_values_on_settings;
 
+        echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
         kubectl get nodes
+        echo "*********************************************"
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
             echo "Warning: Exchange service will be unavailable during the restart!"
-            echo "Are you sure you want to restart $ENVIRONMENT_EXCHANGE_NAME on this cluster? (y/n)"
+            echo "Are you sure you want to restart $ENVIRONMENT_EXCHANGE_NAME on this cluster? (y/N)"
 
             read answer
 
@@ -1477,12 +1494,15 @@ elif [[ "$1" == "restart" ]]; then
         # Checking docker-compose is installed on this machine.
         if command docker-compose version > /dev/null 2>&1; then
 
+            echo "*********************************************"
             echo "docker-compose detected"
             echo "version: $(docker-compose version)"
+            echo "*********************************************"
 
         else
 
             echo "hex-cli failed to detect docker-compose installed on this machine. Please install it before running hex-cli."
+            
             exit 1;
 
         fi
@@ -1504,7 +1524,7 @@ elif [[ "$1" == "restart" ]]; then
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
             
             echo "Warning: Exchange service will be unavailable during the restart!"
-            echo "Are you sure you want to restart $ENVIRONMENT_EXCHANGE_NAME on your machine? (y/n)"
+            echo "Are you sure you want to restart $ENVIRONMENT_EXCHANGE_NAME on your machine? (y/N)"
 
             read answer
 
@@ -1552,7 +1572,8 @@ elif [[ "$1" == "restart" ]]; then
         apply_nginx_user_defined_values;
 
         echo "Restarting containers to apply new changes..."
-        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
         exit 0;
 
@@ -1654,14 +1675,16 @@ elif [[ "$1" == "upgrade" ]]; then
         fi
 
         check_empty_values_on_settings;
-
+        
+        echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
         kubectl get nodes
+        echo "*********************************************"
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
             echo "Warning: Exchange service will be unavailable during the upgrade!"
-            echo "Are you sure you want to upgrade $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION with $ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS api containers on this cluster? (y/n)"
+            echo "Are you sure you want to upgrade $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION with $ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS api containers on this cluster? (y/N)"
 
             read answer
 
@@ -1760,8 +1783,10 @@ elif [[ "$1" == "upgrade" ]]; then
         # Checking docker-compose is installed on this machine.
         if command docker-compose version > /dev/null 2>&1; then
 
+            echo "*********************************************"
             echo "docker-compose detected"
             echo "version: $(docker-compose version)"
+            echo "*********************************************"
 
         else
 
@@ -1787,7 +1812,7 @@ elif [[ "$1" == "upgrade" ]]; then
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
             
             echo "Warning: Exchange service will be unavailable during the upgrade!"
-            echo "Are you sure you want to upgrade $ENVIRONMENT_EXCHANGE_NAME on your machine? (y/n)"
+            echo "Are you sure you want to upgrade $ENVIRONMENT_EXCHANGE_NAME on your machine? (y/N)"
 
             read answer
 
@@ -1945,12 +1970,14 @@ elif [[ "$1" == "terminate" ]]; then
         #Checking Kubernetes dependencies
         check_kubernetes_dependencies;
 
+        echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
         kubectl get nodes
+        echo "*********************************************"
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to terminate $ENVIRONMENT_EXCHANGE_NAME on this cluster? (y/n)"
+            echo "Are you sure you want to terminate $ENVIRONMENT_EXCHANGE_NAME on this cluster? (y/N)"
 
             read answer
 
@@ -2002,8 +2029,10 @@ elif [[ "$1" == "terminate" ]]; then
         # Checking docker-compose is installed on this machine.
         if command docker-compose version > /dev/null 2>&1; then
 
+            echo "*********************************************"
             echo "docker-compose detected"
             echo "version: $(docker-compose version)"
+            echo "*********************************************"
 
         else
 
@@ -2025,7 +2054,7 @@ elif [[ "$1" == "terminate" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to terminate $ENVIRONMENT_EXCHANGE_NAME on your machine? (y/n)"
+            echo "Are you sure you want to terminate $ENVIRONMENT_EXCHANGE_NAME on your machine? (y/N)"
 
             read answer
 
@@ -2175,9 +2204,11 @@ elif [[ "$1" == "web" ]]; then
 
             # Checking docker-compose is installed on this machine.
             if command docker-compose version > /dev/null 2>&1; then
-
+                
+                echo "*********************************************"
                 echo "docker-compose detected"
                 echo "version: $(docker-compose version)"
+                echo "*********************************************"
 
             else
 
@@ -2251,7 +2282,7 @@ elif [[ "$1" == "web" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to stop web client for the exchange on this machine? (y/n)"
+                echo "Are you sure you want to stop web client for the exchange on this machine? (y/N)"
 
                 read answer
 
@@ -2316,8 +2347,10 @@ elif [[ "$1" == "web" ]]; then
             # Checking docker-compose is installed on this machine.
             if command docker-compose version > /dev/null 2>&1; then
 
+                echo "*********************************************"
                 echo "docker-compose detected"
                 echo "version: $(docker-compose version)"
+                echo "*********************************************"
 
             else
 
@@ -2328,7 +2361,7 @@ elif [[ "$1" == "web" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to restart web client for the exchange on this machine? (y/n)"
+                echo "Are you sure you want to restart web client for the exchange on this machine? (y/N)"
 
                 read answer
 
@@ -2394,8 +2427,10 @@ elif [[ "$1" == "web" ]]; then
             # Checking docker-compose is installed on this machine.
             if command docker-compose version > /dev/null 2>&1; then
 
+                echo "*********************************************"
                 echo "docker-compose detected"
                 echo "version: $(docker-compose version)"
+                echo "*********************************************"
 
             else
 
@@ -2406,11 +2441,11 @@ elif [[ "$1" == "web" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to rebuild and bring up web client for the exchange on this machine? (y/n)"
+                echo "Are you sure you want to rebuild and bring up web client for the exchange on this machine? (Y/n)"
 
                 read answer
 
-                if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
                     echo "Exiting..."
                     exit 0;
                 fi
@@ -2468,9 +2503,11 @@ elif [[ "$1" == "web" ]]; then
 
             # Checking docker-compose is installed on this machine.
             if command docker-compose version > /dev/null 2>&1; then
-
+                
+                echo "*********************************************"
                 echo "docker-compose detected"
                 echo "version: $(docker-compose version)"
+                echo "*********************************************"
 
             else
 
@@ -2481,7 +2518,7 @@ elif [[ "$1" == "web" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to TERMINATE web client for the exchange on this machine? (y/n)"
+                echo "Are you sure you want to TERMINATE web client for the exchange on this machine? (y/N)"
                 echo "This can't be undo."
 
                 read answer
@@ -2703,9 +2740,11 @@ elif [[ "$1" == "toolbox" ]]; then
         #Checking Kubernetes dependencies
         check_kubernetes_dependencies;
 
+        echo "*********************************************"
         #Verify remote Kubernetes cluster is correct.
         echo "Verifying current KUBECONFIG on the machine"
         kubectl get nodes
+        echo "*********************************************"
 
     fi
 
@@ -2720,7 +2759,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to upgrade backends (PostgreSQL, Redis, InfluxDB) to latest compatible on this cluster? (y/n)"
+                echo "Are you sure you want to upgrade backends (PostgreSQL, Redis, InfluxDB) to latest compatible on this cluster? (y/N)"
 
                 read answer
 
@@ -2791,7 +2830,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to upgrade backends (PostgreSQL, Redis, InfluxDB) to latest compatible on this machine? (y/n)"
+                echo "Are you sure you want to upgrade backends (PostgreSQL, Redis, InfluxDB) to latest compatible on this machine? (y/N)"
 
                 read answer
 
@@ -2808,7 +2847,7 @@ elif [[ "$1" == "toolbox" ]]; then
             generate_local_docker_compose $ENVIRONMENT_EXCHANGE_RUN_MODE
 
             echo "Restarting containers..."
-            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND
+            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
             exit 0;
 
@@ -2835,11 +2874,11 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to run full PostgreSQL database backup (pg_dumpall) on this cluster? (y/n)"
+                echo "Are you sure you want to run full PostgreSQL database backup (pg_dumpall) on this cluster? (Y/n)"
 
                 read answer
 
-                if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
                     echo "Exiting..."
                     exit 0;
                 fi
@@ -2880,11 +2919,11 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to run full PostgreSQL database backup (pg_dumpall) on this machine? (y/n)"
+                echo "Are you sure you want to run full PostgreSQL database backup (pg_dumpall) on this machine? (Y/n)"
 
                 read answer
 
-                if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
                     echo "Exiting..."
                     exit 0;
                 fi
@@ -2920,7 +2959,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to run flush Redis data on this cluster? (y/n)"
+                echo "Are you sure you want to run flush Redis data on this cluster? (y/N)"
 
                 read answer
 
@@ -2943,7 +2982,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to to run flush Redis data on this machine? (y/n)"
+                echo "Are you sure you want to to run flush Redis data on this machine? (y/N)"
 
                 read answer
 
@@ -2976,7 +3015,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to do rolling upgrade for $ENVIRONMENT_EXCHANGE_NAME api pods to v$ENVIRONMENT_DOCKER_IMAGE_VERSION on this cluster? (y/n)"
+                echo "Are you sure you want to do rolling upgrade for $ENVIRONMENT_EXCHANGE_NAME api pods to v$ENVIRONMENT_DOCKER_IMAGE_VERSION on this cluster? (y/N)"
                 echo "Configmap values would be updated either while on the rolling upgrade"
 
                 read answer
