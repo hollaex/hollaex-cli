@@ -4,26 +4,27 @@ REPLACE_EXISTING_TO_LATEST=false
 
 /bin/cat << EOF
 
-██╗  ██╗███████╗██╗  ██╗      ██████╗██╗     ██╗
-██║  ██║██╔════╝╚██╗██╔╝     ██╔════╝██║     ██║
-███████║█████╗   ╚███╔╝█████╗██║     ██║     ██║
-██╔══██║██╔══╝   ██╔██╗╚════╝██║     ██║     ██║
-██║  ██║███████╗██╔╝ ██╗     ╚██████╗███████╗██║        
-╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝      ╚═════╝╚══════╝╚═╝ ┬┌┐┌┌─┐┌┬┐┌─┐┬  ┬  ┌─┐┬─┐
+██╗  ██╗ ██████╗ ██╗     ██╗      █████╗ ███████╗██╗  ██╗  
+██║  ██║██╔═══██╗██║     ██║     ██╔══██╗██╔════╝╚██╗██╔╝
+███████║██║   ██║██║     ██║     ███████║█████╗   ╚███╔╝ 
+██╔══██║██║   ██║██║     ██║     ██╔══██║██╔══╝   ██╔██╗ 
+██║  ██║╚██████╔╝███████╗███████╗██║  ██║███████╗██╔╝ ██╗   
+╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝  
+                                                 ┬┌┐┌┌─┐┌┬┐┌─┐┬  ┬  ┌─┐┬─┐
                                                  ││││└─┐ │ ├─┤│  │  ├┤ ├┬┘
                                                  ┴┘└┘└─┘ ┴ ┴ ┴┴─┘┴─┘└─┘┴└─
                                                  
 
 EOF
 
-echo "#### hex-cli Installer ####"
+echo "#### hollaex-cli Installer ####"
 
-if [[ -d "$HOME/.hex-cli" ]] || [[ -d "$HOME/.hollaex-cli" ]]; then
-    echo "You already installed previous version of hex-cli."
+if [[ -d "$HOME/.hollaex-cli" ]] || [[ -d "$HOME/.hollaex-cli" ]]; then
+    echo "You already installed previous version of hollaex-cli."
     echo "Are you sure you want to replace existing one to latest? (y/n)"
     REPLACE_EXISTING_TO_LATEST=true
 else
-    echo "Are you sure you want to proceed to install hex-cli? (y/n)"
+    echo "Are you sure you want to proceed to install hollaex-cli? (y/n)"
 fi
 
 read answer
@@ -34,18 +35,18 @@ if [[ "$answer" != "${answer#[Nn]}" ]] ;then
 fi
 
 if [[ "$REPLACE_EXISTING_TO_LATEST" == "true" ]]; then
-    echo "Replacing existing hex-cli to latest"
-    sudo rm -r $HOME/.hex-cli
-    sudo rm /usr/local/bin/hex
-    git clone https://github.com/bitholla/hex-cli.git
+    echo "Replacing existing hollaex-cli to latest"
+    sudo rm -r $HOME/.hollaex-cli
+    sudo rm /usr/local/bin/hollaex
+    git clone https://github.com/bitholla/hollaex-cli.git
 else       
-    echo "Cloning hex-cli repo from git"
-    git clone https://github.com/bitholla/hex-cli.git
+    echo "Cloning hollaex-cli repo from git"
+    git clone https://github.com/bitholla/hollaex-cli.git
 fi
 
-chmod +x $(pwd)/hex-cli
-sudo mv $(pwd)/hex-cli $HOME/.hex-cli
-sudo ln -s $HOME/.hex-cli/hex /usr/local/bin/hex
+chmod +x $(pwd)/hollaex-cli
+sudo mv $(pwd)/hollaex-cli $HOME/.hollaex-cli
+sudo ln -s $HOME/.hollaex-cli/hollaex /usr/local/bin/hollaex
 
-echo "hex-cli v$(cat $HOME/.hex-cli/version) has been successfully installed!"
-echo "If you want to uninstall hex-cli later, Please visit https://github.com/bitholla/hex-cli for further information."
+echo "hollaex-cli v$(cat $HOME/.hollaex-cli/version) has been successfully installed!"
+echo "If you want to uninstall hollaex-cli later, Please visit https://github.com/bitholla/hollaex-cli for further information."
