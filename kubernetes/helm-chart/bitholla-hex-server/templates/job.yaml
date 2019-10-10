@@ -42,6 +42,11 @@ spec:
         args:
           - node tools/dbs/removePair.js;
 
+{{- else if eq .Values.job.mode "reactivate_exchange" }}
+
+        args:
+          - node tools/dbs/setExchange.js;
+
 {{- end }}
 
         imagePullPolicy: Always

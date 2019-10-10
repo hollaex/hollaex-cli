@@ -1,25 +1,16 @@
 # Default values for bitholla-hollaex-nginx.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
-imageRegistry: bitholla/hex-core
+imageRegistry: bitholla/hex-web
 dockerTag:
   
 imagePullSecrets:
   - name: bitholla-registry-secret
 
-envName: hex-env
-secretName: hex-secret
-
-DEPLOYMENT_MODE: api
-PAIR:
+envName: hex-web-env
 
 stable:
   replicaCount: 1
-  
-staging:
-  enable: false
-  replicaCount: 1
-  dockerTag:
 
 nodeSelector: {}
 
@@ -29,20 +20,7 @@ autoScaling:
     maxReplicas: 4
     cpu: 500m
 
-APM_URL:
-
 podRestart_webhook_url:
-
-
-job:
-  enable: false
-  mode: #add_coin
-        #remove_coin
-        #add_pair
-        #remove_pair
-  env:
-    coin_symbol:
-    pair_name:
   
     
   
