@@ -2182,19 +2182,8 @@ elif [[ "$1" == "web" ]]; then
 
         basic_settings_for_web_client_input;
 
-        echo "Values has been successfull set!"
-        echo "Do you want to build a new docker image for Web Client based on new values? (Y/n)"
-        echo "You can always rebuild the image by using 'hex web --rebuild' command anytime you want."
-
-        read answer
-
-        if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-            echo "Exiting..."
-            exit 0;
-        fi
-
-        hex web --rebuild --skip
-        hex web --stop --skip
+        echo "Values are successfully set!"
+        echo "Use 'hex web --start' to start the Web Server."
 
         exit 0;
 
@@ -2238,6 +2227,11 @@ elif [[ "$1" == "web" ]]; then
                     exit 0;
                 fi
 
+            fi
+
+            #Generating nginx conf.d folder
+            if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
+                mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
             fi
 
             echo "Generating docker-compose file for Web Client"
@@ -2451,7 +2445,7 @@ elif [[ "$1" == "web" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to rebuild and bring up web client for the exchange on this machine? (Y/n)"
+                echo "Are you sure you want to rebuild the web client for the exchange on this machine? (Y/n)"
 
                 read answer
 
@@ -2461,6 +2455,8 @@ elif [[ "$1" == "web" ]]; then
                 fi
 
             fi
+
+            basic_settings_for_web_client_input;
 
             echo "Generating docker-compose file for Web Client"
             generate_local_docker_compose_for_web
@@ -2476,20 +2472,11 @@ elif [[ "$1" == "web" ]]; then
 
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client up -d --build; then
 
-                if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " " > /dev/null 2>&1; then 
+                docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client stop
 
-                    echo "Reloading Nginx..."
-                    docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
-
-                    echo "Web is up!"
-                    echo "Web is now reachable both from $HEX_CONFIGMAP_DOMAIN and localhost:8080".
+                echo "New Web image has been successfully built!"
+                echo "Use 'hex web --start' to start the Web Server".
                 
-                else
-
-                    echo "Failed to reload Nginx. Please review your configurations and try again."
-                
-                fi
-
             else 
 
                 echo "hex-cli failed to launch containers. Please review your settings and try again."
