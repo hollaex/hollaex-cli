@@ -49,6 +49,9 @@ function local_database_init() {
 
       echo "Running InfluxDB initialization"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/initializeInflux.js
+
+      echo "Setting up the exchange with provided activation code"
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/setExchange.js
     
     elif [[ "$1" == 'dev' ]]; then
 
@@ -1363,7 +1366,7 @@ EOL
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
       
       echo "Upgrading exchange with latest settings..."
-      hex upgrade --kube --no_verify
+      hex upgrade --kube --skip
 
       echo "Removing created Kubernetes Job for adding new coin..."
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
@@ -1998,7 +2001,7 @@ EOL
       load_config_variables;
       
       echo "Upgrading exchange with latest settings..."
-      hex upgrade --kube --no_verify
+      hex upgrade --kube --skip
 
       echo "Removing created Kubernetes Job for adding new coin..."
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME

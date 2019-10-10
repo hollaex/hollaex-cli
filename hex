@@ -22,40 +22,41 @@ function print_usage() {
 Usage : 
     hex [ init ] [ setup ] [ start ] [ stop ] [ upgrade ] [ terminate ] [ web ] [ toolbox ] [ version ] (--flags)
 Options:
-    init : Generate the initialized exchange folder for your new exchange.
-        --name, Name of your exchange.
-        --standalone, Initialize exchange directory without pulling hex-kit repo remotely (Not recommended).
+    init: Pull hex-kit for your new exchange.
 
-    setup : Setup the web client for the first launch.
+    setup: Setup the web client for the first launch.
         --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
         --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
-        --no_verify, Run script without verifying docker-compose setup.
+        --skip, Run script without verifying docker-compose setup.
 
-    start : Start the exchange which already been setup.
+        --reconfigure, Reconfigure basic settings such as Server domain or Activation Code.
+
+    start: Start the exchange which already been setup.
         --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
         --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
-        --no_verify, Run script without verifying docker-compose setup.
+        --skip, Run script without verifying docker-compose setup.
 
-    stop : Stop the existing exchagne which already been running.
+    stop: Stop the existing exchagne which already been running.
         --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
         --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
-        --no_verify, Run script without verifying connected kubernetes cluster.
+        --skip, Run script without verifying connected kubernetes cluster.
     
-    restart : Restart the existing exchange.
+    restart: Restart the existing exchange.
         --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
         --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
-        --no_verify, Run script without verifying docker-compose setup.
+        --skip, Run script without verifying docker-compose setup.
 
-    upgrade : Upgrade the existing exchange to new version.
+    upgrade: Upgrade the existing exchange to new version.
         --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
+        --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
+        --skip, Run script without verifying connected kubernetes cluster.
+
         --version, Version number of HEX Core to upgrade.
-        --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
-        --no_verify, Run script without verifying connected kubernetes cluster.
 
-    terminate : TERMINATE the existing exchange. THIS COMMAND WILL COMPLETELY REMOVE YOUR EXCHANGE ENVIRONMENT.
+    terminate: TERMINATE the existing exchange. THIS COMMAND WILL COMPLETELY REMOVE YOUR EXCHANGE ENVIRONMENT.
         --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
         --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
-        --no_verify, Run script without verifying connected kubernetes cluster.
+        --skip, Run script without verifying connected kubernetes cluster.
     
     web: Run web client for the exchange.
         --setup, Setup the web client for the first launch.
@@ -68,21 +69,19 @@ Options:
     toolbox: Toolbox with advanced features which could be helpful for your exchange operations.
         --settings, Path of hex-cli Settings file or directory, It reads settings values automatically from current directory by default.
         --kube, Set the hex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
-        --no_verify, Run script without verifying connected kubernetes cluster.
-        --upgrade_backends, Update backend services, such as Redis or PostgreSQL for the exchange to latest compatible.
-        --backup_postgresql, Run the full backup with pg_dumpall for the exchange PostgreSQL database.
+        --skip, Run script without verifying connected kubernetes cluster.
+
+        --backup, Run the full backup with pg_dumpall for the exchange PostgreSQL database.
         --flush_redis, Run the full flush of Redis stored data. It could be helpful in certain situation If the exchange doesnt work properly.
         --upgrade_api_only, Do zero-downtime rolling upgrade for API contianers on Kubernetes.
         --add_coin, Add new currency on exchange.
         --remove_coin, Remove exisiting currency from exhcnage.
         --add_trading_pair, Add new trading pair on ehchange.
         --remove_trading_pair, Remove existing trading pair from exchange.
-        --reconfigure_basic_settings, Reconfigure basic settings such as Server domain or Activation Code.
-        --reactivate_exchange, Reactivate the exchange with new Activation Code.
-        --issue_ssl_cert, Issue SSL certificate on local Nginx by using Let's Encrypt.
-        --renew_ssl_cert, Renew SSL certificate on local Nginx by using Let's Encrypt.
+        --issue_ssl, Issue SSL certificate on local Nginx by using Let's Encrypt.
+        --renew_ssl, Renew SSL certificate on local Nginx by using Let's Encrypt.
 
-    version : Print out current installed version of hex-cli.
+    version: Print out current installed version of hex-cli.
 
 EOF
 }
@@ -121,7 +120,7 @@ if [[ "$1" == 'dev' ]]; then
                 echo 'Local mocha code test mode enabled.'
                 shift; continue
                 ;;
-            --no_verify)
+            --skip)
                 RUN_WITH_VERIFY=false
                 echo 'Running it wihtout verify the config.'
                 shift; continue
@@ -375,9 +374,14 @@ elif [[ "$1" == "setup" ]]; then
                 echo "hex-cli will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
-            --no_verify)
+            --skip)
                 RUN_WITH_VERIFY=false
                 echo "Running it wihtout verify the config."
+                shift; continue
+                ;;
+            --reconfigure)
+                RECONFIGURE_BASIC_SETTINGS=true
+                echo "hex-cli will proceed to reconfigure your exchange's basic settings."
                 shift; continue
                 ;;
             --*) 
@@ -421,6 +425,34 @@ elif [[ "$1" == "setup" ]]; then
     
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
+    
+    # hex setup --reconfigure
+    if [[ "$RECONFIGURE_BASIC_SETTINGS" ]]; then
+
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+            echo "Are you sure you want to reconfigure the exchange? (Y/n)"
+
+            read answer
+
+            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+                echo "Exiting..."
+                exit 0;
+            fi
+
+        fi
+
+        # Ask for basic necessary settings
+        launch_basic_settings_input;
+
+        hex upgrade --skip $(if [[ "$USE_KUBERNETES" ]]; then echo "--kube"; fi)
+
+        echo "All done!"
+        echo "Make sure to check your settings files been successfully updated by following your provided values."
+
+        exit 0;
+
+    fi
 
     if [[ "$USE_KUBERNETES" ]]; then
 
@@ -795,7 +827,7 @@ elif [[ "$1" == "setup" ]]; then
             echo "Finishing the setup process..."
             echo "Shutting down the exchange"
             echo "To start the exchange, Please use 'hex start' command"
-            hex stop --no_verify
+            hex stop --skip
             exit 0;
         
         fi
@@ -824,9 +856,9 @@ elif [[ "$1" == "setup" ]]; then
                             echo "Finishing the setup process..."
                             echo "Shutting down the exchange"
                             if [[ "$USE_KUBERNETES" ]]; then
-                                hex stop --kube --no_verify
+                                hex stop --kube --skip
                             elif [[ ! "$USE_KUBERNETES" ]]; then
-                                hex stop --no_verify
+                                hex stop --skip
                             fi
                             exit 0;
                         fi
@@ -869,7 +901,7 @@ elif [[ "$1" == "start" ]]; then
                 echo "hex-cli will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
-            --no_verify)
+            --skip)
                 RUN_WITH_VERIFY=false
                 echo "Running it wihtout verify the config."
                 shift; continue
@@ -1161,7 +1193,7 @@ elif [[ "$1" == "stop" ]]; then
                 echo "hex-cli will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
-            --no_verify)
+            --skip)
                 RUN_WITH_VERIFY=false
                 echo "Running it wihtout verify the config."
                 shift; continue
@@ -1315,7 +1347,7 @@ elif [[ "$1" == "restart" ]]; then
                 echo "hex-cli will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
-            --no_verify)
+            --skip)
                 RUN_WITH_VERIFY=false
                 echo "Running it wihtout verify the config."
                 shift; continue
@@ -1581,7 +1613,7 @@ elif [[ "$1" == "upgrade" ]]; then
                 echo "Target hex release version : v $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE."
                 shift; continue
                 ;;
-            --no_verify)
+            --skip)
                 RUN_WITH_VERIFY=false
                 echo "Running it wihtout verify the config."
                 shift; continue
@@ -1896,7 +1928,7 @@ elif [[ "$1" == "terminate" ]]; then
                 echo "hex-cli will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
-            --no_verify)
+            --skip)
                 RUN_WITH_VERIFY=false
                 echo "Running it wihtout verify the config."
                 shift; continue
@@ -2065,7 +2097,7 @@ elif [[ "$1" == "web" ]]; then
                 echo "hex-cli will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
-            --no_verify)
+            --skip)
                 RUN_WITH_VERIFY=false
                 echo "Running it wihtout verify the config."
                 shift; continue
@@ -2161,8 +2193,8 @@ elif [[ "$1" == "web" ]]; then
             exit 0;
         fi
 
-        hex web --rebuild --no_verify
-        hex web --stop --no_verify
+        hex web --rebuild --skip
+        hex web --stop --skip
 
         exit 0;
 
@@ -2570,7 +2602,7 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "hex-cli will upgrade your backends (PostgreSQL, Redis, InfluxDB) based on your settings files value."
                 shift; continue
                 ;;
-            --backup_postgresql)
+            --backup)
                 BACKUP_POSTGRESQL=true
                 TOOLBOX_ENABLE=true
                 echo "hex-cli will run PostgreSQL database dump on your initialized exchange folder."
@@ -2624,19 +2656,19 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "hex-cli will proceed to reactivate your exchange with new activate information."
                 shift; continue
                 ;;
-            --issue_ssl_cert)
+            --issue_ssl)
                 ISSUE_SSL_CERT=true
                 TOOLBOX_ENABLE=true
                 echo "hex-cli will proceed to issue SSL certificate by using Let's Encrypt for local exchange."
                 shift; continue
                 ;;
-            --renew_ssl_cert)
+            --renew_ssl)
                 RENEW_SSL_CERT=true
                 TOOLBOX_ENABLE=true
                 echo "hex-cli will proceed to renew SSL certificate by using Let's Encrypt for local exchange."
                 shift; continue
                 ;;
-            --no_verify)
+            --skip)
                 RUN_WITH_VERIFY=false
                 echo "Running it wihtout verify the config."
                 shift; continue
@@ -2848,6 +2880,13 @@ elif [[ "$1" == "toolbox" ]]; then
 
         fi 
 
+        if [[ ! -d $HEX_CLI_INIT_PATH/backups ]]; then
+
+            echo "Creating /backups folder on hex-kit directory"
+            mkdir $HEX_CLI_INIT_PATH/backups
+
+        fi
+
         if [[ "$USE_KUBERNETES" ]] && [[ "$ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
@@ -2877,14 +2916,14 @@ elif [[ "$1" == "toolbox" ]]; then
             export PGDATABASE=$HEX_SECRET_DB_NAME
             export PGHOST=localhost
 
-            pg_dumpall > $HEX_CLI_INIT_PATH/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump
+            pg_dumpall > $HEX_CLI_INIT_PATH/backups/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump
             
             unset PGUSER
             unset PGPASSWORD
             unset PGDATABASE
             unset PGHOST
 
-            echo "Dump data is saved as $HEX_CLI_INIT_PATH/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump"
+            echo "Dump data is saved as $HEX_CLI_INIT_PATH/backups/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump"
 
             echo "Killing the opened proxy tunnel..."
             kill $(ps -ef | grep "kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME" | awk '{print $2}' | head -n 1)
@@ -2916,14 +2955,14 @@ elif [[ "$1" == "toolbox" ]]; then
             export PGPASSWORD=$HEX_SECRET_DB_PASSWORD
             export PGDATABASE=$HEX_SECRET_DB_NAME
             export PGHOST=localhost
-            pg_dumpall > $HEX_CLI_INIT_PATH/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump
+            pg_dumpall > $HEX_CLI_INIT_PATH/backups/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump
             
             unset PGUSER
             unset PGPASSWORD
             unset PGDATABASE
             unset PGHOST
 
-            echo "Dump data is saved as $HEX_CLI_INIT_PATH/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump"
+            echo "Dump data is saved as $HEX_CLI_INIT_PATH/backups/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump"
 
             exit 0;
 
