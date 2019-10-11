@@ -655,7 +655,7 @@ if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose-web.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-web:
-    image: bitholla/hollaex-web:${ENVIRONMENT_EXCHANGE_NAME}
+    image: ${ENVIRONMENT_KUBERNETES_WEB_IMAGE_REGISTRY}:${ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION}
     build:
       context: ${HOLLAEX_CLI_INIT_PATH}/web/
       dockerfile: ${HOLLAEX_CLI_INIT_PATH}/web/docker/Dockerfile
@@ -994,7 +994,7 @@ function check_empty_values_on_settings() {
 
     if [[ -z $PARSED_CONFIGMAP_VARIABLES ]]; then
 
-      echo -e "Info: Configmap - \"$(echo $i | cut -f1 -d '=')\" got an empty value! Please reconfirm the settings files.\n"
+      echo -e "Info: Configmap - \"$(echo $i | cut -f1 -d '=')\" got an empty value! Please reconfirm the settings files."
 
     fi
   
@@ -2408,7 +2408,7 @@ EOF
 
   # Exchange name (API_NAME)
   echo "***************************************************************"
-  echo "[1/21] Exchange name: ($HOLLAEX_CONFIGMAP_API_NAME)"
+  echo "[1/20] Exchange name: ($HOLLAEX_CONFIGMAP_API_NAME)"
   echo "- Alphanumeric only. No space or special character allowed." 
   read answer
 
@@ -2422,7 +2422,7 @@ EOF
 
   # Activation Code
   echo "***************************************************************"
-  echo "[2/21] Activation Code: ($HOLLAEX_SECRET_ACTIVATION_CODE)"
+  echo "[2/20] Activation Code: ($HOLLAEX_SECRET_ACTIVATION_CODE)"
   read answer
 
   local EXCHANGE_ACTIVATION_CODE_OVERRIDE=${answer:-$HOLLAEX_SECRET_ACTIVATION_CODE}
@@ -2433,7 +2433,7 @@ EOF
 
   # Web Domain
   echo "***************************************************************"
-  echo "[3/21] Exchange URL: ($HOLLAEX_CONFIGMAP_DOMAIN)"
+  echo "[3/20] Exchange URL: ($HOLLAEX_CONFIGMAP_DOMAIN)"
   read answer
 
   local ESCAPED_HOLLAEX_CONFIGMAP_DOMAIN=${HOLLAEX_CONFIGMAP_DOMAIN//\//\\/}
@@ -2448,7 +2448,7 @@ EOF
 
   # Light Logo Path
   echo "***************************************************************"
-  echo "[4/21] Exchange Light Logo Path: ($HOLLAEX_CONFIGMAP_LOGO_PATH)"
+  echo "[4/20] Exchange Light Logo Path: ($HOLLAEX_CONFIGMAP_LOGO_PATH)"
   echo "- Image always should be png"
   read answer
 
@@ -2464,7 +2464,7 @@ EOF
 
   # Dark Logo Path
   echo "***************************************************************"
-  echo "[5/21] Exchange Dark Logo Path: ($HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH)"
+  echo "[5/20] Exchange Dark Logo Path: ($HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH)"
   echo "- Image always should be png"
   read answer
 
@@ -2480,7 +2480,7 @@ EOF
 
   # WEB CAPTCHA SITE KEY
   echo "***************************************************************"
-  echo "[6/21] Exchange Web Google reCpatcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
+  echo "[6/20] Exchange Web Google reCpatcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
   read answer
 
   local ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}"
@@ -2491,7 +2491,7 @@ EOF
 
   # Server CAPTCHA Secret key
   echo "***************************************************************"
-  echo "[7/21] Exchange API Server Google reCpatcha Secretkey: ($HOLLAEX_SECRET_CAPTCHA_SECRET_KEY)"
+  echo "[7/20] Exchange API Server Google reCpatcha Secretkey: ($HOLLAEX_SECRET_CAPTCHA_SECRET_KEY)"
   read answer
 
   local HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE="${answer:-$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY}"
@@ -2502,7 +2502,7 @@ EOF
 
   # Web default country
   echo "***************************************************************"
-  echo "[8/21] Default Country: ($ENVIRONMENT_WEB_DEFAULT_COUNTRY)"
+  echo "[8/20] Default Country: ($ENVIRONMENT_WEB_DEFAULT_COUNTRY)"
   read answer
 
   local ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_DEFAULT_COUNTRY}"
@@ -2513,7 +2513,7 @@ EOF
 
   # Emails timezone
   echo "***************************************************************"
-  echo "[9/21] Timezone: ($HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE)"
+  echo "[9/20] Timezone: ($HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE)"
   read answer
 
   local ESCAPED_HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE=${HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE/\//\\/}
@@ -2528,7 +2528,7 @@ EOF
 
   # Valid languages
   echo "***************************************************************"
-  echo "[10/21] Valid Languages: ($HOLLAEX_CONFIGMAP_VALID_LANGUAGES)"
+  echo "[10/20] Valid Languages: ($HOLLAEX_CONFIGMAP_VALID_LANGUAGES)"
   echo "- Separate with comma (,)"
   read answer
 
@@ -2540,7 +2540,7 @@ EOF
 
   # Default language
   echo "***************************************************************"
-  echo "[11/21] Default Language: ($HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE)"
+  echo "[11/20] Default Language: ($HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE)"
   read answer
 
   local HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE="${answer:-$HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE}"
@@ -2551,7 +2551,7 @@ EOF
 
   # Default theme
   echo "***************************************************************"
-  echo "[12/21] Default Theme: ($HOLLAEX_CONFIGMAP_DEFAULT_THEME)"
+  echo "[12/20] Default Theme: ($HOLLAEX_CONFIGMAP_DEFAULT_THEME)"
   echo "- Between light and dark."
   read answer
 
@@ -2563,7 +2563,7 @@ EOF
 
   # API Domain
   echo "***************************************************************"
-  echo "[13/21] Exchange Server API URL: ($HOLLAEX_CONFIGMAP_API_HOST)"
+  echo "[13/20] Exchange Server API URL: ($HOLLAEX_CONFIGMAP_API_HOST)"
   read answer
 
   local ESCAPED_HOLLAEX_CONFIGMAP_API_HOST=${HOLLAEX_CONFIGMAP_API_HOST//\//\\/}
@@ -2578,7 +2578,7 @@ EOF
 
   # User tier number
   echo "***************************************************************"
-  echo "[14/21] Number of User Tiers: ($HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER)"
+  echo "[14/20] Number of User Tiers: ($HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER)"
   read answer
 
   local EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER}
@@ -2589,7 +2589,7 @@ EOF
 
   # Admin Email
   echo "***************************************************************"
-  echo "[15/21] Admin Email: ($HOLLAEX_CONFIGMAP_ADMIN_EMAIL)"
+  echo "[15/20] Admin Email: ($HOLLAEX_CONFIGMAP_ADMIN_EMAIL)"
   read answer
 
   local HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_ADMIN_EMAIL}
@@ -2600,7 +2600,7 @@ EOF
 
   # Admin Password
   echo "***************************************************************"
-  echo "[16/21] Admin Password: ($HOLLAEX_SECRET_ADMIN_PASSWORD)"
+  echo "[16/20] Admin Password: ($HOLLAEX_SECRET_ADMIN_PASSWORD)"
   echo "- Should be longer than 9 characters"
   read answer
 
@@ -2621,31 +2621,9 @@ EOF
   echo "${answer:-$HOLLAEX_SECRET_ADMIN_PASSWORD} ✔"
   echo -e "\n"
 
-  # Supervisor Email
-  echo "***************************************************************"
-  echo "[17/21] Supervisor Email: ($HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL)"
-  read answer
-
-  local HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL}
-
-  echo -e "\n"
-  echo "${answer:-$HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL} ✔"
-  echo -e "\n"
-
-  # KYC email
-  echo "***************************************************************"
-  echo "[18/21] KYC Email: ($HOLLAEX_CONFIGMAP_KYC_EMAIL)"
-  read answer
-
-  local HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_KYC_EMAIL}
-
-  echo -e "\n"
-  echo "${answer:-$HOLLAEX_CONFIGMAP_KYC_EMAIL} ✔"
-  echo -e "\n"
-
   # Support Email
   echo "***************************************************************"
-  echo "[19/21] Support Email: ($HOLLAEX_CONFIGMAP_SUPPORT_EMAIL)"
+  echo "[17/20] Support Email: ($HOLLAEX_CONFIGMAP_SUPPORT_EMAIL)"
   read answer
 
   local HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL}
@@ -2654,20 +2632,72 @@ EOF
   echo "${answer:-$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL} ✔"
   echo -e "\n"
 
-  # Sender Email
+  # Supervisor Email
   echo "***************************************************************"
-  echo "[20/21] Sender Email: ($HOLLAEX_CONFIGMAP_SENDER_EMAIL)"
+  echo "[18/20] Do you want to create a different role for the exchange supervisor agent? (Y/n)"
   read answer
 
-  local HOLLAEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_SENDER_EMAIL}
+  if [[ "$answer" = "${answer#[Nn]}" ]] ;then
 
-  echo -e "\n"
-  echo "${answer:-$HOLLAEX_CONFIGMAP_SENDER_EMAIL} ✔"
-  echo -e "\n"
+    echo "Supervisor Email: ($HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL)"
+    read answer
+
+    local HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL}
+
+    echo -e "\n"
+    echo "${answer:-$HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL} ✔"
+    echo -e "\n"
+    
+  else
+
+    local HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE=
+
+    echo -e "\n"
+    echo "Skipping..."
+    echo -e "\n"
+
+  fi
+
+   # KYC Email
+  echo "***************************************************************"
+  echo "[19/20] Do you want to create a different role for the exchange KYC agent? (Y/n)"
+  read answer
+
+  if [[ "$answer" = "${answer#[Nn]}" ]] ;then
+
+    echo "KYC Email: ($HOLLAEX_CONFIGMAP_KYC_EMAIL)"
+    read answer
+
+    local HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_KYC_EMAIL}
+
+    echo -e "\n"
+    echo "${answer:-$HOLLAEX_CONFIGMAP_KYC_EMAIL} ✔"
+    echo -e "\n"
+    
+  else
+
+    local HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE=
+
+    echo -e "\n"
+    echo "Skipping..."
+    echo -e "\n"
+
+  fi
+
+  # # Sender Email
+  # echo "***************************************************************"
+  # echo "[20/21] Sender Email: ($HOLLAEX_CONFIGMAP_SENDER_EMAIL)"
+  # read answer
+
+  # local HOLLAEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_SENDER_EMAIL}
+
+  # echo -e "\n"
+  # echo "${answer:-$HOLLAEX_CONFIGMAP_SENDER_EMAIL} ✔"
+  # echo -e "\n"
 
   # New user is activated
   echo "***************************************************************"
-  echo "[21/21] Allow New User Signup?: (Y/n)"
+  echo "[20/20] Allow New User Signup?: (Y/n)"
   read answer
 
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
@@ -2710,10 +2740,9 @@ User Tiers: $EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE
 
 Admin Email: $HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE
 Admin Password: $HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE
+Support Email: $HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE
 Supervisor Email: $HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE
 KYC Email: $HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE
-Support Email: $HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE
-Sender Email: $HOLLAEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE
 
 Allow New User Signup: $HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE
 ***************************************************************
@@ -2757,8 +2786,10 @@ EOF
     sed -i.bak "s/HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL=$HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL/HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL=$HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/HOLLAEX_CONFIGMAP_KYC_EMAIL=$HOLLAEX_CONFIGMAP_KYC_EMAIL/HOLLAEX_CONFIGMAP_KYC_EMAIL=$HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/HOLLAEX_CONFIGMAP_SUPPORT_EMAIL=$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL/HOLLAEX_CONFIGMAP_SUPPORT_EMAIL=$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    sed -i.bak "s/HOLLAEX_CONFIGMAP_SENDER_EMAIL=$HOLLAEX_CONFIGMAP_SENDER_EMAIL/HOLLAEX_CONFIGMAP_SENDER_EMAIL=$HOLLAEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_SENDER_EMAIL=$HOLLAEX_CONFIGMAP_SENDER_EMAIL/HOLLAEX_CONFIGMAP_SENDER_EMAIL=$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED=$HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED/HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED=$HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE/" $CONFIGMAP_FILE_PATH
+
+    sed -i.bak "s/ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION=$ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION/ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION=$EXCHANGE_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
     rm $CONFIGMAP_FILE_PATH.bak
     fi
 
