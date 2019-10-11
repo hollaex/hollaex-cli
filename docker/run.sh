@@ -42,11 +42,11 @@ fi
 
 # Run hex command
 if [[ ! -z ${PLUGIN_HOLLAEX} ]]; then
-  hex ${PLUGIN_HOLLAEX}
+  hollaex ${PLUGIN_HOLLAEX}
 fi
 
 if [[ ! -z ${HOLLAEX} ]]; then
-  hex ${HOLLAEX}
+  hollaex ${HOLLAEX}
 fi
 
 

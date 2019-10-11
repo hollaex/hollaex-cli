@@ -1,5 +1,5 @@
 #!/bin/bash 
-SCRIPTPATH=$HOME/.hex-cli
+SCRIPTPATH=$HOME/.hollaex-cli
 
 function local_database_init() {
 
@@ -113,6 +113,9 @@ function kubernetes_database_init() {
     echo "Running InfluxDB migrations"
     kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
 
+    echo "Setting up the exchange with provided activation code"
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/setExchange.js
+
   fi
 
   echo "Restarting all containers to apply latest database changes..."
@@ -146,7 +149,7 @@ function check_kubernetes_dependencies() {
 
     else
 
-         echo "hex-cli failed to detect kubectl or helm installed on this machine. Please install it before running hex-cli."
+         echo -e "\033[91mhollaex-cli failed to detect kubectl or helm installed on this machine. Please install it before running hollaex-cli.\033[39m"
          exit 1;
 
     fi
@@ -156,10 +159,10 @@ function check_kubernetes_dependencies() {
  
 function load_config_variables() {
 
-  HEX_CONFIGMAP_VARIABLES=$(set -o posix ; set | grep "HEX_CONFIGMAP" | cut -c15-)
-  HEX_SECRET_VARIABLES=$(set -o posix ; set | grep "HEX_SECRET" | cut -c12-)
+  HOLLAEX_CONFIGMAP_VARIABLES=$(set -o posix ; set | grep "HOLLAEX_CONFIGMAP" | cut -c19-)
+  HOLLAEX_SECRET_VARIABLES=$(set -o posix ; set | grep "HOLLAEX_SECRET" | cut -c16-)
 
-  HEX_CONFIGMAP_VARIABLES_YAML=$(for value in ${HEX_CONFIGMAP_VARIABLES} 
+  HOLLAEX_CONFIGMAP_VARIABLES_YAML=$(for value in ${HOLLAEX_CONFIGMAP_VARIABLES} 
   do 
       if [[ $value == *"'"* ]]; then
         printf "  ${value//=/: }\n";
@@ -169,13 +172,13 @@ function load_config_variables() {
 
   done)
 
-  HEX_SECRET_VARIABLES_BASE64=$(for value in ${HEX_SECRET_VARIABLES} 
+  HOLLAEX_SECRET_VARIABLES_BASE64=$(for value in ${HOLLAEX_SECRET_VARIABLES} 
   do
       printf "${value//$(cut -d "=" -f 2 <<< "$value")/$(cut -d "=" -f 2 <<< "$value" | tr -d '\n' | tr -d "'" | base64)} ";
   
   done)
 
-  HEX_SECRET_VARIABLES_YAML=$(for value in ${HEX_SECRET_VARIABLES_BASE64} 
+  HOLLAEX_SECRET_VARIABLES_YAML=$(for value in ${HOLLAEX_SECRET_VARIABLES_BASE64} 
   do
 
       printf "  ${value/=/: }\n";
@@ -190,9 +193,9 @@ function generate_local_env() {
 cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local <<EOL
 DB_DIALECT=postgres
 
-$(echo "$HEX_CONFIGMAP_VARIABLES" | tr -d '\'\')
+$(echo "$HOLLAEX_CONFIGMAP_VARIABLES" | tr -d '\'\')
 
-$(echo "$HEX_SECRET_VARIABLES" | tr -d '\'\')
+$(echo "$HOLLAEX_SECRET_VARIABLES" | tr -d '\'\')
 EOL
 
 }
@@ -254,12 +257,12 @@ EOL
 function apply_nginx_user_defined_values(){
           #sed -i.bak "s/$ENVIRONMENT_DOCKER_IMAGE_VERSION/$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
-      local SERVER_DOMAIN=$(echo $HEX_CONFIGMAP_API_HOST | cut -f3 -d "/")
+      local SERVER_DOMAIN=$(echo $HOLLAEX_CONFIGMAP_API_HOST | cut -f3 -d "/")
       sed -i.bak "s/server_name.*\#Server.*/server_name $SERVER_DOMAIN; \#Server domain/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
       rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
 
     if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then 
-      CLIENT_DOMAIN=$(echo $HEX_CONFIGMAP_DOMAIN | cut -f3 -d "/")
+      CLIENT_DOMAIN=$(echo $HOLLAEX_CONFIGMAP_DOMAIN | cut -f3 -d "/")
       sed -i.bak "s/server_name.*\#Client.*/server_name $CLIENT_DOMAIN; \#Client domain/" $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
       rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf.bak
     fi
@@ -307,7 +310,7 @@ metadata:
     $(websocket_upgrade;)
 spec:
   rules:
-  - host: ${HEX_CONFIGMAP_API_HOST}
+  - host: ${HOLLAEX_CONFIGMAP_API_HOST}
     http:
       paths:
       - path: ${CUSTOM_URL}
@@ -318,7 +321,7 @@ spec:
 tls:
   - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
     hosts:
-    - ${HEX_CONFIGMAP_API_HOST}
+    - ${HOLLAEX_CONFIGMAP_API_HOST}
 EOL
 
     fi
@@ -357,9 +360,9 @@ EOL
 
 function generate_local_docker_compose_for_dev() {
 
-echo $HEX_CODEBASE_PATH
+echo $HOLLAEX_CODEBASE_PATH
 # Generate docker-compose
-cat > $HEX_CODEBASE_PATH/.${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+cat > $HOLLAEX_CODEBASE_PATH/.${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
 version: '3'
 services:
   ${ENVIRONMENT_EXCHANGE_NAME}-redis:
@@ -371,16 +374,16 @@ services:
     ports:
       - 6379:6379
     environment:
-      - REDIS_PASSWORD=${HEX_SECRET_REDIS_PASSWORD}
+      - REDIS_PASSWORD=${HOLLAEX_SECRET_REDIS_PASSWORD}
     command : ["sh", "-c", "redis-server --requirepass \$\${REDIS_PASSWORD}"]
   ${ENVIRONMENT_EXCHANGE_NAME}-db:
     image: postgres:10.9
     ports:
       - 5432:5432
     environment:
-      - POSTGRES_DB=$HEX_SECRET_DB_NAME
-      - POSTGRES_USER=$HEX_SECRET_DB_USERNAME
-      - POSTGRES_PASSWORD=$HEX_SECRET_DB_PASSWORD
+      - POSTGRES_DB=$HOLLAEX_SECRET_DB_NAME
+      - POSTGRES_USER=$HOLLAEX_SECRET_DB_USERNAME
+      - POSTGRES_PASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
   ${ENVIRONMENT_EXCHANGE_NAME}-influxdb:
@@ -388,11 +391,11 @@ services:
     ports:
       - 8086:8086
     environment:
-      - INFLUX_DB=$HEX_SECRET_INFLUX_DB
+      - INFLUX_DB=$HOLLAEX_SECRET_INFLUX_DB
       - INFLUX_HOST=${ENVIRONMENT_EXCHANGE_NAME}-influxdb
       - INFLUX_PORT=8086
-      - INFLUX_USER=$HEX_SECRET_INFLUX_USER
-      - INFLUX_PASSWORD=$HEX_SECRET_INFLUX_PASSWORD
+      - INFLUX_USER=$HOLLAEX_SECRET_INFLUX_USER
+      - INFLUX_PASSWORD=$HOLLAEX_SECRET_INFLUX_PASSWORD
       - INFLUXDB_HTTP_LOG_ENABLED=false
       - INFLUXDB_DATA_QUERY_LOG_ENABLED=false
       - INFLUXDB_CONTINUOUS_QUERIES_LOG_ENABLED=false
@@ -406,7 +409,7 @@ services:
     image: ${ENVIRONMENT_EXCHANGE_NAME}-server-pm2
     build:
       context: .
-      dockerfile: ${HEX_CODEBASE_PATH}/tools/Dockerfile.pm2
+      dockerfile: ${HOLLAEX_CODEBASE_PATH}/tools/Dockerfile.pm2
     env_file:
       - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
     entrypoint:
@@ -416,21 +419,21 @@ services:
       - --env
       - development
     volumes:
-      - ${HEX_CODEBASE_PATH}/api:/app/api
-      - ${HEX_CODEBASE_PATH}/config:/app/config
-      - ${HEX_CODEBASE_PATH}/db:/app/db
-      - ${HEX_CODEBASE_PATH}/mail:/app/mail
-      - ${HEX_CODEBASE_PATH}/queue:/app/queue
-      - ${HEX_CODEBASE_PATH}/ws:/app/ws
-      - ${HEX_CODEBASE_PATH}/app.js:/app/app.js
-      - ${HEX_CODEBASE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
-      - ${HEX_CODEBASE_PATH}/constants.js:/app/constants.js
-      - ${HEX_CODEBASE_PATH}/messages.js:/app/messages.js
-      - ${HEX_CODEBASE_PATH}/logs:/app/logs
-      - ${HEX_CODEBASE_PATH}/test:/app/test
-      - ${HEX_CODEBASE_PATH}/tools:/app/tools
-      - ${HEX_CODEBASE_PATH}/utils:/app/utils
-      - ${HEX_CODEBASE_PATH}/init.js:/app/init.js
+      - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
+      - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
+      - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
+      - ${HOLLAEX_CODEBASE_PATH}/mail:/app/mail
+      - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
+      - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
+      - ${HOLLAEX_CODEBASE_PATH}/app.js:/app/app.js
+      - ${HOLLAEX_CODEBASE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
+      - ${HOLLAEX_CODEBASE_PATH}/constants.js:/app/constants.js
+      - ${HOLLAEX_CODEBASE_PATH}/messages.js:/app/messages.js
+      - ${HOLLAEX_CODEBASE_PATH}/logs:/app/logs
+      - ${HOLLAEX_CODEBASE_PATH}/test:/app/test
+      - ${HOLLAEX_CODEBASE_PATH}/tools:/app/tools
+      - ${HOLLAEX_CODEBASE_PATH}/utils:/app/utils
+      - ${HOLLAEX_CODEBASE_PATH}/init.js:/app/init.js
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
       - ${ENVIRONMENT_EXCHANGE_NAME}-redis
@@ -481,7 +484,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]]; then
     ports:
       - 6379:6379
     environment:
-      - REDIS_PASSWORD=${HEX_SECRET_REDIS_PASSWORD}
+      - REDIS_PASSWORD=${HOLLAEX_SECRET_REDIS_PASSWORD}
     command : ["sh", "-c", "redis-server --requirepass \$\${REDIS_PASSWORD}"]
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
@@ -498,9 +501,9 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
     ports:
       - 5432:5432
     environment:
-      - POSTGRES_DB=$HEX_SECRET_DB_NAME
-      - POSTGRES_USER=$HEX_SECRET_DB_USERNAME
-      - POSTGRES_PASSWORD=$HEX_SECRET_DB_PASSWORD
+      - POSTGRES_DB=$HOLLAEX_SECRET_DB_NAME
+      - POSTGRES_USER=$HOLLAEX_SECRET_DB_USERNAME
+      - POSTGRES_PASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
 EOL
@@ -516,11 +519,11 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" == "true" ]]; then
     ports:
       - 8086:8086
     environment:
-      - INFLUX_DB=$HEX_SECRET_INFLUX_DB
+      - INFLUX_DB=$HOLLAEX_SECRET_INFLUX_DB
       - INFLUX_HOST=${ENVIRONMENT_EXCHANGE_NAME}-influxdb
       - INFLUX_PORT=8086
-      - INFLUX_USER=$HEX_SECRET_INFLUX_USER
-      - INFLUX_PASSWORD=$HEX_SECRET_INFLUX_PASSWORD
+      - INFLUX_USER=$HOLLAEX_SECRET_INFLUX_USER
+      - INFLUX_PASSWORD=$HOLLAEX_SECRET_INFLUX_PASSWORD
       - INFLUXDB_HTTP_LOG_ENABLED=false
       - INFLUXDB_DATA_QUERY_LOG_ENABLED=false
       - INFLUXDB_CONTINUOUS_QUERIES_LOG_ENABLED=false
@@ -599,7 +602,7 @@ EOL
 
   if [[ "$i" == "engine" ]]; then
 
-  IFS=',' read -ra PAIRS <<< "$HEX_CONFIGMAP_PAIRS"    #Convert string to array
+  IFS=',' read -ra PAIRS <<< "$HOLLAEX_CONFIGMAP_PAIRS"    #Convert string to array
 
   for j in "${PAIRS[@]}"; do
     TRADE_PARIS_DEPLOYMENT=$(echo $j | cut -f1 -d ",")
@@ -652,15 +655,15 @@ if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose-web.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-web:
-    image: bitholla/hex-web:${ENVIRONMENT_EXCHANGE_NAME}
+    image: ${ENVIRONMENT_KUBERNETES_WEB_IMAGE_REGISTRY}:${ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION}
     build:
-      context: ${HEX_CLI_INIT_PATH}/web/
-      dockerfile: ${HEX_CLI_INIT_PATH}/web/docker/Dockerfile
+      context: ${HOLLAEX_CLI_INIT_PATH}/web/
+      dockerfile: ${HOLLAEX_CLI_INIT_PATH}/web/docker/Dockerfile
     restart: always
     ports:
       - 8080:80
     volumes:
-      - ${HEX_CLI_INIT_PATH}/mail:/app/mail
+      - ${HOLLAEX_CLI_INIT_PATH}/mail:/app/mail
 EOL
 
 fi
@@ -679,7 +682,7 @@ metadata:
   namespace: ${ENVIRONMENT_EXCHANGE_NAME}
 data:
   DB_DIALECT: postgres
-${HEX_CONFIGMAP_VARIABLES_YAML}
+${HOLLAEX_CONFIGMAP_VARIABLES_YAML}
 EOL
 
 }
@@ -695,7 +698,7 @@ metadata:
   namespace: ${ENVIRONMENT_EXCHANGE_NAME}
 type: Opaque
 data:
-${HEX_SECRET_VARIABLES_YAML}
+${HOLLAEX_SECRET_VARIABLES_YAML}
 EOL
 }
 
@@ -719,7 +722,7 @@ metadata:
       limit_req_status 429;
 spec:
   rules:
-  - host: ${HEX_CONFIGMAP_API_HOST}
+  - host: ${HOLLAEX_CONFIGMAP_API_HOST}
     http:
       paths:
       - path: /v1
@@ -730,7 +733,7 @@ spec:
   tls:
   - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
     hosts:
-    - ${HEX_CONFIGMAP_API_HOST}
+    - ${HOLLAEX_CONFIGMAP_API_HOST}
 
 ---
 apiVersion: extensions/v1beta1
@@ -749,7 +752,7 @@ metadata:
       limit_req_status 429;
 spec:
   rules:
-  - host: ${HEX_CONFIGMAP_API_HOST}
+  - host: ${HOLLAEX_CONFIGMAP_API_HOST}
     http:
       paths:
       - path: /v1/order
@@ -760,7 +763,7 @@ spec:
   tls:
   - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
     hosts:
-    - ${HEX_CONFIGMAP_API_HOST}
+    - ${HOLLAEX_CONFIGMAP_API_HOST}
 
 ---
 apiVersion: extensions/v1beta1
@@ -775,7 +778,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-body-size: "2m"
 spec:
   rules:
-  - host: ${HEX_CONFIGMAP_API_HOST}
+  - host: ${HOLLAEX_CONFIGMAP_API_HOST}
     http:
       paths:
       - path: /v1/admin
@@ -786,7 +789,7 @@ spec:
   tls:
   - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
     hosts:
-    - ${HEX_CONFIGMAP_API_HOST}
+    - ${HOLLAEX_CONFIGMAP_API_HOST}
 
 ---
 apiVersion: extensions/v1beta1
@@ -802,7 +805,7 @@ metadata:
     nginx.org/websocket-services: "${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}-server-stream"
 spec:
   rules:
-  - host: ${HEX_CONFIGMAP_API_HOST}
+  - host: ${HOLLAEX_CONFIGMAP_API_HOST}
     http:
       paths:
       - path: /socket.io
@@ -813,12 +816,12 @@ spec:
   tls:
   - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
     hosts:
-    - ${HEX_CONFIGMAP_API_HOST}
+    - ${HOLLAEX_CONFIGMAP_API_HOST}
 EOL
 
 if [[ "$ENVIRONMENT_WEB_ENABLE" ]]; then
 
-local WEB_DOMAIN_FOR_INGRESS=$HEX_CONFIGMAP_DOMAIN
+local WEB_DOMAIN_FOR_INGRESS=$HOLLAEX_CONFIGMAP_DOMAIN
 
   # Generate Kubernetes Secret
 cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress-web.yaml <<EOL
@@ -857,22 +860,22 @@ fi
 
 function generate_random_values() {
 
-  python -c "import os; print os.urandom(16).encode('hex')"
+  python -c "import os; print os.urandom(16).encode('hollaex')"
 
 }
 
 function update_random_values_to_config() {
 
 
-GENERATE_VALUES_LIST=( "HEX_SECRET_SUPERVISOR_PASSWORD" "HEX_SECRET_SUPPORT_PASSWORD" "HEX_SECRET_KYC_PASSWORD" "HEX_SECRET_QUICK_TRADE_SECRET" "HEX_SECRET_SECRET" )
+GENERATE_VALUES_LIST=( "HOLLAEX_SECRET_SUPERVISOR_PASSWORD" "HOLLAEX_SECRET_SUPPORT_PASSWORD" "HOLLAEX_SECRET_KYC_PASSWORD" "HOLLAEX_SECRET_QUICK_TRADE_SECRET" "HOLLAEX_SECRET_SECRET" )
 
 for j in ${CONFIG_FILE_PATH[@]}; do
 
-  if command grep -q "HEX_SECRET" $j > /dev/null ; then
+  if command grep -q "HOLLAEX_SECRET" $j > /dev/null ; then
 
     SECRET_CONFIG_FILE_PATH=$j
 
-    if [[ ! -z "$HEX_SECRET_SECRET" ]] ; then
+    if [[ ! -z "$HOLLAEX_SECRET_SECRET" ]] ; then
   
       echo "Pre-generated secrets are detected on your secert file!"
       echo "Are you sure you want to override them? (y/N)"
@@ -889,7 +892,7 @@ for j in ${CONFIG_FILE_PATH[@]}; do
           #echo $SECRET_CONFIG_FILE_PATH
 
           # Using special form to generate both API_KEYS keys and secret
-          if [[ "$k" == "HEX_SECRET_SECRET" ]]; then
+          if [[ "$k" == "HOLLAEX_SECRET_SECRET" ]]; then
 
             cat >> $SECRET_CONFIG_FILE_PATH <<EOL
 $k=$(generate_random_values):$(generate_random_values)
@@ -907,11 +910,11 @@ EOL
 
         unset k
         unset GENERATE_VALUES_LIST
-        unset HEX_CONFIGMAP_VARIABLES
-        unset HEX_SECRET_VARIABLES
-        unset HEX_SECRET_VARIABLES_BASE64
-        unset HEX_SECRET_VARIABLES_YAML
-        unset HEX_CONFIGMAP_VARIABLES_YAML
+        unset HOLLAEX_CONFIGMAP_VARIABLES
+        unset HOLLAEX_SECRET_VARIABLES
+        unset HOLLAEX_SECRET_VARIABLES_BASE64
+        unset HOLLAEX_SECRET_VARIABLES_YAML
+        unset HOLLAEX_CONFIGMAP_VARIABLES_YAML
 
         for i in ${CONFIG_FILE_PATH[@]}; do
             source $i
@@ -951,7 +954,7 @@ EOL
 
 function helm_dynamic_trading_paris() {
 
-  IFS=',' read -ra PAIRS <<< "$HEX_CONFIGMAP_PAIRS"    #Convert string to array
+  IFS=',' read -ra PAIRS <<< "$HOLLAEX_CONFIGMAP_PAIRS"    #Convert string to array
 
   for i in "${PAIRS[@]}"; do
     TRADE_PARIS_DEPLOYMENT=$(echo $i | cut -f1 -d ",")
@@ -960,7 +963,7 @@ function helm_dynamic_trading_paris() {
     if [[ "$1" == "run" ]]; then
 
       #Running and Upgrading
-      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="engine" --set PAIR="$TRADE_PARIS_DEPLOYMENT" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server
+      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="engine" --set PAIR="$TRADE_PARIS_DEPLOYMENT" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
     elif [[ "$1" == "scaleup" ]]; then
       
@@ -985,13 +988,13 @@ function helm_dynamic_trading_paris() {
 
 function check_empty_values_on_settings() {
 
-  for i in ${HEX_CONFIGMAP_VARIABLES[@]}; do
+  for i in ${HOLLAEX_CONFIGMAP_VARIABLES[@]}; do
 
     PARSED_CONFIGMAP_VARIABLES=$(echo $i | cut -f2 -d '=')
 
     if [[ -z $PARSED_CONFIGMAP_VARIABLES ]]; then
 
-      echo -e "Info: Configmap - \"$(echo $i | cut -f1 -d '=')\" got an empty value! Please reconfirm the settings files.\n"
+      echo -e "\033[94mInfo: Configmap - \"$(echo $i | cut -f1 -d '=')\" got an empty value! Please reconfirm the settings files.\033[39m"
 
     fi
   
@@ -999,13 +1002,13 @@ function check_empty_values_on_settings() {
 
   GENERATE_VALUES_LIST=( "ADMIN_PASSWORD" "SUPERVISOR_PASSWORD" "SUPPORT_PASSWORD" "KYC_PASSWORD" "QUICK_TRADE_SECRET" "SECRET" )
 
-  for i in ${HEX_SECRET_VARIABLES[@]}; do
+  for i in ${HOLLAEX_SECRET_VARIABLES[@]}; do
 
     PARSED_SECRET_VARIABLES=$(echo $i | cut -f2 -d '=')
 
     if [[ -z $PARSED_SECRET_VARIABLES ]]; then
 
-      echo -e "Info: Secret - \"$(echo $i | cut -f1 -d '=')\" got an empty value! Please reconfirm the settings files."
+      echo -e "\033[94mInfo: Secret - \"$(echo $i | cut -f1 -d '=')\" got an empty value! Please reconfirm the settings files.\033[39m"
 
       for k in "${GENERATE_VALUES_LIST[@]}"; do
 
@@ -1013,7 +1016,7 @@ function check_empty_values_on_settings() {
 
           if [[ "$k" == "${GENERATE_VALUES_FILTER}" ]] ; then
 
-              echo -n "\"$k\" is a value should be automatically generated by hex-cli."
+              echo -n "\"$k\" is a value should be automatically generated by hollaex-cli."
               echo -e "\n"
 
           fi
@@ -1180,9 +1183,9 @@ function add_coin_input() {
   echo -e "\n"
 
   # Checking user level setup on settings file is set or not
-  if [[ ! "$HEX_CONFIGMAP_USER_LEVEL_NUMBER" ]]; then
+  if [[ ! "$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER" ]]; then
 
-    echo "Warning: Settings value - HEX_CONFIGMAP_USER_LEVEL_NUMBER is not configured. Please confirm your settings files."
+    echo -e "\033[93mWarning: Settings value - HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER is not configured. Please confirm your settings files.\033[39m"
     exit 1;
 
   fi
@@ -1202,7 +1205,7 @@ function add_coin_input() {
   }
 
   # Asking deposit limit of new coin per level
-  for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
+  for i in $(seq 1 $HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER);
 
     do echo "***************************************************************"
        echo "[9/11] Deposit limit of user level $i: (1)"
@@ -1223,7 +1226,7 @@ function add_coin_input() {
   COIN_DEPOSIT_LIMITS=$(join_array_to_json $(print_deposit_array_side_by_side))
 
   # Asking withdrawal limit of new coin per level
-  for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
+  for i in $(seq 1 $HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER);
 
     do echo "***************************************************************"
        echo "[10/11] Withdrawal limit of user level $i: (1)"
@@ -1342,7 +1345,7 @@ EOL
 
     echo "Adding new coin $COIN_SYMBOL on Kubernetes"
     
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL --namespace $ENVIRONMENT_EXCHANGE_NAME --set job.enable="true" --set job.mode="add_coin" --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/add-coin.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server; then
+    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL --namespace $ENVIRONMENT_EXCHANGE_NAME --set job.enable="true" --set job.mode="add_coin" --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/add-coin.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
 
       echo "Kubernetes Job has been created for adding new coin $COIN_SYMBOL."
 
@@ -1351,7 +1354,7 @@ EOL
 
     else 
 
-      echo "Failed to create Kubernetes Job for adding new coin $COIN_SYMBOL, Please confirm your input values and try again."
+      echo -e "\033[91mFailed to create Kubernetes Job for adding new coin $COIN_SYMBOL, Please confirm your input values and try again.\033[39m"
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
 
       echo "Allowing exchange external connections"
@@ -1366,7 +1369,7 @@ EOL
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
       
       echo "Upgrading exchange with latest settings..."
-      hex upgrade --kube --skip
+      hollaex upgrade --kube --skip
 
       echo "Removing created Kubernetes Job for adding new coin..."
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
@@ -1376,8 +1379,8 @@ EOL
 
       if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
           CONFIGMAP_FILE_PATH=$i
-          HEX_CONFIGMAP_CURRENCIES_OVERRIDE="${HEX_CONFIGMAP_CURRENCIES},${COIN_SYMBOL}"
-          sed -i.bak "s/$HEX_CONFIGMAP_CURRENCIES/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+          HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE="${HOLLAEX_CONFIGMAP_CURRENCIES},${COIN_SYMBOL}"
+          sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
           rm $CONFIGMAP_FILE_PATH.bak
       fi
 
@@ -1388,7 +1391,7 @@ EOL
 
     else
 
-      echo "Failed to remove existing coin $COIN_SYMBOL! Please try again.***"
+      echo -e "\033[91mFailed to remove existing coin $COIN_SYMBOL! Please try again.\033[39m"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
@@ -1435,15 +1438,15 @@ EOL
 
         if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
             CONFIGMAP_FILE_PATH=$i
-            HEX_CONFIGMAP_CURRENCIES_OVERRIDE="${HEX_CONFIGMAP_CURRENCIES},${COIN_SYMBOL}"
-            sed -i.bak "s/$HEX_CONFIGMAP_CURRENCIES/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+            HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE="${HOLLAEX_CONFIGMAP_CURRENCIES},${COIN_SYMBOL}"
+            sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
             rm $CONFIGMAP_FILE_PATH.bak
         fi
 
         done
 
-        export HEX_CONFIGMAP_CURRENCIES=$HEX_CONFIGMAP_CURRENCIES_OVERRIDE
-        echo "Current Currencies: ${HEX_CONFIGMAP_CURRENCIES}"
+        export HOLLAEX_CONFIGMAP_CURRENCIES=$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE
+        echo "Current Currencies: ${HOLLAEX_CONFIGMAP_CURRENCIES}"
 
         load_config_variables;
         generate_local_env;
@@ -1452,8 +1455,8 @@ EOL
 
           # Restarting containers after database init jobs.
           echo "Restarting containers to apply database changes."
-          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
           
 
         else
@@ -1468,14 +1471,14 @@ EOL
 
       else
 
-        echo "Failed to add new coin $COIN_SYMBOL on local exchange. Please confirm your input values and try again."
+        echo -e "\033[91mFailed to add new coin $COIN_SYMBOL on local exchange. Please confirm your input values and try again.\033[39m"
 
         if  [[ "$IS_DEVELOP" ]]; then
 
           # Restarting containers after database init jobs.
           echo "Restarting containers to apply database changes."
-          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
         else
 
@@ -1549,9 +1552,9 @@ function remove_coin_exec() {
                 --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" \
                 --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml \
-                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml \
-                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server; then
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
 
       echo "Kubernetes Job has been created for removing existing coin $COIN_SYMBOL."
 
@@ -1560,7 +1563,7 @@ function remove_coin_exec() {
 
     else 
 
-      echo "Failed to create Kubernetes Job for removing existing coin $COIN_SYMBOL, Please confirm your input values and try again."
+      echo -e "\033[91mFailed to create Kubernetes Job for removing existing coin $COIN_SYMBOL, Please confirm your input values and try again.\033[39m"
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
 
       echo "Allowing exchange external connections"
@@ -1586,12 +1589,12 @@ function remove_coin_exec() {
 
       if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
           CONFIGMAP_FILE_PATH=$i
-          if [[ "$COIN_SYMBOL" == "hex" ]]; then
-            HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_CURRENCIES//$COIN_SYMBOL,}")
+          if [[ "$COIN_SYMBOL" == "hollaex" ]]; then
+            HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HOLLAEX_CONFIGMAP_CURRENCIES//$COIN_SYMBOL,}")
           else
-            HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_CURRENCIES//,$COIN_SYMBOL}")
+            HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HOLLAEX_CONFIGMAP_CURRENCIES//,$COIN_SYMBOL}")
           fi
-          sed -i.bak "s/$HEX_CONFIGMAP_CURRENCIES/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+          sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
           rm $CONFIGMAP_FILE_PATH.bak
       fi
 
@@ -1602,7 +1605,7 @@ function remove_coin_exec() {
 
     else
 
-      echo "Failed to remove existing coin $COIN_SYMBOL! Please try again.***"
+      echo -e "\033[91mFailed to remove existing coin $COIN_SYMBOL! Please try again.\033[39m"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
@@ -1640,21 +1643,21 @@ function remove_coin_exec() {
 
       if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
           CONFIGMAP_FILE_PATH=$i
-          IFS="," read -ra CURRENCIES_TO_ARRAY <<< "${HEX_CONFIGMAP_CURRENCIES}"
+          IFS="," read -ra CURRENCIES_TO_ARRAY <<< "${HOLLAEX_CONFIGMAP_CURRENCIES}"
           local REVOME_SELECTED_CURRENCY=${CURRENCIES_TO_ARRAY[@]/$COIN_SYMBOL}
           local CURRENCIES_ARRAY_TO_STRING=$(echo ${REVOME_SELECTED_CURRENCY[@]} | tr -d ' ') 
           local CURRENCIES_STRING_TO_COMMNA_SEPARATED=${CURRENCIES_ARRAY_TO_STRING// /,}
 
-          sed -i.bak "s/$HEX_CONFIGMAP_CURRENCIES/$CURRENCIES_STRING_TO_COMMNA_SEPARATED/" $CONFIGMAP_FILE_PATH
+          sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$CURRENCIES_STRING_TO_COMMNA_SEPARATED/" $CONFIGMAP_FILE_PATH
 
-          export HEX_CONFIGMAP_CURRENCIES=$CURRENCIES_STRING_TO_COMMNA_SEPARATED
+          export HOLLAEX_CONFIGMAP_CURRENCIES=$CURRENCIES_STRING_TO_COMMNA_SEPARATED
 
           rm $CONFIGMAP_FILE_PATH.bak
       fi
 
       done
       
-      echo "Current Currencies: ${HEX_CONFIGMAP_CURRENCIES}"
+      echo "Current Currencies: ${HOLLAEX_CONFIGMAP_CURRENCIES}"
 
       #Regenerating env based on changes of PAIRs
       load_config_variables;
@@ -1664,8 +1667,8 @@ function remove_coin_exec() {
 
         # Restarting containers after database init jobs.
         echo "Restarting containers to apply database changes."
-        docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-        docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+        docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+        docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
 
       else
@@ -1679,15 +1682,15 @@ function remove_coin_exec() {
 
       else
 
-        echo "Failed to remove coin $COIN_SYMBOL on local exchange. Please confirm your input values and try again."
+        echo -e "\033[91mFailed to remove coin $COIN_SYMBOL on local exchange. Please confirm your input values and try again.\033[39m"
         exit 1;
 
         if  [[ "$IS_DEVELOP" ]]; then
 
           # Restarting containers after database init jobs.
           echo "Restarting containers to apply database changes."
-          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
         else
 
@@ -1719,9 +1722,9 @@ function add_pair_input() {
   echo -e "\n"
 
   # Checking user level setup on settings file is set or not
-  if [[ ! "$HEX_CONFIGMAP_USER_LEVEL_NUMBER" ]]; then
+  if [[ ! "$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER" ]]; then
 
-    echo "Warning: Settings value - HEX_CONFIGMAP_USER_LEVEL_NUMBER is not configured. Please confirm your settings files."
+    echo -e "\033[93mWarning: Settings value - HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER is not configured. Please confirm your settings files.\033[39m"
     exit 1;
 
   fi
@@ -1741,7 +1744,7 @@ function add_pair_input() {
   }
 
   # Asking deposit limit of new coin per level
-  for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
+  for i in $(seq 1 $HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER);
 
     do echo "***************************************************************"
        echo "[2/10] Taker fee of user level $i? (0.2)"
@@ -1763,7 +1766,7 @@ function add_pair_input() {
   TAKER_FEES=$(join_array_to_json $(print_taker_fees_array_side_by_side))
 
   # Asking withdrawal limit of new coin per level
-  for i in $(seq 1 $HEX_CONFIGMAP_USER_LEVEL_NUMBER);
+  for i in $(seq 1 $HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER);
     do echo "***************************************************************"
        echo "[3/10] Maker fee of user level $i? (0.2)"
        echo "- As Percentage %, Number only."
@@ -1953,10 +1956,10 @@ EOL
                 --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" \
                 --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml \
-                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/add-pair.yaml \
-                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server; then
+                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
 
       echo "Kubernetes Job has been created for adding new pair $PAIR_NAME."
 
@@ -1965,7 +1968,7 @@ EOL
 
     else 
 
-      echo "Failed to create Kubernetes Job for adding new pair $PAIR_NAME, Please confirm your input values and try again."
+      echo -e "\033[91mFailed to create Kubernetes Job for adding new pair $PAIR_NAME, Please confirm your input values and try again.\033[39m"
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
 
       echo "Allowing exchange external connections"
@@ -1985,8 +1988,8 @@ EOL
 
       if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
           CONFIGMAP_FILE_PATH=$i
-          HEX_CONFIGMAP_PAIRS_OVERRIDE="${HEX_CONFIGMAP_PAIRS},${PAIR_NAME}"
-          sed -i.bak "s/$HEX_CONFIGMAP_PAIRS/$HEX_CONFIGMAP_PAIRS_OVERRIDE/" $CONFIGMAP_FILE_PATH
+          HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE="${HOLLAEX_CONFIGMAP_PAIRS},${PAIR_NAME}"
+          sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE/" $CONFIGMAP_FILE_PATH
           rm $CONFIGMAP_FILE_PATH.bak
       fi
 
@@ -2001,14 +2004,14 @@ EOL
       load_config_variables;
       
       echo "Upgrading exchange with latest settings..."
-      hex upgrade --kube --skip
+      hollaex upgrade --kube --skip
 
       echo "Removing created Kubernetes Job for adding new coin..."
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
 
     else
 
-      echo "Failed to add new pair $PAIR_NAME! Please try again.***"
+      echo -e "\033[91mFailed to add new pair $PAIR_NAME! Please try again.\033[39m"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
@@ -2056,15 +2059,15 @@ EOL
 
           if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
               CONFIGMAP_FILE_PATH=$i
-              HEX_CONFIGMAP_PAIRS_OVERRIDE="${HEX_CONFIGMAP_PAIRS},${PAIR_NAME}"
-              sed -i.bak "s/$HEX_CONFIGMAP_PAIRS/$HEX_CONFIGMAP_PAIRS_OVERRIDE/" $CONFIGMAP_FILE_PATH
-              export HEX_CONFIGMAP_PAIRS="$HEX_CONFIGMAP_PAIRS_OVERRIDE"
+              HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE="${HOLLAEX_CONFIGMAP_PAIRS},${PAIR_NAME}"
+              sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE/" $CONFIGMAP_FILE_PATH
+              export HOLLAEX_CONFIGMAP_PAIRS="$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE"
               rm $CONFIGMAP_FILE_PATH.bak
           fi
 
           done
 
-          echo "Current Trading Pairs: ${HEX_CONFIGMAP_PAIRS}"
+          echo "Current Trading Pairs: ${HOLLAEX_CONFIGMAP_PAIRS}"
           #Regenerating env based on changes of PAIRs
           load_config_variables;
           generate_local_env;
@@ -2074,8 +2077,8 @@ EOL
 
             # Restarting containers after database init jobs.
             echo "Restarting containers to apply database changes."
-            docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-            docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+            docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+            docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
           else
 
@@ -2088,13 +2091,13 @@ EOL
 
       else
 
-        echo "Failed to add new pair $PAIR_NAME on local exchange. Please confirm your input values and try again."
+        echo -e "\033[91mFailed to add new pair $PAIR_NAME on local exchange. Please confirm your input values and try again.\033[39m"
 
         if  [[ "$IS_DEVELOP" ]]; then
 
           # Restarting containers after database init jobs.
           echo "Restarting containers to apply database changes."
-          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
 
         else
 
@@ -2167,9 +2170,9 @@ function remove_pair_exec() {
                 --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" \
                 --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml \
-                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml \
-                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server; then
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
 
       echo "*** Kubernetes Job has been created for removing existing pair $PAIR_NAME. ***"
 
@@ -2178,7 +2181,7 @@ function remove_pair_exec() {
 
     else 
 
-      echo "*** Failed to create Kubernetes Job for removing existing pair $PAIR_NAME, Please confirm your input values and try again. ***"
+      echo -e "\033[91mFailed to create Kubernetes Job for removing existing pair $PAIR_NAME, Please confirm your input values and try again.\033[39m"
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
 
       echo "Allowing exchange external connections"
@@ -2210,12 +2213,12 @@ function remove_pair_exec() {
 
       if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
           CONFIGMAP_FILE_PATH=$i
-          if [[ "$PAIR_NAME" == "hex-usdt" ]]; then
-              HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_PAIRS//$PAIR_NAME,}")
+          if [[ "$PAIR_NAME" == "hollaex-usdt" ]]; then
+              HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HOLLAEX_CONFIGMAP_PAIRS//$PAIR_NAME,}")
             else
-              HEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HEX_CONFIGMAP_PAIRS//,$PAIR_NAME}")
+              HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HOLLAEX_CONFIGMAP_PAIRS//,$PAIR_NAME}")
           fi
-          sed -i.bak "s/$HEX_CONFIGMAP_PAIRS/$HEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+          sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
           rm $CONFIGMAP_FILE_PATH.bak
       fi
 
@@ -2226,7 +2229,7 @@ function remove_pair_exec() {
 
     else
 
-      echo "*** Failed to remove existing pair $PAIR_NAME! Please try again.***"
+      echo -e "\033[91mFailed to remove existing pair $PAIR_NAME! Please try again.\033[39m"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
@@ -2259,24 +2262,24 @@ function remove_pair_exec() {
         echo "*** Updating settings file to remove existing $PAIR_NAME. ***"
         for i in ${CONFIG_FILE_PATH[@]}; do
 
-        if command grep -q "HEX_CONFIGMAP_PAIRS" $i > /dev/null ; then
+        if command grep -q "HOLLAEX_CONFIGMAP_PAIRS" $i > /dev/null ; then
             CONFIGMAP_FILE_PATH=$i
 
-            IFS="," read -ra PAIRS_TO_ARRAY <<< "${HEX_CONFIGMAP_PAIRS}"
+            IFS="," read -ra PAIRS_TO_ARRAY <<< "${HOLLAEX_CONFIGMAP_PAIRS}"
             local REVOME_SELECTED_PAIR=${PAIRS_TO_ARRAY[@]/$PAIR_NAME}
             local PAIRS_ARRAY_TO_STRING=$(echo ${REVOME_SELECTED_PAIR[@]} | tr -d ' ') 
             local PAIRS_STRING_TO_COMMNA_SEPARATED=${PAIRS_ARRAY_TO_STRING// /,}
 
-            sed -i.bak "s/$HEX_CONFIGMAP_PAIRS/$PAIRS_STRING_TO_COMMNA_SEPARATED/" $CONFIGMAP_FILE_PATH
+            sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$PAIRS_STRING_TO_COMMNA_SEPARATED/" $CONFIGMAP_FILE_PATH
 
-            export HEX_CONFIGMAP_PAIRS=$PAIRS_STRING_TO_COMMNA_SEPARATED
+            export HOLLAEX_CONFIGMAP_PAIRS=$PAIRS_STRING_TO_COMMNA_SEPARATED
 
             rm $CONFIGMAP_FILE_PATH.bak
         fi
 
         done
 
-        echo "Current Trading Pairs: ${HEX_CONFIGMAP_PAIRS}"
+        echo "Current Trading Pairs: ${HOLLAEX_CONFIGMAP_PAIRS}"
         #Regenerating env based on changes of PAIRs
         load_config_variables;
         generate_local_env;
@@ -2287,8 +2290,8 @@ function remove_pair_exec() {
 
           # Restarting containers after database init jobs.
           echo "Restarting containers to apply database changes."
-          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
+          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
 
         else
 
@@ -2301,13 +2304,13 @@ function remove_pair_exec() {
 
       else
 
-        echo "Failed to remove trading pair $PAIR_NAME on local exchange. Please confirm your input values and try again."
+        echo -e "\033[91mFailed to remove trading pair $PAIR_NAME on local exchange. Please confirm your input values and try again.\033[39m"
 
         if  [[ "$IS_DEVELOP" ]]; then
 
           # Restarting containers after database init jobs.
           echo "Restarting containers to apply database changes."
-          docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
 
         else
 
@@ -2325,16 +2328,16 @@ function remove_pair_exec() {
 
 }
 
-function generate_hex_web_local_env() {
+function generate_hollaex_web_local_env() {
 
-cat > $HEX_CLI_INIT_PATH/web/.env <<EOL
+cat > $HOLLAEX_CLI_INIT_PATH/web/.env <<EOL
 
 NODE_ENV=production
 
-PUBLIC_URL=${HEX_CONFIGMAP_DOMAIN}
-REACT_APP_PUBLIC_URL=${HEX_CONFIGMAP_DOMAIN}
-REACT_APP_SERVER_ENDPOINT=${HEX_CONFIGMAP_API_HOST}
-REACT_APP_NETWORK=${HEX_CONFIGMAP_NETWORK}
+PUBLIC_URL=${HOLLAEX_CONFIGMAP_DOMAIN}
+REACT_APP_PUBLIC_URL=${HOLLAEX_CONFIGMAP_DOMAIN}
+REACT_APP_SERVER_ENDPOINT=${HOLLAEX_CONFIGMAP_API_HOST}
+REACT_APP_NETWORK=${HOLLAEX_CONFIGMAP_NETWORK}
 
 REACT_APP_EXCHANGE_NAME=${ENVIRONMENT_EXCHANGE_NAME}
 
@@ -2348,12 +2351,12 @@ REACT_APP_BASE_CURRENCY=${ENVIRONMENT_WEB_BASE_CURRENCY}
 EOL
 }
 
-function generate_hex_web_local_nginx_conf() {
+function generate_hollaex_web_local_nginx_conf() {
 
 cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf <<EOL
 server {
     listen 80;
-    server_name hex.exchange; #Client domain
+    server_name hollaex.exchange; #Client domain
     access_log   /var/log/nginx/web.access.log;
         
     location / {
@@ -2366,7 +2369,7 @@ EOL
 }
 
 
-function generate_hex_web_configmap() {
+function generate_hollaex_web_configmap() {
 
 cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-web-configmap.yaml <<EOL
 apiVersion: v1
@@ -2375,11 +2378,11 @@ metadata:
   name: ${ENVIRONMENT_EXCHANGE_NAME}-web-env
   namespace: ${ENVIRONMENT_EXCHANGE_NAME}
 data:
-  PUBLIC_URL: ${HEX_CONFIGMAP_DOMAIN}
-  REACT_APP_PUBLIC_URL: https://${HEX_CONFIGMAP_API_HOST}
-  REACT_APP_SERVER_ENDPOINT: https://${HEX_CONFIGMAP_API_HOST}
+  PUBLIC_URL: ${HOLLAEX_CONFIGMAP_DOMAIN}
+  REACT_APP_PUBLIC_URL: https://${HOLLAEX_CONFIGMAP_API_HOST}
+  REACT_APP_SERVER_ENDPOINT: https://${HOLLAEX_CONFIGMAP_API_HOST}
 
-  REACT_APP_NETWORK: ${HEX_CONFIGMAP_NETWORK}
+  REACT_APP_NETWORK: ${HOLLAEX_CONFIGMAP_NETWORK}
 
   REACT_APP_CAPTCHA_SITE_KEY: ${ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}
 
@@ -2398,86 +2401,87 @@ function launch_basic_settings_input() {
   
 Please fill up the interaction form to launch your own exchange.
 
-If you don't have activation code for HEX Core yet, We also provide trial license.
-Please visit dash.bitholla.com to see more details.
+If you don't have activation code for HOLLAEX Core yet, We also provide trial license.
+Please visit https://dash.bitholla.com to see more details.
 
 EOF
 
   # Exchange name (API_NAME)
   echo "***************************************************************"
-  echo "[1/21] Exchange name: ($HEX_CONFIGMAP_API_NAME)"
-  echo "- Alphanumeric only. No space or special character allowed." 
+  echo "[1/20] Exchange name: ($HOLLAEX_CONFIGMAP_API_NAME)"
+  echo -e "\033[2m- Alphanumeric only. No space or special character allowed.\033[22m" 
   read answer
 
   local PARSE_CHARACTERS_FOR_API_NAME=$(echo $answer | tr -dc '[:alnum:]' | tr -d ' ')
-  local EXCHANGE_API_NAME_OVERRIDE=${PARSE_CHARACTERS_FOR_API_NAME:-$HEX_CONFIGMAP_API_NAME}
+  local EXCHANGE_API_NAME_OVERRIDE=${PARSE_CHARACTERS_FOR_API_NAME:-$HOLLAEX_CONFIGMAP_API_NAME}
   local EXCHANGE_NAME_OVERRIDE=$(echo $EXCHANGE_API_NAME_OVERRIDE | tr '[:upper:]' '[:lower:]')
 
   echo -e "\n"
-  echo "${answer:-$HEX_CONFIGMAP_API_NAME} ✔"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_API_NAME} ✔"
   echo -e "\n"
 
   # Activation Code
   echo "***************************************************************"
-  echo "[2/21] Activation Code: ($HEX_SECRET_ACTIVATION_CODE)"
+  echo "[2/20] Activation Code: ($HOLLAEX_SECRET_ACTIVATION_CODE)"
+  echo -e "\033[2m- Go to https://dash.bitholla.com to issue your activation code.\033[22m" 
   read answer
 
-  local EXCHANGE_ACTIVATION_CODE_OVERRIDE=${answer:-$HEX_SECRET_ACTIVATION_CODE}
+  local EXCHANGE_ACTIVATION_CODE_OVERRIDE=${answer:-$HOLLAEX_SECRET_ACTIVATION_CODE}
 
   echo -e "\n"
-  echo "${answer:-$HEX_SECRET_ACTIVATION_CODE} ✔"
+  echo "${answer:-$HOLLAEX_SECRET_ACTIVATION_CODE} ✔"
   echo -e "\n"
 
   # Web Domain
   echo "***************************************************************"
-  echo "[3/21] Exchange URL: ($HEX_CONFIGMAP_DOMAIN)"
+  echo "[3/20] Exchange URL: ($HOLLAEX_CONFIGMAP_DOMAIN)"
   read answer
 
-  local ESCAPED_HEX_CONFIGMAP_DOMAIN=${HEX_CONFIGMAP_DOMAIN//\//\\/}
+  local ESCAPED_HOLLAEX_CONFIGMAP_DOMAIN=${HOLLAEX_CONFIGMAP_DOMAIN//\//\\/}
 
-  local ORIGINAL_CHARACTER_FOR_HEX_CONFIGMAP_DOMAIN="${answer:-$HEX_CONFIGMAP_DOMAIN}"
-  local PARSE_CHARACTER_FOR_HEX_CONFIGMAP_DOMAIN=${ORIGINAL_CHARACTER_FOR_HEX_CONFIGMAP_DOMAIN//\//\\/}
-  local EXCHANGE_WEB_DOMAIN_OVERRIDE="$PARSE_CHARACTER_FOR_HEX_CONFIGMAP_DOMAIN"
+  local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN="${answer:-$HOLLAEX_CONFIGMAP_DOMAIN}"
+  local PARSE_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN=${ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN//\//\\/}
+  local EXCHANGE_WEB_DOMAIN_OVERRIDE="$PARSE_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN"
   
   echo -e "\n"
-  echo "${answer:-$HEX_CONFIGMAP_DOMAIN} ✔"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_DOMAIN} ✔"
   echo -e "\n"
 
   # Light Logo Path
   echo "***************************************************************"
-  echo "[4/21] Exchange Light Logo Path: ($HEX_CONFIGMAP_LOGO_PATH)"
-  echo "- Image always should be png"
+  echo "[4/20] Exchange Light Logo Path: ($HOLLAEX_CONFIGMAP_LOGO_PATH)"
+  echo -e "\033[2m- Image always should be png\033[22m"
   read answer
 
-  local ESCAPED_HEX_CONFIGMAP_LOGO_PATH=${HEX_CONFIGMAP_LOGO_PATH//\//\\/}
+  local ESCAPED_HOLLAEX_CONFIGMAP_LOGO_PATH=${HOLLAEX_CONFIGMAP_LOGO_PATH//\//\\/}
 
-  local ORIGINAL_CHARACTER_FOR_LOGO_PATH="${answer:-$HEX_CONFIGMAP_LOGO_PATH}"
+  local ORIGINAL_CHARACTER_FOR_LOGO_PATH="${answer:-$HOLLAEX_CONFIGMAP_LOGO_PATH}"
   local PARSE_CHARACTER_FOR_LOGO_PATH=${ORIGINAL_CHARACTER_FOR_LOGO_PATH//\//\\/}
-  local HEX_CONFIGMAP_LOGO_PATH_OVERRIDE="$PARSE_CHARACTER_FOR_LOGO_PATH"
+  local HOLLAEX_CONFIGMAP_LOGO_PATH_OVERRIDE="$PARSE_CHARACTER_FOR_LOGO_PATH"
 
   echo -e "\n"
-  echo "${answer:-$HEX_CONFIGMAP_LOGO_PATH} ✔"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_LOGO_PATH} ✔"
   echo -e "\n"
 
   # Dark Logo Path
   echo "***************************************************************"
-  echo "[5/21] Exchange Dark Logo Path: ($HEX_CONFIGMAP_LOGO_BLACK_PATH)"
-  echo "- Image always should be png"
+  echo "[5/20] Exchange Dark Logo Path: ($HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH)"
+  echo -e "\033[2m- Image always should be png\033[22m"
   read answer
 
-  local ESCAPED_HEX_CONFIGMAP_LOGO_BLACK_PATH=${HEX_CONFIGMAP_LOGO_BLACK_PATH//\//\\/}}
+  local ESCAPED_HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH=${HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH//\//\\/}}
 
-  local ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH="${answer:-$HEX_CONFIGMAP_LOGO_BLACK_PATH}"
+  local ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH="${answer:-$HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH}"
   local PARSE_CHARACTER_FOR_LOGO_BLACK_PATH=${ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH//\//\\/}
-  local HEX_CONFIGMAP_LOGO_BLACK_PATH_OVERRIDE="$PARSE_CHARACTER_FOR_LOGO_BLAKC_PATH"
+  local HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH_OVERRIDE="$PARSE_CHARACTER_FOR_LOGO_BLAKC_PATH"
 
   echo -e "\n"
-  echo "${answer:-$HEX_CONFIGMAP_LOGO_BLACK_PATH} ✔"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH} ✔"
   echo -e "\n"
 
   # WEB CAPTCHA SITE KEY
   echo "***************************************************************"
-  echo "[6/21] Exchange Web Google reCpatcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
+  echo "[6/20] Exchange Web Google reCpatcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
   read answer
 
   local ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}"
@@ -2488,18 +2492,18 @@ EOF
 
   # Server CAPTCHA Secret key
   echo "***************************************************************"
-  echo "[7/21] Exchange API Server Google reCpatcha Secretkey: ($HEX_SECRET_CAPTCHA_SECRET_KEY)"
+  echo "[7/20] Exchange API Server Google reCpatcha Secretkey: ($HOLLAEX_SECRET_CAPTCHA_SECRET_KEY)"
   read answer
 
-  local HEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE="${answer:-$HEX_SECRET_CAPTCHA_SECRET_KEY}"
+  local HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE="${answer:-$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY}"
 
   echo -e "\n"
-  echo "${answer:-$HEX_SECRET_CAPTCHA_SECRET_KEY} ✔"
+  echo "${answer:-$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY} ✔"
   echo -e "\n"
 
   # Web default country
   echo "***************************************************************"
-  echo "[8/21] Default Country: ($ENVIRONMENT_WEB_DEFAULT_COUNTRY)"
+  echo "[8/20] Default Country: ($ENVIRONMENT_WEB_DEFAULT_COUNTRY)"
   read answer
 
   local ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_DEFAULT_COUNTRY}"
@@ -2510,175 +2514,205 @@ EOF
 
   # Emails timezone
   echo "***************************************************************"
-  echo "[9/21] Timezone: ($HEX_CONFIGMAP_EMAILS_TIMEZONE)"
+  echo "[9/20] Timezone: ($HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE)"
   read answer
 
-  local ESCAPED_HEX_CONFIGMAP_EMAILS_TIMEZONE=${HEX_CONFIGMAP_EMAILS_TIMEZONE/\//\\/}
+  local ESCAPED_HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE=${HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE/\//\\/}
 
-  local ORIGINAL_CHARACTER_FOR_TIMEZONE="${answer:-$HEX_CONFIGMAP_EMAILS_TIMEZONE}"
+  local ORIGINAL_CHARACTER_FOR_TIMEZONE="${answer:-$HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE}"
   local PARSE_CHARACTER_FOR_TIMEZONE=${ORIGINAL_CHARACTER_FOR_TIMEZONE/\//\\/}
-  local HEX_CONFIGMAP_EMAILS_TIMEZONE_OVERRIDE="$PARSE_CHARACTER_FOR_TIMEZONE"
+  local HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE_OVERRIDE="$PARSE_CHARACTER_FOR_TIMEZONE"
 
   echo -e "\n"
-  echo "${answer:-$HEX_CONFIGMAP_EMAILS_TIMEZONE} ✔"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE} ✔"
   echo -e "\n"
 
   # Valid languages
   echo "***************************************************************"
-  echo "[10/21] Valid Languages: ($HEX_CONFIGMAP_VALID_LANGUAGES)"
-  echo "- Separate with comma (,)"
+  echo "[10/20] Valid Languages: ($HOLLAEX_CONFIGMAP_VALID_LANGUAGES)"
+  echo -e "\033[2m- Separate with comma (,)\033[22m"
   read answer
 
-  local HEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE="${answer:-$HEX_CONFIGMAP_VALID_LANGUAGES}"
+  local HOLLAEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE="${answer:-$HOLLAEX_CONFIGMAP_VALID_LANGUAGES}"
 
   echo -e "\n"
-  echo "${answer:-$HEX_CONFIGMAP_VALID_LANGUAGES} ✔"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_VALID_LANGUAGES} ✔"
   echo -e "\n"
 
   # Default language
   echo "***************************************************************"
-  echo "[11/21] Default Language: ($HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE)"
+  echo "[11/20] Default Language: ($HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE)"
   read answer
 
-  local HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE="${answer:-$HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE}"
+  local HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE="${answer:-$HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE}"
 
   echo -e "\n"
-  echo "${answer:-$HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE} ✔"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE} ✔"
   echo -e "\n"
 
   # Default theme
   echo "***************************************************************"
-  echo "[12/21] Default Theme: ($HEX_CONFIGMAP_DEFAULT_THEME)"
-  echo "- Between light and dark."
+  echo "[12/20] Default Theme: ($HOLLAEX_CONFIGMAP_DEFAULT_THEME)"
+  echo -e "\033[2m- Between light and dark.\033[22m"
   read answer
 
-  local HEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE="${answer:-$HEX_CONFIGMAP_DEFAULT_THEME}"
+  local HOLLAEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE="${answer:-$HOLLAEX_CONFIGMAP_DEFAULT_THEME}"
 
   echo -e "\n"
-  echo "${answer:-$HEX_CONFIGMAP_DEFAULT_THEME} ✔"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_DEFAULT_THEME} ✔"
   echo -e "\n"
 
   # API Domain
   echo "***************************************************************"
-  echo "[13/21] Exchange Server API URL: ($HEX_CONFIGMAP_API_HOST)"
+  echo "[13/20] Exchange Server API URL: ($HOLLAEX_CONFIGMAP_API_HOST)"
   read answer
 
-  local ESCAPED_HEX_CONFIGMAP_API_HOST=${HEX_CONFIGMAP_API_HOST//\//\\/}
+  local ESCAPED_HOLLAEX_CONFIGMAP_API_HOST=${HOLLAEX_CONFIGMAP_API_HOST//\//\\/}
 
-  local ORIGINAL_CHARACTER_FOR_HEX_CONFIGMAP_API_HOST="${answer:-$HEX_CONFIGMAP_API_HOST}"
-  local PARSE_CHARACTER_FOR_HEX_CONFIGMAP_API_HOST=${ORIGINAL_CHARACTER_FOR_HEX_CONFIGMAP_API_HOST//\//\\/}
-  local EXCHANGE_SERVER_DOMAIN_OVERRIDE="$PARSE_CHARACTER_FOR_HEX_CONFIGMAP_API_HOST"
+  local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST="${answer:-$HOLLAEX_CONFIGMAP_API_HOST}"
+  local PARSE_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST=${ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST//\//\\/}
+  local EXCHANGE_SERVER_DOMAIN_OVERRIDE="$PARSE_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST"
 
   echo -e "\n"
-  echo "${answer:-$HEX_CONFIGMAP_API_HOST} ✔"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_API_HOST} ✔"
   echo -e "\n"
 
   # User tier number
   echo "***************************************************************"
-  echo "[14/21] Number of User Tiers: ($HEX_CONFIGMAP_USER_LEVEL_NUMBER)"
+  echo "[14/20] Number of User Tiers: ($HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER)"
   read answer
 
-  local EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE=${answer:-$HEX_CONFIGMAP_USER_LEVEL_NUMBER}
+  local EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER}
 
   echo -e "\n"
-  echo "${answer:-$HEX_CONFIGMAP_USER_LEVEL_NUMBER} ✔"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER} ✔"
   echo -e "\n"
 
   # Admin Email
   echo "***************************************************************"
-  echo "[15/21] Admin Email: ($HEX_CONFIGMAP_ADMIN_EMAIL)"
+  echo "[15/20] Admin Email: ($HOLLAEX_CONFIGMAP_ADMIN_EMAIL)"
   read answer
 
-  local HEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE=${answer:-$HEX_CONFIGMAP_ADMIN_EMAIL}
+  local HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_ADMIN_EMAIL}
 
   echo -e "\n"
-  echo "${answer:-$HEX_CONFIGMAP_ADMIN_EMAIL} ✔"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_ADMIN_EMAIL} ✔"
   echo -e "\n"
 
   # Admin Password
   echo "***************************************************************"
-  echo "[16/21] Admin Password: ($HEX_SECRET_ADMIN_PASSWORD)"
-  echo "- Should be longer than 9 characters"
+  echo "[16/20] Admin Password: ($HOLLAEX_SECRET_ADMIN_PASSWORD)"
+  echo -e "\033[2m- Should be longer than 9 characters\033[22m"
   read answer
 
-  local HEX_SECRET_ADMIN_PASSWORD_OVERRIDE=${answer:-$HEX_SECRET_ADMIN_PASSWORD}
+  local HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE=${answer:-$HOLLAEX_SECRET_ADMIN_PASSWORD}
 
   while true;
-    do if [[ "${#HEX_SECRET_ADMIN_PASSWORD_OVERRIDE}" -lt 9 ]]; then
+    do if [[ "${#HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE}" -lt 9 ]]; then
       echo "Your password is too short. Make sure to input at least 9 characters."
       echo "New Admin Password: "
       read answer
-      local HEX_SECRET_ADMIN_PASSWORD_OVERRIDE=${answer}
+      local HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE=${answer}
     else
       break;
     fi
   done
 
   echo -e "\n"
-  echo "${answer:-$HEX_SECRET_ADMIN_PASSWORD} ✔"
-  echo -e "\n"
-
-  # Supervisor Email
-  echo "***************************************************************"
-  echo "[17/21] Supervisor Email: ($HEX_CONFIGMAP_SUPERVISOR_EMAIL)"
-  read answer
-
-  local HEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE=${answer:-$HEX_CONFIGMAP_SUPERVISOR_EMAIL}
-
-  echo -e "\n"
-  echo "${answer:-$HEX_CONFIGMAP_SUPERVISOR_EMAIL} ✔"
-  echo -e "\n"
-
-  # KYC email
-  echo "***************************************************************"
-  echo "[18/21] KYC Email: ($HEX_CONFIGMAP_KYC_EMAIL)"
-  read answer
-
-  local HEX_CONFIGMAP_KYC_EMAIL_OVERRIDE=${answer:-$HEX_CONFIGMAP_KYC_EMAIL}
-
-  echo -e "\n"
-  echo "${answer:-$HEX_CONFIGMAP_KYC_EMAIL} ✔"
+  echo "${answer:-$HOLLAEX_SECRET_ADMIN_PASSWORD} ✔"
   echo -e "\n"
 
   # Support Email
   echo "***************************************************************"
-  echo "[19/21] Support Email: ($HEX_CONFIGMAP_SUPPORT_EMAIL)"
+  echo "[17/20] Support Email: ($HOLLAEX_CONFIGMAP_SUPPORT_EMAIL)"
   read answer
 
-  local HEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE=${answer:-$HEX_CONFIGMAP_SUPPORT_EMAIL}
+  local HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL}
 
   echo -e "\n"
-  echo "${answer:-$HEX_CONFIGMAP_SUPPORT_EMAIL} ✔"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL} ✔"
   echo -e "\n"
 
-  # Sender Email
+  # Supervisor Email
   echo "***************************************************************"
-  echo "[20/21] Sender Email: ($HEX_CONFIGMAP_SENDER_EMAIL)"
+  echo "[18/20] Do you want to create a different role for the exchange supervisor agent? (Y/n)"
   read answer
 
-  local HEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE=${answer:-$HEX_CONFIGMAP_SENDER_EMAIL}
+  if [[ "$answer" = "${answer#[Nn]}" ]] ;then
 
-  echo -e "\n"
-  echo "${answer:-$HEX_CONFIGMAP_SENDER_EMAIL} ✔"
-  echo -e "\n"
+    echo "Supervisor Email: ($HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL)"
+    read answer
+
+    local HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL}
+
+    echo -e "\n"
+    echo "${answer:-$HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL} ✔"
+    echo -e "\n"
+    
+  else
+
+    local HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE=
+
+    echo -e "\n"
+    echo "Skipping..."
+    echo -e "\n"
+
+  fi
+
+   # KYC Email
+  echo "***************************************************************"
+  echo "[19/20] Do you want to create a different role for the exchange KYC agent? (Y/n)"
+  read answer
+
+  if [[ "$answer" = "${answer#[Nn]}" ]] ;then
+
+    echo "KYC Email: ($HOLLAEX_CONFIGMAP_KYC_EMAIL)"
+    read answer
+
+    local HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_KYC_EMAIL}
+
+    echo -e "\n"
+    echo "${answer:-$HOLLAEX_CONFIGMAP_KYC_EMAIL} ✔"
+    echo -e "\n"
+    
+  else
+
+    local HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE=
+
+    echo -e "\n"
+    echo "Skipping..."
+    echo -e "\n"
+
+  fi
+
+  # # Sender Email
+  # echo "***************************************************************"
+  # echo "[20/21] Sender Email: ($HOLLAEX_CONFIGMAP_SENDER_EMAIL)"
+  # read answer
+
+  # local HOLLAEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_SENDER_EMAIL}
+
+  # echo -e "\n"
+  # echo "${answer:-$HOLLAEX_CONFIGMAP_SENDER_EMAIL} ✔"
+  # echo -e "\n"
 
   # New user is activated
   echo "***************************************************************"
-  echo "[21/21] Allow New User Signup?: (Y/n)"
+  echo "[20/20] Allow New User Signup?: (Y/n)"
   read answer
 
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
       
-    HEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE=false
+    HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE=false
   
   else
 
-    HEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE=true
+    HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE=true
 
   fi
 
   echo -e "\n"
-  echo "${answer:-$HEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE} ✔"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE} ✔"
   echo -e "\n"
 
   /bin/cat << EOF
@@ -2687,32 +2721,31 @@ EOF
 Exchange Name: $EXCHANGE_API_NAME_OVERRIDE
 Activation Code: $EXCHANGE_ACTIVATION_CODE_OVERRIDE
 
-Exchange URL: $ORIGINAL_CHARACTER_FOR_HEX_CONFIGMAP_DOMAIN
+Exchange URL: $ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN
 
 Light Logo Path: $ORIGINAL_CHARACTER_FOR_LOGO_PATH
 Dark Logo Path: $ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH
 
 Web Captcha Sitekey: $ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE
-Server Captcha Secretkey: $HEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE
+Server Captcha Secretkey: $HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE
 
 Default Country: $ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE
 Timezone: $ORIGINAL_CHARACTER_FOR_TIMEZONE
-Valid Languages: $HEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE
-Default Language: $HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE
-Default Theme: $HEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE
+Valid Languages: $HOLLAEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE
+Default Language: $HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE
+Default Theme: $HOLLAEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE
 
-Exchange API URL: $ORIGINAL_CHARACTER_FOR_HEX_CONFIGMAP_API_HOST
+Exchange API URL: $ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST
 
 User Tiers: $EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE
 
-Admin Email: $HEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE
-Admin Password: $HEX_SECRET_ADMIN_PASSWORD_OVERRIDE
-Supervisor Email: $HEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE
-KYC Email: $HEX_CONFIGMAP_KYC_EMAIL_OVERRIDE
-Support Email: $HEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE
-Sender Email: $HEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE
+Admin Email: $HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE
+Admin Password: $HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE
+Support Email: $HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE
+Supervisor Email: $HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE
+KYC Email: $HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE
 
-Allow New User Signup: $HEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE
+Allow New User Signup: $HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE
 ***************************************************************
 
 EOF
@@ -2735,69 +2768,71 @@ EOF
     if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
     CONFIGMAP_FILE_PATH=$i
     sed -i.bak "s/ENVIRONMENT_EXCHANGE_NAME=$ENVIRONMENT_EXCHANGE_NAME/ENVIRONMENT_EXCHANGE_NAME=$EXCHANGE_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    sed -i.bak "s/HEX_CONFIGMAP_API_NAME=$HEX_CONFIGMAP_API_NAME/HEX_CONFIGMAP_API_NAME=$EXCHANGE_API_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    sed -i.bak "s/HEX_CONFIGMAP_DOMAIN=.*/HEX_CONFIGMAP_DOMAIN=$EXCHANGE_WEB_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=$HOLLAEX_CONFIGMAP_API_NAME/HOLLAEX_CONFIGMAP_API_NAME=$EXCHANGE_API_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_DOMAIN=.*/HOLLAEX_CONFIGMAP_DOMAIN=$EXCHANGE_WEB_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
-    sed -i.bak "s/ESCAPED_HEX_CONFIGMAP_LOGO_PATH=.*/ESCAPED_HEX_CONFIGMAP_LOGO_PATH=$HEX_CONFIGMAP_LOGO_PATH_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    sed -i.bak "s/ESCAPED_HEX_CONFIGMAP_LOGO_BLACK_PATH=.*/ESCAPED_HEX_CONFIGMAP_LOGO_BLACK_PATH=$HEX_CONFIGMAP_LOGO_BLACK_PATH_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/ESCAPED_HOLLAEX_CONFIGMAP_LOGO_PATH=.*/ESCAPED_HOLLAEX_CONFIGMAP_LOGO_PATH=$HOLLAEX_CONFIGMAP_LOGO_PATH_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/ESCAPED_HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH=.*/ESCAPED_HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH=$HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY/ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    sed -i.bak "s/HEX_CONFIGMAP_EMAILS_TIMEZONE=.*/HEX_CONFIGMAP_EMAILS_TIMEZONE=$HEX_CONFIGMAP_EMAILS_TIMEZONE_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    sed -i.bak "s/HEX_CONFIGMAP_VALID_LANGUAGES=$HEX_CONFIGMAP_VALID_LANGUAGES/HEX_CONFIGMAP_VALID_LANGUAGES=$HEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    sed -i.bak "s/ENVIRONMENT_WEB_DEFAULT_LANGUAGE=$ENVIRONMENT_WEB_DEFAULT_LANGUAGE/ENVIRONMENT_WEB_DEFAULT_LANGUAGE=$HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    sed -i.bak "s/HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE=$HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE/HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE=$HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    sed -i.bak "s/HEX_CONFIGMAP_DEFAULT_THEME=$HEX_CONFIGMAP_DEFAULT_THEME/HEX_CONFIGMAP_DEFAULT_THEME=$HEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE=.*/HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE=$HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_VALID_LANGUAGES=$HOLLAEX_CONFIGMAP_VALID_LANGUAGES/HOLLAEX_CONFIGMAP_VALID_LANGUAGES=$HOLLAEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/ENVIRONMENT_WEB_DEFAULT_LANGUAGE=$ENVIRONMENT_WEB_DEFAULT_LANGUAGE/ENVIRONMENT_WEB_DEFAULT_LANGUAGE=$HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE=$HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE/HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE=$HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_DEFAULT_THEME=$HOLLAEX_CONFIGMAP_DEFAULT_THEME/HOLLAEX_CONFIGMAP_DEFAULT_THEME=$HOLLAEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
-    sed -i.bak "s/HEX_CONFIGMAP_API_HOST=.*/HEX_CONFIGMAP_API_HOST=$EXCHANGE_SERVER_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    sed -i.bak "s/HEX_CONFIGMAP_USER_LEVEL_NUMBER=$HEX_CONFIGMAP_USER_LEVEL_NUMBER/HEX_CONFIGMAP_USER_LEVEL_NUMBER=$EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    sed -i.bak "s/HEX_CONFIGMAP_ADMIN_EMAIL=$HEX_CONFIGMAP_ADMIN_EMAIL/HEX_CONFIGMAP_ADMIN_EMAIL=$HEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    sed -i.bak "s/HEX_CONFIGMAP_SUPERVISOR_EMAIL=$HEX_CONFIGMAP_SUPERVISOR_EMAIL/HEX_CONFIGMAP_SUPERVISOR_EMAIL=$HEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    sed -i.bak "s/HEX_CONFIGMAP_KYC_EMAIL=$HEX_CONFIGMAP_KYC_EMAIL/HEX_CONFIGMAP_KYC_EMAIL=$HEX_CONFIGMAP_KYC_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    sed -i.bak "s/HEX_CONFIGMAP_SUPPORT_EMAIL=$HEX_CONFIGMAP_SUPPORT_EMAIL/HEX_CONFIGMAP_SUPPORT_EMAIL=$HEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    sed -i.bak "s/HEX_CONFIGMAP_SENDER_EMAIL=$HEX_CONFIGMAP_SENDER_EMAIL/HEX_CONFIGMAP_SENDER_EMAIL=$HEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    sed -i.bak "s/HEX_CONFIGMAP_NEW_USER_IS_ACTIVATED=$HEX_CONFIGMAP_NEW_USER_IS_ACTIVATED/HEX_CONFIGMAP_NEW_USER_IS_ACTIVATED=$HEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_API_HOST=.*/HOLLAEX_CONFIGMAP_API_HOST=$EXCHANGE_SERVER_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER=$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER/HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER=$EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_ADMIN_EMAIL=$HOLLAEX_CONFIGMAP_ADMIN_EMAIL/HOLLAEX_CONFIGMAP_ADMIN_EMAIL=$HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL=$HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL/HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL=$HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_KYC_EMAIL=$HOLLAEX_CONFIGMAP_KYC_EMAIL/HOLLAEX_CONFIGMAP_KYC_EMAIL=$HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_SUPPORT_EMAIL=$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL/HOLLAEX_CONFIGMAP_SUPPORT_EMAIL=$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_SENDER_EMAIL=$HOLLAEX_CONFIGMAP_SENDER_EMAIL/HOLLAEX_CONFIGMAP_SENDER_EMAIL=$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED=$HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED/HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED=$HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE/" $CONFIGMAP_FILE_PATH
+
+    sed -i.bak "s/ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION=$ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION/ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION=$EXCHANGE_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
     rm $CONFIGMAP_FILE_PATH.bak
     fi
 
     # Update activation code
-    if command grep -q "HEX_SECRET_ACTIVATION_CODE" $i > /dev/null ; then
+    if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE" $i > /dev/null ; then
     SECRET_FILE_PATH=$i
-    sed -i.bak "s/HEX_SECRET_ACTIVATION_CODE=$HEX_SECRET_ACTIVATION_CODE/HEX_SECRET_ACTIVATION_CODE=$EXCHANGE_ACTIVATION_CODE_OVERRIDE/" $SECRET_FILE_PATH
-    sed -i.bak "s/HEX_SECRET_CAPTCHA_SECRET_KEY=$HEX_SECRET_CAPTCHA_SECRET_KEY/HEX_SECRET_CAPTCHA_SECRET_KEY=$HEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE/" $SECRET_FILE_PATH
-    sed -i.bak "s/HEX_SECRET_ADMIN_PASSWORD=$HEX_SECRET_ADMIN_PASSWORD/HEX_SECRET_ADMIN_PASSWORD=$HEX_SECRET_ADMIN_PASSWORD_OVERRIDE/" $SECRET_FILE_PATH
+    sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=$HOLLAEX_SECRET_ACTIVATION_CODE/HOLLAEX_SECRET_ACTIVATION_CODE=$EXCHANGE_ACTIVATION_CODE_OVERRIDE/" $SECRET_FILE_PATH
+    sed -i.bak "s/HOLLAEX_SECRET_CAPTCHA_SECRET_KEY=$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY/HOLLAEX_SECRET_CAPTCHA_SECRET_KEY=$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE/" $SECRET_FILE_PATH
+    sed -i.bak "s/HOLLAEX_SECRET_ADMIN_PASSWORD=$HOLLAEX_SECRET_ADMIN_PASSWORD/HOLLAEX_SECRET_ADMIN_PASSWORD=$HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE/" $SECRET_FILE_PATH
     rm $SECRET_FILE_PATH.bak
     fi
       
   done
 
   export ENVIRONMENT_EXCHANGE_NAME=$EXCHANGE_NAME_OVERRIDE
-  export HEX_CONFIGMAP_API_NAME=$EXCHANGE_API_NAME_OVERRIDE
-  export HEX_SECRET_ACTIVATION_CODE=$EXCHANGE_ACTIVATION_CODE_OVERRIDE
+  export HOLLAEX_CONFIGMAP_API_NAME=$EXCHANGE_API_NAME_OVERRIDE
+  export HOLLAEX_SECRET_ACTIVATION_CODE=$EXCHANGE_ACTIVATION_CODE_OVERRIDE
 
-  export HEX_CONFIGMAP_DOMAIN=$ORIGINAL_CHARACTER_FOR_HEX_CONFIGMAP_DOMAIN
+  export HOLLAEX_CONFIGMAP_DOMAIN=$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN
 
-  export HEX_CONFIGMAP_LOGO_PATH="$HEX_CONFIGMAP_LOGO_PATH_OVERRIDE"
-  export HEX_CONFIGMAP_LOGO_BLACK_PATH="$HEX_CONFIGMAP_LOGO_BLACK_PATH_OVERRIDE"
+  export HOLLAEX_CONFIGMAP_LOGO_PATH="$HOLLAEX_CONFIGMAP_LOGO_PATH_OVERRIDE"
+  export HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH="$HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH_OVERRIDE"
 
   export ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE
-  export HEX_SECRET_CAPTCHA_SECRET_KEY=$HEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE
+  export HOLLAEX_SECRET_CAPTCHA_SECRET_KEY=$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE
 
   export ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE
-  export HEX_CONFIGMAP_EMAILS_TIMEZONE=$ORIGINAL_CHARACTER_FOR_TIMEZONE
-  export HEX_CONFIGMAP_VALID_LANGUAGES=$HEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE
-  export HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE=$HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE
-  export ENVIRONMENT_WEB_DEFAULT_LANGUAGE=$HEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE
-  export HEX_CONFIGMAP_DEFAULT_THEME=$HEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE
+  export HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE=$ORIGINAL_CHARACTER_FOR_TIMEZONE
+  export HOLLAEX_CONFIGMAP_VALID_LANGUAGES=$HOLLAEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE
+  export HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE=$HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE
+  export ENVIRONMENT_WEB_DEFAULT_LANGUAGE=$HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE
+  export HOLLAEX_CONFIGMAP_DEFAULT_THEME=$HOLLAEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE
 
-  export HEX_CONFIGMAP_API_HOST=$ORIGINAL_CHARACTER_FOR_HEX_CONFIGMAP_API_HOST
-  export HEX_CONFIGMAP_USER_LEVEL_NUMBER=$EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE
+  export HOLLAEX_CONFIGMAP_API_HOST=$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST
+  export HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER=$EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE
 
-  export HEX_CONFIGMAP_ADMIN_EMAIL=$HEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE
-  export HEX_SECRET_ADMIN_PASSWORD=$HEX_SECRET_ADMIN_PASSWORD_OVERRIDE
-  export HEX_CONFIGMAP_SUPERVISOR_EMAIL=$HEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE
-  export HEX_CONFIGMAP_KYC_EMAIL=$HEX_CONFIGMAP_KYC_EMAIL_OVERRIDE
-  export HEX_CONFIGMAP_SUPPORT_EMAIL=$HEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE
-  export HEX_CONFIGMAP_SENDER_EMAIL=$HEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE
+  export HOLLAEX_CONFIGMAP_ADMIN_EMAIL=$HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE
+  export HOLLAEX_SECRET_ADMIN_PASSWORD=$HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE
+  export HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL=$HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE
+  export HOLLAEX_CONFIGMAP_KYC_EMAIL=$HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE
+  export HOLLAEX_CONFIGMAP_SUPPORT_EMAIL=$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE
+  export HOLLAEX_CONFIGMAP_SENDER_EMAIL=$HOLLAEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE
 
 }
 
@@ -2807,26 +2842,26 @@ function basic_settings_for_web_client_input() {
   
 Please fill up the interaction form to setup your Web Client.
 
-Make sure to you already setup HEX exchange first before setup the web client.
-Web client relies on HEX exchange to function.
+Make sure to you already setup HOLLAEX exchange first before setup the web client.
+Web client relies on HOLLAEX exchange to function.
 
 Please visit docs.bitholla.com to see the details or need any help.
 
 EOF
   # Web Domain
   echo "***************************************************************"
-  echo "[1/4] Exchange URL: ($HEX_CONFIGMAP_DOMAIN)"
+  echo "[1/4] Exchange URL: ($HOLLAEX_CONFIGMAP_DOMAIN)"
   echo -e "\n"
   read answer
 
-  local ESCAPED_HEX_CONFIGMAP_DOMAIN=${HEX_CONFIGMAP_DOMAIN//\//\\/}
+  local ESCAPED_HOLLAEX_CONFIGMAP_DOMAIN=${HOLLAEX_CONFIGMAP_DOMAIN//\//\\/}
 
-  local ORIGINAL_CHARACTER_FOR_HEX_CONFIGMAP_DOMAIN="${answer:-$HEX_CONFIGMAP_DOMAIN}"
-  local PARSE_CHARACTER_FOR_HEX_CONFIGMAP_DOMAIN=${ORIGINAL_CHARACTER_FOR_HEX_CONFIGMAP_DOMAIN//\//\\/}
-  local EXCHANGE_WEB_DOMAIN_OVERRIDE="$PARSE_CHARACTER_FOR_HEX_CONFIGMAP_DOMAIN"
+  local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN="${answer:-$HOLLAEX_CONFIGMAP_DOMAIN}"
+  local PARSE_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN=${ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN//\//\\/}
+  local EXCHANGE_WEB_DOMAIN_OVERRIDE="$PARSE_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN"
 
   echo -e "\n"
-  echo "${answer:-$HEX_CONFIGMAP_DOMAIN} ✔"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_DOMAIN} ✔"
   echo -e "\n"
 
   # WEB CAPTCHA SITE KEY
@@ -2874,7 +2909,7 @@ EOF
   /bin/cat << EOF
   
 *********************************************
-Exchange URL: $ORIGINAL_CHARACTER_FOR_HEX_CONFIGMAP_DOMAIN
+Exchange URL: $ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN
 
 Web Captcha Sitekey: $ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE
 
@@ -2904,7 +2939,7 @@ EOF
     # Update exchange name
     if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
     CONFIGMAP_FILE_PATH=$i
-    sed -i.bak "s/HEX_CONFIGMAP_DOMAIN=.*/HEX_CONFIGMAP_DOMAIN=$EXCHANGE_WEB_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_DOMAIN=.*/HOLLAEX_CONFIGMAP_DOMAIN=$EXCHANGE_WEB_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY/ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/ENVIRONMENT_WEB_DEFAULT_LANGUAGE=$ENVIRONMENT_WEB_DEFAULT_LANGUAGE/ENVIRONMENT_WEB_DEFAULT_LANGUAGE=$ENVIRONMENT_WEB_DEFAULT_LANGUAGE_OVERRIDE/" $CONFIGMAP_FILE_PATH
@@ -2914,7 +2949,7 @@ EOF
       
   done
 
-  export HEX_CONFIGMAP_DOMAIN=$ORIGINAL_CHARACTER_FOR_HEX_CONFIGMAP_DOMAIN
+  export HOLLAEX_CONFIGMAP_DOMAIN=$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN
 
   export ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE
   
@@ -2990,10 +3025,10 @@ EOL
                 --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" \
                 --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hex.yaml \
-                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server/values.yaml \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/reactivate-exchange.yaml \
-                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hex-server; then
+                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
 
     echo "Kubernetes Job has been created for reactivating your exchange."
 
@@ -3003,7 +3038,7 @@ EOL
 
   else 
 
-    echo "Failed to create Kubernetes Job for reactivating your exchange, Please confirm your input values and try again."
+    echo -e "\033[91mFailed to create Kubernetes Job for reactivating your exchange, Please confirm your input values and try again.\033[39m"
     helm del --purge $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
   
   fi
@@ -3023,7 +3058,7 @@ EOL
   
   else 
 
-    echo "Failed to create Kubernetes Job for reactivating your exchange, Please confirm your input values and try again."
+    echo -e "\033[91mFailed to create Kubernetes Job for reactivating your exchange, Please confirm your input values and try again.\033[39m"
     helm del --purge $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
   
   fi
@@ -3052,8 +3087,8 @@ elif [[ ! "$USE_KUBERNETES" ]]; then
 
       # Restarting containers after database init jobs.
       echo "Restarting containers to apply database changes."
-      docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-      docker-compose -f $HEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+      docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+      docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
     else
 
@@ -3068,7 +3103,7 @@ elif [[ ! "$USE_KUBERNETES" ]]; then
   
   else 
 
-    echo "Failed to reactivate the exchange. Please review your configurations and try again."
+    echo -e "\033[91mFailed to reactivate the exchange. Please review your configurations and try again.\033[39m"
     exit 1;
 
   fi

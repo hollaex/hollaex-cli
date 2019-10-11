@@ -2,16 +2,9 @@
 
 REPLACE_EXISTING_TO_LATEST=false
 
-echo "#### hex-cli Uninstaller ####"
+echo "#### HollaEx CLI Uninstaller ####"
 
-echo "Are you sure you want to uninstall hex-cli from your computer? (y/n)"
-
-read answer
-
-if [ "$answer" != "${answer#[Nn]}" ] ;then
-    echo "*** Exiting... ***"
-    exit 0;
-fi
+echo "Uninstalling HollaEx CLI..."
 
 # Remove old hollaex-cli related files together If it's left on system.
 if [[ -d "$HOME/.hollaex-cli" ]]; then
@@ -19,8 +12,8 @@ if [[ -d "$HOME/.hollaex-cli" ]]; then
     sudo rm -r $HOME/.hollaex-cli
 fi
 
-sudo rm /usr/local/bin/hex
-sudo rm -r $HOME/.hex-cli
+sudo rm /usr/local/bin/hollaex
+sudo rm -r $HOME/.hollaex-cli
 
-echo "Jobs all done!"
-echo "If you want to reinstall hex-cli later, Please visit https://github.com/bitholla/hex-cli for further information."
+echo "HollaEx CLI has been successfully removed from your computer."
+echo "If you want to reinstall HollaEx CLI, Please visit https://github.com/bitholla/hollaex-cli for further information."

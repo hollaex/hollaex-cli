@@ -43,7 +43,7 @@ pipeline:
     #image: bitholla/devops-tools:drone_docker-1086846
     image: plugins/docker
     secrets: [ docker_username, docker_password ]
-    repo: bitholla/hex-cli
+    repo: bitholla/hollaex-cli
     dockerfile: docker/Dockerfile
     when:
       branch: [ master ] 
