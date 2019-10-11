@@ -149,7 +149,7 @@ function check_kubernetes_dependencies() {
 
     else
 
-         echo "hollaex-cli failed to detect kubectl or helm installed on this machine. Please install it before running hollaex-cli."
+         echo -e "\033[91mhollaex-cli failed to detect kubectl or helm installed on this machine. Please install it before running hollaex-cli.\033[39m"
          exit 1;
 
     fi
@@ -994,7 +994,7 @@ function check_empty_values_on_settings() {
 
     if [[ -z $PARSED_CONFIGMAP_VARIABLES ]]; then
 
-      echo -e "Info: Configmap - \"$(echo $i | cut -f1 -d '=')\" got an empty value! Please reconfirm the settings files."
+      echo -e "\033[94mInfo: Configmap - \"$(echo $i | cut -f1 -d '=')\" got an empty value! Please reconfirm the settings files.\033[39m"
 
     fi
   
@@ -1008,7 +1008,7 @@ function check_empty_values_on_settings() {
 
     if [[ -z $PARSED_SECRET_VARIABLES ]]; then
 
-      echo -e "Info: Secret - \"$(echo $i | cut -f1 -d '=')\" got an empty value! Please reconfirm the settings files."
+      echo -e "\033[94mInfo: Secret - \"$(echo $i | cut -f1 -d '=')\" got an empty value! Please reconfirm the settings files.\033[39m"
 
       for k in "${GENERATE_VALUES_LIST[@]}"; do
 
@@ -1185,7 +1185,7 @@ function add_coin_input() {
   # Checking user level setup on settings file is set or not
   if [[ ! "$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER" ]]; then
 
-    echo "Warning: Settings value - HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER is not configured. Please confirm your settings files."
+    echo -e "\033[93mWarning: Settings value - HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER is not configured. Please confirm your settings files.\033[39m"
     exit 1;
 
   fi
@@ -1354,7 +1354,7 @@ EOL
 
     else 
 
-      echo "Failed to create Kubernetes Job for adding new coin $COIN_SYMBOL, Please confirm your input values and try again."
+      echo -e "\033[91mFailed to create Kubernetes Job for adding new coin $COIN_SYMBOL, Please confirm your input values and try again.\033[39m"
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
 
       echo "Allowing exchange external connections"
@@ -1391,7 +1391,7 @@ EOL
 
     else
 
-      echo "Failed to remove existing coin $COIN_SYMBOL! Please try again.***"
+      echo -e "\033[91mFailed to remove existing coin $COIN_SYMBOL! Please try again.\033[39m"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
@@ -1471,7 +1471,7 @@ EOL
 
       else
 
-        echo "Failed to add new coin $COIN_SYMBOL on local exchange. Please confirm your input values and try again."
+        echo -e "\033[91mFailed to add new coin $COIN_SYMBOL on local exchange. Please confirm your input values and try again.\033[39m"
 
         if  [[ "$IS_DEVELOP" ]]; then
 
@@ -1563,7 +1563,7 @@ function remove_coin_exec() {
 
     else 
 
-      echo "Failed to create Kubernetes Job for removing existing coin $COIN_SYMBOL, Please confirm your input values and try again."
+      echo -e "\033[91mFailed to create Kubernetes Job for removing existing coin $COIN_SYMBOL, Please confirm your input values and try again.\033[39m"
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
 
       echo "Allowing exchange external connections"
@@ -1605,7 +1605,7 @@ function remove_coin_exec() {
 
     else
 
-      echo "Failed to remove existing coin $COIN_SYMBOL! Please try again.***"
+      echo -e "\033[91mFailed to remove existing coin $COIN_SYMBOL! Please try again.\033[39m"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
@@ -1682,7 +1682,7 @@ function remove_coin_exec() {
 
       else
 
-        echo "Failed to remove coin $COIN_SYMBOL on local exchange. Please confirm your input values and try again."
+        echo -e "\033[91mFailed to remove coin $COIN_SYMBOL on local exchange. Please confirm your input values and try again.\033[39m"
         exit 1;
 
         if  [[ "$IS_DEVELOP" ]]; then
@@ -1724,7 +1724,7 @@ function add_pair_input() {
   # Checking user level setup on settings file is set or not
   if [[ ! "$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER" ]]; then
 
-    echo "Warning: Settings value - HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER is not configured. Please confirm your settings files."
+    echo -e "\033[93mWarning: Settings value - HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER is not configured. Please confirm your settings files.\033[39m"
     exit 1;
 
   fi
@@ -1968,7 +1968,7 @@ EOL
 
     else 
 
-      echo "Failed to create Kubernetes Job for adding new pair $PAIR_NAME, Please confirm your input values and try again."
+      echo -e "\033[91mFailed to create Kubernetes Job for adding new pair $PAIR_NAME, Please confirm your input values and try again.\033[39m"
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
 
       echo "Allowing exchange external connections"
@@ -2011,7 +2011,7 @@ EOL
 
     else
 
-      echo "Failed to add new pair $PAIR_NAME! Please try again.***"
+      echo -e "\033[91mFailed to add new pair $PAIR_NAME! Please try again.\033[39m"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
@@ -2091,7 +2091,7 @@ EOL
 
       else
 
-        echo "Failed to add new pair $PAIR_NAME on local exchange. Please confirm your input values and try again."
+        echo -e "\033[91mFailed to add new pair $PAIR_NAME on local exchange. Please confirm your input values and try again.\033[39m"
 
         if  [[ "$IS_DEVELOP" ]]; then
 
@@ -2181,7 +2181,7 @@ function remove_pair_exec() {
 
     else 
 
-      echo "*** Failed to create Kubernetes Job for removing existing pair $PAIR_NAME, Please confirm your input values and try again. ***"
+      echo -e "\033[91mFailed to create Kubernetes Job for removing existing pair $PAIR_NAME, Please confirm your input values and try again.\033[39m"
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
 
       echo "Allowing exchange external connections"
@@ -2229,7 +2229,7 @@ function remove_pair_exec() {
 
     else
 
-      echo "*** Failed to remove existing pair $PAIR_NAME! Please try again.***"
+      echo -e "\033[91mFailed to remove existing pair $PAIR_NAME! Please try again.\033[39m"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
@@ -2304,7 +2304,7 @@ function remove_pair_exec() {
 
       else
 
-        echo "Failed to remove trading pair $PAIR_NAME on local exchange. Please confirm your input values and try again."
+        echo -e "\033[91mFailed to remove trading pair $PAIR_NAME on local exchange. Please confirm your input values and try again.\033[39m"
 
         if  [[ "$IS_DEVELOP" ]]; then
 
@@ -2402,14 +2402,14 @@ function launch_basic_settings_input() {
 Please fill up the interaction form to launch your own exchange.
 
 If you don't have activation code for HOLLAEX Core yet, We also provide trial license.
-Please visit dash.bitholla.com to see more details.
+Please visit https://dash.bitholla.com to see more details.
 
 EOF
 
   # Exchange name (API_NAME)
   echo "***************************************************************"
   echo "[1/20] Exchange name: ($HOLLAEX_CONFIGMAP_API_NAME)"
-  echo "- Alphanumeric only. No space or special character allowed." 
+  echo -e "\033[2m- Alphanumeric only. No space or special character allowed.\033[22m" 
   read answer
 
   local PARSE_CHARACTERS_FOR_API_NAME=$(echo $answer | tr -dc '[:alnum:]' | tr -d ' ')
@@ -2423,6 +2423,7 @@ EOF
   # Activation Code
   echo "***************************************************************"
   echo "[2/20] Activation Code: ($HOLLAEX_SECRET_ACTIVATION_CODE)"
+  echo -e "\033[2m- Go to https://dash.bitholla.com to issue your activation code.\033[22m" 
   read answer
 
   local EXCHANGE_ACTIVATION_CODE_OVERRIDE=${answer:-$HOLLAEX_SECRET_ACTIVATION_CODE}
@@ -2449,7 +2450,7 @@ EOF
   # Light Logo Path
   echo "***************************************************************"
   echo "[4/20] Exchange Light Logo Path: ($HOLLAEX_CONFIGMAP_LOGO_PATH)"
-  echo "- Image always should be png"
+  echo -e "\033[2m- Image always should be png\033[22m"
   read answer
 
   local ESCAPED_HOLLAEX_CONFIGMAP_LOGO_PATH=${HOLLAEX_CONFIGMAP_LOGO_PATH//\//\\/}
@@ -2465,7 +2466,7 @@ EOF
   # Dark Logo Path
   echo "***************************************************************"
   echo "[5/20] Exchange Dark Logo Path: ($HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH)"
-  echo "- Image always should be png"
+  echo -e "\033[2m- Image always should be png\033[22m"
   read answer
 
   local ESCAPED_HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH=${HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH//\//\\/}}
@@ -2529,7 +2530,7 @@ EOF
   # Valid languages
   echo "***************************************************************"
   echo "[10/20] Valid Languages: ($HOLLAEX_CONFIGMAP_VALID_LANGUAGES)"
-  echo "- Separate with comma (,)"
+  echo -e "\033[2m- Separate with comma (,)\033[22m"
   read answer
 
   local HOLLAEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE="${answer:-$HOLLAEX_CONFIGMAP_VALID_LANGUAGES}"
@@ -2552,7 +2553,7 @@ EOF
   # Default theme
   echo "***************************************************************"
   echo "[12/20] Default Theme: ($HOLLAEX_CONFIGMAP_DEFAULT_THEME)"
-  echo "- Between light and dark."
+  echo -e "\033[2m- Between light and dark.\033[22m"
   read answer
 
   local HOLLAEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE="${answer:-$HOLLAEX_CONFIGMAP_DEFAULT_THEME}"
@@ -2601,7 +2602,7 @@ EOF
   # Admin Password
   echo "***************************************************************"
   echo "[16/20] Admin Password: ($HOLLAEX_SECRET_ADMIN_PASSWORD)"
-  echo "- Should be longer than 9 characters"
+  echo -e "\033[2m- Should be longer than 9 characters\033[22m"
   read answer
 
   local HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE=${answer:-$HOLLAEX_SECRET_ADMIN_PASSWORD}
@@ -3037,7 +3038,7 @@ EOL
 
   else 
 
-    echo "Failed to create Kubernetes Job for reactivating your exchange, Please confirm your input values and try again."
+    echo -e "\033[91mFailed to create Kubernetes Job for reactivating your exchange, Please confirm your input values and try again.\033[39m"
     helm del --purge $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
   
   fi
@@ -3057,7 +3058,7 @@ EOL
   
   else 
 
-    echo "Failed to create Kubernetes Job for reactivating your exchange, Please confirm your input values and try again."
+    echo -e "\033[91mFailed to create Kubernetes Job for reactivating your exchange, Please confirm your input values and try again.\033[39m"
     helm del --purge $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
   
   fi
@@ -3102,7 +3103,7 @@ elif [[ ! "$USE_KUBERNETES" ]]; then
   
   else 
 
-    echo "Failed to reactivate the exchange. Please review your configurations and try again."
+    echo -e "\033[91mFailed to reactivate the exchange. Please review your configurations and try again.\033[39m"
     exit 1;
 
   fi
