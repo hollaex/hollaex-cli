@@ -19,7 +19,7 @@ Enjoy :)
 ### Uninstallation
 
 Similar as installation, Uninstalling HollaEx CLI is easy either. You can use one simple command below to completely remove HollaEx CLI from your computer.
-=
+
 ```
 curl -L https://raw.githubusercontent.com/bitholla/hollaex-cli/master/uninstall.sh | bash
 ```
