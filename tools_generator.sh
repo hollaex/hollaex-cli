@@ -1431,7 +1431,25 @@ EOL
                   ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
                   node tools/dbs/addCoin.js; then
 
-        docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null 2>&1
+         if  [[ "$IS_DEVELOP" ]]; then
+
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+          
+
+        else
+
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+          
+
+        fi
+
+        docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
 
         echo "Updating settings file to add new $COIN_SYMBOL."
         for i in ${CONFIG_FILE_PATH[@]}; do
@@ -1634,8 +1652,25 @@ function remove_coin_exec() {
                   ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
                   node tools/dbs/removeCoin.js; then
 
+       if  [[ "$IS_DEVELOP" ]]; then
+
+        # Restarting containers after database init jobs.
+        echo "Restarting containers to apply database changes."
+        docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+        docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+
+
+      else
+
+        # Restarting containers after database init jobs.
+        echo "Restarting containers to apply database changes."
+        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+
+      fi
+
       # Running database triggers
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null 2>&1
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null 
 
 
       echo "Updating settings file to remove $COIN_SYMBOL."
@@ -2051,8 +2086,24 @@ EOL
                   ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
                   node tools/dbs/addPair.js; then
 
+           if  [[ "$IS_DEVELOP" ]]; then
+
+            # Restarting containers after database init jobs.
+            echo "Restarting containers to apply database changes."
+            docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+            docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+
+          else
+
+            # Restarting containers after database init jobs.
+            echo "Restarting containers to apply database changes."
+            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+
+          fi
+
           # Running database triggers
-          docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null 2>&1
+          docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
 
           echo "Updating settings file to add new $PAIR_NAME."
           for i in ${CONFIG_FILE_PATH[@]}; do
@@ -2256,8 +2307,24 @@ function remove_pair_exec() {
       echo "*** Removing new pair $PAIR_NAME on local exchange ***"
       if command docker exec --env "PAIR_NAME=${PAIR_NAME}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/removePair.js; then
 
+        if  [[ "$IS_DEVELOP" ]]; then
+
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
+
+        else
+
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
+
+        fi
+
         # Running database triggers
-        docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null 2>&1
+        docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
 
         echo "*** Updating settings file to remove existing $PAIR_NAME. ***"
         for i in ${CONFIG_FILE_PATH[@]}; do
