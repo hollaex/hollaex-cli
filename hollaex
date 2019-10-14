@@ -51,7 +51,7 @@ Options:
         --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --skip, Run script without verifying connected kubernetes cluster.
 
-        --version, Version number of HOLLAEX Core to upgrade.
+        --version, Version number of HollaEx Core to upgrade.
 
     terminate: TERMINATE the existing exchange. THIS COMMAND WILL COMPLETELY REMOVE YOUR EXCHANGE ENVIRONMENT.
         --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
@@ -866,6 +866,29 @@ elif [[ "$1" == "setup" ]]; then
             fi
 
         done
+
+        /bin/cat << EOF
+.,,...................................................................................,,,
+.8@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,
+.8@@GLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLC@@@,
+.8@@i                                                                                 :@@@,
+.8@@1     .iiii    iiii.           fCCC.tCCC,           iiiiiiiii;                    ;@@@,
+.8@@1     ,@@@8   .@@@@,           0@@@.G@@@,           8@@@@@@@@8.         .         ;@@@,
+.8@@1     ,@@@0   .8@@@. iLG880C1. G@@@.C@@@,.tG0880Ct. 0@@8,..,,,f800t f0081         ;@@@,
+.8@@1     ,@@@@8888@@@@,C@@@tt0@@8,G@@@.C@@@.1GGGi1@@@L 8@@@00G.   f@@@L@@@1          ;@@@,
+.8@@1     ,@@@8LLLL@@@8t@@@f  ;@@@LC@@@.C@@@,:fCGGG@@@G 8@@@LLf     t@@@@8:           ;@@@,
+.8@@1     ,@@@0    8@@8i@@@C. t@@@1C@@@.C@@8i@@@C,;8@@G 8@@0,..,,:.,C@@8@@C. .:;,     ;@@@,
+.8@@1     ,@@@8   .@@@@.i0@@@8@@8t G@@@.G@@@;G@@@00@@@0 8@@@@@@@@G18@@L,8@@8:;fL1,    ;@88,
+.8@@1     .;;;;    ;;;;.  :i11i:.  :;;;.:;;;  ;111::;;; ;;;;;;;;;.;i;;. ,i;i;.:,,     ....
+.8@@i
+.8@@GLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL,
+.8@8@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,
+.........................................................................................
+
+                            Your Exchange is ready!
+                      Try to reach $HOLLAEX_CONFIGMAP_API_HOST
+
+EOF
 
         exit 0;
 
@@ -1900,6 +1923,35 @@ elif [[ "$1" == "upgrade" ]]; then
 
             docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
 
+             /bin/cat << EOF
+
+                    ,itLC0000GCLti,
+               ,iC8@@@@0GCCCG0@@@@8Ci,
+             ;L@@@Gt;.         ,;tG@@@L;
+           :C@@01.    tLC01        .10@@C:
+          1@@8i      .@@@@@:      :,  i8@@1
+         f@@C.       ;8@@@@@0Cfif0@8t. .C@@f
+        1@@C  ,i:,,10@@@@@@@@@@@@@@@@i   G@@1
+       .8@8. .0@@@@@@@@C1;;;1C@@@@@G,    ,@@@,
+       1@@f  ;8@@@@@@8;       ;fftt,      ;tt,
+       f@@i   .;f@@@@1           iii11, .1iii1, .11111.
+       f@@1      0@@@f         : 1@@@@8; 1@@@@8: t@@@@0:
+       ;@@C      t@@@@f,     ,f@t :0@@@@1 :8@@@@i ;8@@@8;
+        0@@;   .t8@@@@@@GLfLG@@@@L ,G@@@@f ,G@@@@t ,0@@@@1
+        :@@8:  1@@@@@8@@@@@@@@@0f:  .f@@@@C..L@@@@L..C@@@@L.
+         ;8@8i  :CGt:.:1tG@@@@8.     i@@@@8: 1@@@@8, t@@@@0,
+          ,G@@C:         .0@@@@.    t@@@@G. f@@@@G. L@@@@C.
+            i0@@G1,       ,ti;,    L@@@@L  C@@@@L .C@@@@f
+              iC@@@0L1;,,.. .,;, ,0@@@@t :0@@@@t :8@@@@1
+                .if0@@@@@@@@@@f..LGCCCi .LGCCCi ,LGCCC;
+                    .,;i1ttt1;
+
+           Exchange has been successfully upgraded!
+           Try to reach $HOLLAEX_CONFIGMAP_API_HOST
+
+EOF
+
+
         else
 
             echo -e "\033[91mFailed to upgrade exchange! Please review your settings and try again.\033[39m"
@@ -2255,6 +2307,29 @@ elif [[ "$1" == "web" ]]; then
 
                     echo "Reloading Nginx..."
                     docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
+                    
+                    /bin/cat << EOF
+.,,...................................................................................,,,
+.8@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,
+.8@@GLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLC@@@,
+.8@@i                                                                                 :@@@,
+.8@@1     .iiii    iiii.           fCCC.tCCC,           iiiiiiiii;                    ;@@@,
+.8@@1     ,@@@8   .@@@@,           0@@@.G@@@,           8@@@@@@@@8.         .         ;@@@,
+.8@@1     ,@@@0   .8@@@. iLG880C1. G@@@.C@@@,.tG0880Ct. 0@@8,..,,,f800t f0081         ;@@@,
+.8@@1     ,@@@@8888@@@@,C@@@tt0@@8,G@@@.C@@@.1GGGi1@@@L 8@@@00G.   f@@@L@@@1          ;@@@,
+.8@@1     ,@@@8LLLL@@@8t@@@f  ;@@@LC@@@.C@@@,:fCGGG@@@G 8@@@LLf     t@@@@8:           ;@@@,
+.8@@1     ,@@@0    8@@8i@@@C. t@@@1C@@@.C@@8i@@@C,;8@@G 8@@0,..,,:.,C@@8@@C. .:;,     ;@@@,
+.8@@1     ,@@@8   .@@@@.i0@@@8@@8t G@@@.G@@@;G@@@00@@@0 8@@@@@@@@G18@@L,8@@8:;fL1,    ;@88,
+.8@@1     .;;;;    ;;;;.  :i11i:.  :;;;.:;;;  ;111::;;; ;;;;;;;;;.;i;;. ,i;i;.:,,     ....
+.8@@i
+.8@@GLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL,
+.8@8@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,
+.........................................................................................
+
+                        Web Client for your exchange is ready!
+                        Try to reach $HOLLAEX_CONFIGMAP_DOMAIN
+
+EOF
 
                     echo "Web is up!"
                     echo "Web is now reachable both from $HOLLAEX_CONFIGMAP_DOMAIN and localhost:8080".
@@ -3168,14 +3243,23 @@ elif [[ "$1" == "toolbox" ]]; then
 elif [[ "$1" == "version" ]]; then
     
     /bin/cat << EOF
+.,,...................................................................................,,,
+.8@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,
+.8@@GLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLC@@@,
+.8@@i                                                                                 :@@@,
+.8@@1     .iiii    iiii.           fCCC.tCCC,           iiiiiiiii;                    ;@@@,
+.8@@1     ,@@@8   .@@@@,           0@@@.G@@@,           8@@@@@@@@8.         .         ;@@@,
+.8@@1     ,@@@0   .8@@@. iLG880C1. G@@@.C@@@,.tG0880Ct. 0@@8,..,,,f800t f0081         ;@@@,
+.8@@1     ,@@@@8888@@@@,C@@@tt0@@8,G@@@.C@@@.1GGGi1@@@L 8@@@00G.   f@@@L@@@1          ;@@@,
+.8@@1     ,@@@8LLLL@@@8t@@@f  ;@@@LC@@@.C@@@,:fCGGG@@@G 8@@@LLf     t@@@@8:           ;@@@,
+.8@@1     ,@@@0    8@@8i@@@C. t@@@1C@@@.C@@8i@@@C,;8@@G 8@@0,..,,:.,C@@8@@C. .:;,     ;@@@,
+.8@@1     ,@@@8   .@@@@.i0@@@8@@8t G@@@.G@@@;G@@@00@@@0 8@@@@@@@@G18@@L,8@@8:;fL1,    ;@88,
+.8@@1     .;;;;    ;;;;.  :i11i:.  :;;;.:;;;  ;111::;;; ;;;;;;;;;.;i;;. ,i;i;.:,,     ....
+.8@@i
+.8@@GLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL,
+.8@8@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,
+.........................................................................................
 
-██╗  ██╗ ██████╗ ██╗     ██╗      █████╗ ███████╗██╗  ██╗  
-██║  ██║██╔═══██╗██║     ██║     ██╔══██╗██╔════╝╚██╗██╔╝
-███████║██║   ██║██║     ██║     ███████║█████╗   ╚███╔╝ 
-██╔══██║██║   ██║██║     ██║     ██╔══██║██╔══╝   ██╔██╗ 
-██║  ██║╚██████╔╝███████╗███████╗██║  ██║███████╗██╔╝ ██╗   
-╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝                                                                         
-                             
 hollaex-cli : v$(cat $SCRIPTPATH/version), Made with <3 by bitHolla Inc.
 
 EOF

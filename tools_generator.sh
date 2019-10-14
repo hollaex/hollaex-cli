@@ -1087,6 +1087,7 @@ function add_coin_input() {
 
   echo "***************************************************************"
   echo "[1/11] Coin Symbol: (eth)"
+  echo -e "\033[2m- This trading symbol is a short hand for this coin.\033[22m" 
   read answer
 
   COIN_SYMBOL=${answer:-eth}
@@ -1097,6 +1098,7 @@ function add_coin_input() {
 
   echo "***************************************************************"
   echo "[2/11] Full Name of Coin: (Ethereum)"
+  echo -e "\033[2m- The full name of the coin.\033[22m" 
   echo -e "\n"
   read answer
 
@@ -1108,6 +1110,7 @@ function add_coin_input() {
 
   echo "***************************************************************"
   echo "[3/11] Allow deposit: (Y/n)"
+  echo -e "\033[2m- Allow deposits for this coin. Amount is dependents on user level and what you set later on. \033[22m" 
   read answer
   
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
@@ -1126,6 +1129,7 @@ function add_coin_input() {
 
   echo "***************************************************************"
   echo "[4/11] Allow Withdrawal: (Y/n)"
+  echo -e "\033[2m- Allow withdrawals for this coin. Amount is dependents on user level and what you set later on. \033[22m"
   read answer
   
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
@@ -1144,6 +1148,7 @@ function add_coin_input() {
 
   echo "***************************************************************"
   echo "[5/11] Fee for Withdrawal: (0.001)"
+  echo -e "\033[2m- Enter the fee amount for when this coin is withdrawn from your exchange. \033[22m"
   read answer
 
   COIN_WITHDRAWAL_FEE=${answer:-0.001}
@@ -1154,6 +1159,7 @@ function add_coin_input() {
 
   echo "***************************************************************"
   echo "[6/11] Minimum Price: (0.001)"
+  echo -e "\033[2m- Set the minimum withdrawal for this coin. \033[22m"
   read answer
 
   COIN_MIN=${answer:-0.001}
@@ -1164,6 +1170,7 @@ function add_coin_input() {
 
   echo "***************************************************************"
   echo "[7/11] Maximum Price: (10000)"
+  echo -e "\033[2m- Set the maximum withdrawal for this coin. \033[22m"
   read answer
   
   COIN_MAX=${answer:-10000}
@@ -1174,6 +1181,7 @@ function add_coin_input() {
 
   echo "***************************************************************"
   echo "[8/11] Increment Amount: (0.001)"
+  echo -e "\033[2m- Set the increment amount that can be adjusted up and down for this coin. \033[22m"
   read answer
 
   COIN_INCREMENT_UNIT=${answer:-0.001}
@@ -1209,6 +1217,7 @@ function add_coin_input() {
 
     do echo "***************************************************************"
        echo "[9/11] Deposit limit of user level $i: (1)"
+       echo -e "\033[2m- Set the coins deposit limit amount for the user level $i. \033[22m"
        read answer
        export DEPOSIT_LIMITS_LEVEL_$i=${answer:-1}
        echo -e "\n"
@@ -1230,6 +1239,7 @@ function add_coin_input() {
 
     do echo "***************************************************************"
        echo "[10/11] Withdrawal limit of user level $i: (1)"
+       echo -e "\033[2m- Set the coins withdrawal limit amount for the user level $i. \033[22m"
        read answer
        export WITHDRAWAL_LIMITS_LEVEL_$i=${answer:-1}
        echo -e "\n"
@@ -1248,6 +1258,7 @@ function add_coin_input() {
 
   echo "***************************************************************"
   echo "[11/11] Activate Coin: (Y/n)"
+  echo -e "\033[2m- Activate your coin. \033[22m"
   read answer
   
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
@@ -1493,6 +1504,34 @@ EOL
           
 
         fi
+
+         /bin/cat << EOF
+
+                                  
+           f888888G              .,:;ii;,
+           C@L,,i@8.         :tC08@88888@8Ci
+           L@f  :@0        L8@0L1:,.   .,iG@Gi
+    ,::::::C@L  ;@8::::::,.i1,             t@@0i
+   :@@88888881  ,0888888@@t                 0@8@0i
+   ;@0                  f@f                 0@i:0@f
+   ;@@ttttt11,  .i1tttttG@L                :@@@f;8@;
+   ,LCCGGGG8@f  ;@@GGGGGCL;                C@f1@@8@f
+           f@f  ;@0                       f@@t  1@@t
+           f@t  :@0.                     f@GL@@1;@@,
+           L@0LLG@8                    ,G@8, ,L@@@f
+           :ffffffi                  .t@@L@@t  G@C
+              i1                   .18@G. ,L@00@L
+             .@@;                ,t8@C0@L:  t@@1
+              1@0,            :t0@@0, .10@LG@C:
+               18@Li,,.,,:ifG8@0tiC@01  i@@0i
+                .t@@@808@@@GfC@0;  :C@08@Gi
+                  .t8@C;;C8L, ,L@01t0@8f:
+                    .t8@Cf0@@GfC@@@Gf:
+                      .;tLCCCCLfi:.
+
+          Coin $COIN_SYMBOL has been successfully added
+
+EOF
 
       else
 
@@ -1759,6 +1798,7 @@ function add_pair_input() {
 
   echo "***************************************************************"
   echo "[1/10] Name of new Trading Pair : (eth-usdt)"
+  echo -e "\033[2m- First enter the base currency (eth) with a dash (-) followed be the second quoted currency (usdt). \033[22m"
   read answer
 
   PAIR_NAME=${answer:-eth-usdt}
@@ -1799,7 +1839,7 @@ function add_pair_input() {
        echo "- As Percentage %, Number only." 
        read answer
        echo -e "\n"
-       echo "${answer} ✔"
+       echo "${answer:-0.2} ✔"
        echo -e "\n"
        export TAKER_FEES_LEVEL_$i=${answer:-0.2}
   
@@ -1820,7 +1860,7 @@ function add_pair_input() {
        echo "- As Percentage %, Number only."
        read answer
        echo -e "\n"
-       echo "${answer} ✔"
+       echo "${answer:-0.2} ✔"
        echo -e "\n"
        export MAKER_FEES_LEVEL_$i=${answer:-0.2}
   
@@ -1836,6 +1876,7 @@ function add_pair_input() {
 
   echo "***************************************************************"
   echo "[4/10] Minimum Amount: (0.001)"
+  echo -e "\033[2m- Minimum $PAIR_BASE amount that can be traded for this pair. \033[22m"
   read answer
   
   MIN_SIZE=${answer:-0.001}
@@ -1846,6 +1887,7 @@ function add_pair_input() {
 
   echo "***************************************************************"
   echo "[5/10] Maximum Amount: (20000000)"
+  echo -e "\033[2m- Maximum $PAIR_BASE amount that can be traded for this pair. \033[22m"
   read answer
 
   MAX_SIZE=${answer:-20000000}
@@ -1856,6 +1898,7 @@ function add_pair_input() {
 
   echo "***************************************************************"
   echo "[6/10] Minimum Price: (0.0001)"
+  echo -e "\033[2m- Minimum $PAIR_2 quoated trading price that can be traded for this pair. \033[22m"
   read answer
 
   MIN_PRICE=${answer:-0.0001}
@@ -1866,6 +1909,7 @@ function add_pair_input() {
 
   echo "***************************************************************"
   echo "[7/10] Maximum Price: (10)"
+  echo -e "\033[2m- Maximum $PAIR_2 quoated trading price that can be traded for this pair. \033[22m"
   read answer
 
   MAX_PRICE=${answer:-10}
@@ -1876,6 +1920,7 @@ function add_pair_input() {
 
   echo "***************************************************************"
   echo "[8/10] Increment Amount: (0.001)"
+  echo -e "\033[2m- The increment $PAIR_BASE amount allowed to be adjusted up and down. \033[22m"
   read answer
 
   INCREMENT_SIZE=${answer:-0.001}
@@ -1886,6 +1931,7 @@ function add_pair_input() {
 
   echo "***************************************************************"
   echo "[9/10] Increment Price: (1)"
+  echo -e "\033[2m- The price $PAIR_2 increment allowed to be adjusted up and down. \033[22m"
   read answer
 
   INCREMENT_PRICE=${answer:-1}
@@ -1896,6 +1942,7 @@ function add_pair_input() {
 
   echo "***************************************************************"
   echo "[10/10] Activate: (Y/n) [Default: y]"
+  echo -e "\033[2m- Activate this trading pair. \033[22m"
   read answer
   
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
@@ -1952,7 +1999,7 @@ function add_pair_input() {
 
   if [[ "$answer" = "${answer#[Yy]}" ]]; then
       
-    echo "You chose false. Please confirm the values and re-run the command."
+    echo "You chose false. Please confirm the values and run the command again."
     exit 1;
   
   fi
@@ -2153,6 +2200,30 @@ EOL
             docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
           fi
+
+          /bin/cat << EOF
+  
+            .::::,.                 .:;;;:.
+        .,;i1111111i:.           ,;1tffffff1;,.
+      .:i1t111tttt111tt1;.    .:i1tfftt111tfffft1:.
+  ,;1tttttttffffffft1;,.  ,;ittfttt11111111ttffLLft;,
+:tfftttttffft1ii11;,   ,;1ttttttt1111i;;;i1111ttffLLLt:
+:ffttttttt1i:.      .:i1ttttttt1111i:.     .,;11111tffff,
+;ftftttt1,      .,;1ttttttttttt1;,   .:i11;,   :1111tfff;
+;ffft111.    .:i11t11ttttttt1;,   ,;1ttttttt1;  ,111tfff;
+;fff111i  .;i111111tttttti:.  .,i1tttttt111111.  i11tfff;
+;fff111i  .1111tttttt1i,   .:i1ttttt111111i:,   .111tfff;
+;fff1111;  .:1tfft1;,   ,;i1tttttttttt1i:.     .;t11tfff;
+;Lfft1111i:.   ,,.   ,;11tttttttttt1;,       ,;1tttttttf:
+.1LLfftt1111i;,..,:i1111ttttttt1i:.  .,,,,:i1tfttttttffi
+  :1fLLfftt11111111111tttttt1;,.  .;1ffffffffttttttt1i:
+    .:itfLfftt11111ttfffti:,   .;1tttttffftt11tt1i;,
+        ,;1tfffftffft1i:.       .:;i1111111111;:.
+          .:i1tt11;,               ,:ii1ii;,
+
+  Trading Pair ${PAIR_NAME} has been successfully added
+
+EOF
 
       else
 
@@ -2526,6 +2597,7 @@ EOF
   # Web Domain
   echo "***************************************************************"
   echo "[3/26] Exchange URL: ($HOLLAEX_CONFIGMAP_DOMAIN)"
+  echo -e "\033[2m- Enter the URL of your exchange website. \033[22m"
   read answer
 
   local ESCAPED_HOLLAEX_CONFIGMAP_DOMAIN=${HOLLAEX_CONFIGMAP_DOMAIN//\//\\/}
@@ -2541,7 +2613,7 @@ EOF
   # Light Logo Path
   echo "***************************************************************"
   echo "[4/26] Exchange Light Logo Path: ($HOLLAEX_CONFIGMAP_LOGO_PATH)"
-  echo -e "\033[2m- Image always should be png\033[22m"
+  echo -e "\033[2m- Graphic file should always be a PNG file type. \033[22m"
   read answer
 
   local ESCAPED_HOLLAEX_CONFIGMAP_LOGO_PATH=${HOLLAEX_CONFIGMAP_LOGO_PATH//\//\\/}
@@ -2557,7 +2629,7 @@ EOF
   # Dark Logo Path
   echo "***************************************************************"
   echo "[5/26] Exchange Dark Logo Path: ($HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH)"
-  echo -e "\033[2m- Image always should be png\033[22m"
+  echo -e "\033[2m- Graphic file should always be a PNG file type. \033[22m"
   read answer
 
   local ESCAPED_HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH=${HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH//\//\\/}}
@@ -2573,6 +2645,7 @@ EOF
   # WEB CAPTCHA SITE KEY
   echo "***************************************************************"
   echo "[6/26] Exchange Web Google reCpatcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
+  echo -e "\033[2m- Enter your Web Google reCpathca site key. \033[22m"
   read answer
 
   local ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}"
@@ -2584,6 +2657,7 @@ EOF
   # Server CAPTCHA Secret key
   echo "***************************************************************"
   echo "[7/26] Exchange API Server Google reCpatcha Secretkey: ($HOLLAEX_SECRET_CAPTCHA_SECRET_KEY)"
+  echo -e "\033[2m- Enter your API Server Google reCpatcha Secretkey. \033[22m"
   read answer
 
   local HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE="${answer:-$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY}"
@@ -2595,6 +2669,7 @@ EOF
   # Web default country
   echo "***************************************************************"
   echo "[8/26] Default Country: ($ENVIRONMENT_WEB_DEFAULT_COUNTRY)"
+  echo -e "\033[2m- Enter the country code for your exchange. \033[22m"
   read answer
 
   local ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_DEFAULT_COUNTRY}"
@@ -2606,6 +2681,7 @@ EOF
   # Emails timezone
   echo "***************************************************************"
   echo "[9/26] Timezone: ($HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE)"
+  echo -e "\033[2m- Enter timezone code for your exchange. \033[22m"
   read answer
 
   local ESCAPED_HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE=${HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE/\//\\/}
@@ -2633,6 +2709,7 @@ EOF
   # Default language
   echo "***************************************************************"
   echo "[11/26] Default Language: ($HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE)"
+  echo -e "\033[2m- Enter the default language code for the exchange \033[22m"
   read answer
 
   local HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE="${answer:-$HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE}"
@@ -2656,6 +2733,7 @@ EOF
   # API Domain
   echo "***************************************************************"
   echo "[13/26] Exchange Server API URL: ($HOLLAEX_CONFIGMAP_API_HOST)"
+  echo -e "\033[2m- Enter the URL of your exchange API server. \033[22m"
   read answer
 
   local ESCAPED_HOLLAEX_CONFIGMAP_API_HOST=${HOLLAEX_CONFIGMAP_API_HOST//\//\\/}
@@ -2671,6 +2749,7 @@ EOF
   # User tier number
   echo "***************************************************************"
   echo "[14/26] Number of User Tiers: ($HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER)"
+  echo -e "\033[2m- Enter number of user level tiers. These are the account types that allow for different trading fees, deposit and withdrawal limit amounts. \033[22m"
   read answer
 
   local EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER}
@@ -2682,6 +2761,7 @@ EOF
   # Admin Email
   echo "***************************************************************"
   echo "[15/26] Admin Email: ($HOLLAEX_CONFIGMAP_ADMIN_EMAIL)"
+  echo -e "\033[2m- Enter the email for the admin. This will be used to first login to your exchange platform. \033[22m"
   read answer
 
   local HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_ADMIN_EMAIL}
@@ -2716,6 +2796,7 @@ EOF
   # Support Email
   echo "***************************************************************"
   echo "[17/26] Support Email: ($HOLLAEX_CONFIGMAP_SUPPORT_EMAIL)"
+  echo -e "\033[2m- Email address to send and receive all support communications. It also sends important notifications such as login, registration, etc. \033[22m"
   read answer
 
   local HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL}
@@ -2727,6 +2808,7 @@ EOF
   # Supervisor Email
   echo "***************************************************************"
   echo "[18/26] Do you want to create a different role for the exchange supervisor agent? (Y/n)"
+  echo -e "\033[2m- Add an exchange supervisor agent role. \033[22m"
   read answer
 
   if [[ "$answer" = "${answer#[Nn]}" ]] ;then
@@ -2753,6 +2835,7 @@ EOF
    # KYC Email
   echo "***************************************************************"
   echo "[19/26] Do you want to create a different role for the exchange KYC agent? (Y/n)"
+  echo -e "\033[2m- Add an exchange KYC agent role. \033[22m"
   read answer
 
   if [[ "$answer" = "${answer#[Nn]}" ]] ;then
@@ -2790,6 +2873,7 @@ EOF
   # New user is activated
   echo "***************************************************************"
   echo "[20/26] Allow New User Signup?: (Y/n)"
+  echo -e "\033[2m- Allow new users to signup once exchange setup is done. \033[22m"
   read answer
 
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
@@ -2829,6 +2913,8 @@ EOF
   local ORIGINAL_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY="${answer:-$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY}"
   local PARSE_CHARACTER_FOR_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=${ORIGINAL_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY//\//\\\/}
   local HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE="$PARSE_CHARACTER_FOR_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY"
+
+  echo $HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE
   
   echo -e "\n"
   echo "${answer:-$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY} ✔"
@@ -2981,16 +3067,16 @@ EOF
     sed -i.bak "s/HOLLAEX_SECRET_ADMIN_PASSWORD=$HOLLAEX_SECRET_ADMIN_PASSWORD/HOLLAEX_SECRET_ADMIN_PASSWORD=$HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE/" $SECRET_FILE_PATH
 
     sed -i.bak "s/HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID/HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE/" $SECRET_FILE_PATH
-    sed -i.bak "s/HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY/HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE/" $SECRET_FILE_PATH
+    sed -i.bak "s/HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=.*/HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE/" $SECRET_FILE_PATH
 
     sed -i.bak "s/HOLLAEX_SECRET_S3_READ_ACCESSKEYID=$HOLLAEX_SECRET_S3_READ_ACCESSKEYID/HOLLAEX_SECRET_S3_READ_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE/" $SECRET_FILE_PATH
-    sed -i.bak "s/HOLLAEX_SECRET_S3_READ_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_READ_SECRETACCESSKEY/HOLLAEX_SECRET_S3_READ_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE/" $SECRET_FILE_PATH
+    sed -i.bak "s/HOLLAEX_SECRET_S3_READ_SECRETACCESSKEY=.*/HOLLAEX_SECRET_S3_READ_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE/" $SECRET_FILE_PATH
 
     sed -i.bak "s/HOLLAEX_SECRET_SES_ACCESSKEYID=$HOLLAEX_SECRET_SES_ACCESSKEYID/HOLLAEX_SECRET_SES_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE/" $SECRET_FILE_PATH
-    sed -i.bak "s/HOLLAEX_SECRET_SES_SECRETACCESSKEY=$HOLLAEX_SECRET_SES_SECRETACCESSKEY/HOLLAEX_SECRET_SES_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE/" $SECRET_FILE_PATH
+    sed -i.bak "s/HOLLAEX_SECRET_SES_SECRETACCESSKEY=.*/HOLLAEX_SECRET_SES_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE/" $SECRET_FILE_PATH
 
     sed -i.bak "s/HOLLAEX_SECRET_SNS_ACCESSKEYID=$HOLLAEX_SECRET_SNS_ACCESSKEYID/HOLLAEX_SECRET_SNS_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE/" $SECRET_FILE_PATH
-    sed -i.bak "s/HOLLAEX_SECRET_SNS_SECRETACCESSKEY=$HOLLAEX_SECRET_SNS_SECRETACCESSKEY/HOLLAEX_SECRET_SNS_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE/" $SECRET_FILE_PATH
+    sed -i.bak "s/HOLLAEX_SECRET_SNS_SECRETACCESSKEY=.*/HOLLAEX_SECRET_SNS_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE/" $SECRET_FILE_PATH
 
     sed -i.bak "s/HOLLAEX_SECRET_SES_REGION=$HOLLAEX_SECRET_SES_REGION/HOLLAEX_SECRET_SES_REGION=$HOLLAEX_SECRET_SES_REGION_OVERRIDE/" $SECRET_FILE_PATH
     sed -i.bak "s/HOLLAEX_SECRET_SNS_REGION=$HOLLAEX_SECRET_SNS_REGION/HOLLAEX_SECRET_SNS_REGION=$HOLLAEX_SECRET_SES_REGION_OVERRIDE/" $SECRET_FILE_PATH
