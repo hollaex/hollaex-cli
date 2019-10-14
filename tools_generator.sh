@@ -1367,6 +1367,9 @@ EOL
 
       echo "Coin $COIN_SYMBOL has been successfully added on your exchange!"
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
+
+      echo "Restarting containers to apply database changes."
+      kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
       
       echo "Upgrading exchange with latest settings..."
       hollaex upgrade --kube --skip
@@ -1596,8 +1599,11 @@ function remove_coin_exec() {
       echo "Coin $COIN_SYMBOL has been successfully removed on your exchange!"
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
       
-      echo "Restarting containers..."
+      echo "Restarting containers to apply database changes."
       kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+
+      echo "Upgrading exchange with latest settings..."
+      hollaex upgrade --kube --skip
 
       echo "Removing created Kubernetes Job for removing existing coin..."
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
@@ -2018,6 +2024,12 @@ EOL
       echo "Pair $PAIR_NAME has been successfully added on your exchange!"
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
 
+      echo "Restarting containers to apply database changes."
+      kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+
+      echo "Upgrading exchange with latest settings..."
+      hollaex upgrade --kube --skip
+
       echo "Updating settings file to add new $PAIR_NAME."
       for i in ${CONFIG_FILE_PATH[@]}; do
 
@@ -2253,8 +2265,11 @@ function remove_pair_exec() {
 
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-queue-$PAIR_BASE$PAIR_2
 
-      echo "*** Restarting containers... ***"
+      echo "Restarting containers to apply database changes."
       kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+
+      echo "Upgrading exchange with latest settings..."
+      hollaex upgrade --kube --skip
 
       echo "*** Removing created Kubernetes Job for removing existing pair... ***"
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
