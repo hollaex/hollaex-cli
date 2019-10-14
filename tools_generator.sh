@@ -2404,6 +2404,8 @@ Please fill up the interaction form to launch your own exchange.
 If you don't have activation code for HOLLAEX Core yet, We also provide trial license.
 Please visit https://dash.bitholla.com to see more details.
 
+Check https://docs.bitholla.com to read full docs regarding whole HollaEx Kit operations.
+
 EOF
 
   # Exchange name (API_NAME)
