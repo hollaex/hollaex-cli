@@ -2498,7 +2498,7 @@ EOF
 
   # Exchange name (API_NAME)
   echo "***************************************************************"
-  echo "[1/20] Exchange name: ($HOLLAEX_CONFIGMAP_API_NAME)"
+  echo "[1/26] Exchange name: ($HOLLAEX_CONFIGMAP_API_NAME)"
   echo -e "\033[2m- Alphanumeric only. No space or special character allowed.\033[22m" 
   read answer
 
@@ -2512,7 +2512,7 @@ EOF
 
   # Activation Code
   echo "***************************************************************"
-  echo "[2/20] Activation Code: ($HOLLAEX_SECRET_ACTIVATION_CODE)"
+  echo "[2/26] Activation Code: ($HOLLAEX_SECRET_ACTIVATION_CODE)"
   echo -e "\033[2m- Go to https://dash.bitholla.com to issue your activation code.\033[22m" 
   read answer
 
@@ -2524,7 +2524,7 @@ EOF
 
   # Web Domain
   echo "***************************************************************"
-  echo "[3/20] Exchange URL: ($HOLLAEX_CONFIGMAP_DOMAIN)"
+  echo "[3/26] Exchange URL: ($HOLLAEX_CONFIGMAP_DOMAIN)"
   read answer
 
   local ESCAPED_HOLLAEX_CONFIGMAP_DOMAIN=${HOLLAEX_CONFIGMAP_DOMAIN//\//\\/}
@@ -2539,7 +2539,7 @@ EOF
 
   # Light Logo Path
   echo "***************************************************************"
-  echo "[4/20] Exchange Light Logo Path: ($HOLLAEX_CONFIGMAP_LOGO_PATH)"
+  echo "[4/26] Exchange Light Logo Path: ($HOLLAEX_CONFIGMAP_LOGO_PATH)"
   echo -e "\033[2m- Image always should be png\033[22m"
   read answer
 
@@ -2555,7 +2555,7 @@ EOF
 
   # Dark Logo Path
   echo "***************************************************************"
-  echo "[5/20] Exchange Dark Logo Path: ($HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH)"
+  echo "[5/26] Exchange Dark Logo Path: ($HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH)"
   echo -e "\033[2m- Image always should be png\033[22m"
   read answer
 
@@ -2571,7 +2571,7 @@ EOF
 
   # WEB CAPTCHA SITE KEY
   echo "***************************************************************"
-  echo "[6/20] Exchange Web Google reCpatcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
+  echo "[6/26] Exchange Web Google reCpatcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
   read answer
 
   local ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}"
@@ -2582,7 +2582,7 @@ EOF
 
   # Server CAPTCHA Secret key
   echo "***************************************************************"
-  echo "[7/20] Exchange API Server Google reCpatcha Secretkey: ($HOLLAEX_SECRET_CAPTCHA_SECRET_KEY)"
+  echo "[7/26] Exchange API Server Google reCpatcha Secretkey: ($HOLLAEX_SECRET_CAPTCHA_SECRET_KEY)"
   read answer
 
   local HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE="${answer:-$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY}"
@@ -2593,7 +2593,7 @@ EOF
 
   # Web default country
   echo "***************************************************************"
-  echo "[8/20] Default Country: ($ENVIRONMENT_WEB_DEFAULT_COUNTRY)"
+  echo "[8/26] Default Country: ($ENVIRONMENT_WEB_DEFAULT_COUNTRY)"
   read answer
 
   local ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_DEFAULT_COUNTRY}"
@@ -2604,7 +2604,7 @@ EOF
 
   # Emails timezone
   echo "***************************************************************"
-  echo "[9/20] Timezone: ($HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE)"
+  echo "[9/26] Timezone: ($HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE)"
   read answer
 
   local ESCAPED_HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE=${HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE/\//\\/}
@@ -2619,7 +2619,7 @@ EOF
 
   # Valid languages
   echo "***************************************************************"
-  echo "[10/20] Valid Languages: ($HOLLAEX_CONFIGMAP_VALID_LANGUAGES)"
+  echo "[10/26] Valid Languages: ($HOLLAEX_CONFIGMAP_VALID_LANGUAGES)"
   echo -e "\033[2m- Separate with comma (,)\033[22m"
   read answer
 
@@ -2631,7 +2631,7 @@ EOF
 
   # Default language
   echo "***************************************************************"
-  echo "[11/20] Default Language: ($HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE)"
+  echo "[11/26] Default Language: ($HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE)"
   read answer
 
   local HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE="${answer:-$HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE}"
@@ -2642,7 +2642,7 @@ EOF
 
   # Default theme
   echo "***************************************************************"
-  echo "[12/20] Default Theme: ($HOLLAEX_CONFIGMAP_DEFAULT_THEME)"
+  echo "[12/26] Default Theme: ($HOLLAEX_CONFIGMAP_DEFAULT_THEME)"
   echo -e "\033[2m- Between light and dark.\033[22m"
   read answer
 
@@ -2654,7 +2654,7 @@ EOF
 
   # API Domain
   echo "***************************************************************"
-  echo "[13/20] Exchange Server API URL: ($HOLLAEX_CONFIGMAP_API_HOST)"
+  echo "[13/26] Exchange Server API URL: ($HOLLAEX_CONFIGMAP_API_HOST)"
   read answer
 
   local ESCAPED_HOLLAEX_CONFIGMAP_API_HOST=${HOLLAEX_CONFIGMAP_API_HOST//\//\\/}
@@ -2669,7 +2669,7 @@ EOF
 
   # User tier number
   echo "***************************************************************"
-  echo "[14/20] Number of User Tiers: ($HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER)"
+  echo "[14/26] Number of User Tiers: ($HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER)"
   read answer
 
   local EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER}
@@ -2680,7 +2680,7 @@ EOF
 
   # Admin Email
   echo "***************************************************************"
-  echo "[15/20] Admin Email: ($HOLLAEX_CONFIGMAP_ADMIN_EMAIL)"
+  echo "[15/26] Admin Email: ($HOLLAEX_CONFIGMAP_ADMIN_EMAIL)"
   read answer
 
   local HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_ADMIN_EMAIL}
@@ -2691,7 +2691,7 @@ EOF
 
   # Admin Password
   echo "***************************************************************"
-  echo "[16/20] Admin Password: ($HOLLAEX_SECRET_ADMIN_PASSWORD)"
+  echo "[16/26] Admin Password: ($HOLLAEX_SECRET_ADMIN_PASSWORD)"
   echo -e "\033[2m- Should be longer than 9 characters\033[22m"
   read answer
 
@@ -2714,7 +2714,7 @@ EOF
 
   # Support Email
   echo "***************************************************************"
-  echo "[17/20] Support Email: ($HOLLAEX_CONFIGMAP_SUPPORT_EMAIL)"
+  echo "[17/26] Support Email: ($HOLLAEX_CONFIGMAP_SUPPORT_EMAIL)"
   read answer
 
   local HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL}
@@ -2725,7 +2725,7 @@ EOF
 
   # Supervisor Email
   echo "***************************************************************"
-  echo "[18/20] Do you want to create a different role for the exchange supervisor agent? (Y/n)"
+  echo "[18/26] Do you want to create a different role for the exchange supervisor agent? (Y/n)"
   read answer
 
   if [[ "$answer" = "${answer#[Nn]}" ]] ;then
@@ -2751,7 +2751,7 @@ EOF
 
    # KYC Email
   echo "***************************************************************"
-  echo "[19/20] Do you want to create a different role for the exchange KYC agent? (Y/n)"
+  echo "[19/26] Do you want to create a different role for the exchange KYC agent? (Y/n)"
   read answer
 
   if [[ "$answer" = "${answer#[Nn]}" ]] ;then
@@ -2788,7 +2788,7 @@ EOF
 
   # New user is activated
   echo "***************************************************************"
-  echo "[20/20] Allow New User Signup?: (Y/n)"
+  echo "[20/26] Allow New User Signup?: (Y/n)"
   read answer
 
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
@@ -2805,6 +2805,84 @@ EOF
   echo "${answer:-$HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE} ✔"
   echo -e "\n"
 
+  # AWS AccessKey
+  echo "***************************************************************"
+  echo "[21/26] AWS AccessKey?: ()"
+  echo -e "\033[2m- AWS IAM AccessKey for S3, SES, SNS.\033[22m"
+  read answer
+
+  local HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE=${answer:-$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID}
+
+  echo -e "\n"
+  echo "${answer:-$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID} ✔"
+  echo -e "\n"
+
+  # AWS SecretKey
+  echo "***************************************************************"
+  echo "[22/26] AWS SecretKey?: ()"
+  echo -e "\033[2m- AWS IAM SecretKey for S3, SES, SNS.\033[22m"
+  read answer
+
+  local ESCAPED_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=${HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY/\//\\/}
+
+  local ORIGINAL_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY="${answer:-$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY}"
+  local PARSE_CHARACTER_FOR_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=${ORIGINAL_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY/\//\\/}
+  local HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE="$PARSE_CHARACTER_FOR_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY"
+  
+  echo -e "\n"
+  echo "${answer:-$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY} ✔"
+  echo -e "\n"
+
+  # AWS Region
+  echo "***************************************************************"
+  echo "[23/26] AWS Region?: ()"
+  echo -e "\033[2m- AWS Region SES, SNS.\033[22m"
+  read answer
+
+  local HOLLAEX_SECRET_SES_REGION_OVERRIDE=${answer:-$HOLLAEX_SECRET_SES_REGION}
+
+  echo -e "\n"
+  echo "${answer:-$HOLLAEX_SECRET_SES_REGION} ✔"
+  echo -e "\n"
+
+  # FreshDesk Host
+  echo "***************************************************************"
+  echo "[24/26] FreshDesk Host: ()"
+  echo -e "\033[2m- FreshDesk Host URL.\033[22m"
+  read answer
+
+  local HOLLAEX_CONFIGMAP_FRESHDESK_HOST_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_FRESHDESK_HOST}
+
+  echo -e "\n"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_FRESHDESK_HOST} ✔"
+  echo -e "\n"
+
+
+# FreshDesk Key
+  echo "***************************************************************"
+  echo "[25/26] FreshDesk Key: ()"
+  echo -e "\033[2m- FreshDesk Access Key.\033[22m"
+  read answer
+
+  local HOLLAEX_SECRET_FRESHDESK_KEY_OVERRIDE=${answer:-$HOLLAEX_SECRET_FRESHDESK_KEY}
+
+  echo -e "\n"
+  echo "${answer:-$HOLLAEX_SECRET_FRESHDESK_KEY} ✔"
+  echo -e "\n"
+
+
+# FreshDesk Auth
+  echo "***************************************************************"
+  echo "[26/26] FreshDesk Auth: ()"
+  echo -e "\033[2m- FreshDesk Access Auth.\033[22m"
+  read answer
+
+  local HOLLAEX_SECRET_FRESHDESK_AUTH_OVERRIDE=${answer:-$HOLLAEX_SECRET_FRESHDESK_AUTH}
+
+  echo -e "\n"
+  echo "${answer:-$HOLLAEX_SECRET_FRESHDESK_AUTH} ✔"
+  echo -e "\n"
+
   /bin/cat << EOF
   
 ***************************************************************
@@ -2812,7 +2890,7 @@ Exchange Name: $EXCHANGE_API_NAME_OVERRIDE
 Activation Code: $EXCHANGE_ACTIVATION_CODE_OVERRIDE
 
 Exchange URL: $ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN
-8
+
 Light Logo Path: $ORIGINAL_CHARACTER_FOR_LOGO_PATH
 Dark Logo Path: $ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH
 
@@ -2837,8 +2915,13 @@ KYC Email: $HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE
 
 Allow New User Signup: $HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE
 
-AWS AccessKey:
-AWS SecretKey:
+AWS AccessKey: $HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE
+AWS SecretKey: $ORIGINAL_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY
+AWS Region: $HOLLAEX_SECRET_SES_REGION_OVERRIDE
+
+FreshDesk Host: $HOLLAEX_CONFIGMAP_FRESHDESK_HOST_OVERRIDE
+FreshDesk Key: $HOLLAEX_SECRET_FRESHDESK_KEY_OVERRIDE
+FreshDesk Auth: $HOLLAEX_SECRET_FRESHDESK_AUTH_OVERRIDE
 ***************************************************************
 
 EOF
@@ -2884,6 +2967,8 @@ EOF
     sed -i.bak "s/HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED=$HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED/HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED=$HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
     sed -i.bak "s/ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION=$ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION/ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION=$EXCHANGE_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
+
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_FRESHDESK_HOST=$HOLLAEX_CONFIGMAP_FRESHDESK_HOST/HOLLAEX_CONFIGMAP_FRESHDESK_HOST=$HOLLAEX_CONFIGMAP_FRESHDESK_HOST_OVERRIDE/" $CONFIGMAP_FILE_PATH
     rm $CONFIGMAP_FILE_PATH.bak
     fi
 
@@ -2893,6 +2978,21 @@ EOF
     sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=$HOLLAEX_SECRET_ACTIVATION_CODE/HOLLAEX_SECRET_ACTIVATION_CODE=$EXCHANGE_ACTIVATION_CODE_OVERRIDE/" $SECRET_FILE_PATH
     sed -i.bak "s/HOLLAEX_SECRET_CAPTCHA_SECRET_KEY=$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY/HOLLAEX_SECRET_CAPTCHA_SECRET_KEY=$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE/" $SECRET_FILE_PATH
     sed -i.bak "s/HOLLAEX_SECRET_ADMIN_PASSWORD=$HOLLAEX_SECRET_ADMIN_PASSWORD/HOLLAEX_SECRET_ADMIN_PASSWORD=$HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE/" $SECRET_FILE_PATH
+
+    sed -i.bak "s/HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID/HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE/" $SECRET_FILE_PATH
+    sed -i.bak "s/HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY/HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE/" $SECRET_FILE_PATH
+
+    sed -i.bak "s/HOLLAEX_SECRET_S3_READ_ACCESSKEYID=$HOLLAEX_SECRET_S3_READ_ACCESSKEYID/HOLLAEX_SECRET_S3_READ_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE/" $SECRET_FILE_PATH
+    sed -i.bak "s/HOLLAEX_SECRET_S3_READ_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_READ_SECRETACCESSKEY/HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE/" $SECRET_FILE_PATH
+
+    sed -i.bak "s/HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID/HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE/" $SECRET_FILE_PATH
+    sed -i.bak "s/HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY/HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE/" $SECRET_FILE_PATH
+
+    sed -i.bak "s/HOLLAEX_SECRET_SES_REGION=$HOLLAEX_SECRET_SES_REGION/HOLLAEX_SECRET_SES_REGION=$HOLLAEX_SECRET_SES_REGION_OVERRIDE/" $SECRET_FILE_PATH
+    sed -i.bak "s/HOLLAEX_SECRET_SES_REGION=$HOLLAEX_SECRET_SES_REGION/HOLLAEX_SECRET_SES_REGION=$HOLLAEX_SECRET_SES_REGION_OVERRIDE/" $SECRET_FILE_PATH
+
+    sed -i.bak "s/HOLLAEX_SECRET_FRESHDESK_KEY=$HOLLAEX_SECRET_FRESHDESK_KEY/HOLLAEX_SECRET_FRESHDESK_KEY=$HOLLAEX_SECRET_FRESHDESK_KEY_OVERRIDE/" $SECRET_FILE_PATH
+    sed -i.bak "s/HOLLAEX_SECRET_FRESHDESK_AUTH=$HOLLAEX_SECRET_FRESHDESK_AUTH/HOLLAEX_SECRET_FRESHDESK_AUTH=$HOLLAEX_SECRET_FRESHDESK_AUTH_OVERRIDE/" $SECRET_FILE_PATH
     rm $SECRET_FILE_PATH.bak
     fi
       
@@ -2926,6 +3026,14 @@ EOF
   export HOLLAEX_CONFIGMAP_KYC_EMAIL=$HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE
   export HOLLAEX_CONFIGMAP_SUPPORT_EMAIL=$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE
   export HOLLAEX_CONFIGMAP_SENDER_EMAIL=$HOLLAEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE
+
+  export HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE
+  export HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE
+  export HOLLAEX_SECRET_SES_REGION=$HOLLAEX_SECRET_SES_REGION_OVERRIDE
+
+  export HOLLAEX_CONFIGMAP_FRESHDESK_HOST=$HOLLAEX_CONFIGMAP_FRESHDESK_HOST_OVERRIDE
+  export HOLLAEX_SECRET_FRESHDESK_KEY=$HOLLAEX_SECRET_FRESHDESK_KEY_OVERRIDE
+  export HOLLAEX_SECRET_FRESHDESK_AUTH=$HOLLAEX_SECRET_FRESHDESK_AUTH_OVERRIDE
 
 }
 
