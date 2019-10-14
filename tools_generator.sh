@@ -1368,15 +1368,6 @@ EOL
       echo "Coin $COIN_SYMBOL has been successfully added on your exchange!"
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
 
-      echo "Restarting containers to apply database changes."
-      kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
-      
-      echo "Upgrading exchange with latest settings..."
-      hollaex upgrade --kube --skip
-
-      echo "Removing created Kubernetes Job for adding new coin..."
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
-
       echo "Updating settings file to add new $COIN_SYMBOL."
       for i in ${CONFIG_FILE_PATH[@]}; do
 
@@ -1389,8 +1380,20 @@ EOL
 
       done
 
-      echo "Allowing exchange external connections"
-      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+      export HOLLAEX_CONFIGMAP_CURRENCIES=$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE
+      echo "Current Currencies: ${HOLLAEX_CONFIGMAP_CURRENCIES}"
+
+      load_config_variables;
+      generate_kubernetes_configmap;
+
+      echo "Applying configmap on the namespace"
+      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+      
+      echo "Upgrading exchange with latest settings..."
+      hollaex upgrade --kube --skip
+
+      echo "Removing created Kubernetes Job for adding new coin..."
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
 
     else
 
@@ -1434,6 +1437,24 @@ EOL
                   ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
                   node tools/dbs/addCoin.js; then
 
+         echo "Updating settings file to add new $COIN_SYMBOL."
+         for i in ${CONFIG_FILE_PATH[@]}; do
+
+         if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+            CONFIGMAP_FILE_PATH=$i
+            HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE="${HOLLAEX_CONFIGMAP_CURRENCIES},${COIN_SYMBOL}"
+            sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+            rm $CONFIGMAP_FILE_PATH.bak
+         fi
+
+         done
+
+         export HOLLAEX_CONFIGMAP_CURRENCIES=$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE
+         echo "Current Currencies: ${HOLLAEX_CONFIGMAP_CURRENCIES}"
+
+         load_config_variables;
+         generate_local_env;
+
          if  [[ "$IS_DEVELOP" ]]; then
 
           # Restarting containers after database init jobs.
@@ -1452,25 +1473,8 @@ EOL
 
         fi
 
+        echo "Running database triggers"
         docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
-
-        echo "Updating settings file to add new $COIN_SYMBOL."
-        for i in ${CONFIG_FILE_PATH[@]}; do
-
-        if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
-            CONFIGMAP_FILE_PATH=$i
-            HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE="${HOLLAEX_CONFIGMAP_CURRENCIES},${COIN_SYMBOL}"
-            sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
-            rm $CONFIGMAP_FILE_PATH.bak
-        fi
-
-        done
-
-        export HOLLAEX_CONFIGMAP_CURRENCIES=$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE
-        echo "Current Currencies: ${HOLLAEX_CONFIGMAP_CURRENCIES}"
-
-        load_config_variables;
-        generate_local_env;
 
         if  [[ "$IS_DEVELOP" ]]; then
 
@@ -1598,15 +1602,6 @@ function remove_coin_exec() {
 
       echo "Coin $COIN_SYMBOL has been successfully removed on your exchange!"
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
-      
-      echo "Restarting containers to apply database changes."
-      kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
-
-      echo "Upgrading exchange with latest settings..."
-      hollaex upgrade --kube --skip
-
-      echo "Removing created Kubernetes Job for removing existing coin..."
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
 
       echo "Updating settings file to remove $COIN_SYMBOL."
       for i in ${CONFIG_FILE_PATH[@]}; do
@@ -1624,8 +1619,20 @@ function remove_coin_exec() {
 
       done
 
-      echo "Allowing exchange external connections"
-      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+      export HOLLAEX_CONFIGMAP_CURRENCIES=$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE
+      echo "Current Currencies: ${HOLLAEX_CONFIGMAP_CURRENCIES}"
+
+      load_config_variables;
+      generate_kubernetes_configmap;
+
+      echo "Applying configmap on the namespace"
+      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+
+      echo "Upgrading exchange with latest settings..."
+      hollaex upgrade --kube --skip
+
+      echo "Removing created Kubernetes Job for removing existing coin..."
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
 
     else
 
@@ -1658,27 +1665,6 @@ function remove_coin_exec() {
                   ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
                   node tools/dbs/removeCoin.js; then
 
-       if  [[ "$IS_DEVELOP" ]]; then
-
-        # Restarting containers after database init jobs.
-        echo "Restarting containers to apply database changes."
-        docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-        docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
-
-
-      else
-
-        # Restarting containers after database init jobs.
-        echo "Restarting containers to apply database changes."
-        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
-
-      fi
-
-      # Running database triggers
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null 
-
-
       echo "Updating settings file to remove $COIN_SYMBOL."
       for i in ${CONFIG_FILE_PATH[@]}; do
 
@@ -1703,6 +1689,26 @@ function remove_coin_exec() {
       #Regenerating env based on changes of PAIRs
       load_config_variables;
       generate_local_env;
+
+       if  [[ "$IS_DEVELOP" ]]; then
+
+        # Restarting containers after database init jobs.
+        echo "Restarting containers to apply database changes."
+        docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+        docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+
+
+      else
+
+        # Restarting containers after database init jobs.
+        echo "Restarting containers to apply database changes."
+        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+
+      fi
+
+      # Running database triggers
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null 
 
       if  [[ "$IS_DEVELOP" ]]; then
 
@@ -2024,12 +2030,6 @@ EOL
       echo "Pair $PAIR_NAME has been successfully added on your exchange!"
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
 
-      echo "Restarting containers to apply database changes."
-      kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
-
-      echo "Upgrading exchange with latest settings..."
-      hollaex upgrade --kube --skip
-
       echo "Updating settings file to add new $PAIR_NAME."
       for i in ${CONFIG_FILE_PATH[@]}; do
 
@@ -2042,14 +2042,15 @@ EOL
 
       done
 
-      # Reading variable again
-      for i in ${CONFIG_FILE_PATH[@]}; do
-        source $i
-      done;
-      
-      source $SCRIPTPATH/tools_generator.sh
+      export HOLLAEX_CONFIGMAP_PAIRS=$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE
+      echo "Current Trading Pairs: ${HOLLAEX_CONFIGMAP_PAIRS}"
+
       load_config_variables;
-      
+      generate_kubernetes_configmap;
+
+      echo "Applying configmap on the namespace"
+      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+
       echo "Upgrading exchange with latest settings..."
       hollaex upgrade --kube --skip
 
@@ -2098,25 +2099,6 @@ EOL
                   ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
                   node tools/dbs/addPair.js; then
 
-           if  [[ "$IS_DEVELOP" ]]; then
-
-            # Restarting containers after database init jobs.
-            echo "Restarting containers to apply database changes."
-            docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-            docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
-
-          else
-
-            # Restarting containers after database init jobs.
-            echo "Restarting containers to apply database changes."
-            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
-
-          fi
-
-          # Running database triggers
-          docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
-
           echo "Updating settings file to add new $PAIR_NAME."
           for i in ${CONFIG_FILE_PATH[@]}; do
 
@@ -2135,6 +2117,25 @@ EOL
           load_config_variables;
           generate_local_env;
           generate_local_docker_compose;
+
+           if  [[ "$IS_DEVELOP" ]]; then
+
+            # Restarting containers after database init jobs.
+            echo "Restarting containers to apply database changes."
+            docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+            docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+
+          else
+
+            # Restarting containers after database init jobs.
+            echo "Restarting containers to apply database changes."
+            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+
+          fi
+
+          # Running database triggers
+          docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
 
           if  [[ "$IS_DEVELOP" ]]; then
 
@@ -2265,15 +2266,6 @@ function remove_pair_exec() {
 
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-queue-$PAIR_BASE$PAIR_2
 
-      echo "Restarting containers to apply database changes."
-      kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
-
-      echo "Upgrading exchange with latest settings..."
-      hollaex upgrade --kube --skip
-
-      echo "*** Removing created Kubernetes Job for removing existing pair... ***"
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
-
       echo "*** Updating settings file to remove existing $PAIR_NAME. ***"
       for i in ${CONFIG_FILE_PATH[@]}; do
 
@@ -2290,8 +2282,23 @@ function remove_pair_exec() {
 
       done
 
-      echo "Allowing exchange external connections"
-      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+      export HOLLAEX_CONFIGMAP_PAIRS=$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE
+      echo "Current Trading Pairs: ${HOLLAEX_CONFIGMAP_PAIRS}"
+
+      load_config_variables;
+      generate_kubernetes_configmap;
+
+      echo "Applying configmap on the namespace"
+      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+
+      echo "Restarting containers to apply database changes."
+      kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+
+      echo "Upgrading exchange with latest settings..."
+      hollaex upgrade --kube --skip
+
+      echo "*** Removing created Kubernetes Job for removing existing pair... ***"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
 
     else
 
@@ -2322,25 +2329,6 @@ function remove_pair_exec() {
       echo "*** Removing new pair $PAIR_NAME on local exchange ***"
       if command docker exec --env "PAIR_NAME=${PAIR_NAME}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/removePair.js; then
 
-        if  [[ "$IS_DEVELOP" ]]; then
-
-          # Restarting containers after database init jobs.
-          echo "Restarting containers to apply database changes."
-          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
-
-        else
-
-          # Restarting containers after database init jobs.
-          echo "Restarting containers to apply database changes."
-          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
-
-        fi
-
-        # Running database triggers
-        docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
-
         echo "*** Updating settings file to remove existing $PAIR_NAME. ***"
         for i in ${CONFIG_FILE_PATH[@]}; do
 
@@ -2366,7 +2354,25 @@ function remove_pair_exec() {
         load_config_variables;
         generate_local_env;
         generate_local_docker_compose;
+        
+        if  [[ "$IS_DEVELOP" ]]; then
 
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
+
+        else
+
+          # Restarting containers after database init jobs.
+          echo "Restarting containers to apply database changes."
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
+
+        fi
+
+        # Running database triggers
+        docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
 
         if  [[ "$IS_DEVELOP" ]]; then
 
@@ -2806,7 +2812,7 @@ Exchange Name: $EXCHANGE_API_NAME_OVERRIDE
 Activation Code: $EXCHANGE_ACTIVATION_CODE_OVERRIDE
 
 Exchange URL: $ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN
-
+8
 Light Logo Path: $ORIGINAL_CHARACTER_FOR_LOGO_PATH
 Dark Logo Path: $ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH
 
@@ -2830,6 +2836,9 @@ Supervisor Email: $HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE
 KYC Email: $HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE
 
 Allow New User Signup: $HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE
+
+AWS AccessKey:
+AWS SecretKey:
 ***************************************************************
 
 EOF
