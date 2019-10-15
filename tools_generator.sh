@@ -1314,7 +1314,7 @@ function add_coin_input() {
 
   if [[ "$answer" = "${answer#[Yy]}" ]]; then
       
-    echo "You chose false. Please confirm the values and re-run the command."
+    echo "You chose false. Please confirm the values and run the command again."
     exit 1;
   
   fi
@@ -3018,7 +3018,7 @@ EOF
 
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
       
-    echo "You chose false. Please confirm the values and re-run the command."
+    echo "You chose false. Please confirm the values and run the command again."
     exit 1;
   
   fi
@@ -3218,7 +3218,7 @@ EOF
 
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
       
-    echo "You chose false. Please confirm the values and re-run the command."
+    echo "You chose false. Please confirm the values and run the command again."
     exit 1;
   
   fi
@@ -3260,7 +3260,7 @@ read answer
 
 if [[ "$answer" = "${answer#[Yy]}" ]]; then
     
-  echo "You chose false. Please confirm the values and re-run the command."
+  echo "You chose false. Please confirm the values and run the command again."
   exit 1;
 
 fi

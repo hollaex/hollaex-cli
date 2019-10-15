@@ -868,25 +868,21 @@ elif [[ "$1" == "setup" ]]; then
         done
 
         /bin/cat << EOF
-.,,...................................................................................,,,
-.8@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,
-.8@@GLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLC@@@,
-.8@@i                                                                                 :@@@,
-.8@@1     .iiii    iiii.           fCCC.tCCC,           iiiiiiiii;                    ;@@@,
-.8@@1     ,@@@8   .@@@@,           0@@@.G@@@,           8@@@@@@@@8.         .         ;@@@,
-.8@@1     ,@@@0   .8@@@. iLG880C1. G@@@.C@@@,.tG0880Ct. 0@@8,..,,,f800t f0081         ;@@@,
-.8@@1     ,@@@@8888@@@@,C@@@tt0@@8,G@@@.C@@@.1GGGi1@@@L 8@@@00G.   f@@@L@@@1          ;@@@,
-.8@@1     ,@@@8LLLL@@@8t@@@f  ;@@@LC@@@.C@@@,:fCGGG@@@G 8@@@LLf     t@@@@8:           ;@@@,
-.8@@1     ,@@@0    8@@8i@@@C. t@@@1C@@@.C@@8i@@@C,;8@@G 8@@0,..,,:.,C@@8@@C. .:;,     ;@@@,
-.8@@1     ,@@@8   .@@@@.i0@@@8@@8t G@@@.G@@@;G@@@00@@@0 8@@@@@@@@G18@@L,8@@8:;fL1,    ;@88,
-.8@@1     .;;;;    ;;;;.  :i11i:.  :;;;.:;;;  ;111::;;; ;;;;;;;;;.;i;;. ,i;i;.:,,     ....
-.8@@i
-.8@@GLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL,
-.8@8@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,
-.........................................................................................
+1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
+.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
+.0@G                                                                  L@8,
+.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
+.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
+.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
+.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
+.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
+.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
+.0@G
+.@@@888888888888888888888888888888888888888888888888888888888888888888880.
+1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
 
-                            Your Exchange is ready!
-                      Try to reach $HOLLAEX_CONFIGMAP_API_HOST
+                        Your Exchange is ready!
+                    Try to reach $HOLLAEX_CONFIGMAP_API_HOST
 
 EOF
 
@@ -1925,29 +1921,27 @@ elif [[ "$1" == "upgrade" ]]; then
 
              /bin/cat << EOF
 
-                    ,itLC0000GCLti,
-               ,iC8@@@@0GCCCG0@@@@8Ci,
-             ;L@@@Gt;.         ,;tG@@@L;
-           :C@@01.    tLC01        .10@@C:
-          1@@8i      .@@@@@:      :,  i8@@1
-         f@@C.       ;8@@@@@0Cfif0@8t. .C@@f
-        1@@C  ,i:,,10@@@@@@@@@@@@@@@@i   G@@1
-       .8@8. .0@@@@@@@@C1;;;1C@@@@@G,    ,@@@,
-       1@@f  ;8@@@@@@8;       ;fftt,      ;tt,
-       f@@i   .;f@@@@1           iii11, .1iii1, .11111.
-       f@@1      0@@@f         : 1@@@@8; 1@@@@8: t@@@@0:
-       ;@@C      t@@@@f,     ,f@t :0@@@@1 :8@@@@i ;8@@@8;
-        0@@;   .t8@@@@@@GLfLG@@@@L ,G@@@@f ,G@@@@t ,0@@@@1
-        :@@8:  1@@@@@8@@@@@@@@@0f:  .f@@@@C..L@@@@L..C@@@@L.
-         ;8@8i  :CGt:.:1tG@@@@8.     i@@@@8: 1@@@@8, t@@@@0,
-          ,G@@C:         .0@@@@.    t@@@@G. f@@@@G. L@@@@C.
-            i0@@G1,       ,ti;,    L@@@@L  C@@@@L .C@@@@f
-              iC@@@0L1;,,.. .,;, ,0@@@@t :0@@@@t :8@@@@1
-                .if0@@@@@@@@@@f..LGCCCi .LGCCCi ,LGCCC;
-                    .,;i1ttt1;
+                 .,:::,.
+              ,1L08@@@@@@@80Li,
+           .10@@0fi:,..,:;1L0@@G1.
+         .t@@Gi.  ,1tL:      .10@81
+        :0@G;     1@@@8:.   .;  i8@G,
+       :@@f      ;C@@@@@8GfC8@8i .C@8,
+      .8@L  fLftG@@@8GG0@@@@@@0i   G@0.
+      t@8, i@@@@@@0i.   .1G0GC     ,GG:
+      C@G  .;f8@@@:        .i;;;, ,;;;;  :;;;:
+      C@G     t@@@;       : t@@@8;.C@@@G.:8@@@f
+      1@@,    ;@@@81,. .:f@C.i8@@@i t@@@0, C@@@C.
+      .0@C  .f@@@@@@@808@@@@1 :0@@@t 1@@@@; f@@@0,
+       ,8@C. i0@0ftC0@@@@@t,   ,8@@@t 1@@@@; L@@@8.
+        ,G@8i  ,     ,8@@@:   ,G@@@L ;0@@@1 t@@@8;
+          10@8t,      :ti;.  :0@@@t i@@@8; f@@@G,
+            iC@@8Cf1;;::;i: 1@@@@i L@@@0:,0@@@C.
+              .;tC08@@@@@f..1111: ,1111. ;111i
+                    .....
 
-           Exchange has been successfully upgraded!
-           Try to reach $HOLLAEX_CONFIGMAP_API_HOST
+        Exchange has been successfully upgraded!
+        Try to reach $HOLLAEX_CONFIGMAP_API_HOST
 
 EOF
 
@@ -2309,25 +2303,21 @@ elif [[ "$1" == "web" ]]; then
                     docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
                     
                     /bin/cat << EOF
-.,,...................................................................................,,,
-.8@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,
-.8@@GLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLC@@@,
-.8@@i                                                                                 :@@@,
-.8@@1     .iiii    iiii.           fCCC.tCCC,           iiiiiiiii;                    ;@@@,
-.8@@1     ,@@@8   .@@@@,           0@@@.G@@@,           8@@@@@@@@8.         .         ;@@@,
-.8@@1     ,@@@0   .8@@@. iLG880C1. G@@@.C@@@,.tG0880Ct. 0@@8,..,,,f800t f0081         ;@@@,
-.8@@1     ,@@@@8888@@@@,C@@@tt0@@8,G@@@.C@@@.1GGGi1@@@L 8@@@00G.   f@@@L@@@1          ;@@@,
-.8@@1     ,@@@8LLLL@@@8t@@@f  ;@@@LC@@@.C@@@,:fCGGG@@@G 8@@@LLf     t@@@@8:           ;@@@,
-.8@@1     ,@@@0    8@@8i@@@C. t@@@1C@@@.C@@8i@@@C,;8@@G 8@@0,..,,:.,C@@8@@C. .:;,     ;@@@,
-.8@@1     ,@@@8   .@@@@.i0@@@8@@8t G@@@.G@@@;G@@@00@@@0 8@@@@@@@@G18@@L,8@@8:;fL1,    ;@88,
-.8@@1     .;;;;    ;;;;.  :i11i:.  :;;;.:;;;  ;111::;;; ;;;;;;;;;.;i;;. ,i;i;.:,,     ....
-.8@@i
-.8@@GLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL,
-.8@8@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,
-.........................................................................................
+1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
+.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
+.0@G                                                                  L@8,
+.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
+.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
+.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
+.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
+.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
+.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
+.0@G
+.@@@888888888888888888888888888888888888888888888888888888888888888888880.
+1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
 
-                        Web Client for your exchange is ready!
-                        Try to reach $HOLLAEX_CONFIGMAP_DOMAIN
+                    Web Client for your exchange is ready!
+                    Try to reach $HOLLAEX_CONFIGMAP_DOMAIN
 
 EOF
 
@@ -3243,22 +3233,22 @@ elif [[ "$1" == "toolbox" ]]; then
 elif [[ "$1" == "version" ]]; then
     
     /bin/cat << EOF
-.,,...................................................................................,,,
-.8@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,
-.8@@GLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLC@@@,
-.8@@i                                                                                 :@@@,
-.8@@1     .iiii    iiii.           fCCC.tCCC,           iiiiiiiii;                    ;@@@,
-.8@@1     ,@@@8   .@@@@,           0@@@.G@@@,           8@@@@@@@@8.         .         ;@@@,
-.8@@1     ,@@@0   .8@@@. iLG880C1. G@@@.C@@@,.tG0880Ct. 0@@8,..,,,f800t f0081         ;@@@,
-.8@@1     ,@@@@8888@@@@,C@@@tt0@@8,G@@@.C@@@.1GGGi1@@@L 8@@@00G.   f@@@L@@@1          ;@@@,
-.8@@1     ,@@@8LLLL@@@8t@@@f  ;@@@LC@@@.C@@@,:fCGGG@@@G 8@@@LLf     t@@@@8:           ;@@@,
-.8@@1     ,@@@0    8@@8i@@@C. t@@@1C@@@.C@@8i@@@C,;8@@G 8@@0,..,,:.,C@@8@@C. .:;,     ;@@@,
-.8@@1     ,@@@8   .@@@@.i0@@@8@@8t G@@@.G@@@;G@@@00@@@0 8@@@@@@@@G18@@L,8@@8:;fL1,    ;@88,
-.8@@1     .;;;;    ;;;;.  :i11i:.  :;;;.:;;;  ;111::;;; ;;;;;;;;;.;i;;. ,i;i;.:,,     ....
-.8@@i
-.8@@GLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL,
-.8@8@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,
-.........................................................................................
+
+         ........                ........
+    .,:itfLCGGGCLf1;,.      .,;1fLCGGGGCLti:.
+  .:;tCGG0ttttttGGGCLti,..:itLGG0ttttttf00GCt;:
+ .;;tLLLLLLLLfffffffLLftiitfLLLLLLLLLLLLLLLCCti;
+ ,;ifffffffttttttttttttttttttttttttttfffffffffi;.
+  :;1tttttttttttttttttttttttttttttttttttttttt1i:
+   :;i111111ttttttttttttttttttttttttt11111,11i:
+    ,:;ii1111111tttttttttttttttttt1111...11i;,
+      ,:;iiii111111tttttttttttttt11,.111ii:.
+        .,:;iiii111,tttttttttttt,,11iii;,.
+           .,:;iiiii11,1ttt,,,,11iii;,.
+              .,:;iiiiii11111iii;;,.
+                 .,:;;;;iiii;;:,.
+                    .,:;;;;:,.
+                       .,,.
 
 hollaex-cli : v$(cat $SCRIPTPATH/version), Made with <3 by bitHolla Inc.
 
