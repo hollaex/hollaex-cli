@@ -310,7 +310,7 @@ metadata:
     $(websocket_upgrade;)
 spec:
   rules:
-  - host: ${HOLLAEX_CONFIGMAP_API_HOST}
+  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
     http:
       paths:
       - path: ${CUSTOM_URL}
@@ -321,7 +321,7 @@ spec:
 tls:
   - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
     hosts:
-    - ${HOLLAEX_CONFIGMAP_API_HOST}
+    - $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
 EOL
 
     fi
@@ -722,7 +722,7 @@ metadata:
       limit_req_status 429;
 spec:
   rules:
-  - host: ${HOLLAEX_CONFIGMAP_API_HOST}
+  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
     http:
       paths:
       - path: /v1
@@ -733,7 +733,7 @@ spec:
   tls:
   - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
     hosts:
-    - ${HOLLAEX_CONFIGMAP_API_HOST}
+    - $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
 
 ---
 apiVersion: extensions/v1beta1
@@ -752,7 +752,7 @@ metadata:
       limit_req_status 429;
 spec:
   rules:
-  - host: ${HOLLAEX_CONFIGMAP_API_HOST}
+  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
     http:
       paths:
       - path: /v1/order
@@ -763,7 +763,7 @@ spec:
   tls:
   - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
     hosts:
-    - ${HOLLAEX_CONFIGMAP_API_HOST}
+    - $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
 
 ---
 apiVersion: extensions/v1beta1
@@ -778,7 +778,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-body-size: "2m"
 spec:
   rules:
-  - host: ${HOLLAEX_CONFIGMAP_API_HOST}
+  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
     http:
       paths:
       - path: /v1/admin
@@ -789,7 +789,7 @@ spec:
   tls:
   - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
     hosts:
-    - ${HOLLAEX_CONFIGMAP_API_HOST}
+    - $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
 
 ---
 apiVersion: extensions/v1beta1
@@ -805,7 +805,7 @@ metadata:
     nginx.org/websocket-services: "${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}-server-stream"
 spec:
   rules:
-  - host: ${HOLLAEX_CONFIGMAP_API_HOST}
+  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
     http:
       paths:
       - path: /socket.io
@@ -816,7 +816,7 @@ spec:
   tls:
   - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
     hosts:
-    - ${HOLLAEX_CONFIGMAP_API_HOST}
+    - $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
 EOL
 
 if [[ "$ENVIRONMENT_WEB_ENABLE" ]]; then
@@ -860,7 +860,7 @@ fi
 
 function generate_random_values() {
 
-  python -c "import os; print os.urandom(16).encode('hollaex')"
+  python -c "import os; print os.urandom(16).encode('hex')"
 
 }
 
@@ -882,7 +882,14 @@ for j in ${CONFIG_FILE_PATH[@]}; do
 
       read answer
 
-     if [[ ! "$answer" = "${answer#[Yy]}" ]] ;then
+      if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+
+        echo "Skipping..."
+        return 0
+
+      fi
+
+    fi  
 
         echo "Generating random secrets..."
 
@@ -918,17 +925,11 @@ EOL
 
         for i in ${CONFIG_FILE_PATH[@]}; do
             source $i
-        done;
+      done;
 
         load_config_variables;
-
-      else
-
-        echo "Skipping..."
-
-      fi
     
-    fi
+    
     
   fi
 done
@@ -1314,7 +1315,7 @@ function add_coin_input() {
 
   if [[ "$answer" = "${answer#[Yy]}" ]]; then
       
-    echo "You chose false. Please confirm the values and run the command again."
+    echo "You picked false. Please confirm the values and run the command again."
     exit 1;
   
   fi
@@ -1590,7 +1591,7 @@ function remove_coin_input() {
 
   if [[ "$answer" = "${answer#[Yy]}" ]]; then
       
-    echo "You chose false. Please confirm the values and run the command again."
+    echo "You picked false. Please confirm the values and run the command again."
     exit 1;
   
   fi
@@ -1999,7 +2000,7 @@ function add_pair_input() {
 
   if [[ "$answer" = "${answer#[Yy]}" ]]; then
       
-    echo "You chose false. Please confirm the values and run the command again."
+    echo "You picked false. Please confirm the values and run the command again."
     exit 1;
   
   fi
@@ -2279,7 +2280,7 @@ function remove_pair_input() {
 
   if [[ "$answer" = "${answer#[Yy]}" ]]; then
       
-    echo "You chose false. Please confirm the values and run the command again."
+    echo "You picked false. Please confirm the values and run the command again."
     exit 1;
   
   fi
@@ -2539,8 +2540,8 @@ metadata:
   namespace: ${ENVIRONMENT_EXCHANGE_NAME}
 data:
   PUBLIC_URL: ${HOLLAEX_CONFIGMAP_DOMAIN}
-  REACT_APP_PUBLIC_URL: https://${HOLLAEX_CONFIGMAP_API_HOST}
-  REACT_APP_SERVER_ENDPOINT: https://${HOLLAEX_CONFIGMAP_API_HOST}
+  REACT_APP_PUBLIC_URL: ${HOLLAEX_CONFIGMAP_API_HOST}
+  REACT_APP_SERVER_ENDPOINT: ${HOLLAEX_CONFIGMAP_API_HOST}
 
   REACT_APP_NETWORK: ${HOLLAEX_CONFIGMAP_NETWORK}
 
@@ -2570,7 +2571,7 @@ EOF
 
   # Exchange name (API_NAME)
   echo "***************************************************************"
-  echo "[1/26] Exchange name: ($HOLLAEX_CONFIGMAP_API_NAME)"
+  echo "[1/30] Exchange name: ($HOLLAEX_CONFIGMAP_API_NAME)"
   echo -e "\033[2m- Alphanumeric only. No space or special character allowed.\033[22m" 
   read answer
 
@@ -2584,7 +2585,7 @@ EOF
 
   # Activation Code
   echo "***************************************************************"
-  echo "[2/26] Activation Code: ($HOLLAEX_SECRET_ACTIVATION_CODE)"
+  echo "[2/30] Activation Code: ($HOLLAEX_SECRET_ACTIVATION_CODE)"
   echo -e "\033[2m- Go to https://dash.bitholla.com to issue your activation code.\033[22m" 
   read answer
 
@@ -2596,7 +2597,7 @@ EOF
 
   # Web Domain
   echo "***************************************************************"
-  echo "[3/26] Exchange URL: ($HOLLAEX_CONFIGMAP_DOMAIN)"
+  echo "[3/30] Exchange URL: ($HOLLAEX_CONFIGMAP_DOMAIN)"
   echo -e "\033[2m- Enter the URL of your exchange website. \033[22m"
   read answer
 
@@ -2612,7 +2613,7 @@ EOF
 
   # Light Logo Path
   echo "***************************************************************"
-  echo "[4/26] Exchange Light Logo Path: ($HOLLAEX_CONFIGMAP_LOGO_PATH)"
+  echo "[4/30] Exchange Light Logo Path: ($HOLLAEX_CONFIGMAP_LOGO_PATH)"
   echo -e "\033[2m- Graphic file should always be a PNG file type. \033[22m"
   read answer
 
@@ -2628,7 +2629,7 @@ EOF
 
   # Dark Logo Path
   echo "***************************************************************"
-  echo "[5/26] Exchange Dark Logo Path: ($HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH)"
+  echo "[5/30] Exchange Dark Logo Path: ($HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH)"
   echo -e "\033[2m- Graphic file should always be a PNG file type. \033[22m"
   read answer
 
@@ -2644,7 +2645,7 @@ EOF
 
   # WEB CAPTCHA SITE KEY
   echo "***************************************************************"
-  echo "[6/26] Exchange Web Google reCpatcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
+  echo "[6/30] Exchange Web Google reCpatcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
   echo -e "\033[2m- Enter your Web Google reCpathca site key. \033[22m"
   read answer
 
@@ -2656,7 +2657,7 @@ EOF
 
   # Server CAPTCHA Secret key
   echo "***************************************************************"
-  echo "[7/26] Exchange API Server Google reCpatcha Secretkey: ($HOLLAEX_SECRET_CAPTCHA_SECRET_KEY)"
+  echo "[7/30] Exchange API Server Google reCpatcha Secretkey: ($HOLLAEX_SECRET_CAPTCHA_SECRET_KEY)"
   echo -e "\033[2m- Enter your API Server Google reCpatcha Secretkey. \033[22m"
   read answer
 
@@ -2668,7 +2669,7 @@ EOF
 
   # Web default country
   echo "***************************************************************"
-  echo "[8/26] Default Country: ($ENVIRONMENT_WEB_DEFAULT_COUNTRY)"
+  echo "[8/30] Default Country: ($ENVIRONMENT_WEB_DEFAULT_COUNTRY)"
   echo -e "\033[2m- Enter the country code for your exchange. \033[22m"
   read answer
 
@@ -2680,7 +2681,7 @@ EOF
 
   # Emails timezone
   echo "***************************************************************"
-  echo "[9/26] Timezone: ($HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE)"
+  echo "[9/30] Timezone: ($HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE)"
   echo -e "\033[2m- Enter timezone code for your exchange. \033[22m"
   read answer
 
@@ -2696,7 +2697,7 @@ EOF
 
   # Valid languages
   echo "***************************************************************"
-  echo "[10/26] Valid Languages: ($HOLLAEX_CONFIGMAP_VALID_LANGUAGES)"
+  echo "[10/30] Valid Languages: ($HOLLAEX_CONFIGMAP_VALID_LANGUAGES)"
   echo -e "\033[2m- Separate with comma (,)\033[22m"
   read answer
 
@@ -2708,7 +2709,7 @@ EOF
 
   # Default language
   echo "***************************************************************"
-  echo "[11/26] Default Language: ($HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE)"
+  echo "[11/30] Default Language: ($HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE)"
   echo -e "\033[2m- Enter the default language code for the exchange \033[22m"
   read answer
 
@@ -2720,7 +2721,7 @@ EOF
 
   # Default theme
   echo "***************************************************************"
-  echo "[12/26] Default Theme: ($HOLLAEX_CONFIGMAP_DEFAULT_THEME)"
+  echo "[12/30] Default Theme: ($HOLLAEX_CONFIGMAP_DEFAULT_THEME)"
   echo -e "\033[2m- Between light and dark.\033[22m"
   read answer
 
@@ -2732,7 +2733,7 @@ EOF
 
   # API Domain
   echo "***************************************************************"
-  echo "[13/26] Exchange Server API URL: ($HOLLAEX_CONFIGMAP_API_HOST)"
+  echo "[13/30] Exchange Server API URL: ($HOLLAEX_CONFIGMAP_API_HOST)"
   echo -e "\033[2m- Enter the URL of your exchange API server. \033[22m"
   read answer
 
@@ -2748,7 +2749,7 @@ EOF
 
   # User tier number
   echo "***************************************************************"
-  echo "[14/26] Number of User Tiers: ($HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER)"
+  echo "[14/30] Number of User Tiers: ($HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER)"
   echo -e "\033[2m- Enter number of user level tiers. These are the account types that allow for different trading fees, deposit and withdrawal limit amounts. \033[22m"
   read answer
 
@@ -2760,7 +2761,7 @@ EOF
 
   # Admin Email
   echo "***************************************************************"
-  echo "[15/26] Admin Email: ($HOLLAEX_CONFIGMAP_ADMIN_EMAIL)"
+  echo "[15/30] Admin Email: ($HOLLAEX_CONFIGMAP_ADMIN_EMAIL)"
   echo -e "\033[2m- Enter the email for the admin. This will be used to first login to your exchange platform. \033[22m"
   read answer
 
@@ -2772,7 +2773,7 @@ EOF
 
   # Admin Password
   echo "***************************************************************"
-  echo "[16/26] Admin Password: ($HOLLAEX_SECRET_ADMIN_PASSWORD)"
+  echo "[16/30] Admin Password: ($HOLLAEX_SECRET_ADMIN_PASSWORD)"
   echo -e "\033[2m- Should be longer than 9 characters\033[22m"
   read answer
 
@@ -2795,7 +2796,7 @@ EOF
 
   # Support Email
   echo "***************************************************************"
-  echo "[17/26] Support Email: ($HOLLAEX_CONFIGMAP_SUPPORT_EMAIL)"
+  echo "[17/30] Support Email: ($HOLLAEX_CONFIGMAP_SUPPORT_EMAIL)"
   echo -e "\033[2m- Email address to send and receive all support communications. It also sends important notifications such as login, registration, etc. \033[22m"
   read answer
 
@@ -2807,7 +2808,7 @@ EOF
 
   # Supervisor Email
   echo "***************************************************************"
-  echo "[18/26] Do you want to create a different role for the exchange supervisor agent? (Y/n)"
+  echo "[18/30] Do you want to create a different role for the exchange supervisor agent? (Y/n)"
   echo -e "\033[2m- Add an exchange supervisor agent role. \033[22m"
   read answer
 
@@ -2834,7 +2835,7 @@ EOF
 
    # KYC Email
   echo "***************************************************************"
-  echo "[19/26] Do you want to create a different role for the exchange KYC agent? (Y/n)"
+  echo "[19/30] Do you want to create a different role for the exchange KYC agent? (Y/n)"
   echo -e "\033[2m- Add an exchange KYC agent role. \033[22m"
   read answer
 
@@ -2872,7 +2873,7 @@ EOF
 
   # New user is activated
   echo "***************************************************************"
-  echo "[20/26] Allow New User Signup?: (Y/n)"
+  echo "[20/30] Allow New User Signup?: (Y/n)"
   echo -e "\033[2m- Allow new users to signup once exchange setup is done. \033[22m"
   read answer
 
@@ -2892,7 +2893,7 @@ EOF
 
   # AWS AccessKey
   echo "***************************************************************"
-  echo "[21/26] AWS AccessKey?: ($HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID)"
+  echo "[21/30] AWS AccessKey?: ($HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID)"
   echo -e "\033[2m- AWS IAM AccessKey for S3, SES, SNS.\033[22m"
   read answer
 
@@ -2904,7 +2905,7 @@ EOF
 
   # AWS SecretKey
   echo "***************************************************************"
-  echo "[22/26] AWS SecretKey?: ($HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY)"
+  echo "[22/30] AWS SecretKey?: ($HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY)"
   echo -e "\033[2m- AWS IAM SecretKey for S3, SES, SNS.\033[22m"
   read answer
 
@@ -2922,7 +2923,7 @@ EOF
 
   # AWS Region
   echo "***************************************************************"
-  echo "[23/26] AWS Region?: ($HOLLAEX_SECRET_SES_REGION)"
+  echo "[23/30] AWS Region?: ($HOLLAEX_SECRET_SES_REGION)"
   echo -e "\033[2m- AWS Region SES, SNS.\033[22m"
   read answer
 
@@ -2932,9 +2933,57 @@ EOF
   echo "${answer:-$HOLLAEX_SECRET_SES_REGION} ✔"
   echo -e "\n"
 
+  # AWS S3 bucket
+  echo "***************************************************************"
+  echo "[24/30] AWS S3 Bucket: ($HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET)"
+  echo -e "\033[2m- S3 bucket to store user provided ID docs. Should be 'my-bucket:aws-region' style.\033[22m"
+  read answer
+
+  local HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET}
+
+  echo -e "\n"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET} ✔"
+  echo -e "\n"
+
+  # Vault Name
+  echo "***************************************************************"
+  echo "[25/30] Vault Name: ($HOLLAEX_CONFIGMAP_VAULT_NAME) - Optional"
+  echo -e "\033[2m- Vault Name. Check docs to see more details.\033[22m"
+  read answer
+
+  local HOLLAEX_CONFIGMAP_VAULT_NAME_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_VAULT_NAME}
+
+  echo -e "\n"
+  echo "${answer:-$HOLLAEX_SECRET_VAULT_KEY} ✔"
+  echo -e "\n"
+
+  # Vault key
+  echo "***************************************************************"
+  echo "[26/30] Vault Key: ($HOLLAEX_SECRET_VAULT_KEY) - Optional"
+  echo -e "\033[2m- Vault Access Key.\033[22m"
+  read answer
+
+  local HOLLAEX_SECRET_VAULT_KEY_OVERRIDE=${answer:-$HOLLAEX_SECRET_VAULT_KEY}
+
+  echo -e "\n"
+  echo "${answer:-$HOLLAEX_SECRET_VAULT_KEY} ✔"
+  echo -e "\n"
+
+  # Vault secret
+  echo "***************************************************************"
+  echo "[27/30] Vault Secret: ($HOLLAEX_SECRET_VAULT_SECRET) - Optional"
+  echo -e "\033[2m- Vault Secret Key.\033[22m"
+  read answer
+
+  local HOLLAEX_SECRET_VAULT_SECRET_OVERRIDE=${answer:-$HOLLAEX_SECRET_VAULT_SECRET}
+
+  echo -e "\n"
+  echo "${answer:-$HOLLAEX_SECRET_VAULT_SECRET} ✔"
+  echo -e "\n"
+
   # FreshDesk Host
   echo "***************************************************************"
-  echo "[24/26] FreshDesk Host: ($HOLLAEX_CONFIGMAP_FRESHDESK_HOST)"
+  echo "[28/30] FreshDesk Host: ($HOLLAEX_CONFIGMAP_FRESHDESK_HOST) - Optional"
   echo -e "\033[2m- FreshDesk Host URL.\033[22m"
   read answer
 
@@ -2947,7 +2996,7 @@ EOF
 
 # FreshDesk Key
   echo "***************************************************************"
-  echo "[25/26] FreshDesk Key: ($HOLLAEX_SECRET_FRESHDESK_KEY)"
+  echo "[29/30] FreshDesk Key: ($HOLLAEX_SECRET_FRESHDESK_KEY) - Optional"
   echo -e "\033[2m- FreshDesk Access Key.\033[22m"
   read answer
 
@@ -2960,7 +3009,7 @@ EOF
 
 # FreshDesk Auth
   echo "***************************************************************"
-  echo "[26/26] FreshDesk Auth: ($HOLLAEX_SECRET_FRESHDESK_AUTH)"
+  echo "[30/30] FreshDesk Auth: ($HOLLAEX_SECRET_FRESHDESK_AUTH) - Optional"
   echo -e "\033[2m- FreshDesk Access Auth.\033[22m"
   read answer
 
@@ -3005,10 +3054,15 @@ Allow New User Signup: $HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE
 AWS AccessKey: $HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE
 AWS SecretKey: $ORIGINAL_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY
 AWS Region: $HOLLAEX_SECRET_SES_REGION_OVERRIDE
+AWS S3 Bucket: $HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET_OVERRIDE
 
-FreshDesk Host: $HOLLAEX_CONFIGMAP_FRESHDESK_HOST_OVERRIDE
-FreshDesk Key: $HOLLAEX_SECRET_FRESHDESK_KEY_OVERRIDE
-FreshDesk Auth: $HOLLAEX_SECRET_FRESHDESK_AUTH_OVERRIDE
+Vault Name (Optional): $HOLLAEX_CONFIGMAP_VAULT_NAME_OVERRIDE
+Vault Key (Optional): $HOLLAEX_SECRET_VAULT_KEY_OVERRIDE
+Vault Secret (Optional): $HOLLAEX_SECRET_VAULT_SECRET_OVERRIDE
+
+FreshDesk Host (Optional): $OLLAEX_CONFIGMAP_FRESHDESK_HOST_OVERRIDE
+FreshDesk Key (Optional): $HOLLAEX_SECRET_FRESHDESK_KEY_OVERRIDE
+FreshDesk Auth (Optional): $HOLLAEX_SECRET_FRESHDESK_AUTH_OVERRIDE
 ***************************************************************
 
 EOF
@@ -3018,7 +3072,7 @@ EOF
 
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
       
-    echo "You chose false. Please confirm the values and run the command again."
+    echo "You picked false. Please confirm the values and run the command again."
     exit 1;
   
   fi
@@ -3053,6 +3107,10 @@ EOF
     sed -i.bak "s/HOLLAEX_CONFIGMAP_SENDER_EMAIL=$HOLLAEX_CONFIGMAP_SENDER_EMAIL/HOLLAEX_CONFIGMAP_SENDER_EMAIL=$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED=$HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED/HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED=$HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET=$HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET/HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET=$HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET_OVERRIDE/" $CONFIGMAP_FILE_PATH
+
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_VAULT_NAME=$HOLLAEX_CONFIGMAP_VAULT_NAME/HOLLAEX_CONFIGMAP_VAULT_NAME=$HOLLAEX_CONFIGMAP_VAULT_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
+
     sed -i.bak "s/ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION=$ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION/ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION=$EXCHANGE_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
     sed -i.bak "s/HOLLAEX_CONFIGMAP_FRESHDESK_HOST=$HOLLAEX_CONFIGMAP_FRESHDESK_HOST/HOLLAEX_CONFIGMAP_FRESHDESK_HOST=$HOLLAEX_CONFIGMAP_FRESHDESK_HOST_OVERRIDE/" $CONFIGMAP_FILE_PATH
@@ -3080,6 +3138,9 @@ EOF
 
     sed -i.bak "s/HOLLAEX_SECRET_SES_REGION=$HOLLAEX_SECRET_SES_REGION/HOLLAEX_SECRET_SES_REGION=$HOLLAEX_SECRET_SES_REGION_OVERRIDE/" $SECRET_FILE_PATH
     sed -i.bak "s/HOLLAEX_SECRET_SNS_REGION=$HOLLAEX_SECRET_SNS_REGION/HOLLAEX_SECRET_SNS_REGION=$HOLLAEX_SECRET_SES_REGION_OVERRIDE/" $SECRET_FILE_PATH
+
+    sed -i.bak "s/HOLLAEX_SECRET_VAULT_KEY=$HOLLAEX_SECRET_VAULT_KEY/HOLLAEX_SECRET_VAULT_KEY=$HOLLAEX_SECRET_VAULT_KEY_OVERRIDE/" $SECRET_FILE_PATH
+    sed -i.bak "s/HOLLAEX_SECRET_VAULT_SECRET=$HOLLAEX_SECRET_VAULT_SECRET/HOLLAEX_SECRET_VAULT_SECRET=$HOLLAEX_SECRET_VAULT_SECRET_OVERRIDE/" $SECRET_FILE_PATH
 
     sed -i.bak "s/HOLLAEX_SECRET_FRESHDESK_KEY=$HOLLAEX_SECRET_FRESHDESK_KEY/HOLLAEX_SECRET_FRESHDESK_KEY=$HOLLAEX_SECRET_FRESHDESK_KEY_OVERRIDE/" $SECRET_FILE_PATH
     sed -i.bak "s/HOLLAEX_SECRET_FRESHDESK_AUTH=$HOLLAEX_SECRET_FRESHDESK_AUTH/HOLLAEX_SECRET_FRESHDESK_AUTH=$HOLLAEX_SECRET_FRESHDESK_AUTH_OVERRIDE/" $SECRET_FILE_PATH
@@ -3120,6 +3181,12 @@ EOF
   export HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE
   export HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE
   export HOLLAEX_SECRET_SES_REGION=$HOLLAEX_SECRET_SES_REGION_OVERRIDE
+
+  export HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET=$HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET_OVERRIDE
+
+  export HOLLAEX_CONFIGMAP_VAULT_NAME=$HOLLAEX_CONFIGMAP_VAULT_NAME_OVERRIDE
+  export HOLLAEX_SECRET_VAULT_KEY=$HOLLAEX_SECRET_VAULT_KEY_OVERRIDE
+  export HOLLAEX_SECRET_VAULT_SECRET=$HOLLAEX_SECRET_VAULT_SECRET_OVERRIDE
 
   export HOLLAEX_CONFIGMAP_FRESHDESK_HOST=$HOLLAEX_CONFIGMAP_FRESHDESK_HOST_OVERRIDE
   export HOLLAEX_SECRET_FRESHDESK_KEY=$HOLLAEX_SECRET_FRESHDESK_KEY_OVERRIDE
@@ -3218,7 +3285,7 @@ EOF
 
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
       
-    echo "You chose false. Please confirm the values and run the command again."
+    echo "You picked false. Please confirm the values and run the command again."
     exit 1;
   
   fi
@@ -3260,7 +3327,7 @@ read answer
 
 if [[ "$answer" = "${answer#[Yy]}" ]]; then
     
-  echo "You chose false. Please confirm the values and run the command again."
+  echo "You picked false. Please confirm the values and run the command again."
   exit 1;
 
 fi
@@ -3404,3 +3471,105 @@ fi
 exit 0;
 
 } 
+
+function hollaex_ascii_exchange_is_up() {
+
+  /bin/cat << EOF
+
+1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
+.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
+.0@G                                                                  L@8,
+.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
+.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
+.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
+.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
+.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
+.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
+.0@G
+.@@@888888888888888888888888888888888888888888888888888888888888888888880.
+1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
+
+                        Your Exchange is up!
+                 Try to reach $HOLLAEX_CONFIGMAP_API_HOST
+
+EOF
+
+}
+
+function hollaex_ascii_exchange_has_been_setup() {
+
+  /bin/cat << EOF
+
+1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
+.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
+.0@G                                                                  L@8,
+.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
+.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
+.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
+.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
+.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
+.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
+.0@G
+.@@@888888888888888888888888888888888888888888888888888888888888888888880.
+1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
+
+                     Your Exchange has been setup!
+                 Run 'hollaex start' to start the exchange.
+                 
+
+EOF
+
+}
+
+function hollaex_ascii_exchange_has_been_stopped() {
+
+  /bin/cat << EOF
+
+1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
+.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
+.0@G                                                                  L@8,
+.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
+.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
+.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
+.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
+.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
+.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
+.0@G
+.@@@888888888888888888888888888888888888888888888888888888888888888888880.
+1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
+
+                    Your Exchange has been stopped
+               Run 'hollaex start' to start the exchange.
+                 
+
+EOF
+
+}
+
+function hollaex_ascii_exchange_has_been_upgraded() {
+ /bin/cat << EOF
+
+                 .,:::,.
+              ,1L08@@@@@@@80Li,
+           .10@@0fi:,..,:;1L0@@G1.
+         .t@@Gi.  ,1tL:      .10@81
+        :0@G;     1@@@8:.   .;  i8@G,
+       :@@f      ;C@@@@@8GfC8@8i .C@8,
+      .8@L  fLftG@@@8GG0@@@@@@0i   G@0.
+      t@8, i@@@@@@0i.   .1G0GC     ,GG:
+      C@G  .;f8@@@:        .i;;;, ,;;;;  :;;;:
+      C@G     t@@@;       : t@@@8;.C@@@G.:8@@@f
+      1@@,    ;@@@81,. .:f@C.i8@@@i t@@@0, C@@@C.
+      .0@C  .f@@@@@@@808@@@@1 :0@@@t 1@@@@; f@@@0,
+       ,8@C. i0@0ftC0@@@@@t,   ,8@@@t 1@@@@; L@@@8.
+        ,G@8i  ,     ,8@@@:   ,G@@@L ;0@@@1 t@@@8;
+          10@8t,      :ti;.  :0@@@t i@@@8; f@@@G,
+            iC@@8Cf1;;::;i: 1@@@@i L@@@0:,0@@@C.
+              .;tC08@@@@@f..1111: ,1111. ;111i
+                    .....
+
+        Exchange has been successfully upgraded!
+        Try to reach $HOLLAEX_CONFIGMAP_API_HOST
+
+EOF
+}
