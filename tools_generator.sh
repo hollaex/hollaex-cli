@@ -2204,25 +2204,25 @@ EOL
 
           /bin/cat << EOF
   
-            .::::,.                 .:;;;:.
-        .,;i1111111i:.           ,;1tffffff1;,.
-      .:i1t111tttt111tt1;.    .:i1tfftt111tfffft1:.
-  ,;1tttttttffffffft1;,.  ,;ittfttt11111111ttffLLft;,
-:tfftttttffft1ii11;,   ,;1ttttttt1111i;;;i1111ttffLLLt:
-:ffttttttt1i:.      .:i1ttttttt1111i:.     .,;11111tffff,
-;ftftttt1,      .,;1ttttttttttt1;,   .:i11;,   :1111tfff;
-;ffft111.    .:i11t11ttttttt1;,   ,;1ttttttt1;  ,111tfff;
-;fff111i  .;i111111tttttti:.  .,i1tttttt111111.  i11tfff;
-;fff111i  .1111tttttt1i,   .:i1ttttt111111i:,   .111tfff;
-;fff1111;  .:1tfft1;,   ,;i1tttttttttt1i:.     .;t11tfff;
-;Lfft1111i:.   ,,.   ,;11tttttttttt1;,       ,;1tttttttf:
-.1LLfftt1111i;,..,:i1111ttttttt1i:.  .,,,,:i1tfttttttffi
-  :1fLLfftt11111111111tttttt1;,.  .;1ffffffffttttttt1i:
-    .:itfLfftt11111ttfffti:,   .;1tttttffftt11tt1i;,
-        ,;1tfffftffft1i:.       .:;i1111111111;:.
-          .:i1tt11;,               ,:ii1ii;,
+                .::::,.                 .:;;;:.
+            .,;i1111111i:.           ,;1tffffff1;,.
+          .:i1t111tttt111tt1;.    .:i1tfftt111tfffft1:.
+      ,;1tttttttffffffft1;,.  ,;ittfttt11111111ttffLLft;,
+    :tfftttttffft1ii11;,   ,;1ttttttt1111i;;;i1111ttffLLLt:
+    :ffttttttt1i:.      .:i1ttttttt1111i:.     .,;11111tffff,
+    ;ftftttt1,      .,;1ttttttttttt1;,   .:i11;,   :1111tfff;
+    ;ffft111.    .:i11t11ttttttt1;,   ,;1ttttttt1;  ,111tfff;
+    ;fff111i  .;i111111tttttti:.  .,i1tttttt111111.  i11tfff;
+    ;fff111i  .1111tttttt1i,   .:i1ttttt111111i:,   .111tfff;
+    ;fff1111;  .:1tfft1;,   ,;i1tttttttttt1i:.     .;t11tfff;
+    ;Lfft1111i:.   ,,.   ,;11tttttttttt1;,       ,;1tttttttf:
+    .1LLfftt1111i;,..,:i1111ttttttt1i:.  .,,,,:i1tfttttttffi
+      :1fLLfftt11111111111tttttt1;,.  .;1ffffffffttttttt1i:
+        .:itfLfftt11111ttfffti:,   .;1tttttffftt11tt1i;,
+            ,;1tfffftffft1i:.       .:;i1111111111;:.
+              .:i1tt11;,               ,:ii1ii;,
 
-  Trading Pair ${PAIR_NAME} has been successfully added
+      Trading Pair ${PAIR_NAME} has been successfully added
 
 EOF
 

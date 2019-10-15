@@ -809,7 +809,8 @@ elif [[ "$1" == "setup" ]]; then
         fi
         
         echo "*********************************************"
-        echo "You exchange is all set!"
+        echo -e "\n"
+        echo "Your exchange is all set!"
         echo "You can proceed to add your own currencies, trading pairs right away from now on."
         echo "It doesn't matter you want to skip it for now. You can always add new currencies and trading pairs with 'hollaex toolbox' command."
         echo "Do you want to proceed? (Y/n)"
@@ -3132,15 +3133,19 @@ elif [[ "$1" == "toolbox" ]]; then
     
 
     elif [[ "$ISSUE_SSL_CERT" ]]; then
+        
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-        echo "Issuing SSL certificate requires full restart of exchange. This would cause few minutes of downtime."
-        echo "Would you like to continue? (y/N)"
-        read answer
+            echo "Would you like to continue to issue SSL cert through Let's Encrypt? (y/N)"
+            read answer
 
-        if [[ "$answer" = "${answer#[Yy]}" ]]; then
-            echo "Exiting..."
-            exit 0;
+            if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                echo "Exiting..."
+                exit 0;
+            fi
         fi
+
+        echo "Issuing SSL..."
 
         if command docker exec -it $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") certbot --nginx; then
             
@@ -3158,14 +3163,19 @@ elif [[ "$1" == "toolbox" ]]; then
     
     elif [[ "$RENEW_SSL_CERT" ]]; then
 
-        echo "Renewing SSL certificate requires full restart of exchange. This would cause few minutes of downtime."
-        echo "Would you like to continue? (y/N)"
-        read answer
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-        if [[ "$answer" = "${answer#[Yy]}" ]]; then
-            echo "Exiting..."
-            exit 0;
+            echo "Would you like to continue to renew SSL cert through Let's Encrypt? (y/N)"
+            read answer
+
+            if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                echo "Exiting..."
+                exit 0;
+            fi
+
         fi
+
+        echo "Renewing SSL..."
 
         if command docker exec -it $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") certbot renew; then
         
