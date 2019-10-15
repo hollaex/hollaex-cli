@@ -2495,7 +2495,6 @@ cat > $HOLLAEX_CLI_INIT_PATH/web/.env <<EOL
 
 NODE_ENV=production
 
-PUBLIC_URL=${HOLLAEX_CONFIGMAP_DOMAIN}
 REACT_APP_PUBLIC_URL=${HOLLAEX_CONFIGMAP_DOMAIN}
 REACT_APP_SERVER_ENDPOINT=${HOLLAEX_CONFIGMAP_API_HOST}
 REACT_APP_NETWORK=${HOLLAEX_CONFIGMAP_NETWORK}
@@ -2585,14 +2584,16 @@ EOF
 
   # Activation Code
   echo "***************************************************************"
-  echo "[2/30] Activation Code: ($HOLLAEX_SECRET_ACTIVATION_CODE)"
+  echo "[2/30] Activation Code: ($(echo ${HOLLAEX_SECRET_ACTIVATION_CODE//?/◼︎}$(echo $HOLLAEX_SECRET_ACTIVATION_CODE | grep -o '....$')))"
   echo -e "\033[2m- Go to https://dash.bitholla.com to issue your activation code.\033[22m" 
-  read answer
+  read -s answer
 
   local EXCHANGE_ACTIVATION_CODE_OVERRIDE=${answer:-$HOLLAEX_SECRET_ACTIVATION_CODE}
 
+  local EXCHANGE_ACTIVATION_CODE_MASKED=$(echo ${HOLLAEX_SECRET_ACTIVATION_CODE//?/◼︎}$(echo $HOLLAEX_SECRET_ACTIVATION_CODE | grep -o '....$'))
+
   echo -e "\n"
-  echo "${answer:-$HOLLAEX_SECRET_ACTIVATION_CODE} ✔"
+  echo "$EXCHANGE_ACTIVATION_CODE_MASKED ✔"
   echo -e "\n"
 
   # Web Domain
@@ -2657,14 +2658,16 @@ EOF
 
   # Server CAPTCHA Secret key
   echo "***************************************************************"
-  echo "[7/30] Exchange API Server Google reCpatcha Secretkey: ($HOLLAEX_SECRET_CAPTCHA_SECRET_KEY)"
+  echo "[7/30] Exchange API Server Google reCpatcha Secretkey: ($(echo ${HOLLAEX_SECRET_CAPTCHA_SECRET_KEY//?/◼︎}$(echo $HOLLAEX_SECRET_CAPTCHA_SECRET_KEY | grep -o '....$')))"
   echo -e "\033[2m- Enter your API Server Google reCpatcha Secretkey. \033[22m"
-  read answer
+  read -s answer
 
   local HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE="${answer:-$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY}"
 
+  local HOLLAEX_SECRET_ADMIN_PASSWORD_MASKED=$(echo ${HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE//?/◼︎}$(echo $HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE | grep -o '....$'))
+
   echo -e "\n"
-  echo "${answer:-$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY} ✔"
+  echo "$HOLLAEX_SECRET_ADMIN_PASSWORD_MASKED ✔"
   echo -e "\n"
 
   # Web default country
@@ -2773,9 +2776,9 @@ EOF
 
   # Admin Password
   echo "***************************************************************"
-  echo "[16/30] Admin Password: ($HOLLAEX_SECRET_ADMIN_PASSWORD)"
+  echo "[16/30] Admin Password: ($(echo ${HOLLAEX_SECRET_ADMIN_PASSWORD//?/◼︎}$(echo $HOLLAEX_SECRET_ADMIN_PASSWORD | grep -o '....$')))"
   echo -e "\033[2m- Should be longer than 9 characters\033[22m"
-  read answer
+  read -s answer
 
   local HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE=${answer:-$HOLLAEX_SECRET_ADMIN_PASSWORD}
 
@@ -2783,15 +2786,17 @@ EOF
     do if [[ "${#HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE}" -lt 9 ]]; then
       echo "Your password is too short. Make sure to input at least 9 characters."
       echo "New Admin Password: "
-      read answer
+      read -s answer
       local HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE=${answer}
     else
       break;
     fi
   done
 
+  local HOLLAEX_SECRET_ADMIN_PASSWORD_MASKED=$(echo ${HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE//?/◼︎}$(echo $HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE | grep -o '....$'))
+
   echo -e "\n"
-  echo "${answer:-$HOLLAEX_SECRET_ADMIN_PASSWORD} ✔"
+  echo "$HOLLAEX_SECRET_ADMIN_PASSWORD_MASKED ✔"
   echo -e "\n"
 
   # Support Email
@@ -2905,20 +2910,19 @@ EOF
 
   # AWS SecretKey
   echo "***************************************************************"
-  echo "[22/30] AWS SecretKey?: ($HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY)"
+  echo "[22/30] AWS SecretKey?: ($(echo ${HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY//?/◼︎}$(echo $HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY | grep -o '....$')))"
   echo -e "\033[2m- AWS IAM SecretKey for S3, SES, SNS.\033[22m"
-  read answer
-
+  read -s answer
   local ESCAPED_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=${HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY//\//\\\/}
 
   local ORIGINAL_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY="${answer:-$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY}"
   local PARSE_CHARACTER_FOR_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=${ORIGINAL_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY//\//\\\/}
   local HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE="$PARSE_CHARACTER_FOR_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY"
 
-  echo $HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE
+  local HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_MASKED=$(echo ${ORIGINAL_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY//?/◼︎}$(echo $ORIGINAL_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY | grep -o '....$'))
   
   echo -e "\n"
-  echo "${answer:-$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY} ✔"
+  echo "$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_MASKED ✔"
   echo -e "\n"
 
   # AWS Region
@@ -2954,7 +2958,7 @@ EOF
   local HOLLAEX_CONFIGMAP_VAULT_NAME_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_VAULT_NAME}
 
   echo -e "\n"
-  echo "${answer:-$HOLLAEX_SECRET_VAULT_KEY} ✔"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_VAULT_NAME} ✔"
   echo -e "\n"
 
   # Vault key
@@ -2971,14 +2975,15 @@ EOF
 
   # Vault secret
   echo "***************************************************************"
-  echo "[27/30] Vault Secret: ($HOLLAEX_SECRET_VAULT_SECRET) - Optional"
+  echo "[27/30] Vault Secret: ($(echo ${HOLLAEX_SECRET_VAULT_SECRET//?/◼︎}$(echo $HOLLAEX_SECRET_VAULT_SECRET | grep -o '....$'))) - Optional"
   echo -e "\033[2m- Vault Secret Key.\033[22m"
-  read answer
+  read -s answer
 
   local HOLLAEX_SECRET_VAULT_SECRET_OVERRIDE=${answer:-$HOLLAEX_SECRET_VAULT_SECRET}
+  local HOLLAEX_SECRET_VAULT_SECRET_MASKED=$(echo ${HOLLAEX_SECRET_VAULT_SECRET_OVERRIDE//?/◼︎}$(echo $HOLLAEX_SECRET_VAULT_SECRET_OVERRIDE | grep -o '....$'))
 
   echo -e "\n"
-  echo "${answer:-$HOLLAEX_SECRET_VAULT_SECRET} ✔"
+  echo "$HOLLAEX_SECRET_VAULT_SECRET_MASKED ✔"
   echo -e "\n"
 
   # FreshDesk Host
@@ -3009,21 +3014,22 @@ EOF
 
 # FreshDesk Auth
   echo "***************************************************************"
-  echo "[30/30] FreshDesk Auth: ($HOLLAEX_SECRET_FRESHDESK_AUTH) - Optional"
+  echo "[30/30] FreshDesk Auth: ($(echo ${HOLLAEX_SECRET_FRESHDESK_AUTH//?/◼︎}$(echo $HOLLAEX_SECRET_FRESHDESK_AUTH | grep -o '....$'))) - Optional"
   echo -e "\033[2m- FreshDesk Access Auth.\033[22m"
-  read answer
+  read -s answer
 
   local HOLLAEX_SECRET_FRESHDESK_AUTH_OVERRIDE=${answer:-$HOLLAEX_SECRET_FRESHDESK_AUTH}
+  local HOLLAEX_SECRET_FRESHDESK_AUTH_MASKED=$(echo ${HOLLAEX_SECRET_FRESHDESK_AUTH_OVERRIDE//?/◼︎}$(echo $HOLLAEX_SECRET_FRESHDESK_AUTH_OVERRIDE | grep -o '....$'))
 
   echo -e "\n"
-  echo "${answer:-$HOLLAEX_SECRET_FRESHDESK_AUTH} ✔"
+  echo "$HOLLAEX_SECRET_FRESHDESK_AUTH_MASKED ✔"
   echo -e "\n"
 
   /bin/cat << EOF
   
 ***************************************************************
 Exchange Name: $EXCHANGE_API_NAME_OVERRIDE
-Activation Code: $EXCHANGE_ACTIVATION_CODE_OVERRIDE
+Activation Code: $EXCHANGE_ACTIVATION_CODE_MASKED
 
 Exchange URL: $ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN
 
@@ -3031,7 +3037,7 @@ Light Logo Path: $ORIGINAL_CHARACTER_FOR_LOGO_PATH
 Dark Logo Path: $ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH
 
 Web Captcha Sitekey: $ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE
-Server Captcha Secretkey: $HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE
+Server Captcha Secretkey: $HOLLAEX_SECRET_ADMIN_PASSWORD_MASKED
 
 Default Country: $ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE
 Timezone: $ORIGINAL_CHARACTER_FOR_TIMEZONE
@@ -3044,7 +3050,7 @@ Exchange API URL: $ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST
 User Tiers: $EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE
 
 Admin Email: $HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE
-Admin Password: $HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE
+Admin Password: $HOLLAEX_SECRET_ADMIN_PASSWORD_MASKED
 Support Email: $HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE
 Supervisor Email: $HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE
 KYC Email: $HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE
@@ -3052,17 +3058,17 @@ KYC Email: $HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE
 Allow New User Signup: $HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE
 
 AWS AccessKey: $HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE
-AWS SecretKey: $ORIGINAL_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY
+AWS SecretKey: $HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_MASKED
 AWS Region: $HOLLAEX_SECRET_SES_REGION_OVERRIDE
 AWS S3 Bucket: $HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET_OVERRIDE
 
 Vault Name (Optional): $HOLLAEX_CONFIGMAP_VAULT_NAME_OVERRIDE
 Vault Key (Optional): $HOLLAEX_SECRET_VAULT_KEY_OVERRIDE
-Vault Secret (Optional): $HOLLAEX_SECRET_VAULT_SECRET_OVERRIDE
+Vault Secret (Optional): $HOLLAEX_SECRET_VAULT_SECRET_MASKED
 
 FreshDesk Host (Optional): $OLLAEX_CONFIGMAP_FRESHDESK_HOST_OVERRIDE
 FreshDesk Key (Optional): $HOLLAEX_SECRET_FRESHDESK_KEY_OVERRIDE
-FreshDesk Auth (Optional): $HOLLAEX_SECRET_FRESHDESK_AUTH_OVERRIDE
+FreshDesk Auth (Optional): $HOLLAEX_SECRET_FRESHDESK_AUTH_MASKED
 ***************************************************************
 
 EOF
