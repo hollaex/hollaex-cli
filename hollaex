@@ -51,7 +51,7 @@ Options:
         --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
         --skip, Run script without verifying connected kubernetes cluster.
 
-        --version, Version number of HOLLAEX Core to upgrade.
+        --version, Version number of HollaEx Core to upgrade.
 
     terminate: TERMINATE the existing exchange. THIS COMMAND WILL COMPLETELY REMOVE YOUR EXCHANGE ENVIRONMENT.
         --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
@@ -220,11 +220,11 @@ if [[ "$1" == 'dev' ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to run $ENVIRONMENT_EXCHANGE_NAME - $LOCAL_COMMAND on your machine? (y/n)"
+            echo "Are you sure you want to run $ENVIRONMENT_EXCHANGE_NAME on your machine? (Y/n)"
 
             read answer
 
-            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
                 echo "Exiting..."
                 exit 0;
             fi
@@ -459,6 +459,8 @@ elif [[ "$1" == "setup" ]]; then
         #Checking Kubernetes dependencies
         check_kubernetes_dependencies;
 
+        launch_basic_settings_input;
+
         #Creating kubernetes_config directory for generating config for Kubernetes.
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/kubernetes;
@@ -470,8 +472,6 @@ elif [[ "$1" == "setup" ]]; then
             print_usage
             exit 1;
         fi
-        
-        check_empty_values_on_settings;
 
         echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
@@ -499,10 +499,6 @@ elif [[ "$1" == "setup" ]]; then
             fi
 
         fi
-
-         # Ask for basic necessary settings
-        launch_basic_settings_input;
-
 
         #Generating random values for passwords and update config file to contain it;
         update_random_values_to_config;
@@ -644,11 +640,11 @@ elif [[ "$1" == "setup" ]]; then
                 echo "USERNAME - $ENVIRONMENT_KUBERNETES_DOCKER_HUB_USERNAME"
                 echo "PASSWORD - $ENVIRONMENT_KUBERNETES_DOCKER_HUB_PASSWORD" 
                 echo "EMAIL - $ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL"
-                echo "Are you sure you want to proceed with this credentials? (y/n)"
+                echo "Are you sure you want to proceed with this credentials? (Y/n)"
 
                 read answer
 
-                if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
                     echo "Exiting..."
                     exit 0;
                 fi
@@ -715,7 +711,6 @@ elif [[ "$1" == "setup" ]]; then
 
         fi
 
-         # Ask for basic necessary settings
         launch_basic_settings_input;
 
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
@@ -729,8 +724,6 @@ elif [[ "$1" == "setup" ]]; then
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
         fi
-
-        check_empty_values_on_settings;
         
         LOCAL_COMMAND="up -d"
 
@@ -816,7 +809,8 @@ elif [[ "$1" == "setup" ]]; then
         fi
         
         echo "*********************************************"
-        echo "You exchange is all set!"
+        echo -e "\n"
+        echo "Your exchange is all set!"
         echo "You can proceed to add your own currencies, trading pairs right away from now on."
         echo "It doesn't matter you want to skip it for now. You can always add new currencies and trading pairs with 'hollaex toolbox' command."
         echo "Do you want to proceed? (Y/n)"
@@ -866,6 +860,8 @@ elif [[ "$1" == "setup" ]]; then
             fi
 
         done
+
+        hollaex_ascii_exchange_has_been_setup;
 
         exit 0;
 
@@ -1049,6 +1045,8 @@ elif [[ "$1" == "start" ]]; then
             echo "All done!"
             echo "Containers successfully scaled up"
 
+            hollaex_ascii_exchange_is_up;
+
             exit 0;
 
         else 
@@ -1164,7 +1162,8 @@ elif [[ "$1" == "start" ]]; then
 
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND
         
-        echo "All done!"
+        hollaex_ascii_exchange_is_up;
+
         exit 0;
 
     fi
@@ -1286,8 +1285,7 @@ elif [[ "$1" == "stop" ]]; then
 
         kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-influxdb --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-        echo "All done!"
-        echo "Containers successfully scaled down"
+        hollaex_ascii_exchange_has_been_stopped
 
         exit 0;
 
@@ -1325,7 +1323,7 @@ elif [[ "$1" == "stop" ]]; then
 
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
 
-        echo "All done!"
+        hollaex_ascii_exchange_has_been_stopped;
         exit 0;
 
     fi
@@ -1491,8 +1489,7 @@ elif [[ "$1" == "restart" ]]; then
 
         fi
 
-        echo "All done!"
-        echo "Your $ENVIRONMENT_EXCHANGE_NAME ($HOLLAEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again."
+        hollaex_ascii_exchange_is_up;
 
         exit 0;
     
@@ -1584,7 +1581,7 @@ elif [[ "$1" == "restart" ]]; then
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
         
-        echo "All done!"
+        hollaex_ascii_exchange_is_up;
         exit 0;
 
     fi
@@ -1781,8 +1778,7 @@ elif [[ "$1" == "upgrade" ]]; then
         fi
 
 
-        echo "All done!"
-        echo "Your $ENVIRONMENT_EXCHANGE_NAME ($HOLLAEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again."
+        hollaex_ascii_exchange_has_been_upgraded;
 
         exit 0;
     
@@ -1899,6 +1895,9 @@ elif [[ "$1" == "upgrade" ]]; then
             local_database_init upgrade;
 
             docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+            hollaex_ascii_exchange_has_been_upgraded;
+
 
         else
 
@@ -2218,11 +2217,11 @@ elif [[ "$1" == "web" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to start web client for the exchange on this machine? (y/n)"
+                echo "Are you sure you want to start web client for the exchange on this machine? (Y/n)"
 
                 read answer
 
-                if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
                     echo "Exiting..."
                     exit 0;
                 fi
@@ -2255,6 +2254,26 @@ elif [[ "$1" == "web" ]]; then
 
                     echo "Reloading Nginx..."
                     docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
+                    
+                    /bin/cat << EOF
+
+1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
+.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
+.0@G                                                                  L@8,
+.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
+.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
+.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
+.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
+.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
+.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
+.0@G
+.@@@888888888888888888888888888888888888888888888888888888888888888888880.
+1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
+
+                  Web Client for your exchange is ready!
+                  Try to reach $HOLLAEX_CONFIGMAP_DOMAIN
+
+EOF
 
                     echo "Web is up!"
                     echo "Web is now reachable both from $HOLLAEX_CONFIGMAP_DOMAIN and localhost:8080".
@@ -3114,15 +3133,19 @@ elif [[ "$1" == "toolbox" ]]; then
     
 
     elif [[ "$ISSUE_SSL_CERT" ]]; then
+        
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-        echo "Issuing SSL certificate requires full restart of exchange. This would cause few minutes of downtime."
-        echo "Would you like to continue? (y/N)"
-        read answer
+            echo "Would you like to continue to issue SSL cert through Let's Encrypt? (y/N)"
+            read answer
 
-        if [[ "$answer" = "${answer#[Yy]}" ]]; then
-            echo "Exiting..."
-            exit 0;
+            if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                echo "Exiting..."
+                exit 0;
+            fi
         fi
+
+        echo "Issuing SSL..."
 
         if command docker exec -it $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") certbot --nginx; then
             
@@ -3140,14 +3163,19 @@ elif [[ "$1" == "toolbox" ]]; then
     
     elif [[ "$RENEW_SSL_CERT" ]]; then
 
-        echo "Renewing SSL certificate requires full restart of exchange. This would cause few minutes of downtime."
-        echo "Would you like to continue? (y/N)"
-        read answer
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-        if [[ "$answer" = "${answer#[Yy]}" ]]; then
-            echo "Exiting..."
-            exit 0;
+            echo "Would you like to continue to renew SSL cert through Let's Encrypt? (y/N)"
+            read answer
+
+            if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                echo "Exiting..."
+                exit 0;
+            fi
+
         fi
+
+        echo "Renewing SSL..."
 
         if command docker exec -it $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") certbot renew; then
         
@@ -3169,13 +3197,19 @@ elif [[ "$1" == "version" ]]; then
     
     /bin/cat << EOF
 
-██╗  ██╗ ██████╗ ██╗     ██╗      █████╗ ███████╗██╗  ██╗  
-██║  ██║██╔═══██╗██║     ██║     ██╔══██╗██╔════╝╚██╗██╔╝
-███████║██║   ██║██║     ██║     ███████║█████╗   ╚███╔╝ 
-██╔══██║██║   ██║██║     ██║     ██╔══██║██╔══╝   ██╔██╗ 
-██║  ██║╚██████╔╝███████╗███████╗██║  ██║███████╗██╔╝ ██╗   
-╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝                                                                         
-                             
+1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
+.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
+.0@G                                                                  L@8,
+.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
+.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
+.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
+.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
+.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
+.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
+.0@G
+.@@@888888888888888888888888888888888888888888888888888888888888888888880.
+1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
+
 hollaex-cli : v$(cat $SCRIPTPATH/version), Made with <3 by bitHolla Inc.
 
 EOF
