@@ -122,7 +122,7 @@ if [[ "$1" == 'dev' ]]; then
                 ;;
             --skip)
                 RUN_WITH_VERIFY=false
-                echo 'Running it wihtout verify the config.'
+                echo 'Skipping the command confirmation.'
                 shift; continue
                 ;;
             --*) 
@@ -376,7 +376,7 @@ elif [[ "$1" == "setup" ]]; then
                 ;;
             --skip)
                 RUN_WITH_VERIFY=false
-                echo "Running it wihtout verify the config."
+                echo "Skipping the command confirmation."
                 shift; continue
                 ;;
             --reconfigure)
@@ -899,7 +899,7 @@ elif [[ "$1" == "start" ]]; then
                 ;;
             --skip)
                 RUN_WITH_VERIFY=false
-                echo "Running it wihtout verify the config."
+                echo "Skipping the command confirmation."
                 shift; continue
                 ;;
             --*) 
@@ -1194,7 +1194,7 @@ elif [[ "$1" == "stop" ]]; then
                 ;;
             --skip)
                 RUN_WITH_VERIFY=false
-                echo "Running it wihtout verify the config."
+                echo "Skipping the command confirmation."
                 shift; continue
                 ;;
             --*) 
@@ -1347,7 +1347,7 @@ elif [[ "$1" == "restart" ]]; then
                 ;;
             --skip)
                 RUN_WITH_VERIFY=false
-                echo "Running it wihtout verify the config."
+                echo "Skipping the command confirmation."
                 shift; continue
                 ;;
             --*) 
@@ -1603,6 +1603,13 @@ elif [[ "$1" == "upgrade" ]]; then
                 echo "hollaex-cli will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
+            --registry)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE=$1
+                echo "Target hollaex docker registry : $ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE."
+                shift; continue
+                ;;
             --version)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
@@ -1612,7 +1619,7 @@ elif [[ "$1" == "upgrade" ]]; then
                 ;;
             --skip)
                 RUN_WITH_VERIFY=false
-                echo "Running it wihtout verify the config."
+                echo "Skipping the command confirmation."
                 shift; continue
                 ;;
             --*) 
@@ -1657,11 +1664,19 @@ elif [[ "$1" == "upgrade" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
-    # Override target docker image version If user passed it manually with flag.
+    # Override target docker image version if user passed it manually with flag.
     if [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
         
         override_docker_image_version;
-        ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+        export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+        
+    fi
+
+    # Override target docker registry if user passed it manually with flag.
+    if [[ "$ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE" ]]; then
+        
+        override_docker_registry;
+        export ENVIRONMENT_DOCKER_IMAGE_REGISTRY=$ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE
         
     fi
 
@@ -1929,7 +1944,7 @@ elif [[ "$1" == "terminate" ]]; then
                 ;;
             --skip)
                 RUN_WITH_VERIFY=false
-                echo "Running it wihtout verify the config."
+                echo "Skipping the command confirmation."
                 shift; continue
                 ;;
             --*) 
@@ -2098,7 +2113,7 @@ elif [[ "$1" == "web" ]]; then
                 ;;
             --skip)
                 RUN_WITH_VERIFY=false
-                echo "Running it wihtout verify the config."
+                echo "Skipping the command confirmation."
                 shift; continue
                 ;;
             --setup)
@@ -2676,7 +2691,7 @@ elif [[ "$1" == "toolbox" ]]; then
                 ;;
             --skip)
                 RUN_WITH_VERIFY=false
-                echo "Running it wihtout verify the config."
+                echo "Skipping the command confirmation."
                 shift; continue
                 ;;
             --*) 
