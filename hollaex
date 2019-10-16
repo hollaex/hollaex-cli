@@ -22,7 +22,7 @@ function print_usage() {
 Usage : 
     hollaex [ init ] [ setup ] [ start ] [ stop ] [ upgrade ] [ terminate ] [ web ] [ toolbox ] [ version ] (--flags)
 
-General Flags:
+General Flags (Except for 'hollaex init'):
     --path, Manually pointing HollaEx Kit path. Should be always absolute path.
     --kube, Set HollaEx CLI to target Kubernetes. Make sure to setup your local kubectl before using it.
     --skip, Run command without user's double confirmation.
