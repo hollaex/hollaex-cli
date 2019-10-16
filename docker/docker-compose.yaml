@@ -8,14 +8,14 @@ services:
       # - KUBERNETES_TOKEN=
       # - KUBERNETES_SERVER=
       # - KUBERNETES_CERT=
-      - HOLLAEX=upgrade --settings /root/settings --skip
+      - HOLLAEX=hollaex version
 
-    volumes:
+    #volumes:
       #PATH TO KUBECOFNIG FILE
       #NO NEED TO SET IT IF YOU ALREADY DEFINED TOKEN, API SERVER ENDPOINT, AND CA AS ENVIRONMENT
-      - <PATH_TO_KUBECONFIG_FILE>:/root/kubeconfig
+      #- <PATH_TO_KUBECONFIG_FILE>:/root/kubeconfig
       #PATH TO HOLLAEX-CLI CONFIG FILE
-      - <PATH_TO_HOLLAEX-CLI_CONFIG_FILE>:/root/settings
+      #- <PATH_TO_HOLLAEX-CLI_CONFIG_FILE>:/root/settings
     
 
       
