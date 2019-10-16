@@ -2,7 +2,7 @@
 
 SCRIPTPATH="$HOME/.hollaex-cli"
 
-#### hollaex-cli Settings ####
+#### HollaEx CLI Settings ####
 
 RUN_WITH_VERIFY=true 
 
@@ -21,59 +21,41 @@ function print_usage() {
 
 Usage : 
     hollaex [ init ] [ setup ] [ start ] [ stop ] [ upgrade ] [ terminate ] [ web ] [ toolbox ] [ version ] (--flags)
+
+General Flags (Except for 'hollaex init'):
+    --path, Manually pointing HollaEx Kit path. Should be always absolute path.
+    --kube, Set HollaEx CLI to target Kubernetes. Make sure to setup your local kubectl before using it.
+    --skip, Run command without user's double confirmation.
+
 Options:
     init: Pull HollaEx Kit for your new exchange.
 
-    setup: Setup the web client for the first launch.
-        --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
-        --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
-        --skip, Run script without verifying docker-compose setup.
-
+    setup: Setup the exchange for the first launch.
         --reconfigure, Reconfigure basic settings such as Server domain or Activation Code.
 
-    start: Start the exchange which already been setup.
-        --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
-        --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
-        --skip, Run script without verifying docker-compose setup.
-
-    stop: Stop the existing exchagne which already been running.
-        --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
-        --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
-        --skip, Run script without verifying connected kubernetes cluster.
+    start: Start the exchange which already been configured by 'hollaex setup' command.
+    
+    stop: Stop the exchagne which already been running.
     
     restart: Restart the existing exchange.
-        --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
-        --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
-        --skip, Run script without verifying docker-compose setup.
-
-    upgrade: Upgrade the existing exchange to new version.
-        --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
-        --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
-        --skip, Run script without verifying connected kubernetes cluster.
-
+    
+    upgrade: Upgrade the exchange to new version.
         --version, Version number of HollaEx Core to upgrade.
 
-    terminate: TERMINATE the existing exchange. THIS COMMAND WILL COMPLETELY REMOVE YOUR EXCHANGE ENVIRONMENT.
-        --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
-        --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
-        --skip, Run script without verifying connected kubernetes cluster.
-    
+    terminate: Terminate the existing exchange. THIS COMMAND WILL COMPLETELY REMOVE YOUR EXCHANGE.
+      
     web: Run web client for the exchange.
         --setup, Setup the web client for the first launch.
-        --start, Start the web client which already been setup.
+        --start, Start the web client which already been configured.
         --stop, Stop the web client.
         --restart, Restart the web client.
-        --rebuild, Rebuild the web client and upgrade.
-        --terminate, TERMINATE the web client.
+        --rebuild, Rebuild the web client docker image.
+        --terminate, Terminate the web client. THIS COMMAND WILL COMPLETELY REMOVE YOUR WEB CLIENT.
 
-    toolbox: Toolbox with advanced features which could be helpful for your exchange operations.
-        --settings, Path of hollaex-cli Settings file or directory, It reads settings values automatically from current directory by default.
-        --kube, Set the hollaex-cli target server to remote Kuberenetes. Setup your kubectl first before running this.
-        --skip, Run script without verifying connected kubernetes cluster.
-
-        --backup, Run the full backup with pg_dumpall for the exchange PostgreSQL database.
-        --flush_redis, Run the full flush of Redis stored data. It could be helpful in certain situation If the exchange doesnt work properly.
-        --upgrade_api_only, Do zero-downtime rolling upgrade for API contianers on Kubernetes.
+    toolbox: Toolbox for advanced features which could be helpful for your exchange operations.
+        --backup, Run the full backup with 'pg_dumpall' for exchange's PostgreSQL database.
+        --flush_redis, Run the full flush of Redis stored data.
+        --upgrade_api_only, Do zero-downtime rolling upgrade for exchange API contianers on Kubernetes.
         --add_coin, Add new currency on exchange.
         --remove_coin, Remove exisiting currency from exhcnage.
         --add_trading_pair, Add new trading pair on ehchange.
@@ -81,7 +63,7 @@ Options:
         --issue_ssl, Issue SSL certificate on local Nginx by using Let's Encrypt.
         --renew_ssl, Renew SSL certificate on local Nginx by using Let's Encrypt.
 
-    version: Print out current installed version of hollaex-cli.
+    version: Print out current installed version of HollaEx CLI.
 
 EOF
 }
@@ -122,7 +104,7 @@ if [[ "$1" == 'dev' ]]; then
                 ;;
             --skip)
                 RUN_WITH_VERIFY=false
-                echo 'Running it wihtout verify the config.'
+                echo 'Skipping the command confirmation.'
                 shift; continue
                 ;;
             --*) 
@@ -181,7 +163,7 @@ if [[ "$1" == 'dev' ]]; then
             echo "*********************************************"
 
         else
-            echo "hollaex-cli failed to detect docker-compose installed on this machine. Please install it before running hollaex-cli."
+            echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
             exit 1;
 
         fi
@@ -290,7 +272,7 @@ elif [[ "$1" == "init" ]]; then
             --standalone)
                 shift 
                 HOLLAEX_INIT_STANDALONE=true
-                echo "hollaex-cli will proceed to generate initialized directory without pulling HOLLAEX-Kit repo."
+                echo "HollaEx CLI will proceed to generate initialized directory without pulling HOLLAEX-Kit repo."
                 shift; continue
                 ;;
         esac
@@ -333,7 +315,7 @@ elif [[ "$1" == "init" ]]; then
 
         if [[ -d "$HOLLAEX_CLI_INIT_PATH" ]]; then
 
-            echo "Init path exists! hollaex-cli can't override exsiting exchange files."
+            echo "Init path exists! HollaEx CLI can't override exsiting exchange files."
             exit 1;
         fi
 
@@ -345,14 +327,14 @@ elif [[ "$1" == "init" ]]; then
         cp -r $SCRIPTPATH/plugins $HOLLAEX_CLI_INIT_PATH/plugins
         cp -r $SCRIPTPATH/templates $HOLLAEX_CLI_INIT_PATH/templates
         touch $HOLLAEX_CLI_INIT_PATH/.hollaex
-        echo "Initialized by using hollaex-cli v$(cat $SCRIPTPATH/version)" >> $HOLLAEX_CLI_INIT_PATH/.hollaex
+        echo "Initialized by using HollaEx CLI v$(cat $SCRIPTPATH/version)" >> $HOLLAEX_CLI_INIT_PATH/.hollaex
 
         # grep -v ENVIRONMENT_EXCHANGE_NAME= $HOLLAEX_CLI_INIT_PATH/settings/configmap > temp.init && mv temp.init $HOLLAEX_CLI_INIT_PATH/settings/configmap
 
         # (echo "ENVIRONMENT_EXCHANGE_NAME=$ENVIRONMENT_EXCHANGE_NAME" && cat $HOLLAEX_CLI_INIT_PATH/settings/configmap) > temp.init && mv temp.init $HOLLAEX_CLI_INIT_PATH/settings/configmap
 
         echo "All done!"
-        echo "To run hollaex-cli commands further, Please get into initialized path first to let hollaex-cli reads settings."
+        echo "To run HollaEx CLI commands further, Please get into initialized path first to let HollaEx CLI reads settings."
 
     fi
         
@@ -362,26 +344,26 @@ elif [[ "$1" == "setup" ]]; then
     while true; do
         [[ $# -eq 0 ]] && break
         case $1 in
-            --settings)
+            --path)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 HOLLAEX_CLI_INIT_PATH=$1
-                echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
+                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
             --kube)
                 USE_KUBERNETES=true
-                echo "hollaex-cli will use your Kubernetes cluster as a target."
+                echo "HollaEx CLI will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
             --skip)
                 RUN_WITH_VERIFY=false
-                echo "Running it wihtout verify the config."
+                echo "Skipping the command confirmation."
                 shift; continue
                 ;;
             --reconfigure)
                 RECONFIGURE_BASIC_SETTINGS=true
-                echo "hollaex-cli will proceed to reconfigure your exchange's basic settings."
+                echo "HollaEx CLI will proceed to reconfigure your exchange's basic settings."
                 shift; continue
                 ;;
             --*) 
@@ -468,7 +450,7 @@ elif [[ "$1" == "setup" ]]; then
         fi
 
         if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION"  ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME"  ]] ; then
-            printf "\033[91mError: Please define exchange name and Docker image version on config file before running hollaex-cli.\033[39m\n"
+            printf "\033[91mError: Please define exchange name and Docker image version on config file before running HollaEx CLI.\033[39m\n"
             print_usage
             exit 1;
         fi
@@ -480,7 +462,7 @@ elif [[ "$1" == "setup" ]]; then
 
         if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
-            echo "Alert: hollaex-cli detected that $ENVIRONMENT_EXCHANGE_NAME exchange exists on your remote Kubernetes environment."
+            echo "Alert: HollaEx CLI detected that $ENVIRONMENT_EXCHANGE_NAME exchange exists on your remote Kubernetes environment."
             echo "You can't run launch process multiple times for existing exchange. This could break up system badly."
             echo "Exiting..."
             exit 1;
@@ -695,7 +677,7 @@ elif [[ "$1" == "setup" ]]; then
 
         else
 
-            echo "hollaex-cli failed to detect docker-compose installed on this machine. Please install it before running hollaex-cli."
+            echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
             exit 1;
 
         fi
@@ -703,7 +685,7 @@ elif [[ "$1" == "setup" ]]; then
         if command docker ps | grep local_$ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
             echo "*********************************************"
-            echo "Alert: hollaex-cli detected that $ENVIRONMENT_EXCHANGE_NAME exchange exists on your machine."
+            echo "Alert: HollaEx CLI detected that $ENVIRONMENT_EXCHANGE_NAME exchange exists on your machine."
             echo "You can't run launch process multiple times for existing exchange. This could break up system badly."
             echo "Exiting..."
             echo "*********************************************"
@@ -803,7 +785,7 @@ elif [[ "$1" == "setup" ]]; then
 
         else 
 
-            echo "hollaex-cli failed to launch containers. Please review your settings and try again."
+            echo "HollaEx CLI failed to launch containers. Please review your settings and try again."
             exit 1;
        
         fi
@@ -873,11 +855,11 @@ elif [[ "$1" == "start" ]]; then
     while true; do
         [[ $# -eq 0 ]] && break
         case $1 in
-            --settings)
+            --path)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 HOLLAEX_CLI_INIT_PATH=$1
-                echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
+                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
             --mode)
@@ -894,12 +876,12 @@ elif [[ "$1" == "start" ]]; then
                 ;;
             --kube)
                 USE_KUBERNETES=true
-                echo "hollaex-cli will use your Kubernetes cluster as a target."
+                echo "HollaEx CLI will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
             --skip)
                 RUN_WITH_VERIFY=false
-                echo "Running it wihtout verify the config."
+                echo "Skipping the command confirmation."
                 shift; continue
                 ;;
             --*) 
@@ -957,7 +939,7 @@ elif [[ "$1" == "start" ]]; then
         fi
 
         if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION"  ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME"  ]] ; then
-            printf "\033[91mError: Please define exchange name and Docker image version on config file before running hollaex-cli.\033[39m\n"
+            printf "\033[91mError: Please define exchange name and Docker image version on config file before running HollaEx CLI.\033[39m\n"
             print_usage
             exit 1;
         fi
@@ -1051,7 +1033,7 @@ elif [[ "$1" == "start" ]]; then
 
         else 
 
-            echo "hollaex-cli failed to detect existing exchange running on this Kubernetes."
+            echo "HollaEx CLI failed to detect existing exchange running on this Kubernetes."
             echo "Please review your settings files and targeted Kubernetes."
 
             exit 1;
@@ -1072,12 +1054,12 @@ elif [[ "$1" == "start" ]]; then
 
         else
 
-            echo "hollaex-cli failed to detect docker-compose installed on this machine. Please install it before running hollaex-cli."
+            echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
             exit 1;
 
         fi
 
-        # Exit hollaex-cli If docker_compose 
+        # Exit HollaEx CLI If docker_compose 
         if [[ ! "$ENVIRONMENT_EXCHANGE_RUN_MODE" ]]; then
 
             echo "Your ENVIRONMENT_EXCHANGE_RUN_MODE value is missing! Please reconfirm your settings files."
@@ -1173,11 +1155,11 @@ elif [[ "$1" == "stop" ]]; then
     while true; do
         [[ $# -eq 0 ]] && break
         case $1 in
-           --settings)
+           --path)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 HOLLAEX_CLI_INIT_PATH=$1
-                echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
+                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
             --mode)
@@ -1189,12 +1171,12 @@ elif [[ "$1" == "stop" ]]; then
                 ;;
             --kube)
                 USE_KUBERNETES=true
-                echo "hollaex-cli will use your Kubernetes cluster as a target."
+                echo "HollaEx CLI will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
             --skip)
                 RUN_WITH_VERIFY=false
-                echo "Running it wihtout verify the config."
+                echo "Skipping the command confirmation."
                 shift; continue
                 ;;
             --*) 
@@ -1303,7 +1285,7 @@ elif [[ "$1" == "stop" ]]; then
 
         else
 
-            echo "hollaex-cli failed to detect docker-compose installed on this machine. Please install it before running hollaex-cli."
+            echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
             exit 1;
 
         fi 
@@ -1333,21 +1315,21 @@ elif [[ "$1" == "restart" ]]; then
     while true; do
         [[ $# -eq 0 ]] && break
         case $1 in
-            --settings)
+            --path)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 HOLLAEX_CLI_INIT_PATH=$1
-                echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
+                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
             --kube)
                 USE_KUBERNETES=true
-                echo "hollaex-cli will use your Kubernetes cluster as a target."
+                echo "HollaEx CLI will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
             --skip)
                 RUN_WITH_VERIFY=false
-                echo "Running it wihtout verify the config."
+                echo "Skipping the command confirmation."
                 shift; continue
                 ;;
             --*) 
@@ -1403,7 +1385,7 @@ elif [[ "$1" == "restart" ]]; then
         fi
 
         if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION"  ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME"  ]] ; then
-            printf "\033[91mError: Please define exchange name and Docker image version on config file before running hollaex-cli.\033[39m\n"
+            printf "\033[91mError: Please define exchange name and Docker image version on config file before running HollaEx CLI.\033[39m\n"
             print_usage
             exit 1;
         fi
@@ -1507,7 +1489,7 @@ elif [[ "$1" == "restart" ]]; then
 
         else
 
-            echo "hollaex-cli failed to detect docker-compose installed on this machine. Please install it before running hollaex-cli."
+            echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
             
             exit 1;
 
@@ -1591,16 +1573,23 @@ elif [[ "$1" == "upgrade" ]]; then
     while true; do
         [[ $# -eq 0 ]] && break
         case $1 in
-            --settings)
+            --path)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 HOLLAEX_CLI_INIT_PATH=$1
-                echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
+                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
             --kube)
                 USE_KUBERNETES=true
-                echo "hollaex-cli will use your Kubernetes cluster as a target."
+                echo "HollaEx CLI will use your Kubernetes cluster as a target."
+                shift; continue
+                ;;
+            --registry)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE=$1
+                echo "Target hollaex docker registry : $ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE."
                 shift; continue
                 ;;
             --version)
@@ -1612,7 +1601,7 @@ elif [[ "$1" == "upgrade" ]]; then
                 ;;
             --skip)
                 RUN_WITH_VERIFY=false
-                echo "Running it wihtout verify the config."
+                echo "Skipping the command confirmation."
                 shift; continue
                 ;;
             --*) 
@@ -1657,11 +1646,19 @@ elif [[ "$1" == "upgrade" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
-    # Override target docker image version If user passed it manually with flag.
+    # Override target docker image version if user passed it manually with flag.
     if [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
         
         override_docker_image_version;
-        ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+        export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+        
+    fi
+
+    # Override target docker registry if user passed it manually with flag.
+    if [[ "$ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE" ]]; then
+        
+        override_docker_registry;
+        export ENVIRONMENT_DOCKER_IMAGE_REGISTRY=$ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE
         
     fi
 
@@ -1676,7 +1673,7 @@ elif [[ "$1" == "upgrade" ]]; then
         fi
 
         if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION"  ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME"  ]] ; then
-            printf "\033[91mError: Please define exchange name and Docker image version on config file before running hollaex-cli.\033[39m\n"
+            printf "\033[91mError: Please define exchange name and Docker image version on config file before running HollaEx CLI.\033[39m\n"
             print_usage
             exit 1;
         fi
@@ -1796,7 +1793,7 @@ elif [[ "$1" == "upgrade" ]]; then
 
         else
 
-            echo "hollaex-cli failed to detect docker-compose installed on this machine. Please install it before running hollaex-cli."
+            echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
             exit 1;
 
         fi
@@ -1915,21 +1912,21 @@ elif [[ "$1" == "terminate" ]]; then
      while true; do
         [[ $# -eq 0 ]] && break
         case $1 in
-            --settings)
+            --path)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 HOLLAEX_CLI_INIT_PATH=$1
-                echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
+                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
             --kube)
                 USE_KUBERNETES=true
-                echo "hollaex-cli will use your Kubernetes cluster as a target."
+                echo "HollaEx CLI will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
             --skip)
                 RUN_WITH_VERIFY=false
-                echo "Running it wihtout verify the config."
+                echo "Skipping the command confirmation."
                 shift; continue
                 ;;
             --*) 
@@ -2045,7 +2042,7 @@ elif [[ "$1" == "terminate" ]]; then
 
         else
 
-            echo "hollaex-cli failed to detect docker-compose installed on this machine. Please install it before running hollaex-cli."
+            echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
             exit 1;
 
         fi
@@ -2084,21 +2081,21 @@ elif [[ "$1" == "web" ]]; then
     while true; do
         [[ $# -eq 0 ]] && break
         case $1 in
-            --settings)
+            --path)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 HOLLAEX_CLI_INIT_PATH=$1
-                echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
+                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
             --kube)
                 USE_KUBERNETES=true
-                echo "hollaex-cli will use your Kubernetes cluster as a target."
+                echo "HollaEx CLI will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
             --skip)
                 RUN_WITH_VERIFY=false
-                echo "Running it wihtout verify the config."
+                echo "Skipping the command confirmation."
                 shift; continue
                 ;;
             --setup)
@@ -2175,7 +2172,7 @@ elif [[ "$1" == "web" ]]; then
 
     # Setting web operation enabled command to true.
     ENVIRONMENT_WEB_ENABLE=true
-    
+
     # hollaex web --setup
     if [[ "$WEB_CLIENT_SETUP" ]]; then
 
@@ -2194,8 +2191,6 @@ elif [[ "$1" == "web" ]]; then
 
             echo "Starting the web client on Kubernetes..."
 
-            echo "Generating Web client Configmap"
-            generate_hollaex_web_configmap;
 
 
         elif [[ ! "$USE_KUBERNETES" ]]; then
@@ -2210,7 +2205,7 @@ elif [[ "$1" == "web" ]]; then
 
             else
 
-                echo "hollaex-cli failed to detect docker-compose installed on this machine. Please install it before running hollaex-cli."
+                echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
                 exit 1;
 
             fi
@@ -2286,7 +2281,7 @@ EOF
 
             else 
 
-                echo "hollaex-cli failed to launch containers. Please review your settings and try again."
+                echo "HollaEx CLI failed to start the web client. Please review your settings and try again."
                 exit 1;
             
             fi
@@ -2344,7 +2339,7 @@ EOF
 
             else 
 
-                echo "hollaex-cli failed to stop containers. Please review your settings and try again."
+                echo "HollaEx CLI failed to stop the web client. Please review your settings and try again."
                 exit 1;
             
             fi
@@ -2356,6 +2351,25 @@ EOF
     fi
 
     if [[ "$WEB_CLIENT_RESTART" ]]; then
+
+         if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+            echo "Are you sure you want to restart web client? (y/N)"
+
+            if [[ "$USE_KUBERNETES" ]]; then
+
+                echo "- Targeted Kubernetes cluster."
+
+            fi
+
+            read answer
+
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                echo "Exiting..."
+                exit 0;
+            fi
+
+        fi
 
         if [[ "$USE_KUBERNETES" ]]; then
 
@@ -2377,7 +2391,7 @@ EOF
 
             else
 
-                echo "hollaex-cli failed to detect docker-compose installed on this machine. Please install it before running hollaex-cli."
+                echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
                 exit 1;
 
             fi
@@ -2425,7 +2439,7 @@ EOF
 
             else 
 
-                echo "hollaex-cli failed to restart containers. Please review your settings and try again."
+                echo "HollaEx CLI failed to restart the web client. Please review your settings and try again."
                 exit 1;
             
             fi
@@ -2437,75 +2451,64 @@ EOF
 
     if [[ "$WEB_CLIENT_REBUILD" ]]; then
 
-        if [[ "$USE_KUBERNETES" ]]; then
+        # Checking docker-compose is installed on this machine.
+        if command docker-compose version > /dev/null 2>&1; then
 
-            echo "Starting the web client on Kubernetes..."
+            echo "*********************************************"
+            echo "docker-compose detected"
+            echo "version: $(docker-compose version)"
+            echo "*********************************************"
 
-            echo "Generating Web client Configmap"
-            generate_hollaex_web_configmap;
+        else
 
-
-        elif [[ ! "$USE_KUBERNETES" ]]; then
-
-            # Checking docker-compose is installed on this machine.
-            if command docker-compose version > /dev/null 2>&1; then
-
-                echo "*********************************************"
-                echo "docker-compose detected"
-                echo "version: $(docker-compose version)"
-                echo "*********************************************"
-
-            else
-
-                echo "hollaex-cli failed to detect docker-compose installed on this machine. Please install it before running hollaex-cli."
-                exit 1;
-
-            fi
-
-            if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-                echo "Are you sure you want to rebuild the web client for the exchange on this machine? (Y/n)"
-
-                read answer
-
-                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-                    echo "Exiting..."
-                    exit 0;
-                fi
-
-            fi
-
-            basic_settings_for_web_client_input;
-
-            echo "Generating docker-compose file for Web Client"
-            generate_local_docker_compose_for_web
-
-            echo "Generating .env for Web Client"
-            generate_hollaex_web_local_env
-
-            echo "Generating Nginx conf for Web Client"
-            generate_hollaex_web_local_nginx_conf
-
-            echo "Updating nginx conf file based on user settings"
-            apply_nginx_user_defined_values
-
-            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client up -d --build; then
-
-                docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client stop
-
-                echo "New Web image has been successfully built!"
-                echo "Use 'hollaex web --start' to start the Web Server".
-                
-            else 
-
-                echo "hollaex-cli failed to launch containers. Please review your settings and try again."
-                exit 1;
-            
-            fi
-
-            exit 0;
+            echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
+            exit 1;
 
         fi
+
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+            echo "Are you sure you want to rebuild the web client? (Y/n)"
+
+            read answer
+
+            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+                echo "Exiting..."
+                exit 0;
+            fi
+
+        fi
+
+        basic_settings_for_web_client_input;
+
+        echo "Generating docker-compose file for Web Client"
+        generate_local_docker_compose_for_web
+
+        echo "Generating .env for Web Client"
+        generate_hollaex_web_local_env
+
+        echo "Generating Nginx conf for Web Client"
+        generate_hollaex_web_local_nginx_conf
+
+        echo "Updating nginx conf file based on user settings"
+        apply_nginx_user_defined_values
+
+        if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client up -d --build; then
+
+            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client stop
+
+            echo "New Web image has been successfully built!"
+            echo "Use 'hollaex web --start' to start the Web Server".
+            
+        else 
+
+            echo "HollaEx CLI failed to rebuild the web client. Please review your settings and try again."
+            exit 1;
+        
+        fi
+
+        exit 0;
+
     fi
 
     if [[ "$WEB_CLIENT_TERMINATE" ]]; then
@@ -2527,7 +2530,7 @@ EOF
 
             else
 
-                echo "hollaex-cli failed to detect docker-compose installed on this machine. Please install it before running hollaex-cli."
+                echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
                 exit 1;
 
             fi
@@ -2570,7 +2573,7 @@ EOF
 
             else 
 
-                echo "hollaex-cli failed to terminate containers. Please review your settings and try again."
+                echo "HollaEx CLI failed to terminate the web client. Please review your settings and try again."
                 exit 1;
             
             fi
@@ -2585,98 +2588,98 @@ elif [[ "$1" == "toolbox" ]]; then
     while true; do
         [[ $# -eq 0 ]] && break
         case $1 in
-            --settings)
+            --path)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 HOLLAEX_CLI_INIT_PATH=$1
-                echo "Your initialized exchange path : $HOLLAEX_CLI_INIT_PATH."
+                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
             --kube)
                 USE_KUBERNETES=true
-                echo "hollaex-cli will use your Kubernetes cluster as a target."
+                echo "HollaEx CLI will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
             --dev)
                 IS_DEVELOP=true
-                echo "hollaex-cli is configured as dev mode for development purpose."
+                echo "HollaEx CLI is configured as dev mode for development purpose."
                 shift; continue
                 ;;
             --upgrade_backends)
                 UPGRADE_BACKENDS=true
                 TOOLBOX_ENABLE=true
-                echo "hollaex-cli will upgrade your backends (PostgreSQL, Redis, InfluxDB) based on your settings files value."
+                echo "HollaEx CLI will upgrade your backends (PostgreSQL, Redis, InfluxDB) based on your settings files value."
                 shift; continue
                 ;;
             --backup)
                 BACKUP_POSTGRESQL=true
                 TOOLBOX_ENABLE=true
-                echo "hollaex-cli will run PostgreSQL database dump on your initialized exchange folder."
+                echo "HollaEx CLI will run PostgreSQL database dump on your initialized exchange folder."
                 shift; continue
                 ;;
             --flush_redis)
                 FLUSH_REDIS=true
                 TOOLBOX_ENABLE=true
-                echo "hollaex-cli will run full flush of Redis stored data. This could be helpful in certain situation If the exchange doesnt work properly."
+                echo "HollaEx CLI will run full flush of Redis stored data. This could be helpful in certain situation If the exchange doesnt work properly."
                 shift; continue
                 ;;
             --upgrade_api_only)
                 UPGRADE_API_ONLY=true
                 TOOLBOX_ENABLE=true
-                echo "hollaex-cli will rolling-upgrade API containers only for Kubernetes."
+                echo "HollaEx CLI will rolling-upgrade API containers only for Kubernetes."
                 shift; continue
                 ;;
             --add_coin)
                 ADD_COIN=true
                 TOOLBOX_ENABLE=true
-                echo "hollaex-cli will proceed to add new coin on your existing exchange."
+                echo "HollaEx CLI will proceed to add new coin on your existing exchange."
                 shift; continue
                 ;;
             --add_trading_pair)
                 ADD_TRADING_PAIR=true
                 TOOLBOX_ENABLE=true
-                echo "hollaex-cli will proceed to add new trading pair on your existing exchange."
+                echo "HollaEx CLI will proceed to add new trading pair on your existing exchange."
                 shift; continue
                 ;;
             --remove_coin)
                 REMOVE_COIN=true
                 TOOLBOX_ENABLE=true
-                echo "hollaex-cli will proceed to remove coin on your existing exchange."
+                echo "HollaEx CLI will proceed to remove coin on your existing exchange."
                 shift; continue
                 ;;
             --remove_trading_pair)
                 REMOVE_TRADING_PAIR=true
                 TOOLBOX_ENABLE=true
-                echo "hollaex-cli will proceed to remove trading pair on your existing exchange."
+                echo "HollaEx CLI will proceed to remove trading pair on your existing exchange."
                 shift; continue
                 ;;
             # --reconfigure_basic_settings)
             #     RECONFIGURE_BASIC_SETTINGS=true
             #     TOOLBOX_ENABLE=true
-            #     echo "hollaex-cli will proceed to reconfigure your exchange's basic settings."
+            #     echo "HollaEx CLI will proceed to reconfigure your exchange's basic settings."
             #     shift; continue
             #     ;;
             # --reactivate_exchange)
             #     REACTIVATE_EXCHANGE=true
             #     TOOLBOX_ENABLE=true
-            #     echo "hollaex-cli will proceed to reactivate your exchange with new activate information."
+            #     echo "HollaEx CLI will proceed to reactivate your exchange with new activate information."
             #     shift; continue
             #     ;;
             --issue_ssl)
                 ISSUE_SSL_CERT=true
                 TOOLBOX_ENABLE=true
-                echo "hollaex-cli will proceed to issue SSL certificate by using Let's Encrypt for local exchange."
+                echo "HollaEx CLI will proceed to issue SSL certificate by using Let's Encrypt for local exchange."
                 shift; continue
                 ;;
             --renew_ssl)
                 RENEW_SSL_CERT=true
                 TOOLBOX_ENABLE=true
-                echo "hollaex-cli will proceed to renew SSL certificate by using Let's Encrypt for local exchange."
+                echo "HollaEx CLI will proceed to renew SSL certificate by using Let's Encrypt for local exchange."
                 shift; continue
                 ;;
             --skip)
                 RUN_WITH_VERIFY=false
-                echo "Running it wihtout verify the config."
+                echo "Skipping the command confirmation."
                 shift; continue
                 ;;
             --*) 
@@ -2879,7 +2882,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         else 
 
-            echo "hollaex-cli failed to detect pg_dump on your machine"
+            echo "HollaEx CLI failed to detect pg_dump on your machine"
             echo "Please make sure that you already installed pg_dump"
 
             exit 1;
@@ -2908,7 +2911,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
             fi
 
-            echo "hollaex-cli will open proxy tunnel between your machine and remote proxy with kubectl proxy."
+            echo "HollaEx CLI will open proxy tunnel between your machine and remote proxy with kubectl proxy."
 
             echo "Opening local proxy on 5432 port of your machine..."
             kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-db" -o name | sed 's/pod\///' | head -n 1) 5432:5432 &
@@ -2953,7 +2956,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
             fi
 
-            echo "hollaex-cli will backup your local PostgreSQL DB."
+            echo "HollaEx CLI will backup your local PostgreSQL DB."
 
             echo "Running pg_dumpall..."
             
@@ -3074,7 +3077,7 @@ elif [[ "$1" == "toolbox" ]]; then
         
         elif [[ ! "$USE_KUBERNETES" ]] ; then
 
-            echo "hollaex-cli only supports rolling-upgrade for api contianers on Kubernets environment."
+            echo "HollaEx CLI only supports rolling-upgrade for api contianers on Kubernets environment."
             echo "Please use --kube flag to point Kubernetes."
 
             exit 1;
@@ -3210,7 +3213,7 @@ elif [[ "$1" == "version" ]]; then
 .@@@888888888888888888888888888888888888888888888888888888888888888888880.
 1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
 
-hollaex-cli : v$(cat $SCRIPTPATH/version), Made with <3 by bitHolla Inc.
+HollaEx CLI : v$(cat $SCRIPTPATH/version), Made with <3 by bitHolla Inc.
 
 EOF
 

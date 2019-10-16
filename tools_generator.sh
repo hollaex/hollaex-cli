@@ -1045,6 +1045,23 @@ function override_docker_image_version() {
 
 }
 
+function override_docker_registry() {
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+
+    local ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE_PARSED=${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE//\//\\\/}
+
+    if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+      CONFIGMAP_FILE_PATH=$i
+      sed -i.bak "s/ENVIRONMENT_DOCKER_IMAGE_REGISTRY=.*/ENVIRONMENT_DOCKER_IMAGE_REGISTRY=$ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE_PARSED/" $CONFIGMAP_FILE_PATH
+    fi
+    
+  done
+
+  rm $CONFIGMAP_FILE_PATH.bak
+
+}
+
 # JSON generator
 function join_array_to_json(){
   local arr=( "$@" );
@@ -2646,7 +2663,7 @@ EOF
 
   # WEB CAPTCHA SITE KEY
   echo "***************************************************************"
-  echo "[6/30] Exchange Web Google reCpatcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
+  echo "[6/30] Exchange Web Google reCaptcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
   printf "\033[2m- Enter your Web Google reCpathca site key. \033[22m\n"
   read answer
 
@@ -2658,8 +2675,8 @@ EOF
 
   # Server CAPTCHA Secret key
   echo "***************************************************************"
-  echo "[7/30] Exchange API Server Google reCpatcha Secretkey: ($(echo ${HOLLAEX_SECRET_CAPTCHA_SECRET_KEY//?/◼︎}$(echo $HOLLAEX_SECRET_CAPTCHA_SECRET_KEY | grep -o '....$')))"
-  printf "\033[2m- Enter your API Server Google reCpatcha Secretkey. \033[22m\n"
+  echo "[7/30] Exchange API Server Google reCaptcha Secretkey: ($(echo ${HOLLAEX_SECRET_CAPTCHA_SECRET_KEY//?/◼︎}$(echo $HOLLAEX_SECRET_CAPTCHA_SECRET_KEY | grep -o '....$')))"
+  printf "\033[2m- Enter your API Server Google reCaptcha Secretkey. \033[22m\n"
   read -s answer
 
   local HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE="${answer:-$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY}"
@@ -3230,7 +3247,7 @@ EOF
 
   # WEB CAPTCHA SITE KEY
   echo "***************************************************************"
-  echo "[2/4] Exchange Web Google reCpatcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
+  echo "[2/4] Exchange Web Google reCaptcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
   printf "\n"
   read answer
 
