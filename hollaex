@@ -2191,8 +2191,6 @@ elif [[ "$1" == "web" ]]; then
 
             echo "Starting the web client on Kubernetes..."
 
-            echo "Generating Web client Configmap"
-            generate_hollaex_web_configmap;
 
 
         elif [[ ! "$USE_KUBERNETES" ]]; then
