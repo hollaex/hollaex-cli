@@ -158,7 +158,7 @@ if [[ "$1" == 'dev' ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo -e "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m"
+        printf "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m\n"
         print_usage;
         exit 1;
 
@@ -322,7 +322,7 @@ elif [[ "$1" == "init" ]]; then
 
         else 
 
-            echo -e "\033[91mFailed to pull hollaex-kit repo. Please check your internet connectivity.\033[39m"
+            printf "\033[91mFailed to pull hollaex-kit repo. Please check your internet connectivity.\033[39m\n"
             exit 1;
 
         fi
@@ -413,7 +413,7 @@ elif [[ "$1" == "setup" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo -e "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m"
+        printf "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m\n"
         print_usage;
         exit 1;
 
@@ -468,7 +468,7 @@ elif [[ "$1" == "setup" ]]; then
         fi
 
         if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION"  ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME"  ]] ; then
-            echo -e "\033[91mError: Please define exchange name and Docker image version on config file before running hollaex-cli.\033[39m"
+            printf "\033[91mError: Please define exchange name and Docker image version on config file before running hollaex-cli.\033[39m\n"
             print_usage
             exit 1;
         fi
@@ -809,7 +809,7 @@ elif [[ "$1" == "setup" ]]; then
         fi
         
         echo "*********************************************"
-        echo -e "\n"
+        printf "\n"
         echo "Your exchange is all set!"
         echo "You can proceed to add your own currencies, trading pairs right away from now on."
         echo "It doesn't matter you want to skip it for now. You can always add new currencies and trading pairs with 'hollaex toolbox' command."
@@ -932,7 +932,7 @@ elif [[ "$1" == "start" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo -e "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m"
+        printf "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m\n"
         print_usage;
         exit 1;
 
@@ -957,7 +957,7 @@ elif [[ "$1" == "start" ]]; then
         fi
 
         if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION"  ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME"  ]] ; then
-            echo -e "\033[91mError: Please define exchange name and Docker image version on config file before running hollaex-cli.\033[39m"
+            printf "\033[91mError: Please define exchange name and Docker image version on config file before running hollaex-cli.\033[39m\n"
             print_usage
             exit 1;
         fi
@@ -1228,7 +1228,7 @@ elif [[ "$1" == "stop" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo -e "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m"
+        printf "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m\n"
         print_usage;
         exit 1;
 
@@ -1379,7 +1379,7 @@ elif [[ "$1" == "restart" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo -e "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m"
+        printf "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m\n"
         print_usage;
         exit 1;
 
@@ -1403,7 +1403,7 @@ elif [[ "$1" == "restart" ]]; then
         fi
 
         if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION"  ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME"  ]] ; then
-            echo -e "\033[91mError: Please define exchange name and Docker image version on config file before running hollaex-cli.\033[39m"
+            printf "\033[91mError: Please define exchange name and Docker image version on config file before running hollaex-cli.\033[39m\n"
             print_usage
             exit 1;
         fi
@@ -1417,7 +1417,7 @@ elif [[ "$1" == "restart" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo -e "\033[93mWarning: Exchange service will be unavailable during the restart!\033[39m"
+            printf "\033[93mWarning: Exchange service will be unavailable during the restart!\033[39m\n"
             echo "Are you sure you want to restart $ENVIRONMENT_EXCHANGE_NAME on this cluster? (y/N)"
 
             read answer
@@ -1529,7 +1529,7 @@ elif [[ "$1" == "restart" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
             
-            echo -e "\033[93mWarning: Exchange service will be unavailable during the restart!\033[39m"
+            printf "\033[93mWarning: Exchange service will be unavailable during the restart!\033[39m\n"
             echo "Are you sure you want to restart $ENVIRONMENT_EXCHANGE_NAME on your machine? (y/N)"
 
             read answer
@@ -1644,7 +1644,7 @@ elif [[ "$1" == "upgrade" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo -e "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m"
+        printf "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m\n"
         print_usage;
         exit 1;
 
@@ -1676,7 +1676,7 @@ elif [[ "$1" == "upgrade" ]]; then
         fi
 
         if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION"  ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME"  ]] ; then
-            echo -e "\033[91mError: Please define exchange name and Docker image version on config file before running hollaex-cli.\033[39m"
+            printf "\033[91mError: Please define exchange name and Docker image version on config file before running hollaex-cli.\033[39m\n"
             print_usage
             exit 1;
         fi
@@ -1690,7 +1690,7 @@ elif [[ "$1" == "upgrade" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo -e "\033[93mWarning: Exchange service will be unavailable during the upgrade!\033[39m"
+            printf "\033[93mWarning: Exchange service will be unavailable during the upgrade!\033[39m\n"
             echo "Are you sure you want to upgrade $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION with $ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS api containers on this cluster? (y/N)"
 
             read answer
@@ -1817,7 +1817,7 @@ elif [[ "$1" == "upgrade" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
             
-            echo -e "\033[93mWarning: Exchange service will be unavailable during the upgrade!\033[39m"
+            printf "\033[93mWarning: Exchange service will be unavailable during the upgrade!\033[39m\n"
             echo "Are you sure you want to upgrade $ENVIRONMENT_EXCHANGE_NAME on your machine? (y/N)"
 
             read answer
@@ -1901,7 +1901,7 @@ elif [[ "$1" == "upgrade" ]]; then
 
         else
 
-            echo -e "\033[91mFailed to upgrade exchange! Please review your settings and try again.\033[39m"
+            printf "\033[91mFailed to upgrade exchange! Please review your settings and try again.\033[39m\n"
             exit 1;
 
         fi
@@ -1961,7 +1961,7 @@ elif [[ "$1" == "terminate" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo -e "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m"
+        printf "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m\n"
         print_usage;
         exit 1;
 
@@ -2160,7 +2160,7 @@ elif [[ "$1" == "web" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo -e "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m"
+        printf "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m\n"
         print_usage;
         exit 1;
 
@@ -2280,7 +2280,7 @@ EOF
                 
                 else
 
-                    echo -e "\033[91mFailed to reload Nginx. Please review your configurations and try again.\033[39m"
+                    printf "\033[91mFailed to reload Nginx. Please review your configurations and try again.\033[39m\n"
                 
                 fi
 
@@ -2335,7 +2335,7 @@ EOF
                 
                 else
 
-                    echo -e "\033[91mFailed to reload Nginx. Please review your configurations and try again.\033[39m"
+                    printf "\033[91mFailed to reload Nginx. Please review your configurations and try again.\033[39m\n"
                 
                 fi
 
@@ -2419,7 +2419,7 @@ EOF
                 
                 else
 
-                    echo -e "\033[91mFailed to reload Nginx. Please review your configurations and try again.\033[39m"
+                    printf "\033[91mFailed to reload Nginx. Please review your configurations and try again.\033[39m\n"
                 
                 fi
 
@@ -2562,7 +2562,7 @@ EOF
                 
                 else
 
-                    echo -e "\033[91mFailed to reload Nginx. Please review your configurations and try again.\033[39m"
+                    printf "\033[91mFailed to reload Nginx. Please review your configurations and try again.\033[39m\n"
                 
                 fi
 
@@ -2730,7 +2730,7 @@ elif [[ "$1" == "toolbox" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        echo -e "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m"
+        printf "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m\n"
         print_usage;
         exit 1;
 
@@ -2767,7 +2767,7 @@ elif [[ "$1" == "toolbox" ]]; then
     # Features
     if [[ "$UPGRADE_BACKENDS" ]]; then 
 
-        echo -e "\033[93mWarning: Exchange service will be unavailable during the upgrade!\033[39m"
+        printf "\033[93mWarning: Exchange service will be unavailable during the upgrade!\033[39m\n"
 
         echo "All workload containers will be restarted once the upgrade process is done."
     
@@ -2976,7 +2976,7 @@ elif [[ "$1" == "toolbox" ]]; then
         
     elif [[ "$FLUSH_REDIS" ]]; then
 
-        echo -e "\033[93mWarning: Exchange service will be unavailable during the upgrade!\033[39m"
+        printf "\033[93mWarning: Exchange service will be unavailable during the upgrade!\033[39m\n"
 
         if [[ "$USE_KUBERNETES" ]] ; then
 
@@ -3084,7 +3084,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
     elif [[ "$ADD_COIN" ]]; then
 
-        echo -e "\033[93mWarning: Adding new coin requires full restart of the exchange!\033[39m"
+        printf "\033[93mWarning: Adding new coin requires full restart of the exchange!\033[39m\n"
         echo "Please double confirm that you are good to proceed"
         
         add_coin_input;
@@ -3093,7 +3093,7 @@ elif [[ "$1" == "toolbox" ]]; then
         
     elif [[ "$REMOVE_COIN" ]]; then
 
-        echo -e "\033[93mWarning: Removing new coin requires full restart of the exchange!\033[39m"
+        printf "\033[93mWarning: Removing new coin requires full restart of the exchange!\033[39m\n"
         echo "Please double confirm that you are good to proceed"
         
         remove_coin_input;
@@ -3102,7 +3102,7 @@ elif [[ "$1" == "toolbox" ]]; then
     
     elif [[ "$ADD_TRADING_PAIR" ]]; then
 
-        echo -e "\033[93mWarning: Adding new pair requires full restart of the exchange!\033[39m"
+        printf "\033[93mWarning: Adding new pair requires full restart of the exchange!\033[39m\n"
         echo "Please double confirm that you are good to proceed"
         
         add_pair_input;
@@ -3111,7 +3111,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
     elif [[ "$REMOVE_TRADING_PAIR" ]]; then
 
-        echo -e "\033[93mWarning: Removing new pair requires full restart of the exchange!\033[39m"
+        printf "\033[93mWarning: Removing new pair requires full restart of the exchange!\033[39m\n"
         echo "Please double confirm that you are good to proceed"
         
         remove_pair_input;
@@ -3154,7 +3154,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         else 
 
-            echo -e "\033[91mFailed to issue SSL certificate by using Certbot. Please confirm your settings and try again.\033[39m"
+            printf "\033[91mFailed to issue SSL certificate by using Certbot. Please confirm your settings and try again.\033[39m\n"
             exit 1;
 
         fi
@@ -3184,7 +3184,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         else 
 
-            echo -e "\033[91mFailed to issue SSL certificate by using Certbot. Please confirm your settings and try again.\033[39m"
+            printf "\033[91mFailed to issue SSL certificate by using Certbot. Please confirm your settings and try again.\033[39m\n"
             exit 1;
 
         fi
