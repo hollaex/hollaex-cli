@@ -2275,7 +2275,7 @@ EOF
                 
                 else
 
-                    printf "\033[91mFailed to reload Nginx. Please review your configurations and try again.\033[39m\n"
+                    printf "\033[91mFailed to reload Nginx. Did you start the exchange server?\033[39m\n"
                 
                 fi
 
@@ -2330,7 +2330,7 @@ EOF
                 
                 else
 
-                    printf "\033[91mFailed to reload Nginx. Please review your configurations and try again.\033[39m\n"
+                    printf "\033[91mFailed to reload Nginx. Did you start the exchange server?\033[39m\n"
                 
                 fi
 
@@ -2402,7 +2402,9 @@ EOF
             echo "Updating nginx conf file based on user settings"
             apply_nginx_user_defined_values
 
-            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client restart; then
+            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client stop; then
+                
+                docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client up -d
 
                 if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " " > /dev/null 2>&1; then 
 
@@ -2414,7 +2416,7 @@ EOF
                 
                 else
 
-                    printf "\033[91mFailed to reload Nginx. Please review your configurations and try again.\033[39m\n"
+                    printf "\033[91mFailed to reload Nginx. Did you start the exchange server?\033[39m\n"
                 
                 fi
 
@@ -2474,12 +2476,10 @@ EOF
         echo "Updating nginx conf file based on user settings"
         apply_nginx_user_defined_values
 
-        if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client up -d --build; then
-
-            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client stop
+        if command docker build -t ${ENVIRONMENT_KUBERNETES_WEB_IMAGE_REGISTRY}:${ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION} -f  ${HOLLAEX_CLI_INIT_PATH}/web/docker/Dockerfile  ${HOLLAEX_CLI_INIT_PATH}/web/; then
 
             echo "New Web image has been successfully built!"
-            echo "Use 'hollaex web --start' to start the Web Server".
+            echo "Use 'hollaex web --start' to start the Web Server with new image".
             
         else 
 
@@ -2546,7 +2546,7 @@ EOF
                 
                 else
 
-                    printf "\033[91mFailed to reload Nginx. Please review your configurations and try again.\033[39m\n"
+                    printf "\033[91mFailed to reload Nginx. Did you start the exchange server?\033[39m\n"
                 
                 fi
 
