@@ -2352,25 +2352,6 @@ EOF
 
     if [[ "$WEB_CLIENT_RESTART" ]]; then
 
-         if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-            echo "Are you sure you want to restart web client? (y/N)"
-
-            if [[ "$USE_KUBERNETES" ]]; then
-
-                echo "- Targeted Kubernetes cluster."
-
-            fi
-
-            read answer
-
-            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                echo "Exiting..."
-                exit 0;
-            fi
-
-        fi
-
         if [[ "$USE_KUBERNETES" ]]; then
 
             echo "Starting the web client on Kubernetes..."
