@@ -2266,7 +2266,7 @@ elif [[ "$1" == "web" ]]; then
 1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
 
                   Web Client for your exchange is ready!
-                  Try to reach $HOLLAEX_CONFIGMAP_DOMAIN
+             Try to reach $HOLLAEX_CONFIGMAP_DOMAIN or http://localhost:8080
 
 EOF
 
