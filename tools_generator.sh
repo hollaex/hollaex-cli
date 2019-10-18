@@ -2790,7 +2790,7 @@ EOF
       break;
     fi
   done
-  
+
   local PARSE_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST=${ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST//\//\\/}
   local EXCHANGE_SERVER_DOMAIN_OVERRIDE="$PARSE_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST"
 
@@ -2847,7 +2847,7 @@ EOF
   # Admin Password
   echo "***************************************************************"
   echo "[16/30] Admin Password: ($(echo ${HOLLAEX_SECRET_ADMIN_PASSWORD//?/◼︎}$(echo $HOLLAEX_SECRET_ADMIN_PASSWORD | grep -o '....$')))"
-  printf "\033[2m- Should be longer than 9 characters\033[22m\n"
+  printf "\033[2m- Make sure to input at least 8 characters, at least one digit and one character.\033[22m\n"
   read -s answer
 
   local HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE=${answer:-$HOLLAEX_SECRET_ADMIN_PASSWORD}
@@ -2867,11 +2867,11 @@ EOF
 
   while true;
     do if [[ "${#HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE}" -lt 8 ]] || [[ ! "${HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE}" =~ [0-9\ ]+$ ]] || [[ ! "${HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE}" =~ [a-zA-Z] ]]; then
-      echo "Invalid Password. Make sure to input at least 8 characters, at least one digit and one character."
+      printf "\nInvalid Password. Make sure to input at least 8 characters, at least one digit and one character.\n"
       echo "New Admin Password: "
       read -s answer
       local HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE=${answer}
-      echo "Retype Admin Password to confirm : "
+      printf "\nRetype Admin Password to confirm : \n"
       read -s answer_confirm
 
         while true;
