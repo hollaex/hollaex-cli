@@ -2624,7 +2624,7 @@ EOF
   while true;
     do if [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN" == *"http"* ]] && [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN" == *"https"* ]]; then
       printf "\nValue should be a full URL including 'http' or 'https'.\n"
-      echo  "Exchange Server API URL: "
+      echo  "Exchange URL: "
       read answer
       local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN="${answer}"
     else
@@ -3348,9 +3348,19 @@ EOF
   printf "\n"
   read answer
 
-  local ESCAPED_HOLLAEX_CONFIGMAP_DOMAIN=${HOLLAEX_CONFIGMAP_DOMAIN//\//\\/}
-
   local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN="${answer:-$HOLLAEX_CONFIGMAP_DOMAIN}"
+
+  while true;
+    do if [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN" == *"http"* ]] && [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN" == *"https"* ]]; then
+      printf "\nValue should be a full URL including 'http' or 'https'.\n"
+      echo  "Exchange Server API URL: "
+      read answer
+      local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN="${answer}"
+    else
+      break;
+    fi
+  done
+
   local PARSE_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN=${ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN//\//\\/}
   local EXCHANGE_WEB_DOMAIN_OVERRIDE="$PARSE_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN"
 
@@ -3394,7 +3404,6 @@ EOF
   echo "${answer:-$ENVIRONMENT_WEB_DEFAULT_LANGUAGE} ✔"
   printf "\n"
 
-  # # Default language
   # echo "Default Currency: ($ENVIRONMENT_WEB_BASE_CURRENCY)"
   # read answer
 
