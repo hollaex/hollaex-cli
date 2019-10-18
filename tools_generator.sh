@@ -2603,11 +2603,11 @@ EOF
   echo "***************************************************************"
   echo "[2/30] Activation Code: ($(echo ${HOLLAEX_SECRET_ACTIVATION_CODE//?/◼︎}$(echo $HOLLAEX_SECRET_ACTIVATION_CODE | grep -o '....$')))"
   printf "\033[2m- Go to https://dash.bitholla.com to issue your activation code.\033[22m\n" 
-  read -s answer
+  read answer
 
   local EXCHANGE_ACTIVATION_CODE_OVERRIDE=${answer:-$HOLLAEX_SECRET_ACTIVATION_CODE}
 
-  local EXCHANGE_ACTIVATION_CODE_MASKED=$(echo ${HOLLAEX_SECRET_ACTIVATION_CODE//?/◼︎}$(echo $HOLLAEX_SECRET_ACTIVATION_CODE | grep -o '....$'))
+  local EXCHANGE_ACTIVATION_CODE_MASKED=$(echo ${EXCHANGE_ACTIVATION_CODE_OVERRIDE//?/◼︎}$(echo $EXCHANGE_ACTIVATION_CODE_OVERRIDE | grep -o '....$'))
 
   printf "\n"
   echo "$EXCHANGE_ACTIVATION_CODE_MASKED ✔"
@@ -2677,7 +2677,7 @@ EOF
   echo "***************************************************************"
   echo "[7/30] Exchange API Server Google reCaptcha Secretkey: ($(echo ${HOLLAEX_SECRET_CAPTCHA_SECRET_KEY//?/◼︎}$(echo $HOLLAEX_SECRET_CAPTCHA_SECRET_KEY | grep -o '....$')))"
   printf "\033[2m- Enter your API Server Google reCaptcha Secretkey. \033[22m\n"
-  read -s answer
+  read answer
 
   local HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE="${answer:-$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY}"
 
@@ -2799,15 +2799,42 @@ EOF
 
   local HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE=${answer:-$HOLLAEX_SECRET_ADMIN_PASSWORD}
 
+  echo "Retype Admin Password to confirm :"
+  read -s answer_confirm
+  
   while true;
-    do if [[ "${#HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE}" -lt 9 ]]; then
-      echo "Your password is too short. Make sure to input at least 9 characters."
-      echo "New Admin Password: "
-      read -s answer
-      local HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE=${answer}
+    do if [[ ! "${answer_confirm}" == "${HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE}" ]]; then
+      echo "Password doesn't match. Please type it again."
+      echo "Retype Admin Password to confirm : "
+      read -s answer_confirm
     else
       break;
     fi
+  done
+
+  while true;
+    do if [[ "${#HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE}" -lt 8 ]] || [[ ! "${HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE}" =~ [0-9\ ]+$ ]] || [[ ! "${HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE}" =~ [a-zA-Z] ]]; then
+      echo "Invalid Password. Make sure to input at least 8 characters, at least one digit and one character."
+      echo "New Admin Password: "
+      read -s answer
+      local HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE=${answer}
+      echo "Retype Admin Password to confirm : "
+      read -s answer_confirm
+
+        while true;
+        do if [[ ! "${answer_confirm}" == "${HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE}" ]]; then
+          echo "Password doesn't match. Please type it again."
+          echo "Retype Admin Password to confirm : "
+          read -s answer_confirm
+        else
+          break;
+        fi
+        done
+
+    else
+      break;
+    fi
+  
   done
 
   local HOLLAEX_SECRET_ADMIN_PASSWORD_MASKED=$(echo ${HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE//?/◼︎}$(echo $HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE | grep -o '....$'))
@@ -2929,7 +2956,7 @@ EOF
   echo "***************************************************************"
   echo "[22/30] AWS SecretKey?: ($(echo ${HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY//?/◼︎}$(echo $HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY | grep -o '....$')))"
   printf "\033[2m- AWS IAM SecretKey for S3, SES, SNS.\033[22m\n"
-  read -s answer
+  read answer
   local ESCAPED_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=${HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY//\//\\\/}
 
   local ORIGINAL_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY="${answer:-$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY}"
@@ -2994,7 +3021,7 @@ EOF
   echo "***************************************************************"
   echo "[27/30] Vault Secret: ($(echo ${HOLLAEX_SECRET_VAULT_SECRET//?/◼︎}$(echo $HOLLAEX_SECRET_VAULT_SECRET | grep -o '....$'))) - Optional"
   printf "\033[2m- Vault Secret Key.\033[22m\n"
-  read -s answer
+  read answer
 
   local HOLLAEX_SECRET_VAULT_SECRET_OVERRIDE=${answer:-$HOLLAEX_SECRET_VAULT_SECRET}
   local HOLLAEX_SECRET_VAULT_SECRET_MASKED=$(echo ${HOLLAEX_SECRET_VAULT_SECRET_OVERRIDE//?/◼︎}$(echo $HOLLAEX_SECRET_VAULT_SECRET_OVERRIDE | grep -o '....$'))
@@ -3033,7 +3060,7 @@ EOF
   echo "***************************************************************"
   echo "[30/30] FreshDesk Auth: ($(echo ${HOLLAEX_SECRET_FRESHDESK_AUTH//?/◼︎}$(echo $HOLLAEX_SECRET_FRESHDESK_AUTH | grep -o '....$'))) - Optional"
   printf "\033[2m- FreshDesk Access Auth.\033[22m\n"
-  read -s answer
+  read answer
 
   local HOLLAEX_SECRET_FRESHDESK_AUTH_OVERRIDE=${answer:-$HOLLAEX_SECRET_FRESHDESK_AUTH}
   local HOLLAEX_SECRET_FRESHDESK_AUTH_MASKED=$(echo ${HOLLAEX_SECRET_FRESHDESK_AUTH_OVERRIDE//?/◼︎}$(echo $HOLLAEX_SECRET_FRESHDESK_AUTH_OVERRIDE | grep -o '....$'))
