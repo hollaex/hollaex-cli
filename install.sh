@@ -22,12 +22,12 @@ EOF
 echo "#### HollaEx CLI Installer ####"
 
 if [[ -d "$HOME/.hollaex-cli" ]] || [[ -d "$HOME/.hollaex-cli" ]]; then
-    echo "You already installed previous version of hollaex-cli."
+    printf "\n\033[93mYou already installed previous version of HollaEx CLI.\033[39m\n"
     REPLACE_EXISTING_TO_LATEST=true
 fi
 
 if [[ "$REPLACE_EXISTING_TO_LATEST" == "true" ]]; then
-    echo "Replacing existing HollaEx CLI to latest..."
+    printf "\n\033[93mReplacing existing HollaEx CLI to latest...\033[39m\n\n"
     sudo rm -r $HOME/.hollaex-cli
     sudo rm /usr/local/bin/hollaex
     git clone https://github.com/bitholla/hollaex-cli.git
@@ -40,5 +40,14 @@ chmod +x $(pwd)/hollaex-cli
 sudo mv $(pwd)/hollaex-cli $HOME/.hollaex-cli
 sudo ln -s $HOME/.hollaex-cli/hollaex /usr/local/bin/hollaex
 
-echo "HollaEx CLI v$(cat $HOME/.hollaex-cli/version) has been successfully installed on your computer!"
-echo "If you want to uninstall HollaEx CLI, Please visit https://github.com/bitholla/hollaex-cli for further information."
+if [[ -d $HOME/.hollaex-cli ]] && [[ -f /usr/local/bin/hollaex ]]; then
+
+    printf "\n\033[92mHollaEx CLI v$(cat $HOME/.hollaex-cli/version) has been successfully installed on your computer!\033[39m\n"
+    echo "If you want to uninstall HollaEx CLI, Please visit https://github.com/bitholla/hollaex-cli for further information."
+
+else 
+
+    printf "\n\033[91mFailed to install HollaEx CLI!\033[39m\n"
+    echo "Please check the logs above and try again."
+
+fi

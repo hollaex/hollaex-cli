@@ -2616,12 +2616,22 @@ EOF
   # Web Domain
   echo "***************************************************************"
   echo "[3/30] Exchange URL: ($HOLLAEX_CONFIGMAP_DOMAIN)"
-  printf "\033[2m- Enter the URL of your exchange website. \033[22m\n"
+  printf "\033[2m- Enter the full URL of your exchange website including 'http' or 'https'.\033[22m\n"
   read answer
 
-  local ESCAPED_HOLLAEX_CONFIGMAP_DOMAIN=${HOLLAEX_CONFIGMAP_DOMAIN//\//\\/}
-
   local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN="${answer:-$HOLLAEX_CONFIGMAP_DOMAIN}"
+
+  while true;
+    do if [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN" == *"http"* ]] && [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN" == *"https"* ]]; then
+      printf "\nValue should be a full URL including 'http' or 'https'.\n"
+      echo  "Exchange Server API URL: "
+      read answer
+      local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN="${answer}"
+    else
+      break;
+    fi
+  done
+
   local PARSE_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN=${ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN//\//\\/}
   local EXCHANGE_WEB_DOMAIN_OVERRIDE="$PARSE_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN"
   
@@ -2747,19 +2757,40 @@ EOF
 
   local HOLLAEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE="${answer:-$HOLLAEX_CONFIGMAP_DEFAULT_THEME}"
 
+  while true;
+    do if [[ "$HOLLAEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE" != "light" ]] && [[ "$HOLLAEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE" != "dark" ]]; then
+      echo "Theme should be always between 'light' and 'dark'."
+      echo  "Default Theme: "
+      read answer 
+      local HOLLAEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE="${answer}"
+    else
+      break;
+    fi
+  done
+
   printf "\n"
-  echo "${answer:-$HOLLAEX_CONFIGMAP_DEFAULT_THEME} ✔"
+  echo "$HOLLAEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE ✔"
   printf "\n"
 
   # API Domain
   echo "***************************************************************"
   echo "[13/30] Exchange Server API URL: ($HOLLAEX_CONFIGMAP_API_HOST)"
-  printf "\033[2m- Enter the URL of your exchange API server. \033[22m\n"
+  printf "\033[2m- Enter the full URL of your exchange API server including 'http' or 'https'. Keep it as 'http://localhost' for local test exchange.\033[22m\n"
   read answer
 
-  local ESCAPED_HOLLAEX_CONFIGMAP_API_HOST=${HOLLAEX_CONFIGMAP_API_HOST//\//\\/}
-
   local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST="${answer:-$HOLLAEX_CONFIGMAP_API_HOST}"
+
+  while true;
+    do if [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST" == *"http"* ]] && [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST" == *"https"* ]]; then
+      printf "\nValue should be a full URL including 'http' or 'https'.\n"
+      echo  "Exchange Server API URL: "
+      read answer
+      local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST="${answer:-$HOLLAEX_CONFIGMAP_API_HOST}"
+    else
+      break;
+    fi
+  done
+  
   local PARSE_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST=${ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST//\//\\/}
   local EXCHANGE_SERVER_DOMAIN_OVERRIDE="$PARSE_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST"
 
@@ -2775,6 +2806,17 @@ EOF
 
   local EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER}
 
+  while true;
+    do if [[ ! "$EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE" =~ [0-9\ ]+$ ]]; then
+      echo "User Tiers should be always number."
+      echo  "Number of User Tiers: "
+      read answer 
+      local EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE="${answer}"
+    else
+      break;
+    fi
+  done
+
   printf "\n"
   echo "${answer:-$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER} ✔"
   printf "\n"
@@ -2786,6 +2828,17 @@ EOF
   read answer
 
   local HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_ADMIN_EMAIL}
+
+  while true;
+    do if [[ ! "$HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE" == *"@"* ]]; then
+      printf "\nValue should be always an email form, such as 'admin@bitholla.com'.\n"
+      echo  "Admin Email: "
+      read answer 
+      local HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE="${answer}"
+    else
+      break;
+    fi
+  done
 
   printf "\n"
   echo "${answer:-$HOLLAEX_CONFIGMAP_ADMIN_EMAIL} ✔"
@@ -2851,6 +2904,17 @@ EOF
 
   local HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL}
 
+  while true;
+    do if [[ ! "$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE" == *"@"* ]]; then
+      printf "\nValue should be always an email form, such as 'support@bitholla.com'.\n"
+      echo  "Support Email: "
+      read answer 
+      local HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE="${answer}"
+    else
+      break;
+    fi
+  done
+
   printf "\n"
   echo "${answer:-$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL} ✔"
   printf "\n"
@@ -2868,8 +2932,19 @@ EOF
 
     local HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL}
 
+    while true;
+      do if [[ ! "$HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE" == *"@"* ]]; then
+        printf "\nValue should be always an email form, such as 'supervisor@bitholla.com'.\n"
+        echo  "Supervisor Email: "
+        read answer 
+        local HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE="${answer}"
+      else
+        break;
+      fi
+    done
+
     printf "\n"
-    echo "${answer:-$HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL} ✔"
+    echo "$HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE ✔"
     printf "\n"
     
   else
@@ -2894,6 +2969,17 @@ EOF
     read answer
 
     local HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_KYC_EMAIL}
+
+    while true;
+      do if [[ ! "$HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE" == *"@"* ]]; then
+        printf "\nValue should be always an email form, such as 'kyc@bitholla.com'.\n"
+        echo  "KYC Email: "
+        read answer 
+        local HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE="${answer}"
+      else
+        break;
+      fi
+    done
 
     printf "\n"
     echo "${answer:-$HOLLAEX_CONFIGMAP_KYC_EMAIL} ✔"
@@ -2937,7 +3023,7 @@ EOF
   fi
 
   printf "\n"
-  echo "${answer:-$HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE} ✔"
+  echo "$HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE ✔"
   printf "\n"
 
   # AWS AccessKey

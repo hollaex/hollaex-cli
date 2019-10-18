@@ -23,14 +23,17 @@ echo "#### HollaEx CLI Uninstaller ####"
 
 echo "Uninstalling HollaEx CLI..."
 
-# Remove old hollaex-cli related files together If it's left on system.
-if [[ -d "$HOME/.hollaex-cli" ]]; then
-    sudo rm /usr/local/bin/hollaex
-    sudo rm -r $HOME/.hollaex-cli
-fi
-
 sudo rm /usr/local/bin/hollaex
 sudo rm -r $HOME/.hollaex-cli
 
-echo "HollaEx CLI has been successfully removed from your computer."
-echo "If you want to reinstall HollaEx CLI, Please visit https://github.com/bitholla/hollaex-cli for further information."
+if [[ -d $HOME/.hollaex-cli ]] && [[ -f /usr/local/bin/hollaex ]]; then
+
+    printf "\n\033[91mFailed to uninstall HollaEx CLI!\033[39m\n"
+    echo "Please check the logs above and try again."
+
+else 
+
+   printf "\n\033[92mHollaEx CLI has been successfully removed from your computer.\033[39m\n"
+   echo "If you want to reinstall HollaEx CLI, Please visit https://github.com/bitholla/hollaex-cli for further information."
+
+fi
