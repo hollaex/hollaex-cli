@@ -140,7 +140,7 @@ if [[ "$1" == 'dev' ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m\n"
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
         exit 1;
 
@@ -202,7 +202,7 @@ if [[ "$1" == 'dev' ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to run $ENVIRONMENT_EXCHANGE_NAME on your machine? (Y/n)"
+            echo "Are you sure you want to run $HOLLAEX_CONFIGMAP_API_NAME on your machine? (Y/n)"
 
             read answer
 
@@ -272,7 +272,7 @@ elif [[ "$1" == "init" ]]; then
             --standalone)
                 shift 
                 HOLLAEX_INIT_STANDALONE=true
-                echo "HollaEx CLI will proceed to generate initialized directory without pulling HOLLAEX-Kit repo."
+                echo "HollaEx CLI will proceed to generate initialized directory without pulling HollaEx Kit repo."
                 shift; continue
                 ;;
         esac
@@ -290,7 +290,7 @@ elif [[ "$1" == "init" ]]; then
 
     if [[ ! "$HOLLAEX_INIT_STANDALONE" ]]; then
 
-        echo "Pulling remote hollaex-kit repo on $(pwd)"
+        echo "Pulling remote HollaEx Kit repo on $(pwd)"
         if command git clone https://github.com/bitholla/hollaex-kit.git; then
             
             HOLLAEX_CLI_INIT_PATH=$(pwd)/hollaex-kit
@@ -298,13 +298,13 @@ elif [[ "$1" == "init" ]]; then
             TEMPLATE_GENERATE_PATH=$(pwd)/hollaex-kit/templates
             INIT_PATH_CHECK=$(pwd)/hollaex-kit/.hollaex
 
-            echo "Done. hollaex-kit directory is now available on $(pwd)/hollaex-kit."
-            echo "Please go to the pulled path and customize based on your needs."
+            echo "HollaEx Kit is successfully initialized."
+            echo "You can go to: $(pwd)/hollaex-kit and start setting up your exchange with 'hollaex setup' command."
             
 
         else 
 
-            printf "\033[91mFailed to pull hollaex-kit repo. Please check your internet connectivity.\033[39m\n"
+            printf "\033[91mFailed to pull HollaEx Kit repository from GitHub. Please check your internet connectivity.\033[39m\n"
             exit 1;
 
         fi
@@ -319,7 +319,7 @@ elif [[ "$1" == "init" ]]; then
             exit 1;
         fi
 
-        echo "Initializing new Exchange - $ENVIRONMENT_EXCHANGE_NAME on $HOLLAEX_CLI_INIT_PATH ..."
+        echo "Initializing new Exchange - $HOLLAEX_CONFIGMAP_API_NAME on $HOLLAEX_CLI_INIT_PATH ..."
 
         mkdir $HOLLAEX_CLI_INIT_PATH
 
@@ -395,7 +395,7 @@ elif [[ "$1" == "setup" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m\n"
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
         exit 1;
 
@@ -462,16 +462,19 @@ elif [[ "$1" == "setup" ]]; then
 
         if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
-            echo "Alert: HollaEx CLI detected that $ENVIRONMENT_EXCHANGE_NAME exchange exists on your remote Kubernetes environment."
-            echo "You can't run launch process multiple times for existing exchange. This could break up system badly."
+            echo "*********************************************"
+            printf "\033[91mAlert: HollaEx CLI detected that $HOLLAEX_CONFIGMAP_API_NAME exchange exists on your remote Kubernetes environment.\033[39m\n"
+            printf "\033[91mExchange setup can't be done for multiple times.\033[39m\n\n"
+            printf "\033[91mIf you want to just update settings values, Please run 'hollaex setup --reconfigure' instead.\033[39m\n"
             echo "Exiting..."
+            echo "*********************************************"
             exit 1;
 
         fi
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to launch $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) on this cluster? (Y/n)"
+            echo "Are you sure you want to launch $HOLLAEX_CONFIGMAP_API_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) on this cluster? (Y/n)"
 
             read answer
 
@@ -633,7 +636,7 @@ elif [[ "$1" == "setup" ]]; then
 
             fi
 
-            echo "Creating Docker registry secret on $ENVIRONMENT_EXCHANGE_NAME namespace"
+            echo "Creating Docker registry secret on $HOLLAEX_CONFIGMAP_API_NAME namespace"
             kubectl create secret docker-registry bitholla-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME --docker-server=docker.io --docker-username=$ENVIRONMENT_KUBERNETES_DOCKER_HUB_USERNAME --docker-password=$ENVIRONMENT_KUBERNETES_DOCKER_HUB_PASSWORD --docker-email=$ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL
 
         fi
@@ -643,12 +646,12 @@ elif [[ "$1" == "setup" ]]; then
 
         if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
 
-            echo "Running $ENVIRONMENT_EXCHANGE_NAME web client container"
+            echo "Running $HOLLAEX_CONFIGMAP_API_NAME web client container"
             helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-web --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set imageRegistry="$ENVIRONMENT_KUBERNETES_WEB_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION" --set stable.replicaCount="1" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-web-env" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web
 
         fi
 
-        echo "Running $ENVIRONMENT_EXCHANGE_NAME workload containers"
+        echo "Running $HOLLAEX_CONFIGMAP_API_NAME workload containers"
 
         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --wait --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="$ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
@@ -661,7 +664,7 @@ elif [[ "$1" == "setup" ]]; then
         kubernetes_database_init launch;
         
         echo "All done!"
-        echo "Your $ENVIRONMENT_EXCHANGE_NAME ($HOLLAEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again."
+        echo "Your $HOLLAEX_CONFIGMAP_API_NAME ($HOLLAEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again."
 
     fi
 
@@ -685,8 +688,9 @@ elif [[ "$1" == "setup" ]]; then
         if command docker ps | grep local_$ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
             echo "*********************************************"
-            echo "Alert: HollaEx CLI detected that $ENVIRONMENT_EXCHANGE_NAME exchange exists on your machine."
-            echo "You can't run launch process multiple times for existing exchange. This could break up system badly."
+            printf "\033[91mAlert: HollaEx CLI detected that $HOLLAEX_CONFIGMAP_API_NAME exchange exists on your machine.\033[39m\n"
+            printf "\033[91mExchange setup can't be done for multiple times.\033[39m\n\n"
+            printf "\033[91mIf you want to just update settings values, Please run 'hollaex setup --reconfigure' instead.\033[39m\n\n"
             echo "Exiting..."
             echo "*********************************************"
             exit 1;
@@ -707,20 +711,10 @@ elif [[ "$1" == "setup" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
         fi
         
-        LOCAL_COMMAND="up -d"
-
-        #Quit if necessary flags are missing
-        if [[ ! "$LOCAL_COMMAND" ]]; then
-            
-            echo "Some necessary flags are missing! Please check agian your command."
-            print_usage;
-            exit 1;
-
-        fi
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to run $ENVIRONMENT_EXCHANGE_NAME on your machine? (Y/n)"
+            echo "Are you sure you want to run $HOLLAEX_CONFIGMAP_API_NAME on your machine? (Y/n)"
 
             read answer
 
@@ -736,7 +730,7 @@ elif [[ "$1" == "setup" ]]; then
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
-            echo "Generating $ENVIRONMENT_EXCHANGE_NAME.env.local file for docker"
+            echo "Generating env file for docker"
             generate_local_env;
 
         fi
@@ -772,7 +766,7 @@ elif [[ "$1" == "setup" ]]; then
 
         fi
 
-        if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND; then
+        if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d; then
 
              # Running database init
             RUN_WITH_VERIFY=false
@@ -914,7 +908,7 @@ elif [[ "$1" == "start" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m\n"
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
         exit 1;
 
@@ -954,7 +948,7 @@ elif [[ "$1" == "start" ]]; then
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
 
-            echo "Are you sure you want to start (scale up) $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) on this cluster? (Y/n)"
+            echo "Are you sure you want to start (scale up) $HOLLAEX_CONFIGMAP_API_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) on this cluster? (Y/n)"
 
             read answer
 
@@ -1094,7 +1088,7 @@ elif [[ "$1" == "start" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to start $ENVIRONMENT_EXCHANGE_NAME on your machine? (Y/n)"
+            echo "Are you sure you want to start $HOLLAEX_CONFIGMAP_API_NAME on your machine? (Y/n)"
 
             read answer
 
@@ -1107,7 +1101,7 @@ elif [[ "$1" == "start" ]]; then
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
-            echo "Generating $ENVIRONMENT_EXCHANGE_NAME.env.local file for docker"
+            echo "Generating env file for docker"
             generate_local_env;
 
         fi  
@@ -1142,9 +1136,16 @@ elif [[ "$1" == "start" ]]; then
 
         fi
 
-        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND
+        if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND; then
+
+            hollaex_ascii_exchange_is_up;
         
-        hollaex_ascii_exchange_is_up;
+        else 
+
+            printf "\033[91mFailed to start exchange! Please review your settings and try again.\033[39m\n"
+            exit 1;
+        
+        fi
 
         exit 0;
 
@@ -1210,7 +1211,7 @@ elif [[ "$1" == "stop" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m\n"
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
         exit 1;
 
@@ -1238,7 +1239,7 @@ elif [[ "$1" == "stop" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to stop (scale down) $ENVIRONMENT_EXCHANGE_NAME on this cluster? (y/N)"
+            echo "Are you sure you want to stop (scale down) $HOLLAEX_CONFIGMAP_API_NAME on this cluster? (y/N)"
 
             read answer
 
@@ -1249,7 +1250,7 @@ elif [[ "$1" == "stop" ]]; then
 
         fi
 
-        echo "Removing $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster."
+        echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
         kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
         echo "Scaling down containers on the cluster..."
@@ -1292,7 +1293,7 @@ elif [[ "$1" == "stop" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to stop $ENVIRONMENT_EXCHANGE_NAME running on your machine? (y/N)"
+            echo "Are you sure you want to stop $HOLLAEX_CONFIGMAP_API_NAME running on your machine? (y/N)"
 
             read answer
 
@@ -1303,9 +1304,17 @@ elif [[ "$1" == "stop" ]]; then
 
         fi
 
-        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+        if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop; then
 
-        hollaex_ascii_exchange_has_been_stopped;
+            hollaex_ascii_exchange_has_been_stopped;
+
+        else 
+
+            printf "\033[91mFailed to stop exchange! Please review your settings and try again.\033[39m\n"
+            exit 1;
+        
+        fi
+
         exit 0;
 
     fi
@@ -1361,7 +1370,7 @@ elif [[ "$1" == "restart" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m\n"
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
         exit 1;
 
@@ -1400,7 +1409,7 @@ elif [[ "$1" == "restart" ]]; then
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
             printf "\033[93mWarning: Exchange service will be unavailable during the restart!\033[39m\n"
-            echo "Are you sure you want to restart $ENVIRONMENT_EXCHANGE_NAME on this cluster? (y/N)"
+            echo "Are you sure you want to restart $HOLLAEX_CONFIGMAP_API_NAME on this cluster? (y/N)"
 
             read answer
 
@@ -1439,7 +1448,7 @@ elif [[ "$1" == "restart" ]]; then
 
         fi
 
-        echo "Removing $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster."
+        echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
         kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
         if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
@@ -1461,7 +1470,7 @@ elif [[ "$1" == "restart" ]]; then
         echo "Restarting all exchange containers on cluster"
         kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
 
-        echo "Applying $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster."
+        echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
         if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
@@ -1512,7 +1521,7 @@ elif [[ "$1" == "restart" ]]; then
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
             
             printf "\033[93mWarning: Exchange service will be unavailable during the restart!\033[39m\n"
-            echo "Are you sure you want to restart $ENVIRONMENT_EXCHANGE_NAME on your machine? (y/N)"
+            echo "Are you sure you want to restart $HOLLAEX_CONFIGMAP_API_NAME on your machine? (y/N)"
 
             read answer
 
@@ -1525,7 +1534,7 @@ elif [[ "$1" == "restart" ]]; then
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
-            echo "Generating $ENVIRONMENT_EXCHANGE_NAME.env.local file for docker"
+            echo "Generating env file for docker"
             generate_local_env;
 
         fi
@@ -1563,7 +1572,25 @@ elif [[ "$1" == "restart" ]]; then
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
         
-        hollaex_ascii_exchange_is_up;
+        if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop; then
+
+            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d; then
+                
+                hollaex_ascii_exchange_is_up;
+
+            else 
+
+                printf "\033[91mFailed to restart exchange! Please review your settings and try again.\033[39m\n"
+                exit 1;
+            fi
+
+        else 
+
+            printf "\033[91mFailed to restart exchange! Please review your settings and try again.\033[39m\n"
+            exit 1;
+        
+        fi
+
         exit 0;
 
     fi
@@ -1633,7 +1660,7 @@ elif [[ "$1" == "upgrade" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m\n"
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
         exit 1;
 
@@ -1688,7 +1715,7 @@ elif [[ "$1" == "upgrade" ]]; then
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
             printf "\033[93mWarning: Exchange service will be unavailable during the upgrade!\033[39m\n"
-            echo "Are you sure you want to upgrade $ENVIRONMENT_EXCHANGE_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION with $ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS api containers on this cluster? (y/N)"
+            echo "Are you sure you want to upgrade $HOLLAEX_CONFIGMAP_API_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION with $ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS api containers on this cluster? (y/N)"
 
             read answer
 
@@ -1728,7 +1755,7 @@ elif [[ "$1" == "upgrade" ]]; then
 
         fi
 
-        echo "Removing $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster."
+        echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
         kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
         echo "Applying latest configmap env on the cluster."
@@ -1747,7 +1774,7 @@ elif [[ "$1" == "upgrade" ]]; then
         # FOR GENERATING NODESELECTOR VALUES
         generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hollaex
 
-        echo "Upgrading $ENVIRONMENT_EXCHANGE_NAME Pods on Kubernetes."
+        echo "Upgrading $HOLLAEX_CONFIGMAP_API_NAME Pods on Kubernetes."
         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --wait --recreate-pods --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="2" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="stream" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
@@ -1756,7 +1783,7 @@ elif [[ "$1" == "upgrade" ]]; then
 
         if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
 
-            echo "Running $ENVIRONMENT_EXCHANGE_NAME web client container"
+            echo "Running $HOLLAEX_CONFIGMAP_API_NAME web client container"
             helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-web --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set imageRegistry="$ENVIRONMENT_KUBERNETES_WEB_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION" --set stable.replicaCount="1" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-web-env" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web
 
         fi
@@ -1764,7 +1791,7 @@ elif [[ "$1" == "upgrade" ]]; then
         # Running database job for Kubernetes
         kubernetes_database_init upgrade;
 
-        echo "Applying $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster."
+        echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
         if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
@@ -1815,7 +1842,7 @@ elif [[ "$1" == "upgrade" ]]; then
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
             
             printf "\033[93mWarning: Exchange service will be unavailable during the upgrade!\033[39m\n"
-            echo "Are you sure you want to upgrade $ENVIRONMENT_EXCHANGE_NAME on your machine? (y/N)"
+            echo "Are you sure you want to upgrade $HOLLAEX_CONFIGMAP_API_NAME on your machine? (y/N)"
 
             read answer
 
@@ -1836,7 +1863,7 @@ elif [[ "$1" == "upgrade" ]]; then
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
-            echo "Generating $ENVIRONMENT_EXCHANGE_NAME.env.local file for docker"
+            echo "Generating env file for docker"
             generate_local_env;
 
         fi
@@ -1891,10 +1918,16 @@ elif [[ "$1" == "upgrade" ]]; then
             RUN_WITH_VERIFY=false
             local_database_init upgrade;
 
-            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart; then
 
-            hollaex_ascii_exchange_has_been_upgraded;
+                hollaex_ascii_exchange_has_been_upgraded;
+            
+            else 
 
+                printf "\033[91mFailed to upgrade exchange! Please review your settings and try again.\033[39m\n"
+                exit 1;
+
+            fi
 
         else
 
@@ -1958,7 +1991,7 @@ elif [[ "$1" == "terminate" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m\n"
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
         exit 1;
 
@@ -1983,7 +2016,7 @@ elif [[ "$1" == "terminate" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to terminate $ENVIRONMENT_EXCHANGE_NAME on this cluster? (y/N)"
+            echo "Are you sure you want to terminate $HOLLAEX_CONFIGMAP_API_NAME on this cluster? (y/N)"
 
             read answer
 
@@ -1994,12 +2027,12 @@ elif [[ "$1" == "terminate" ]]; then
 
         fi
 
-        echo "Removing $ENVIRONMENT_EXCHANGE_NAME ingress rule on the cluster."
+        echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
         kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
         if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
             
-            echo "Removing $ENVIRONMENT_EXCHANGE_NAME ingress rule for web client on the cluster."
+            echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule for web client on the cluster."
             kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
 
         fi
@@ -2020,11 +2053,11 @@ elif [[ "$1" == "terminate" ]]; then
 
         fi
 
-        echo "Removing $ENVIRONMENT_EXCHANGE_NAME namespace."
+        echo "Removing $HOLLAEX_CONFIGMAP_API_NAME namespace."
         kubectl delete ns $ENVIRONMENT_EXCHANGE_NAME
 
         echo "All done!"
-        echo "$ENVIRONMENT_EXCHANGE_NAME ($HOLLAEX_CONFIGMAP_API_HOST) has been successfully removed. If there's an issue, please review logs and try it again."
+        echo "$HOLLAEX_CONFIGMAP_API_NAME ($HOLLAEX_CONFIGMAP_API_HOST) has been successfully removed. If there's an issue, please review logs and try it again."
 
         exit 0;
 
@@ -2047,20 +2080,9 @@ elif [[ "$1" == "terminate" ]]; then
 
         fi
 
-        LOCAL_COMMAND="down --remove-orphans"
-
-        #Quit if necessary flags are missing
-        if [[ ! "$LOCAL_COMMAND" ]]; then
-
-            echo "Some necessary flags are missing! Please check agian your command."
-            print_usage;
-            exit 1;
-
-        fi
-
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to terminate $ENVIRONMENT_EXCHANGE_NAME on your machine? (y/N)"
+            echo "Are you sure you want to terminate $HOLLAEX_CONFIGMAP_API_NAME on your machine? (y/N)"
 
             read answer
 
@@ -2071,7 +2093,7 @@ elif [[ "$1" == "terminate" ]]; then
 
         fi
 
-        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND
+        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml down --remove-orphans -v
         exit 0;
 
     fi
@@ -2157,7 +2179,7 @@ elif [[ "$1" == "web" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m\n"
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
         exit 1;
 
@@ -2714,7 +2736,7 @@ elif [[ "$1" == "toolbox" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect hollaex-kit directory! Please re-check your path.\033[39m\n"
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
         exit 1;
 
@@ -2872,7 +2894,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         if [[ ! -d $HOLLAEX_CLI_INIT_PATH/backups ]]; then
 
-            echo "Creating /backups folder on hollaex-kit directory"
+            echo "Creating '/backups' folder on HollaEx Kit directory"
             mkdir $HOLLAEX_CLI_INIT_PATH/backups
 
         fi
@@ -2906,14 +2928,14 @@ elif [[ "$1" == "toolbox" ]]; then
             export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
             export PGHOST=localhost
 
-            pg_dumpall > $HOLLAEX_CLI_INIT_PATH/backups/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump
+            pg_dumpall > $HOLLAEX_CLI_INIT_PATH/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-$(date +%y%m%d%H%M).dump
             
             unset PGUSER
             unset PGPASSWORD
             unset PGDATABASE
             unset PGHOST
 
-            echo "Dump data is saved as $HOLLAEX_CLI_INIT_PATH/backups/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump"
+            echo "Dump data is saved as $HOLLAEX_CLI_INIT_PATH/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-$(date +%y%m%d%H%M).dump"
 
             echo "Killing the opened proxy tunnel..."
             kill $(ps -ef | grep "kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME" | awk '{print $2}' | head -n 1)
@@ -2945,14 +2967,14 @@ elif [[ "$1" == "toolbox" ]]; then
             export PGPASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
             export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
             export PGHOST=localhost
-            pg_dumpall > $HOLLAEX_CLI_INIT_PATH/backups/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump
+            pg_dumpall > $HOLLAEX_CLI_INIT_PATH/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-$(date +%y%m%d%H%M).dump
             
             unset PGUSER
             unset PGPASSWORD
             unset PGDATABASE
             unset PGHOST
 
-            echo "Dump data is saved as $HOLLAEX_CLI_INIT_PATH/backups/$ENVIRONMENT_EXCHANGE_NAME-db-$(date +%y%m%d%H%M).dump"
+            echo "Dump data is saved as $HOLLAEX_CLI_INIT_PATH/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-$(date +%y%m%d%H%M).dump"
 
             exit 0;
 
@@ -3022,7 +3044,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to do rolling upgrade for $ENVIRONMENT_EXCHANGE_NAME api pods to v$ENVIRONMENT_DOCKER_IMAGE_VERSION on this cluster? (y/N)"
+                echo "Are you sure you want to do rolling upgrade for $HOLLAEX_CONFIGMAP_API_NAME api pods to v$ENVIRONMENT_DOCKER_IMAGE_VERSION on this cluster? (y/N)"
                 echo "Configmap values would be updated either while on the rolling upgrade"
 
                 read answer
@@ -3044,10 +3066,10 @@ elif [[ "$1" == "toolbox" ]]; then
             echo "Applying latest configmap env on the cluster."
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
 
-            echo "Applying $ENVIRONMENT_EXCHANGE_NAME API pods only on Kubernetes."
+            echo "Applying $HOLLAEX_CONFIGMAP_API_NAME API pods only on Kubernetes."
 
 
-            echo "Upgrading $ENVIRONMENT_EXCHANGE_NAME API pods only on Kubernetes."
+            echo "Upgrading $HOLLAEX_CONFIGMAP_API_NAME API pods only on Kubernetes."
             helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="2" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
             echo "Rolling upgrade process has been finished."

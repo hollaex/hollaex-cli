@@ -878,6 +878,7 @@ for j in ${CONFIG_FILE_PATH[@]}; do
     if [[ ! -z "$HOLLAEX_SECRET_SECRET" ]] ; then
   
       echo "Pre-generated secrets are detected on your secert file!"
+      printf "\033[93mIf you are trying to migrate your new Exchange on new machine, DO NOT OVERRIDE IT.\033[39m\n"
       echo "Are you sure you want to override them? (y/N)"
 
       read answer
@@ -1176,7 +1177,7 @@ function add_coin_input() {
   printf "\n"
 
   echo "***************************************************************"
-  echo "[6/11] Minimum Price: (0.001)"
+  echo "[6/11] Minimum Withdrawal Amount: (0.001)"
   printf "\033[2m- Set the minimum withdrawal for this coin. \033[22m\n"
   read answer
 
@@ -1187,7 +1188,7 @@ function add_coin_input() {
   printf "\n"
 
   echo "***************************************************************"
-  echo "[7/11] Maximum Price: (10000)"
+  echo "[7/11] Maximum Withdrawal Amount: (10000)"
   printf "\033[2m- Set the maximum withdrawal for this coin. \033[22m\n"
   read answer
   
@@ -1319,8 +1320,8 @@ function add_coin_input() {
   echo "Allow deposit: $COIN_ALLOW_DEPOSIT"
   echo "Allow withdrawal: $COIN_ALLOW_WITHDRAWAL"
   echo "Withdrawal Fee: $COIN_WITHDRAWAL_FEE"
-  echo "Minimum price: $COIN_MIN"
-  echo "Maximum price: $COIN_MAX"
+  echo "Minimum Withdrawal Amount: $COIN_MIN"
+  echo "Maximum Withdrawal Amount: $COIN_MAX"
   echo "Increment size: $COIN_INCREMENT_UNIT"
   echo "Deposit limits per level: $COIN_DEPOSIT_LIMITS"
   echo "Withdrawal limits per level: $COIN_WITHDRAWAL_LIMITS"
@@ -2571,7 +2572,6 @@ data:
 EOL
 }
 
-
 function launch_basic_settings_input() {
 
   /bin/cat << EOF
@@ -2584,24 +2584,50 @@ Please visit https://dash.bitholla.com to see more details.
 Check https://docs.bitholla.com to read full docs regarding whole HollaEx Kit operations.
 
 EOF
+  
+  # SET TOTAL NUMBERS OF QUESTIONS
+  local TOTAL_QUESTIONS=30
+
+  if [[ "$RECONFIGURE_BASIC_SETTINGS" ]]; then 
+
+    local TOTAL_QUESTIONS=25
+
+  fi
+
+  local QUESTION_NUMBER=1
 
   # Exchange name (API_NAME)
+
   echo "***************************************************************"
-  echo "[1/30] Exchange name: ($HOLLAEX_CONFIGMAP_API_NAME)"
-  printf "\033[2m- Alphanumeric only. No space or special character allowed.\033[22m\n" 
+  echo "[$QUESTION_NUMBER/$TOTAL_QUESTIONS] Exchange name: ($HOLLAEX_CONFIGMAP_API_NAME)"
+  printf "\033[2m- Alphanumeric, Dash (-), Underscore Only (_). No space or special character allowed.\033[22m\n" 
   read answer
 
-  local PARSE_CHARACTERS_FOR_API_NAME=$(echo $answer | tr -dc '[:alnum:]' | tr -d ' ')
-  local EXCHANGE_API_NAME_OVERRIDE=${PARSE_CHARACTERS_FOR_API_NAME:-$HOLLAEX_CONFIGMAP_API_NAME}
-  local EXCHANGE_NAME_OVERRIDE=$(echo $EXCHANGE_API_NAME_OVERRIDE | tr '[:upper:]' '[:lower:]')
+  local EXCHANGE_API_NAME_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_API_NAME}
+
+  while true;
+    do if [[ ! "$EXCHANGE_API_NAME_OVERRIDE" =~ ^[A-Za-z0-9_-]+$ ]]; then 
+      printf "\nInvalid Exchange Name. Make sure to input Alphanumeric, Dash (-), Underscore Only (_).\n"
+      echo "New Exchange Name: "
+      read answer
+      local EXCHANGE_API_NAME_OVERRIDE=${answer}
+    else
+      break;
+    fi
+  done
+
+  # local PARSE_CHARACTERS_FOR_API_NAME=$(echo $EXCHANGE_NAME_OVERRIDE | tr -dc '[:alnum:]' | tr -d ' ')
+  # local EXCHANGE_API_NAME_OVERRIDE=${PARSE_CHARACTERS_FOR_API_NAME:-$HOLLAEX_CONFIGMAP_API_NAME}
 
   printf "\n"
-  echo "${answer:-$HOLLAEX_CONFIGMAP_API_NAME} ✔"
+  echo "$EXCHANGE_API_NAME_OVERRIDE ✔"
   printf "\n"
+
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
 
   # Activation Code
   echo "***************************************************************"
-  echo "[2/30] Activation Code: ($(echo ${HOLLAEX_SECRET_ACTIVATION_CODE//?/◼︎}$(echo $HOLLAEX_SECRET_ACTIVATION_CODE | grep -o '....$')))"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Activation Code: ($(echo ${HOLLAEX_SECRET_ACTIVATION_CODE//?/◼︎}$(echo $HOLLAEX_SECRET_ACTIVATION_CODE | grep -o '....$')))"
   printf "\033[2m- Go to https://dash.bitholla.com to issue your activation code.\033[22m\n" 
   read answer
 
@@ -2613,9 +2639,11 @@ EOF
   echo "$EXCHANGE_ACTIVATION_CODE_MASKED ✔"
   printf "\n"
 
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
   # Web Domain
   echo "***************************************************************"
-  echo "[3/30] Exchange URL: ($HOLLAEX_CONFIGMAP_DOMAIN)"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Exchange URL: ($HOLLAEX_CONFIGMAP_DOMAIN)"
   printf "\033[2m- Enter the full URL of your exchange website including 'http' or 'https'.\033[22m\n"
   read answer
 
@@ -2639,15 +2667,29 @@ EOF
   echo "${answer:-$HOLLAEX_CONFIGMAP_DOMAIN} ✔"
   printf "\n"
 
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
   # Light Logo Path
   echo "***************************************************************"
-  echo "[4/30] Exchange Light Logo Path: ($HOLLAEX_CONFIGMAP_LOGO_PATH)"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Exchange Light Logo URL: ($HOLLAEX_CONFIGMAP_LOGO_PATH)"
   printf "\033[2m- Graphic file should always be a PNG file type. \033[22m\n"
   read answer
 
-  local ESCAPED_HOLLAEX_CONFIGMAP_LOGO_PATH=${HOLLAEX_CONFIGMAP_LOGO_PATH//\//\\/}
-
   local ORIGINAL_CHARACTER_FOR_LOGO_PATH="${answer:-$HOLLAEX_CONFIGMAP_LOGO_PATH}"
+
+  while true;
+    do if [[ ! "$ORIGINAL_CHARACTER_FOR_LOGO_PATH" == *".png"* ]]; then
+      printf "\nGraphic file should always be a PNG file type.\n"
+      echo  "Exchange Light Logo Path: "
+      read answer
+      local ORIGINAL_CHARACTER_FOR_LOGO_PATH="${answer}"
+    else
+      break;
+    fi
+  done
+
+  local ESCAPED_HOLLAEX_CONFIGMAP_LOGO_PATH=${ORIGINAL_CHARACTER_FOR_LOGO_PATH//\//\\/}
+
   local PARSE_CHARACTER_FOR_LOGO_PATH=${ORIGINAL_CHARACTER_FOR_LOGO_PATH//\//\\/}
   local HOLLAEX_CONFIGMAP_LOGO_PATH_OVERRIDE="$PARSE_CHARACTER_FOR_LOGO_PATH"
 
@@ -2655,15 +2697,29 @@ EOF
   echo "${answer:-$HOLLAEX_CONFIGMAP_LOGO_PATH} ✔"
   printf "\n"
 
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
   # Dark Logo Path
   echo "***************************************************************"
-  echo "[5/30] Exchange Dark Logo Path: ($HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH)"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Exchange Dark Logo URL: ($HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH)"
   printf "\033[2m- Graphic file should always be a PNG file type. \033[22m\n"
   read answer
 
-  local ESCAPED_HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH=${HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH//\//\\/}}
-
   local ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH="${answer:-$HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH}"
+
+  while true;
+    do if [[ ! "$ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH" == *".png"* ]]; then
+      printf "\nGraphic file should always be a PNG file type.\n"
+      echo  "Exchange Dark Logo Path: "
+      read answer
+      local ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH="${answer}"
+    else
+      break;
+    fi
+  done
+
+  local ESCAPED_HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH=${ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH//\//\\/}}
+
   local PARSE_CHARACTER_FOR_LOGO_BLACK_PATH=${ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH//\//\\/}
   local HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH_OVERRIDE="$PARSE_CHARACTER_FOR_LOGO_BLAKC_PATH"
 
@@ -2671,9 +2727,11 @@ EOF
   echo "${answer:-$HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH} ✔"
   printf "\n"
 
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
   # WEB CAPTCHA SITE KEY
   echo "***************************************************************"
-  echo "[6/30] Exchange Web Google reCaptcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Exchange Web Google reCaptcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
   printf "\033[2m- Enter your Web Google reCpathca site key. \033[22m\n"
   read answer
 
@@ -2683,23 +2741,27 @@ EOF
   echo "${answer:-$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY} ✔"
   printf "\n"
 
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
   # Server CAPTCHA Secret key
   echo "***************************************************************"
-  echo "[7/30] Exchange API Server Google reCaptcha Secretkey: ($(echo ${HOLLAEX_SECRET_CAPTCHA_SECRET_KEY//?/◼︎}$(echo $HOLLAEX_SECRET_CAPTCHA_SECRET_KEY | grep -o '....$')))"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Exchange API Server Google reCaptcha Secretkey: ($(echo ${HOLLAEX_SECRET_CAPTCHA_SECRET_KEY//?/◼︎}$(echo $HOLLAEX_SECRET_CAPTCHA_SECRET_KEY | grep -o '....$')))"
   printf "\033[2m- Enter your API Server Google reCaptcha Secretkey. \033[22m\n"
   read answer
 
   local HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE="${answer:-$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY}"
 
-  local HOLLAEX_SECRET_ADMIN_PASSWORD_MASKED=$(echo ${HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE//?/◼︎}$(echo $HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE | grep -o '....$'))
+  local HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE_MASKED=$(echo ${HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE//?/◼︎}$(echo $HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE | grep -o '....$'))
 
   printf "\n"
-  echo "$HOLLAEX_SECRET_ADMIN_PASSWORD_MASKED ✔"
+  echo "$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE_MASKED ✔"
   printf "\n"
+
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
 
   # Web default country
   echo "***************************************************************"
-  echo "[8/30] Default Country: ($ENVIRONMENT_WEB_DEFAULT_COUNTRY)"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Default Country: ($ENVIRONMENT_WEB_DEFAULT_COUNTRY)"
   printf "\033[2m- Enter the country code for your exchange. \033[22m\n"
   read answer
 
@@ -2709,15 +2771,27 @@ EOF
   echo "${answer:-$ENVIRONMENT_WEB_DEFAULT_COUNTRY} ✔"
   printf "\n"
 
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
   # Emails timezone
   echo "***************************************************************"
-  echo "[9/30] Timezone: ($HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE)"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Timezone: ($HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE)"
   printf "\033[2m- Enter timezone code for your exchange. \033[22m\n"
   read answer
 
-  local ESCAPED_HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE=${HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE/\//\\/}
-
   local ORIGINAL_CHARACTER_FOR_TIMEZONE="${answer:-$HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE}"
+
+  while true;
+    do if [[ ! "$ORIGINAL_CHARACTER_FOR_TIMEZONE" =~ ^[A-Za-z/]+$ ]]; then 
+      printf "\nInvalid Timezone. Timezone code should be formatted as 'Asia/Seoul' or 'UTC' style.\n"
+      echo "Timezone: "
+      read answer
+      local ORIGINAL_CHARACTER_FOR_TIMEZONE=${answer}
+    else
+      break;
+    fi
+  done
+
   local PARSE_CHARACTER_FOR_TIMEZONE=${ORIGINAL_CHARACTER_FOR_TIMEZONE/\//\\/}
   local HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE_OVERRIDE="$PARSE_CHARACTER_FOR_TIMEZONE"
 
@@ -2725,33 +2799,61 @@ EOF
   echo "${answer:-$HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE} ✔"
   printf "\n"
 
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
   # Valid languages
   echo "***************************************************************"
-  echo "[10/30] Valid Languages: ($HOLLAEX_CONFIGMAP_VALID_LANGUAGES)"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Valid Languages: ($HOLLAEX_CONFIGMAP_VALID_LANGUAGES)"
   printf "\033[2m- Separate with comma (,)\033[22m\n"
   read answer
 
   local HOLLAEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE="${answer:-$HOLLAEX_CONFIGMAP_VALID_LANGUAGES}"
 
+  while true;
+    do if [[ ! "$HOLLAEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE" =~ ^[a-z,]+$ ]]; then 
+      printf "\nInvalid Valid Languages. Value should be all in lower case, and separated with comman (,).\n"
+      echo "Valid Languages: "
+      read answer
+      local HOLLAEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE=${answer}
+    else
+      break;
+    fi
+  done
+
   printf "\n"
-  echo "${answer:-$HOLLAEX_CONFIGMAP_VALID_LANGUAGES} ✔"
+  echo "${HOLLAEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE} ✔"
   printf "\n"
+
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
 
   # Default language
   echo "***************************************************************"
-  echo "[11/30] Default Language: ($HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE)"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Default Language: ($HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE)"
   printf "\033[2m- Enter the default language code for the exchange \033[22m\n"
   read answer
 
   local HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE="${answer:-$HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE}"
 
+  while true;
+    do if [[ ! "$HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE" =~ ^[a-z]+$ ]]; then 
+      printf "\nInvalid Default Language. Value should be all in lower case.\n"
+      echo "Default Language: "
+      read answer
+      local HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE=${answer}
+    else
+      break;
+    fi
+  done
+
   printf "\n"
-  echo "${answer:-$HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE} ✔"
+  echo "${HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE} ✔"
   printf "\n"
+
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
 
   # Default theme
   echo "***************************************************************"
-  echo "[12/30] Default Theme: ($HOLLAEX_CONFIGMAP_DEFAULT_THEME)"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Default Theme: ($HOLLAEX_CONFIGMAP_DEFAULT_THEME)"
   printf "\033[2m- Between light and dark.\033[22m\n"
   read answer
 
@@ -2772,9 +2874,11 @@ EOF
   echo "$HOLLAEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE ✔"
   printf "\n"
 
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
   # API Domain
   echo "***************************************************************"
-  echo "[13/30] Exchange Server API URL: ($HOLLAEX_CONFIGMAP_API_HOST)"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Exchange Server API URL: ($HOLLAEX_CONFIGMAP_API_HOST)"
   printf "\033[2m- Enter the full URL of your exchange API server including 'http' or 'https'. Keep it as 'http://localhost' for local test exchange.\033[22m\n"
   read answer
 
@@ -2798,9 +2902,11 @@ EOF
   echo "${answer:-$HOLLAEX_CONFIGMAP_API_HOST} ✔"
   printf "\n"
 
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
   # User tier number
   echo "***************************************************************"
-  echo "[14/30] Number of User Tiers: ($HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER)"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Number of User Tiers: ($HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER)"
   printf "\033[2m- Enter number of user level tiers. These are the account types that allow for different trading fees, deposit and withdrawal limit amounts. \033[22m\n"
   read answer
 
@@ -2821,194 +2927,201 @@ EOF
   echo "${answer:-$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER} ✔"
   printf "\n"
 
-  # Admin Email
-  echo "***************************************************************"
-  echo "[15/30] Admin Email: ($HOLLAEX_CONFIGMAP_ADMIN_EMAIL)"
-  printf "\033[2m- Enter the email for the admin. This will be used to first login to your exchange platform. \033[22m\n"
-  read answer
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
 
-  local HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_ADMIN_EMAIL}
+  # DO NOT ASK FOR NON OVERRIDABLE VALUES ON 'hollaex setup --reconfigure'
+  if [[ ! "$RECONFIGURE_BASIC_SETTINGS" ]]; then 
 
-  while true;
-    do if [[ ! "$HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE" == *"@"* ]]; then
-      printf "\nValue should be always an email form, such as 'admin@bitholla.com'.\n"
-      echo  "Admin Email: "
-      read answer 
-      local HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE="${answer}"
-    else
-      break;
-    fi
-  done
+    # Admin Email
+    echo "***************************************************************"
+    echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Admin Email: ($HOLLAEX_CONFIGMAP_ADMIN_EMAIL)"
+    printf "\033[2m- Enter the email for the admin. This will be used to first login to your exchange platform. \033[22m\n"
+    read answer
 
-  printf "\n"
-  echo "${answer:-$HOLLAEX_CONFIGMAP_ADMIN_EMAIL} ✔"
-  printf "\n"
+    local HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_ADMIN_EMAIL}
 
-  # Admin Password
-  echo "***************************************************************"
-  echo "[16/30] Admin Password: ($(echo ${HOLLAEX_SECRET_ADMIN_PASSWORD//?/◼︎}$(echo $HOLLAEX_SECRET_ADMIN_PASSWORD | grep -o '....$')))"
-  printf "\033[2m- Make sure to input at least 8 characters, at least one digit and one character.\033[22m\n"
-  read -s answer
+    while true;
+      do if [[ ! "$HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE" == *"@"* ]]; then
+        printf "\nValue should be always an email form, such as 'admin@bitholla.com'.\n"
+        echo  "Admin Email: "
+        read answer 
+        local HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE="${answer}"
+      else
+        break;
+      fi
+    done
 
-  local HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE=${answer:-$HOLLAEX_SECRET_ADMIN_PASSWORD}
+    printf "\n"
+    echo "${answer:-$HOLLAEX_CONFIGMAP_ADMIN_EMAIL} ✔"
+    printf "\n"
 
-  echo "Retype Admin Password to confirm :"
-  read -s answer_confirm
-  
-  while true;
-    do if [[ ! "${answer_confirm}" == "${HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE}" ]]; then
-      echo "Password doesn't match. Please type it again."
-      echo "Retype Admin Password to confirm : "
-      read -s answer_confirm
-    else
-      break;
-    fi
-  done
+    local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
 
-  while true;
-    do if [[ "${#HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE}" -lt 8 ]] || [[ ! "${HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE}" =~ [0-9\ ]+$ ]] || [[ ! "${HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE}" =~ [a-zA-Z] ]]; then
-      printf "\nInvalid Password. Make sure to input at least 8 characters, at least one digit and one character.\n"
-      echo "New Admin Password: "
-      read -s answer
-      local HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE=${answer}
-      printf "\nRetype Admin Password to confirm : \n"
-      read -s answer_confirm
+    # Admin Password
+    echo "***************************************************************"
+    echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Admin Password: ($(echo ${HOLLAEX_SECRET_ADMIN_PASSWORD//?/◼︎}$(echo $HOLLAEX_SECRET_ADMIN_PASSWORD | grep -o '....$')))"
+    printf "\033[2m- Make sure to input at least 8 characters, at least one digit and one character.\033[22m\n"
+    read -s answer
 
-        while true;
-        do if [[ ! "${answer_confirm}" == "${HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE}" ]]; then
-          echo "Password doesn't match. Please type it again."
-          echo "Retype Admin Password to confirm : "
-          read -s answer_confirm
+    local HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE=${answer:-$HOLLAEX_SECRET_ADMIN_PASSWORD}
+
+    echo "Retype Admin Password to confirm :"
+    read -s answer_confirm
+    
+    while true;
+      do if [[ ! "${answer_confirm}" == "${HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE}" ]]; then
+        echo "Password doesn't match. Please type it again."
+        echo "Retype Admin Password to confirm : "
+        read -s answer_confirm
+      else
+        break;
+      fi
+    done
+
+    while true;
+      do if [[ "${#HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE}" -lt 8 ]]; then
+        printf "\nInvalid Password. Make sure to input at least 8 characters, at least one digit and one character.\n"
+        echo "New Admin Password: "
+        read -s answer
+        local HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE=${answer}
+        printf "\nRetype Admin Password to confirm : \n"
+        read -s answer_confirm
+
+          while true;
+          do if [[ ! "${answer_confirm}" == "${HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE}" ]]; then
+            echo "Password doesn't match. Please type it again."
+            echo "Retype Admin Password to confirm : "
+            read -s answer_confirm
+          else
+            break;
+          fi
+          done
+
+      else
+        break;
+      fi
+    
+    done
+
+    local HOLLAEX_SECRET_ADMIN_PASSWORD_MASKED=$(echo ${HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE//?/◼︎}$(echo $HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE | grep -o '....$'))
+
+    printf "\n"
+    echo "$HOLLAEX_SECRET_ADMIN_PASSWORD_MASKED ✔"
+    printf "\n"
+
+    local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
+    # Support Email
+    echo "***************************************************************"
+    echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Support Email: ($HOLLAEX_CONFIGMAP_SUPPORT_EMAIL)"
+    printf "\033[2m- Email address to send and receive all support communications. It also sends important notifications such as login, registration, etc. \033[22m\n"
+    read answer
+
+    local HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL}
+
+    while true;
+      do if [[ ! "$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE" == *"@"* ]]; then
+        printf "\nValue should be always an email form, such as 'support@bitholla.com'.\n"
+        echo  "Support Email: "
+        read answer 
+        local HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE="${answer}"
+      else
+        break;
+      fi
+    done
+
+    printf "\n"
+    echo "${answer:-$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL} ✔"
+    printf "\n"
+
+    local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
+    # Supervisor Email
+    echo "***************************************************************"
+    echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Do you want to create a different role for the exchange supervisor agent? (y/N)"
+    printf "\033[2m- Add an exchange supervisor agent role. \033[22m\n"
+    read answer
+
+    if [[ ! "$answer" = "${answer#[Yy]}" ]] ;then
+
+      echo "Supervisor Email: ($HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL)"
+      read answer
+
+      local HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL}
+
+      while true;
+        do if [[ ! "$HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE" == *"@"* ]]; then
+          printf "\nValue should be always an email form, such as 'supervisor@bitholla.com'.\n"
+          echo  "Supervisor Email: "
+          read answer 
+          local HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE="${answer}"
         else
           break;
         fi
-        done
+      done
 
+      printf "\n"
+      echo "$HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE ✔"
+      printf "\n"
+      
     else
-      break;
+
+      local HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE=
+
+      printf "\n"
+      echo "Skipping..."
+      printf "\n"
+
     fi
+
+    local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
+
+    # KYC Email
+    echo "***************************************************************"
+    echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Do you want to create a different role for the exchange KYC agent? (y/N)"
+    printf "\033[2m- Add an exchange KYC agent role. \033[22m\n"
+    read answer
+
+    if [[ ! "$answer" = "${answer#[Yy]}" ]] ;then
+
+      echo "KYC Email: ($HOLLAEX_CONFIGMAP_KYC_EMAIL)"
+      read answer
+
+      local HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_KYC_EMAIL}
+
+      while true;
+        do if [[ ! "$HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE" == *"@"* ]]; then
+          printf "\nValue should be always an email form, such as 'kyc@bitholla.com'.\n"
+          echo  "KYC Email: "
+          read answer 
+          local HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE="${answer}"
+        else
+          break;
+        fi
+      done
+
+      printf "\n"
+      echo "${answer:-$HOLLAEX_CONFIGMAP_KYC_EMAIL} ✔"
+      printf "\n"
+      
+    else
+
+      local HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE=
+
+      printf "\n"
+      echo "Skipping..."
+      printf "\n"
+
+    fi
+
+    local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
   
-  done
-
-  local HOLLAEX_SECRET_ADMIN_PASSWORD_MASKED=$(echo ${HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE//?/◼︎}$(echo $HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE | grep -o '....$'))
-
-  printf "\n"
-  echo "$HOLLAEX_SECRET_ADMIN_PASSWORD_MASKED ✔"
-  printf "\n"
-
-  # Support Email
-  echo "***************************************************************"
-  echo "[17/30] Support Email: ($HOLLAEX_CONFIGMAP_SUPPORT_EMAIL)"
-  printf "\033[2m- Email address to send and receive all support communications. It also sends important notifications such as login, registration, etc. \033[22m\n"
-  read answer
-
-  local HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL}
-
-  while true;
-    do if [[ ! "$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE" == *"@"* ]]; then
-      printf "\nValue should be always an email form, such as 'support@bitholla.com'.\n"
-      echo  "Support Email: "
-      read answer 
-      local HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE="${answer}"
-    else
-      break;
-    fi
-  done
-
-  printf "\n"
-  echo "${answer:-$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL} ✔"
-  printf "\n"
-
-  # Supervisor Email
-  echo "***************************************************************"
-  echo "[18/30] Do you want to create a different role for the exchange supervisor agent? (Y/n)"
-  printf "\033[2m- Add an exchange supervisor agent role. \033[22m\n"
-  read answer
-
-  if [[ "$answer" = "${answer#[Nn]}" ]] ;then
-
-    echo "Supervisor Email: ($HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL)"
-    read answer
-
-    local HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL}
-
-    while true;
-      do if [[ ! "$HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE" == *"@"* ]]; then
-        printf "\nValue should be always an email form, such as 'supervisor@bitholla.com'.\n"
-        echo  "Supervisor Email: "
-        read answer 
-        local HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE="${answer}"
-      else
-        break;
-      fi
-    done
-
-    printf "\n"
-    echo "$HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE ✔"
-    printf "\n"
-    
-  else
-
-    local HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE=
-
-    printf "\n"
-    echo "Skipping..."
-    printf "\n"
-
   fi
-
-   # KYC Email
-  echo "***************************************************************"
-  echo "[19/30] Do you want to create a different role for the exchange KYC agent? (Y/n)"
-  printf "\033[2m- Add an exchange KYC agent role. \033[22m\n"
-  read answer
-
-  if [[ "$answer" = "${answer#[Nn]}" ]] ;then
-
-    echo "KYC Email: ($HOLLAEX_CONFIGMAP_KYC_EMAIL)"
-    read answer
-
-    local HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_KYC_EMAIL}
-
-    while true;
-      do if [[ ! "$HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE" == *"@"* ]]; then
-        printf "\nValue should be always an email form, such as 'kyc@bitholla.com'.\n"
-        echo  "KYC Email: "
-        read answer 
-        local HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE="${answer}"
-      else
-        break;
-      fi
-    done
-
-    printf "\n"
-    echo "${answer:-$HOLLAEX_CONFIGMAP_KYC_EMAIL} ✔"
-    printf "\n"
-    
-  else
-
-    local HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE=
-
-    printf "\n"
-    echo "Skipping..."
-    printf "\n"
-
-  fi
-
-  # # Sender Email
-  # echo "***************************************************************"
-  # echo "[20/21] Sender Email: ($HOLLAEX_CONFIGMAP_SENDER_EMAIL)"
-  # read answer
-
-  # local HOLLAEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_SENDER_EMAIL}
-
-  # printf "\n"
-  # echo "${answer:-$HOLLAEX_CONFIGMAP_SENDER_EMAIL} ✔"
-  # printf "\n"
 
   # New user is activated
   echo "***************************************************************"
-  echo "[20/30] Allow New User Signup?: (Y/n)"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Allow New User Signup?: (Y/n)"
   printf "\033[2m- Allow new users to signup once exchange setup is done. \033[22m\n"
   read answer
 
@@ -3026,9 +3139,11 @@ EOF
   echo "$HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE ✔"
   printf "\n"
 
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
   # AWS AccessKey
   echo "***************************************************************"
-  echo "[21/30] AWS AccessKey?: ($HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID)"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] AWS AccessKey?: ($HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID) - Optional"
   printf "\033[2m- AWS IAM AccessKey for S3, SES, SNS.\033[22m\n"
   read answer
 
@@ -3038,9 +3153,11 @@ EOF
   echo "${answer:-$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID} ✔"
   printf "\n"
 
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
   # AWS SecretKey
   echo "***************************************************************"
-  echo "[22/30] AWS SecretKey?: ($(echo ${HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY//?/◼︎}$(echo $HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY | grep -o '....$')))"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] AWS SecretKey?: ($(echo ${HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY//?/◼︎}$(echo $HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY | grep -o '....$'))) - Optional"
   printf "\033[2m- AWS IAM SecretKey for S3, SES, SNS.\033[22m\n"
   read answer
   local ESCAPED_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=${HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY//\//\\\/}
@@ -3055,9 +3172,11 @@ EOF
   echo "$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_MASKED ✔"
   printf "\n"
 
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
   # AWS Region
   echo "***************************************************************"
-  echo "[23/30] AWS Region?: ($HOLLAEX_SECRET_SES_REGION)"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] AWS Region?: ($HOLLAEX_SECRET_SES_REGION) - Optional"
   printf "\033[2m- AWS Region SES, SNS.\033[22m\n"
   read answer
 
@@ -3067,9 +3186,11 @@ EOF
   echo "${answer:-$HOLLAEX_SECRET_SES_REGION} ✔"
   printf "\n"
 
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
   # AWS S3 bucket
   echo "***************************************************************"
-  echo "[24/30] AWS S3 Bucket: ($HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET)"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] AWS S3 Bucket: ($HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET) - Optional"
   printf "\033[2m- S3 bucket to store user provided ID docs. Should be 'my-bucket:aws-region' style.\033[22m\n"
   read answer
 
@@ -3079,9 +3200,11 @@ EOF
   echo "${answer:-$HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET} ✔"
   printf "\n"
 
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
   # Vault Name
   echo "***************************************************************"
-  echo "[25/30] Vault Name: ($HOLLAEX_CONFIGMAP_VAULT_NAME) - Optional"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Vault Name: ($HOLLAEX_CONFIGMAP_VAULT_NAME) - Optional"
   printf "\033[2m- Vault Name. Check docs to see more details.\033[22m\n"
   read answer
 
@@ -3091,9 +3214,11 @@ EOF
   echo "${answer:-$HOLLAEX_CONFIGMAP_VAULT_NAME} ✔"
   printf "\n"
 
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
   # Vault key
   echo "***************************************************************"
-  echo "[26/30] Vault Key: ($HOLLAEX_SECRET_VAULT_KEY) - Optional"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Vault Key: ($HOLLAEX_SECRET_VAULT_KEY) - Optional"
   printf "\033[2m- Vault Access Key.\033[22m\n"
   read answer
 
@@ -3103,9 +3228,11 @@ EOF
   echo "${answer:-$HOLLAEX_SECRET_VAULT_KEY} ✔"
   printf "\n"
 
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
   # Vault secret
   echo "***************************************************************"
-  echo "[27/30] Vault Secret: ($(echo ${HOLLAEX_SECRET_VAULT_SECRET//?/◼︎}$(echo $HOLLAEX_SECRET_VAULT_SECRET | grep -o '....$'))) - Optional"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Vault Secret: ($(echo ${HOLLAEX_SECRET_VAULT_SECRET//?/◼︎}$(echo $HOLLAEX_SECRET_VAULT_SECRET | grep -o '....$'))) - Optional"
   printf "\033[2m- Vault Secret Key.\033[22m\n"
   read answer
 
@@ -3116,9 +3243,11 @@ EOF
   echo "$HOLLAEX_SECRET_VAULT_SECRET_MASKED ✔"
   printf "\n"
 
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
   # FreshDesk Host
   echo "***************************************************************"
-  echo "[28/30] FreshDesk Host: ($HOLLAEX_CONFIGMAP_FRESHDESK_HOST) - Optional"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] FreshDesk Host: ($HOLLAEX_CONFIGMAP_FRESHDESK_HOST) - Optional"
   printf "\033[2m- FreshDesk Host URL.\033[22m\n"
   read answer
 
@@ -3128,10 +3257,12 @@ EOF
   echo "${answer:-$HOLLAEX_CONFIGMAP_FRESHDESK_HOST} ✔"
   printf "\n"
 
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
 
 # FreshDesk Key
   echo "***************************************************************"
-  echo "[29/30] FreshDesk Key: ($HOLLAEX_SECRET_FRESHDESK_KEY) - Optional"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] FreshDesk Key: ($HOLLAEX_SECRET_FRESHDESK_KEY) - Optional"
   printf "\033[2m- FreshDesk Access Key.\033[22m\n"
   read answer
 
@@ -3141,10 +3272,12 @@ EOF
   echo "${answer:-$HOLLAEX_SECRET_FRESHDESK_KEY} ✔"
   printf "\n"
 
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
 
 # FreshDesk Auth
   echo "***************************************************************"
-  echo "[30/30] FreshDesk Auth: ($(echo ${HOLLAEX_SECRET_FRESHDESK_AUTH//?/◼︎}$(echo $HOLLAEX_SECRET_FRESHDESK_AUTH | grep -o '....$'))) - Optional"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] FreshDesk Auth: ($(echo ${HOLLAEX_SECRET_FRESHDESK_AUTH//?/◼︎}$(echo $HOLLAEX_SECRET_FRESHDESK_AUTH | grep -o '....$'))) - Optional"
   printf "\033[2m- FreshDesk Access Auth.\033[22m\n"
   read answer
 
@@ -3154,6 +3287,8 @@ EOF
   printf "\n"
   echo "$HOLLAEX_SECRET_FRESHDESK_AUTH_MASKED ✔"
   printf "\n"
+
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
 
   /bin/cat << EOF
   
@@ -3178,19 +3313,21 @@ Default Theme: $HOLLAEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE
 Exchange API URL: $ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST
 
 User Tiers: $EXCHANGE_USER_LEVEL_NUMBER_OVERRIDE
-
-Admin Email: $HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE
-Admin Password: $HOLLAEX_SECRET_ADMIN_PASSWORD_MASKED
-Support Email: $HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE
-Supervisor Email: $HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE
-KYC Email: $HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE
-
+$(if [[ ! "$RECONFIGURE_BASIC_SETTINGS" ]]; then
+printf "\n"
+echo "Admin Email: $HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE"
+echo "Admin Password: $HOLLAEX_SECRET_ADMIN_PASSWORD_MASKED"
+echo "Support Email: $HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE"
+echo "Supervisor Email: $HOLLAEX_CONFIGMAP_SUPERVISOR_EMAIL_OVERRIDE"
+echo "KYC Email: $HOLLAEX_CONFIGMAP_KYC_EMAIL_OVERRIDE" 
+printf "\n"
+fi)
 Allow New User Signup: $HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE
 
-AWS AccessKey: $HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE
-AWS SecretKey: $HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_MASKED
-AWS Region: $HOLLAEX_SECRET_SES_REGION_OVERRIDE
-AWS S3 Bucket: $HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET_OVERRIDE
+AWS AccessKey (Optional): $HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE
+AWS SecretKey (Optional): $HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_MASKED
+AWS Region (Optional): $HOLLAEX_SECRET_SES_REGION_OVERRIDE
+AWS S3 Bucket (Optional): $HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET_OVERRIDE
 
 Vault Name (Optional): $HOLLAEX_CONFIGMAP_VAULT_NAME_OVERRIDE
 Vault Key (Optional): $HOLLAEX_SECRET_VAULT_KEY_OVERRIDE
@@ -3220,8 +3357,8 @@ EOF
     # Update exchange name
     if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
     CONFIGMAP_FILE_PATH=$i
-    sed -i.bak "s/ENVIRONMENT_EXCHANGE_NAME=$ENVIRONMENT_EXCHANGE_NAME/ENVIRONMENT_EXCHANGE_NAME=$EXCHANGE_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=$HOLLAEX_CONFIGMAP_API_NAME/HOLLAEX_CONFIGMAP_API_NAME=$EXCHANGE_API_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    #sed -i.bak "s/ENVIRONMENT_EXCHANGE_NAME=$ENVIRONMENT_EXCHANGE_NAME/ENVIRONMENT_EXCHANGE_NAME=$EXCHANGE_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=.*/HOLLAEX_CONFIGMAP_API_NAME=$EXCHANGE_API_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/HOLLAEX_CONFIGMAP_DOMAIN=.*/HOLLAEX_CONFIGMAP_DOMAIN=$EXCHANGE_WEB_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
     sed -i.bak "s/ESCAPED_HOLLAEX_CONFIGMAP_LOGO_PATH=.*/ESCAPED_HOLLAEX_CONFIGMAP_LOGO_PATH=$HOLLAEX_CONFIGMAP_LOGO_PATH_OVERRIDE/" $CONFIGMAP_FILE_PATH
@@ -3257,8 +3394,8 @@ EOF
     if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE" $i > /dev/null ; then
     SECRET_FILE_PATH=$i
     sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=$HOLLAEX_SECRET_ACTIVATION_CODE/HOLLAEX_SECRET_ACTIVATION_CODE=$EXCHANGE_ACTIVATION_CODE_OVERRIDE/" $SECRET_FILE_PATH
-    sed -i.bak "s/HOLLAEX_SECRET_CAPTCHA_SECRET_KEY=$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY/HOLLAEX_SECRET_CAPTCHA_SECRET_KEY=$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE/" $SECRET_FILE_PATH
-    sed -i.bak "s/HOLLAEX_SECRET_ADMIN_PASSWORD=$HOLLAEX_SECRET_ADMIN_PASSWORD/HOLLAEX_SECRET_ADMIN_PASSWORD=$HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE/" $SECRET_FILE_PATH
+    sed -i.bak "s/HOLLAEX_SECRET_CAPTCHA_SECRET_KEY=.*/HOLLAEX_SECRET_CAPTCHA_SECRET_KEY=$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE/" $SECRET_FILE_PATH
+    sed -i.bak "s/HOLLAEX_SECRET_ADMIN_PASSWORD=.*/HOLLAEX_SECRET_ADMIN_PASSWORD=$HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE/" $SECRET_FILE_PATH
 
     sed -i.bak "s/HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID/HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE/" $SECRET_FILE_PATH
     sed -i.bak "s/HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=.*/HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE/" $SECRET_FILE_PATH
@@ -3285,7 +3422,7 @@ EOF
       
   done
 
-  export ENVIRONMENT_EXCHANGE_NAME=$EXCHANGE_NAME_OVERRIDE
+  #export ENVIRONMENT_EXCHANGE_NAME=$EXCHANGE_NAME_OVERRIDE
   export HOLLAEX_CONFIGMAP_API_NAME=$EXCHANGE_API_NAME_OVERRIDE
   export HOLLAEX_SECRET_ACTIVATION_CODE=$EXCHANGE_ACTIVATION_CODE_OVERRIDE
 
@@ -3635,7 +3772,7 @@ function hollaex_ascii_exchange_is_up() {
 1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
 
                         Your Exchange is up!
-                 Try to reach $HOLLAEX_CONFIGMAP_API_HOST
+                Try to reach ${HOLLAEX_CONFIGMAP_API_HOST}/v1/health
 
 EOF
 
