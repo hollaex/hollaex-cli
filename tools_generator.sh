@@ -747,7 +747,7 @@ metadata:
     $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo "certmanager.k8s.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
     nginx.ingress.kubernetes.io/proxy-body-size: "2m"
     nginx.ingress.kubernetes.io/configuration-snippet: |
-      limit_req zone=order burst=10 nodelay;
+      limit_req zone=api burst=10 nodelay;
       limit_req_log_level notice;
       limit_req_status 429;
 spec:
