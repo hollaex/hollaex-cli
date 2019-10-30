@@ -3,9 +3,12 @@
 # Declare variables to be passed into your templates.
 NodePort:
   enable: false
-  port: 31255
+  port: 30000
 
 nodeSelector: {}
+
+imageRegistry: redis
+dockerTag: 5.0.5-alpine
 
 setAuth:
   secretName: hollaex-secret

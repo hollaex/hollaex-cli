@@ -64,7 +64,7 @@ spec:
 
       containers:
       - name: {{.Release.Name}}
-        image: postgres:10.9
+        image: {{.Values.imageRegistry}}:{{.Values.dockerTag}}
         env:
           - name: POSTGRES_DB
             valueFrom:

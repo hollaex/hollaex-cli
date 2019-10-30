@@ -1,13 +1,13 @@
 # Default values for bitholla-hollaex-nginx.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
-imageRegistry: bitholla/hex-web
+imageRegistry: bitholla/hollaex-web
 dockerTag:
   
 imagePullSecrets:
   - name: bitholla-registry-secret
 
-envName: hex-web-env
+envName: hollaex-web-env
 
 stable:
   replicaCount: 1

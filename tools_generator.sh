@@ -477,7 +477,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]]; then
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-redis:
-    image: redis:5.0.5-alpine
+    image: ${ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY:-redis}:${ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION:-5.0.5-alpine}
     restart: always
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
@@ -496,7 +496,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-db:
-    image: postgres:10.9
+    image: ${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY:-postgres}:${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION:-10.9}
     restart: always
     ports:
       - 5432:5432
@@ -514,7 +514,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" == "true" ]]; then
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-influxdb:
-    image: influxdb:1.7-alpine
+    image: ${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_REGISTRY:-influxdb}:${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION:-1.7-alpine}
     restart: always
     ports:
       - 8086:8086
@@ -576,7 +576,7 @@ EOL
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
 
   ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
-    image: bitholla/nginx-with-certbot:1.15.8
+    image: ${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_REGISTRY:-bitholla/nginx-with-certbot}:${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_VERSION:-1.15.8}
     restart: always
     volumes:
       - ./nginx:/etc/nginx
@@ -584,8 +584,8 @@ EOL
       - ./nginx/static/:/usr/share/nginx/html
       - ./letsencrypt:/etc/letsencrypt
     ports:
-      - 80:80
-      - 443:443
+      - ${ENVIRONMENT_LOCAL_NGINX_HTTP_PORT:-80}:80
+      - ${ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT:-443}:443
     environment:
       - NGINX_PORT=80
     entrypoint: 
@@ -878,7 +878,7 @@ for j in ${CONFIG_FILE_PATH[@]}; do
     if [[ ! -z "$HOLLAEX_SECRET_SECRET" ]] ; then
   
       echo "Pre-generated secrets are detected on your secert file!"
-      printf "\033[93mIf you are trying to migrate your new Exchange on new machine, DO NOT OVERRIDE IT.\033[39m\n"
+      printf "\033[93mIf you are trying to migrate your existing Exchange on new machine, DO NOT OVERRIDE IT.\033[39m\n"
       echo "Are you sure you want to override them? (y/N)"
 
       read answer
@@ -2852,14 +2852,14 @@ EOF
   # Default theme
   echo "***************************************************************"
   echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Default Theme: ($HOLLAEX_CONFIGMAP_DEFAULT_THEME)"
-  printf "\033[2m- Between light and dark.\033[22m\n"
+  printf "\033[2m- Between 'white' and 'dark'.\033[22m\n"
   read answer
 
   local HOLLAEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE="${answer:-$HOLLAEX_CONFIGMAP_DEFAULT_THEME}"
 
   while true;
-    do if [[ "$HOLLAEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE" != "light" ]] && [[ "$HOLLAEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE" != "dark" ]]; then
-      echo "Theme should be always between 'light' and 'dark'."
+    do if [[ "$HOLLAEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE" != "white" ]] && [[ "$HOLLAEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE" != "dark" ]]; then
+      echo "Theme should be always between 'white' and 'dark'."
       echo  "Default Theme: "
       read answer 
       local HOLLAEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE="${answer}"
@@ -3483,10 +3483,11 @@ Web client relies on HOLLAEX exchange to function.
 Please visit docs.bitholla.com to see the details or need any help.
 
 EOF
+
   # Web Domain
   echo "***************************************************************"
-  echo "[1/4] Exchange URL: ($HOLLAEX_CONFIGMAP_DOMAIN)"
-  printf "\n"
+  echo "[1/5] Exchange URL: ($HOLLAEX_CONFIGMAP_DOMAIN)"
+  printf "\033[2m- Enter the full URL of your exchange website including 'http' or 'https'.\033[22m\n"
   read answer
 
   local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN="${answer:-$HOLLAEX_CONFIGMAP_DOMAIN}"
@@ -3494,7 +3495,7 @@ EOF
   while true;
     do if [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN" == *"http"* ]] && [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN" == *"https"* ]]; then
       printf "\nValue should be a full URL including 'http' or 'https'.\n"
-      echo  "Exchange Server API URL: "
+      echo  "Exchange URL: "
       read answer
       local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN="${answer}"
     else
@@ -3509,9 +3510,35 @@ EOF
   echo "${answer:-$HOLLAEX_CONFIGMAP_DOMAIN} ✔"
   printf "\n"
 
+  # API Domain
+  echo "***************************************************************"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Exchange Server API URL: ($HOLLAEX_CONFIGMAP_API_HOST)"
+  printf "\033[2m- Enter the full URL of your exchange API server including 'http' or 'https'. Keep it as 'http://localhost' for local test exchange.\033[22m\n"
+  read answer
+
+  local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST="${answer:-$HOLLAEX_CONFIGMAP_API_HOST}"
+
+  while true;
+    do if [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST" == *"http"* ]] && [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST" == *"https"* ]]; then
+      printf "\nValue should be a full URL including 'http' or 'https'.\n"
+      echo  "Exchange Server API URL: "
+      read answer
+      local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST="${answer:-$HOLLAEX_CONFIGMAP_API_HOST}"
+    else
+      break;
+    fi
+  done
+
+  local PARSE_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST=${ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST//\//\\/}
+  local EXCHANGE_SERVER_DOMAIN_OVERRIDE="$PARSE_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST"
+
+  printf "\n"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_API_HOST} ✔"
+  printf "\n"
+
   # WEB CAPTCHA SITE KEY
   echo "***************************************************************"
-  echo "[2/4] Exchange Web Google reCaptcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
+  echo "[3/5] Exchange Web Google reCaptcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
   printf "\n"
   read answer
 
@@ -3523,7 +3550,7 @@ EOF
 
   # Web default country
   echo "***************************************************************"
-  echo "[3/4] Default Country: ($ENVIRONMENT_WEB_DEFAULT_COUNTRY)"
+  echo "[4/5] Default Country: ($ENVIRONMENT_WEB_DEFAULT_COUNTRY)"
   printf "\n"
   read answer
 
@@ -3535,7 +3562,7 @@ EOF
 
   # Default language
   echo "***************************************************************"
-  echo "[4/4] Default Language: ($ENVIRONMENT_WEB_DEFAULT_LANGUAGE)"
+  echo "[5/5] Default Language: ($ENVIRONMENT_WEB_DEFAULT_LANGUAGE)"
   printf "\n"
   read answer
 
@@ -3554,6 +3581,8 @@ EOF
   
 *********************************************
 Exchange URL: $ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN
+
+Exchange Server API URL: $ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST
 
 Web Captcha Sitekey: $ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE
 
@@ -3584,6 +3613,7 @@ EOF
     if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
     CONFIGMAP_FILE_PATH=$i
     sed -i.bak "s/HOLLAEX_CONFIGMAP_DOMAIN=.*/HOLLAEX_CONFIGMAP_DOMAIN=$EXCHANGE_WEB_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_API_HOST=.*/HOLLAEX_CONFIGMAP_API_HOST=$EXCHANGE_SERVER_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY/ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/ENVIRONMENT_WEB_DEFAULT_LANGUAGE=$ENVIRONMENT_WEB_DEFAULT_LANGUAGE/ENVIRONMENT_WEB_DEFAULT_LANGUAGE=$ENVIRONMENT_WEB_DEFAULT_LANGUAGE_OVERRIDE/" $CONFIGMAP_FILE_PATH
@@ -3594,6 +3624,8 @@ EOF
   done
 
   export HOLLAEX_CONFIGMAP_DOMAIN=$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN
+
+  export HOLLAEX_CONFIGMAP_API_HOST=$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST
 
   export ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE
   

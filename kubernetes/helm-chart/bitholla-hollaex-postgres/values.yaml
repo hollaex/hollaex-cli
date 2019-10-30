@@ -4,7 +4,7 @@
 pvc:
   create: false
   size: 50Gi
-  name: hollaex-testnet-postgres-volume
+  name: hollaex-postgres-volume
 
 secretName: hollaex-secret
 
@@ -14,12 +14,15 @@ NodePort:
 
 nodeSelector: {}
 
+imageRegistry: postgres
+dockerTag: 10.9
+
 filebeat:
   create: false
   image:
     repository: docker.elastic.co/beats/filebeat
     tag: "6.5.4"
     pullPolicy: IfNotPresent
-  kibana_host: testnet-es-kibana.elasticsearch
-  elasticsearch_host: testnet-es-elasticsearch-client.elasticsearch
+  kibana_host: es-kibana.elasticsearch
+  elasticsearch_host: es-elasticsearch-client.elasticsearch
   elasticsearch_port: 9200
