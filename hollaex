@@ -299,9 +299,9 @@ elif [[ "$1" == "init" ]]; then
             INIT_PATH_CHECK=$(pwd)/hollaex-kit/.hollaex
 
             # Untracking customizable files from Git
-            cd $(pwd)/hollaex-kit
-            git rm --cached ./settings/* > /dev/null 2>&1;
-            git rm --cached ./templates/local/nginx/nginx.conf > /dev/null 2>&1;
+            # cd $(pwd)/hollaex-kit
+            # git rm --cached ./settings/* > /dev/null 2>&1;
+            # git rm --cached ./templates/local/nginx/nginx.conf > /dev/null 2>&1;
 
             echo "HollaEx Kit is successfully initialized."
             echo "You can go to: $(pwd)/hollaex-kit and start setting up your exchange with 'hollaex setup' command."
