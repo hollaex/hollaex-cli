@@ -30,14 +30,11 @@ spec:
         emptyDir: {}
       {{- if .Values.filebeat }}
       {{- if .Values.filebeat.create }}
+      
       - name: filebeat-config
         configMap:
           defaultMode: 0600
           name: postgres-filebeat-exporter-config
-      # - name: filebeat-inputs
-      #   configMap:
-      #     defaultMode: 0600
-      #     name: postgres-filebeat-exporter-inputs
       - name: filebeat-modules
         configMap:
           defaultMode: 0600

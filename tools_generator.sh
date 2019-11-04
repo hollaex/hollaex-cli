@@ -3891,3 +3891,40 @@ function hollaex_ascii_exchange_has_been_upgraded() {
 
 EOF
 }
+
+function kubernetes_set_backend_image_target() {
+
+            # $1 DOCKER REGISTRY
+            # $2 DOCKER TAG
+            # $3 NODEPORT ENABLE
+            # $4 NODEPORT PORT NUMBER
+
+            # $1 is_influxdb
+            # $2 image.repo
+            # $3 image.tag
+
+            if [[ "$1" == "is_influxdb" ]]; then
+                
+                if [[ "$2" ]] && [[ "$3" ]]; then
+
+                echo "--set image.repo=$2 --set image.tag=$3"
+
+                fi
+
+            else
+            
+                if [[ "$1" ]] && [[ "$2" ]]; then
+                    echo "--set imageRegistry=$1 --set dockerTag=$2"
+                fi
+
+            fi
+
+        }
+
+        function set_nodeport_access() {
+
+            if [[ "$1" == true ]] && [[ "$2" ]]; then
+                echo "--set NodePort.enable='true' --set NodePort.port=$4"
+            fi
+
+        }
