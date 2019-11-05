@@ -1679,16 +1679,16 @@ elif [[ "$1" == "upgrade" ]]; then
     fi
 
     echo "Checking for a newer version of HollaEx CLI is available..."
-    LATEST_HOLLAEX_CLI_VERSION=$(curl https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version)
+    LATEST_HOLLAEX_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version)
 
     if [[ $LATEST_HOLLAEX_CLI_VERSION > $(cat $SCRIPTPATH/version) ]]; then
 
         printf "\033[93m\nNewer version of HollaEx CLI has been detected.\033[39m\n"
-        printf "\nLatest version of HollaEx CLI : \033[92m$LATEST_HOLLAEX_CLI_VERSION\033[39m."
+        printf "\nLatest version of HollaEx CLI : \033[92m$LATEST_HOLLAEX_CLI_VERSION\033[39m"
         printf "\nCurrent installed version of HollaEx CLI : \033[93m$(cat $SCRIPTPATH/version)\033[39m\n\n"
         echo "Upgrading HollaEx CLI to latest..."
         curl -L https://raw.githubusercontent.com/bitholla/hollaex-cli/master/install.sh | bash;
-        printf "\n\nPlease run 'hollaex upgrade' again to proceed upgrading your exchange.\n"
+        printf "\nPlease run 'hollaex upgrade' again to proceed upgrading your exchange.\n"
 
         exit 0;
 
@@ -1697,7 +1697,7 @@ elif [[ "$1" == "upgrade" ]]; then
         printf "\nLatest version of HollaEx CLI : \033[92m$LATEST_HOLLAEX_CLI_VERSION\033[39m"
         printf "\nCurrent installed version of HollaEx CLI : \033[92m$(cat $SCRIPTPATH/version)\033[39m\n"
         printf "\n\033[92mYour HollaEx CLI is already up to date!\033[39m\n\n"
-        echo "Proceeding to upgrade..."
+        printf "Proceeding to upgrade...\n"
 
     fi
 
