@@ -27,7 +27,7 @@ spec:
 
       containers:
       - name: {{.Release.Name}}
-        image: redis:5.0.5-alpine
+        image: {{.Values.imageRegistry}}:{{.Values.dockerTag}}
         imagePullPolicy: IfNotPresent
         ports:
         - name: port

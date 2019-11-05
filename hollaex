@@ -20,7 +20,7 @@ function print_usage() {
 /bin/cat << EOF
 
 Usage : 
-    hollaex [ init ] [ setup ] [ start ] [ stop ] [ upgrade ] [ terminate ] [ web ] [ toolbox ] [ version ] (--flags)
+    hollaex [ init ] [ setup ] [ start ] [ stop ] [ upgrade ] [ terminate ] [ web ] [ toolbox ] [ status ] [ logs ] [ version ] (--flags)
 
 General Flags (Except for 'hollaex init'):
     --path, Manually pointing HollaEx Kit path. Should be always absolute path.
@@ -298,6 +298,11 @@ elif [[ "$1" == "init" ]]; then
             TEMPLATE_GENERATE_PATH=$(pwd)/hollaex-kit/templates
             INIT_PATH_CHECK=$(pwd)/hollaex-kit/.hollaex
 
+            # Untracking customizable files from Git
+            # cd $(pwd)/hollaex-kit
+            # git rm --cached ./settings/* > /dev/null 2>&1;
+            # git rm --cached ./templates/local/nginx/nginx.conf > /dev/null 2>&1;
+
             echo "HollaEx Kit is successfully initialized."
             echo "You can go to: $(pwd)/hollaex-kit and start setting up your exchange with 'hollaex setup' command."
             
@@ -547,16 +552,8 @@ elif [[ "$1" == "setup" ]]; then
             generate_nodeselector_values $ENVIRONMENT_KUBERNETES_REDIS_NODESELECTOR redis
 
             echo "Running Redis"
-            
-            if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS" == true ]]; then
-
-                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-redis  --namespace $ENVIRONMENT_EXCHANGE_NAME --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT" --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis
+            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-redis --namespace $ENVIRONMENT_EXCHANGE_NAME --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT)
         
-            else
-
-                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-redis  --namespace $ENVIRONMENT_EXCHANGE_NAME --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis
-            fi
-
         fi
 
         if [[ "$ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB" == true ]]; then
@@ -564,15 +561,7 @@ elif [[ "$1" == "setup" ]]; then
             generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
             echo "Running PostgreSQL DB"
 
-            if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS" == true ]]; then
-
-                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres
-
-            else
-
-                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres
-
-            fi
+            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
 
         fi
 
@@ -585,7 +574,7 @@ elif [[ "$1" == "setup" ]]; then
             fi
 
             echo "Running InfluxDB"
-            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-influxdb --namespace $ENVIRONMENT_EXCHANGE_NAME --set setCustomUser.enabled="true" --set setCustomUser.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set persistence.size="$ENVIRONMENT_KUBERNETES_INFLUXDB_VOLUMESIZE" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-influxdb.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb
+            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-influxdb --namespace $ENVIRONMENT_EXCHANGE_NAME --set setCustomUser.enabled="true" --set setCustomUser.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set persistence.size="$ENVIRONMENT_KUBERNETES_INFLUXDB_VOLUMESIZE" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-influxdb.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb $(kubernetes_set_backend_image_target is_influxdb $ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION)
 
         fi
 
@@ -1687,6 +1676,29 @@ elif [[ "$1" == "upgrade" ]]; then
         override_docker_registry;
         export ENVIRONMENT_DOCKER_IMAGE_REGISTRY=$ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE
         
+    fi
+
+    echo "Checking for a newer version of HollaEx CLI is available..."
+    LATEST_HOLLAEX_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version)
+
+    if [[ $LATEST_HOLLAEX_CLI_VERSION > $(cat $SCRIPTPATH/version) ]]; then
+
+        printf "\033[93m\nNewer version of HollaEx CLI has been detected.\033[39m\n"
+        printf "\nLatest version of HollaEx CLI : \033[92m$LATEST_HOLLAEX_CLI_VERSION\033[39m"
+        printf "\nCurrent installed version of HollaEx CLI : \033[93m$(cat $SCRIPTPATH/version)\033[39m\n\n"
+        echo "Upgrading HollaEx CLI to latest..."
+        curl -L https://raw.githubusercontent.com/bitholla/hollaex-cli/master/install.sh | bash;
+        printf "\nPlease run 'hollaex upgrade' again to proceed upgrading your exchange.\n"
+
+        exit 0;
+
+    else 
+
+        printf "\nLatest version of HollaEx CLI : \033[92m$LATEST_HOLLAEX_CLI_VERSION\033[39m"
+        printf "\nCurrent installed version of HollaEx CLI : \033[92m$(cat $SCRIPTPATH/version)\033[39m\n"
+        printf "\n\033[92mYour HollaEx CLI is already up to date!\033[39m\n\n"
+        printf "Proceeding to upgrade...\n"
+
     fi
 
     if [[ "$USE_KUBERNETES" ]]; then
@@ -2801,15 +2813,7 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "Upgrading PostgreSQL DB"
                 generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
 
-                if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS" == true ]]; then
-
-                    helm upgrade $ENVIRONMENT_EXCHANGE_NAME-db --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres
-
-                else
-
-                    helm upgrade $ENVIRONMENT_EXCHANGE_NAME-db --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres
-
-                fi
+                helm upgrade $ENVIRONMENT_EXCHANGE_NAME-db --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set imageRegistry="${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY}" --set dockerTag="${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION}" --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
 
             fi
 
@@ -2818,23 +2822,16 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "Upgrading Redis"
                 generate_nodeselector_values $ENVIRONMENT_KUBERNETES_REDIS_NODESELECTOR redis
 
-                 if [[ "$ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS" == true ]]; then
-
-                    helm upgrade $ENVIRONMENT_EXCHANGE_NAME-redis --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set NodePort.enable="true" --set NodePort.port="$ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT" --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis
-        
-                else
-
-                    helm upgrade $ENVIRONMENT_EXCHANGE_NAME-redis --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis
-                
-                fi
+                helm upgrade $ENVIRONMENT_EXCHANGE_NAME-redis --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT)
 
             fi
 
             if [[ "$ENVIRONMENT_KUBERNETES_RUN_INFLUXDB" ]]; then
-
+                
+                echo "Upgrading InfluxDB"
                 generate_nodeselector_values $ENVIRONMENT_KUBERNETES_INFLUXDB_NODESELECTOR influxdb
 
-                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-influxdb --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set setCustomUser.enabled="true" --set setCustomUser.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret"  -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-influxdb.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb
+                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-influxdb --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set setCustomUser.enabled="true" --set setCustomUser.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret"  -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-influxdb.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb $(kubernetes_set_backend_image_target is_influxdb $ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION)
 
             fi
 
@@ -3199,8 +3196,247 @@ elif [[ "$1" == "toolbox" ]]; then
     fi
 
 
-elif [[ "$1" == "version" ]]; then
+elif [[ "$1" == "status" ]]; then
+
+     while true; do
+        [[ $# -eq 0 ]] && break
+        case $1 in
+            --path)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_CLI_INIT_PATH=$1
+                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
+                shift; continue
+                ;;
+            --kube)
+                USE_KUBERNETES=true
+                echo "HollaEx CLI will use your Kubernetes cluster as a target."
+                shift; continue
+                ;;
+            --*) 
+                err_msg "Invalid option: $1"
+                print_usage;
+                exit 1;
+                ;;
+        esac
+        shift
+     done
+
+    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        CONFIG_FILE_PATH=$(pwd)/settings/*
+        TEMPLATE_GENERATE_PATH=$(pwd)/templates
+        INIT_PATH_CHECK=$(pwd)/.hollaex
+
+    fi
+
+    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        
+    fi
+
+    #Quit if necessary flags are missing
+    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
+
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
+        print_usage;
+        exit 1;
+
+    fi
     
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done
+
+    source $SCRIPTPATH/tools_generator.sh
+    load_config_variables;
+
+    if [[ "$USE_KUBERNETES" ]]; then
+
+        #Checking Kubernetes dependencies
+        check_kubernetes_dependencies;
+
+        kubectl get deployment --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+    fi
+    
+    if [[ ! "$USE_KUBERNETES" ]]; then
+
+        if [[ -z $(docker ps -a | grep $ENVIRONMENT_EXCHANGE_NAME) ]]; then
+
+            printf "\033[91m\nFailed to detect $ENVIRONMENT_EXCHANGE_NAME on this machine. Please try it again.\033[39m\n"
+
+        else 
+
+            docker ps -a | grep $ENVIRONMENT_EXCHANGE_NAME
+
+        fi
+
+    fi
+
+    printf "\nCalling the exchange health page ($HOLLAEX_CONFIGMAP_API_HOST/v1/health) ...\n"
+
+    if command curl $HOLLAEX_CONFIGMAP_API_HOST/v1/health; then 
+
+        printf "\n\033[92mSuccessfully reached to the exchange health page.\033[39m\n"
+
+    else 
+
+        printf "\033[91m\nExchange health page is not responding. Please check the exchange is up.\033[39m\n"
+
+    fi
+
+    exit 0;
+
+elif [[ "$1" == "logs" ]]; then
+
+     while true; do
+        [[ $# -eq 0 ]] && break
+        case $1 in
+            --path)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_CLI_INIT_PATH=$1
+                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
+                shift; continue
+                ;;
+            --kube)
+                USE_KUBERNETES=true
+                echo "HollaEx CLI will use your Kubernetes cluster as a target."
+                shift; continue
+                ;;
+            --*) 
+                err_msg "Invalid option: $1"
+                print_usage;
+                exit 1;
+                ;;
+        esac
+        shift
+     done
+
+    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        CONFIG_FILE_PATH=$(pwd)/settings/*
+        TEMPLATE_GENERATE_PATH=$(pwd)/templates
+        INIT_PATH_CHECK=$(pwd)/.hollaex
+
+    fi
+
+    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        
+    fi
+
+    #Quit if necessary flags are missing
+    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
+
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
+        print_usage;
+        exit 1;
+
+    fi
+    
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done
+
+    source $SCRIPTPATH/tools_generator.sh
+    load_config_variables;
+
+    if [[ "$USE_KUBERNETES" ]]; then
+
+        #Checking Kubernetes dependencies
+        check_kubernetes_dependencies;
+
+        function show_kubernetes_logs_simple() {
+                
+            local POD_ID=$(kubectl get pods --namespace $ENVIRONMENT_EXCHANGE_NAME | grep $ENVIRONMENT_EXCHANGE_NAME | cut -f1 -d " ")
+
+            for i in ${POD_ID[@]}; do
+
+                printf "\nPod : $i\n"
+
+                if [[ $(kubectl logs $i --namespace $ENVIRONMENT_EXCHANGE_NAME --tail 10) ]]; then
+
+                    kubectl logs $i --namespace $ENVIRONMENT_EXCHANGE_NAME --tail 10
+
+                else 
+
+                    echo "There are no logs for Pod : $i."
+
+                fi
+
+                printf "\n"
+
+            done;
+        
+        }
+
+        show_kubernetes_logs_simple;
+
+        printf "\n"
+        echo "Displayed last 10 lines of logs from each pods."
+        echo "To see more detailed logs, Please run 'kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME <NAME_OF_POD>'."
+        echo "For example, 'kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME myAPIPod>'."
+
+    fi
+    
+    if [[ ! "$USE_KUBERNETES" ]]; then
+
+        if [[ -z $(docker ps -a | grep $ENVIRONMENT_EXCHANGE_NAME) ]]; then
+
+            printf "\033[91m\nFailed to detect $ENVIRONMENT_EXCHANGE_NAME on this machine. Please try it again.\033[39m\n"
+
+        else 
+
+            function show_docker_logs_simple() {
+                
+                local CONTAINER_ID=$(docker ps -a --format "{{.Names}}" | grep $ENVIRONMENT_EXCHANGE_NAME)
+
+                for i in ${CONTAINER_ID[@]}; do
+
+                    printf "\nContainer : $i\n"
+
+                    if [[ $(docker logs $i --tail 10) ]]; then
+
+                        docker logs $i --tail 10
+
+                    else 
+
+                        echo "There are no logs for container : $i."
+
+                    fi
+
+                    printf "\n"
+
+                done;
+            
+            }
+
+            show_docker_logs_simple;
+
+            printf "\n"
+            echo "Displayed last 10 lines of logs from each containers."
+            echo "To see more detailed logs, Please run 'docker logs <NAME_OF_CONTAINER>'."
+            echo "For example, 'docker logs myAPIContainer'."
+
+        fi
+
+    fi
+
+    exit 0;
+ 
+
+elif [[ "$1" == "version" ]]; then
+     
     /bin/cat << EOF
 
 1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
@@ -3222,9 +3458,10 @@ EOF
 
 else
 
+    printf "\nInvalid Command. Please try it again.\n"
     print_usage;
 
-    exit 0;
+    exit 1;
 
 fi
 
