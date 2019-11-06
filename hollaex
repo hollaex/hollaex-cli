@@ -63,6 +63,10 @@ Options:
         --issue_ssl, Issue SSL certificate on local Nginx by using Let's Encrypt.
         --renew_ssl, Renew SSL certificate on local Nginx by using Let's Encrypt.
 
+    status: Show current exchange server status.
+
+    logs: Show overview of logs from exchange server. 
+
     version: Print out current installed version of HollaEx CLI.
 
 EOF
