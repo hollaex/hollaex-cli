@@ -40,6 +40,7 @@ job:
         #remove_coin
         #add_pair
         #remove_pair
+        #hollaex_upgrade
   env:
     coin_symbol:
     pair_name:

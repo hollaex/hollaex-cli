@@ -74,16 +74,16 @@ function local_database_init() {
 
 function kubernetes_database_init() {
 
-  # Checks the api container(s) get ready enough to run database upgrade jobs.
-  while ! kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- echo "API is ready!" > /dev/null 2>&1;
-      do echo "API container is not ready! Retrying..."
-      sleep 10;
-  done;
-
-  echo "API container become ready to run Database initialization jobs!"
-  sleep 10;
-
   if [[ "$1" == "launch" ]]; then
+
+     # Checks the api container(s) get ready enough to run database upgrade jobs.
+    while ! kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- echo "API is ready!" > /dev/null 2>&1;
+        do echo "API container is not ready! Retrying..."
+        sleep 10;
+    done;
+
+    echo "API container become ready to run Database initialization jobs!"
+    sleep 10;
 
     echo "Running sequelize db:migrate"
     kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:migrate 
@@ -104,17 +104,44 @@ function kubernetes_database_init() {
 
   elif [[ "$1" == "upgrade" ]]; then
 
-    echo "Running sequelize db:migrate"
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:migrate 
+    echo "Running database jobs..."
 
-    echo "Running Database Triggers"
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/runTriggers.js
+    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade \
+                --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                --set DEPLOYMENT_MODE="api" \
+                --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" \
+                --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" \
+                --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                --set job.enable=true \
+                --set job.mode=hollaex_upgrade \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
 
-    echo "Running InfluxDB migrations"
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
+      while ! $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == True > /dev/null 2>&1;
+          do echo "Waiting for the database job gets done..."
+          sleep 10;
+      done;
 
-    echo "Setting up the exchange with provided activation code"
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/setExchange.js
+      echo "Successfully ran database jobs!"
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
+
+      echo "Removing created Kubernetes Job for running database jobs..."
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
+
+    else 
+
+      printf "\033[91mFailed to create Kubernetes Job for running database jobs, Please confirm your input values and try again.\033[39m\n"
+
+      echo "Displayling logs..."
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
+      
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
+
+      exit 1;
+
+    fi
 
   fi
 
@@ -3735,6 +3762,10 @@ EOL
   else 
 
     printf "\033[91mFailed to create Kubernetes Job for reactivating your exchange, Please confirm your input values and try again.\033[39m\n"
+
+    echo "Displaying logs..."
+    kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
+
     helm del --purge $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
   
   fi
