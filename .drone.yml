@@ -2,7 +2,7 @@ clone:
   git:
     image: bitholla/devops-tools:drone_git-80f15d1
     when:
-      branch: [ master ]
+      branch: [ develop, master ]
 
 pipeline:
   ### SLACK NOTIFY - Build start ###
@@ -12,7 +12,7 @@ pipeline:
     secrets: [ slack_webhook ]
     template: "<{{build.link}}|Deployment> - #{{build.number}} started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
     when:
-      branch: [ master ]
+      branch: [ develop, master ]
       event: push
 
   #### Filtering branches to not build it ####
@@ -22,7 +22,7 @@ pipeline:
       - echo "Your latest code is now up on ${DRONE_BRANCH}. but Drone will not build this branch. have fun :)"
     when:
       branch:
-        exclude: [ master ]
+        exclude: [ develop, master ]
         event: push
 
   #### Docker image tagging - PRODUCTION RELEASES ####
@@ -34,7 +34,7 @@ pipeline:
       - echo "Current Docker tag is :" && cat .tags
       - echo "dockerTag:$(cat .tags)" > .dockerTag.yml
     when:
-      branch: [ master ]
+      branch: [ develop, master ]
       event: push
 
       
@@ -46,7 +46,7 @@ pipeline:
     repo: bitholla/hollaex-cli
     dockerfile: docker/Dockerfile
     when:
-      branch: [ master ] 
+      branch: [ develop, master ] 
       event: push
   
   #### SLACK NOTIFY - Build status report ####
@@ -56,7 +56,7 @@ pipeline:
     secrets: [ slack_webhook ]
     when:
       status: [success, failure]
-      branch: [ master ]
+      branch: [ develop, master ]
       event: push
 
   
