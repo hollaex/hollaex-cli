@@ -80,6 +80,7 @@
 ---
 
 kind: pipeline
+type: docker
 name: amd64
 
 platform:
@@ -88,11 +89,12 @@ platform:
 
 steps:
 - name: notify_job_start
-  image: bitholla/devops-tools:drone_slack-8a15f61
-  channel: deployment
-  template: "<{{build.link}}|Deployment> - #{{build.number}} started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
+  image: plugins/slack
+  settings:
+    template: "<{{build.link}}|Deployment> - #{{build.number}} started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
+    channel: deployment
   environment:
-    SLACK_WEBHOOK:
+    webhook:
       from_secret: slack_webhook
   trigger:
     branch: 
@@ -137,6 +139,7 @@ steps:
 ---
 
 kind: pipeline
+type: docker
 name: arm64
 
 platform:
@@ -156,3 +159,6 @@ steps:
   trigger:
     branch: 
       - develop
+
+depends_on:
+- amd64
