@@ -94,7 +94,7 @@ steps:
   template: "<{{build.link}}|Deployment> - #{{build.number}} started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
   channel: deployment
   environment:
-    webhook:
+    SLACK_WEBHOOK:
       from_secret: slack_webhook
   trigger:
     branch: 
