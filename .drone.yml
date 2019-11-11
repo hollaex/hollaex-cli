@@ -96,11 +96,6 @@ steps:
   environment:
     SLACK_WEBHOOK:
       from_secret: slack_webhook
-  trigger:
-    branch: 
-      - master
-    event:
-      - push
   
 - name: docker_tagging
   image: alpine
@@ -109,11 +104,6 @@ steps:
     #- echo -n ",latest" >> .tags
     - echo "Current Docker tag is :" && cat .tags
     - echo "dockerTag:$(cat .tags)" > .dockerTag.yml
-  trigger:
-    branch: 
-      - develop
-    event:
-      - push
 
 - name: docker_build
   image: plugins/docker
@@ -125,11 +115,6 @@ steps:
       from_secret: docker_username
     DOCKER_PASSWORD:
       from_secret: docker_password
-  trigger:
-    branch: 
-      - develop
-    event:
-      - push
 
 - name: notify_job_done
   image: bitholla/devops-tools:drone_slack-8a15f61
@@ -139,11 +124,12 @@ steps:
       from_secret: slack_webhook
   when:
     status: [ success, failure ]
-  trigger:
-    branch: 
-      - master
-    event:
-      - push
+  
+trigger:
+  branch: 
+    - master
+  event:
+    - push
 
 ---
 
@@ -166,11 +152,12 @@ steps:
       from_secret: docker_username
     PASSWORD:
       from_secret: docker_password
-  trigger:
-    branch: 
-      - develop
-    event:
-      - push
+      
+trigger:
+  branch: 
+    - develop
+  event:
+    - push
 
 depends_on:
 - amd64
