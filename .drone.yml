@@ -4,6 +4,10 @@ clone:
     when:
       branch: [ develop, master ]
 
+platform:
+  arch: amd64
+  os: linux
+
 pipeline:
   ### SLACK NOTIFY - Build start ###
   notify_job_start:
@@ -15,15 +19,15 @@ pipeline:
       branch: [ develop, master ]
       event: push
 
-  #### Filtering branches to not build it ####
-  not_building_this_branch:
-    image: golang:1.10.0-alpine
-    commands:
-      - echo "Your latest code is now up on ${DRONE_BRANCH}. but Drone will not build this branch. have fun :)"
-    when:
-      branch:
-        exclude: [ develop, master ]
-        event: push
+  # #### Filtering branches to not build it ####
+  # not_building_this_branch:
+  #   image: salpine
+  #   commands:
+  #     - echo "Your latest code is now up on ${DRONE_BRANCH}. but Drone will not build this branch. have fun :)"
+  #   when:
+  #     branch:
+  #       exclude: [ develop, master ]
+  #       event: push
 
   #### Docker image tagging - PRODUCTION RELEASES ####
   docker_tagging:
@@ -79,3 +83,26 @@ pipeline:
       status: [success]
       branch: [ master ]
       event: push
+
+---
+
+kind: pipeline
+name: arm64
+
+platform:
+  arch: arm64
+  os: linux
+
+steps:
+- name: docker_build
+  image: plugins/docker
+  repo: bitholla/hollaex-cli
+  dockerfile: docker/Dockerfile
+  environment:
+    USERNAME:
+      from_secret: docker_username
+    PASSWORD:
+      from_secret: docker_password
+  trigger:
+    branch: 
+      - master
