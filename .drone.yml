@@ -89,39 +89,62 @@ platform:
 
 steps:
 
-- name: notify_job_start
-  image: plugins/slack
-  template: "<{{build.link}}|Deployment> - #{{build.number}} for AMD64 Arch  started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
-  channel: deployment
-  environment:
-    SLACK_WEBHOOK:
-      from_secret: slack_webhook
+# - name: notify_job_start
+#   image: plugins/slack
+#   settings:
+#     template: "<{{build.link}}|Deployment> - #{{build.number}} for AMD64 Arch  started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
+#   channel: deployment
+#   environment:
+#     SLACK_WEBHOOK:
+#       from_secret: slack_webhook
   
-- name: docker_tagging
+# - name: docker_tagging
+#   image: alpine
+#   commands: 
+#     - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION" > .tags
+#     #- echo -n ",latest" >> .tags
+#     - echo "Current Docker tag is :" && cat .tags
+#     - echo "dockerTag:$(cat .tags)" > .dockerTag.yml
+
+# - name: docker_build
+#   image: plugins/docker
+#   settings:
+#     dockerfile: docker/Dockerfile
+#     repo: bitholla/hollaex-cli
+#   environment:
+#     DOCKER_USERNAME:
+#       from_secret: docker_username
+#     DOCKER_PASSWORD:
+#       from_secret: docker_password
+
+# - name: notify_job_done
+#   image: bitholla/devops-tools:drone_slack-8a15f61
+#   channel: deployment
+#   environment:
+#     SLACK_WEBHOOK:
+#       from_secret: slack_webhook
+#   when:
+#     status: [ success, failure ]
+
+#   version_tagging_for_partymaker:
+#     image: alpine
+#     commands:
+#       - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION" > .tags
+#     when:
+#       branch: [ master ]
+#       event: push
+
+- name: partymaker_version_tagging
   image: alpine
   commands: 
     - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION" > .tags
-    #- echo -n ",latest" >> .tags
-    - echo "Current Docker tag is :" && cat .tags
-    - echo "dockerTag:$(cat .tags)" > .dockerTag.yml
 
-- name: docker_build
-  image: plugins/docker
-  settings:
-    dockerfile: docker/Dockerfile
-    repo: bitholla/hollaex-cli
-  environment:
-    DOCKER_USERNAME:
-      from_secret: docker_username
-    DOCKER_PASSWORD:
-      from_secret: docker_password
-
-- name: notify_job_done
-  image: bitholla/devops-tools:drone_slack-8a15f61
+- name: notify_to_releases
+  image: bitholla/devops-tools:drone_partymaker-0.1.1
   channel: deployment
   environment:
-    SLACK_WEBHOOK:
-      from_secret: slack_webhook
+    WEBHOOK_URL:
+      from_secret: webhook_url
   when:
     status: [ success, failure ]
   
