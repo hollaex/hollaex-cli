@@ -99,6 +99,8 @@ steps:
   trigger:
     branch: 
       - master
+    event:
+      - push
   
 - name: docker_tagging
   image: alpine
@@ -110,6 +112,8 @@ steps:
   trigger:
     branch: 
       - develop
+    event:
+      - push
 
 - name: docker_build
   image: plugins/docker
@@ -117,13 +121,15 @@ steps:
     dockerfile: docker/Dockerfile
     repo: bitholla/hollaex-cli
   environment:
-    USERNAME:
+    DOCKER_USERNAME:
       from_secret: docker_username
-    PASSWORD:
+    DOCKER_PASSWORD:
       from_secret: docker_password
   trigger:
     branch: 
       - develop
+    event:
+      - push
 
 - name: notify_job_done
   image: bitholla/devops-tools:drone_slack-8a15f61
@@ -136,6 +142,8 @@ steps:
   trigger:
     branch: 
       - master
+    event:
+      - push
 
 ---
 
@@ -161,6 +169,8 @@ steps:
   trigger:
     branch: 
       - develop
+    event:
+      - push
 
 depends_on:
 - amd64
