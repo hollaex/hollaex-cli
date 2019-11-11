@@ -152,10 +152,10 @@ steps:
       from_secret: docker_username
     PASSWORD:
       from_secret: docker_password
-      
+
 trigger:
   branch: 
-    - develop
+    - master
   event:
     - push
 
