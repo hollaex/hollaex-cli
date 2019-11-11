@@ -77,7 +77,7 @@
 #       status: [success]
 #       branch: [ master ]
 #       event: push
----
+
 
 kind: pipeline
 type: docker
