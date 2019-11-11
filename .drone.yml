@@ -98,7 +98,7 @@ steps:
       from_secret: slack_webhook
   trigger:
     branch: 
-      - develop
+      - master
   
 - name: docker_tagging
   image: alpine
@@ -113,8 +113,9 @@ steps:
 
 - name: docker_build
   image: plugins/docker
-  repo: bitholla/hollaex-cli
-  dockerfile: docker/Dockerfile
+  settings:
+    dockerfile: docker/Dockerfile
+    repo: bitholla/hollaex-cli
   environment:
     USERNAME:
       from_secret: docker_username
@@ -134,7 +135,7 @@ steps:
     status: [ success, failure ]
   trigger:
     branch: 
-      - develop
+      - master
 
 ---
 
@@ -149,8 +150,9 @@ platform:
 steps:
 - name: docker_build
   image: plugins/docker
-  repo: bitholla/hollaex-cli
-  dockerfile: docker/Dockerfile
+  settings:
+    dockerfile: docker/Dockerfile
+    repo: bitholla/hollaex-cli
   environment:
     USERNAME:
       from_secret: docker_username
