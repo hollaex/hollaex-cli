@@ -88,11 +88,11 @@ platform:
   os: linux
 
 steps:
+
 - name: notify_job_start
   image: plugins/slack
-  settings:
-    template: "<{{build.link}}|Deployment> - #{{build.number}} started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
-    channel: deployment
+  template: "<{{build.link}}|Deployment> - #{{build.number}} started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
+  channel: deployment
   environment:
     webhook:
       from_secret: slack_webhook
@@ -104,7 +104,7 @@ steps:
   image: alpine
   commands: 
     - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION" > .tags
-    - echo -n ",latest" >> .tags
+    #- echo -n ",latest" >> .tags
     - echo "Current Docker tag is :" && cat .tags
     - echo "dockerTag:$(cat .tags)" > .dockerTag.yml
   trigger:
