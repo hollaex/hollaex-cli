@@ -91,7 +91,7 @@ steps:
 
 - name: notify_job_start
   image: plugins/slack
-  template: "<{{build.link}}|Deployment> - #{{build.number}} started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
+  template: "<{{build.link}}|Deployment> - #{{build.number}} for AMD64 Arch  started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
   channel: deployment
   environment:
     SLACK_WEBHOOK:
@@ -127,7 +127,7 @@ steps:
   
 trigger:
   branch: 
-    - master
+    - develop
   event:
     - push
 
@@ -142,6 +142,14 @@ platform:
   os: linux
 
 steps:
+- name: notify_job_start
+  image: plugins/slack
+  template: "<{{build.link}}|Deployment> - #{{build.number}} for ARM64 Arch started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
+  channel: deployment
+  environment:
+    SLACK_WEBHOOK:
+      from_secret: slack_webhook
+
 - name: docker_build
   image: plugins/docker
   settings:
@@ -152,10 +160,19 @@ steps:
       from_secret: docker_username
     PASSWORD:
       from_secret: docker_password
+  
+- name: notify_job_done
+  image: bitholla/devops-tools:drone_slack-8a15f61
+  channel: deployment
+  environment:
+    SLACK_WEBHOOK:
+      from_secret: slack_webhook
+  when:
+    status: [ success, failure ]
 
 trigger:
   branch: 
-    - master
+    - develop
   event:
     - push
 
