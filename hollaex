@@ -772,7 +772,7 @@ elif [[ "$1" == "setup" ]]; then
 
         else 
 
-            echo "HollaEx CLI failed to launch containers. Please review your settings and try again."
+            printf "\033[91mHollaEx CLI failed to launch containers. Please review your settings and try again.\033[39m\n"
             exit 1;
        
         fi
@@ -1491,7 +1491,7 @@ elif [[ "$1" == "restart" ]]; then
 
         else
 
-            echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
+            printf "\033[91mHollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI.\033[39m\n"
             
             exit 1;
 

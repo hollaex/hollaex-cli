@@ -45,14 +45,6 @@ steps:
   when:
     status: [ success, failure ]
 
-  version_tagging_for_partymaker:
-    image: alpine
-    commands:
-      - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION" > .tags
-    when:
-      branch: [ master ]
-      event: push
-
 - name: partymaker_version_tagging
   image: alpine
   commands: 
