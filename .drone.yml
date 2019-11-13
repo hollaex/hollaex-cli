@@ -84,10 +84,9 @@ steps:
 - name: qemu_user_static
   image: ubuntu:18.04
   commands: 
-    - pwd
-    - ls -al
     - apt-get update && apt-get install -y qemu-user-static
-    - mv /usr/bin/qemu-aarch64-static /usr/bin/qemu-s390x-static ${DRONE_WORKSPACE}/docker/qemu
+    - mkdir /drone/src/docker/qemu
+    - mv /usr/bin/qemu-aarch64-static /usr/bin/qemu-s390x-static /drone/src/docker/qemu
 
 
 - name: docker_build
