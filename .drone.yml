@@ -65,50 +65,51 @@ trigger:
   event:
     - push
 
-# ---
+---
 
-# kind: pipeline
-# type: docker
-# name: arm64
+kind: pipeline
+type: docker
+name: arm64
 
-# platform:
-#   arch: arm64
-#   os: linux
+platform:
+  arch: arm64
+  os: linux
 
-# steps:
-# - name: notify_job_start
-#   image: plugins/slack
-#   template: "<{{build.link}}|Deployment> - #{{build.number}} for ARM64 Arch started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
-#   channel: deployment
-#   environment:
-#     SLACK_WEBHOOK:
-#       from_secret: slack_webhook
+steps:
+- name: notify_job_start
+  image: plugins/slack
+  template: "<{{build.link}}|Deployment> - #{{build.number}} for ARM64 Arch started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
+  channel: deployment
+  environment:
+    SLACK_WEBHOOK:
+      from_secret: slack_webhook
 
-# - name: docker_build
-#   image: plugins/docker
-#   settings:
-#     dockerfile: docker/Dockerfile
-#     repo: bitholla/hollaex-cli
-#   environment:
-#     USERNAME:
-#       from_secret: docker_username
-#     PASSWORD:
-#       from_secret: docker_password
+- name: docker_build
+  image: plugins/docker
+  settings:
+    dockerfile: docker/Dockerfile
+    repo: bitholla/hollaex-cli
+    tag: arm64-test
+  environment:
+    USERNAME:
+      from_secret: docker_username
+    PASSWORD:
+      from_secret: docker_password
   
-# - name: notify_job_done
-#   image: bitholla/devops-tools:drone_slack-8a15f61
-#   channel: deployment
-#   environment:
-#     SLACK_WEBHOOK:
-#       from_secret: slack_webhook
-#   when:
-#     status: [ success, failure ]
+- name: notify_job_done
+  image: bitholla/devops-tools:drone_slack-8a15f61
+  channel: deployment
+  environment:
+    SLACK_WEBHOOK:
+      from_secret: slack_webhook
+  when:
+    status: [ success, failure ]
 
-# trigger:
-#   branch: 
-#     - develop
-#   event:
-#     - push
+trigger:
+  branch: 
+    - develop
+  event:
+    - push
 
-# depends_on:
-# - amd64
+depends_on:
+- amd64
