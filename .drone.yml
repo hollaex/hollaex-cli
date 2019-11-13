@@ -28,8 +28,9 @@ steps:
 - name: docker_build
   image: plugins/docker
   settings:
-    dockerfile: docker/Dockerfile
+    dockerfile: docker/Dockerfile.arm64
     repo: bitholla/hollaex-cli
+    tag: test-arm64
   environment:
     DOCKER_USERNAME:
       from_secret: docker_username
@@ -71,9 +72,9 @@ kind: pipeline
 type: docker
 name: arm64
 
-platform:
-  arch: arm
-  os: linux
+# platform:
+#   arch: arm
+#   os: linux
 
 steps:
 - name: notify_job_start
@@ -84,10 +85,17 @@ steps:
     SLACK_WEBHOOK:
       from_secret: slack_webhook
 
+- name: qemu_user_static
+  image: ubuntu:18.04
+  commands: 
+    - apt-get update && apt-get install -y qemu-user-static
+    - mv /usr/bin/qemu-aarch64-static /usr/bin/qemu-s390x-static ${DRONE_WORKSPACE}/docker/qemu
+
+
 - name: docker_build
   image: plugins/docker
   settings:
-    dockerfile: docker/Dockerfile
+    dockerfile: docker/Dockerfile.arm64
     repo: bitholla/hollaex-cli
     tag: arm64-test
   environment:
@@ -111,5 +119,5 @@ trigger:
   event:
     - push
 
-depends_on:
-- amd64
+# depends_on:
+# - amd64
