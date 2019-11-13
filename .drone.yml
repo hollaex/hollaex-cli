@@ -72,7 +72,7 @@ type: docker
 name: arm64
 
 platform:
-  arch: arm64
+  arch: arm
   os: linux
 
 steps:
