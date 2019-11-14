@@ -237,16 +237,6 @@ if [[ "$1" == 'dev' ]]; then
 
         generate_nginx_upstream;
 
-        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
-        
-            generate_nginx_config_for_plugin;
-
-        elif [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "false" ]]; then
-
-            rm -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf
-
-        fi
-
         docker-compose -f $HOLLAEX_CODEBASE_PATH/.${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml $LOCAL_COMMAND
 
         # Running database jobs for local db.
@@ -527,14 +517,9 @@ elif [[ "$1" == "setup" ]]; then
 
         fi
 
-        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == true ]]; then
-
-            echo "Generating Kubernetes Ingress for custom plugins"
-            generate_nginx_config_for_plugin;
-
-        fi
+        # Updating Dockerfile for Plugins Controller base image to latest HollaEx-Core.
+        sed -i.bak "s/FROM bitholla.*/FROM bitholla\/hollaex-core:${ENVIRONMENT_DOCKER_IMAGE_VERSION}/" ${HOLLAEX_CLI_INIT_PATH}/plugins/Dockerfile
         
-
         echo "Creating namespace on Kubernetes"
         kubectl create ns $ENVIRONMENT_EXCHANGE_NAME
 
@@ -744,20 +729,12 @@ elif [[ "$1" == "setup" ]]; then
         
         fi
 
+        # Updating Dockerfile for Plugins Controller base image to latest HollaEx-Core.
+        sed -i.bak "s/FROM bitholla.*/FROM bitholla\/hollaex-core:${ENVIRONMENT_DOCKER_IMAGE_VERSION}/" ${HOLLAEX_CLI_INIT_PATH}/plugins/Dockerfile
+
         # Update nginx.conf to apply user own domains
         echo "Updating nginx conf file based on user settings"
         apply_nginx_user_defined_values;
-
-        # Generating nginx configurations for custom plugin
-        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
-        
-            generate_nginx_config_for_plugin;
-
-        elif [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "false" ]]; then
-
-            rm -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf
-
-        fi
 
         if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d; then
 
@@ -976,14 +953,9 @@ elif [[ "$1" == "start" ]]; then
 
         fi
 
-        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == true ]]; then
-
-            echo "Generating Kubernetes Ingress for custom plugins"
-            generate_nginx_config_for_plugin;
-
-        fi
+        # Updating Dockerfile for Plugins Controller base image to latest HollaEx-Core.
+        sed -i.bak "s/FROM bitholla.*/FROM bitholla\/hollaex-core:${ENVIRONMENT_DOCKER_IMAGE_VERSION}/" ${HOLLAEX_CLI_INIT_PATH}/plugins/Dockerfile
         
-
         echo "Applying configmap on the namespace"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
 
@@ -1114,20 +1086,12 @@ elif [[ "$1" == "start" ]]; then
         
         fi
 
+        # Updating Dockerfile for Plugins Controller base image to latest HollaEx-Core.
+        sed -i.bak "s/FROM bitholla.*/FROM bitholla\/hollaex-core:${ENVIRONMENT_DOCKER_IMAGE_VERSION}/" ${HOLLAEX_CLI_INIT_PATH}/plugins/Dockerfile
+
         # Update nginx.conf to apply user own domains
         echo "Updating nginx conf file based on user settings"
         apply_nginx_user_defined_values;
-
-        # Generating nginx configurations for custom plugin
-        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
-        
-            generate_nginx_config_for_plugin;
-
-        elif [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "false" ]]; then
-
-            rm -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf
-
-        fi
 
         if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND; then
 
@@ -1434,13 +1398,6 @@ elif [[ "$1" == "restart" ]]; then
 
         fi
 
-        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == true ]]; then
-
-            echo "Generating Kubernetes Ingress for custom plugins"
-            generate_nginx_config_for_plugin;
-
-        fi
-
         echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
         kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
@@ -1545,16 +1502,6 @@ elif [[ "$1" == "restart" ]]; then
             echo "Generating Nginx upstream conf"
             generate_nginx_upstream
         
-        fi
-
-        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
-
-            generate_nginx_config_for_plugin;
-
-        elif [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "false" ]]; then
-
-            rm -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf
-
         fi
         
         # Update nginx.conf to apply user own domains
@@ -1764,12 +1711,8 @@ elif [[ "$1" == "upgrade" ]]; then
 
         fi
 
-        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == true ]]; then
-
-            echo "Generating Kubernetes Ingress for custom plugins"
-            generate_nginx_config_for_plugin;
-
-        fi
+        # Updating Dockerfile for Plugins Controller base image to latest HollaEx-Core.
+        sed -i.bak "s/FROM bitholla.*/FROM bitholla\/hollaex-core:${ENVIRONMENT_DOCKER_IMAGE_VERSION}/" ${HOLLAEX_CLI_INIT_PATH}/plugins/Dockerfile
 
         echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
         kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
@@ -1913,23 +1856,16 @@ elif [[ "$1" == "upgrade" ]]; then
             cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf 
 
         fi
-
-        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
-
-            generate_nginx_config_for_plugin;
-
-        elif [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "false" ]]; then
-
-            rm -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf
-
-        fi
         
+        # Updating Dockerfile for Plugins Controller base image to latest HollaEx-Core.
+        sed -i.bak "s/FROM bitholla.*/FROM bitholla\/hollaex-core:${ENVIRONMENT_DOCKER_IMAGE_VERSION}/" ${HOLLAEX_CLI_INIT_PATH}/plugins/Dockerfile
+
         # Update nginx.conf to apply user own domains
         echo "Updating nginx conf file based on user settings"
         apply_nginx_user_defined_values;
 
         echo "Restarting containers to apply new changes..."
-        if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d; then
+        if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --build; then
 
             RUN_WITH_VERIFY=false
             local_database_init upgrade;

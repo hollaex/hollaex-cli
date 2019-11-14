@@ -176,7 +176,7 @@ function check_kubernetes_dependencies() {
 
     else
 
-         printf "\033[91mhollaex-cli failed to detect kubectl or helm installed on this machine. Please install it before running hollaex-cli.\033[39m\n"
+         printf "\033[91mHollaEx CLI failed to detect kubectl or helm installed on this machine. Please install it before running HollaEx CLI.\033[39m\n"
          exit 1;
 
     fi
@@ -244,6 +244,9 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
     ip_hash;
     server ${ENVIRONMENT_EXCHANGE_NAME}-server-stream:10080;
   }
+  upstream plugins-controller {
+    server ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:10011;
+  }
 EOL
 
   fi
@@ -282,107 +285,17 @@ EOL
 }
 
 function apply_nginx_user_defined_values(){
-          #sed -i.bak "s/$ENVIRONMENT_DOCKER_IMAGE_VERSION/$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    #sed -i.bak "s/$ENVIRONMENT_DOCKER_IMAGE_VERSION/$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
-      local SERVER_DOMAIN=$(echo $HOLLAEX_CONFIGMAP_API_HOST | cut -f3 -d "/")
-      sed -i.bak "s/server_name.*\#Server.*/server_name $SERVER_DOMAIN; \#Server domain/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
-      rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
+    local SERVER_DOMAIN=$(echo $HOLLAEX_CONFIGMAP_API_HOST | cut -f3 -d "/")
+    sed -i.bak "s/server_name.*\#Server.*/server_name $SERVER_DOMAIN; \#Server domain/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
+    rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
 
     if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then 
       CLIENT_DOMAIN=$(echo $HOLLAEX_CONFIGMAP_DOMAIN | cut -f3 -d "/")
       sed -i.bak "s/server_name.*\#Client.*/server_name $CLIENT_DOMAIN; \#Client domain/" $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
       rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf.bak
     fi
-}
-
-function generate_nginx_config_for_plugin() {
-
-  if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf" ]]; then
-
-    rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf
-    touch $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf
-  
-  fi
-  
-  IFS=',' read -ra PLUGINS <<< "$ENVIRONMENT_CUSTOM_PLUGINS_NAME"    #Convert string to array
-
-  for i in "${PLUGINS[@]}"; do
-    PLUGINS_UPSTREAM_NAME=$(echo $i | cut -f1 -d ",")
-
-    CUSTOM_ENDPOINT=$(set -o posix ; set | grep "ENVIRONMENT_CUSTOM_ENDPOINT_$(echo $PLUGINS_UPSTREAM_NAME | tr a-z A-Z)" | cut -f2 -d"=")
-    CUSTOM_ENDPOINT_PORT=$(set -o posix ; set | grep "ENVIRONMENT_CUSTOM_ENDPOINT_PORT_$(echo $PLUGINS_UPSTREAM_NAME | tr a-z A-Z)" | cut -f2 -d"=")
-    CUSTOM_URL=$(set -o posix ; set | grep "ENVIRONMENT_CUSTOM_URL_$(echo $PLUGINS_UPSTREAM_NAME | tr a-z A-Z)" | cut -f2 -d"=")
-    CUSTOM_IS_WEBSOCKET=$(set -o posix ; set | grep "ENVIRONMENT_CUSTOM_IS_WEBSOCKET_$(echo $PLUGINS_UPSTREAM_NAME | tr a-z A-Z)" | cut -f2 -d"=")
-
-    if [[ "$USE_KUBERNETES" ]]; then
-
-      function websocket_upgrade() {
-        if  [[ "$CUSTOM_IS_WEBSOCKET" == "true" ]]; then
-          echo "nginx.org/websocket-services: '${CUSTOM_ENDPOINT}'"
-        fi
-      }
-
-cat >> $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml <<EOL
----
-
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-${PLUGINS_UPSTREAM_NAME}
-  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
-  annotations:
-    kubernetes.io/ingress.class: "nginx"
-    cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}
-    nginx.ingress.kubernetes.io/proxy-body-size: "2m"
-    $(websocket_upgrade;)
-spec:
-  rules:
-  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
-    http:
-      paths:
-      - path: ${CUSTOM_URL}
-        backend:
-          serviceName: ${CUSTOM_ENDPOINT}
-          servicePort: ${CUSTOM_ENDPOINT_PORT}
-          
-tls:
-  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
-    hosts:
-    - $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
-EOL
-
-    fi
-
-    if [[ ! "$USE_KUBERNETES" ]]; then
-
-      function websocket_upgrade() {
-        if  [[ "$CUSTOM_IS_WEBSOCKET" == "true" ]]; then
-          echo "proxy_http_version  1.1;
-          proxy_set_header    Upgrade \$http_upgrade; 
-          proxy_set_header    Connection \"upgrade\";"
-        fi
-      }
-      
-# Generate local nginx conf
-cat >> $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
-
-upstream $PLUGINS_UPSTREAM_NAME {
-  server ${CUSTOM_ENDPOINT}:${CUSTOM_ENDPOINT_PORT};
-}
-EOL
-
-cat >> $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf <<EOL
-location ${CUSTOM_URL} {
-  $(websocket_upgrade;)
-  proxy_pass      http://$PLUGINS_UPSTREAM_NAME;
-}
-
-EOL
-  
-  fi
-
-  done
-
 }
 
 function generate_local_docker_compose_for_dev() {
@@ -563,6 +476,24 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" == "true" ]]; then
 EOL
 
 fi 
+
+  # Generate docker-compose
+  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
+    image: ${ENVIRONMENT_DOCKER_PLUGINS_CONTROLLER_REGISTRY:-bitholla/plugins-controller}:${ENVIRONMENT_DOCKER_PLUGINS_VERSION:-latest}
+    restart: always
+    ports:
+      - 10011:10011
+    build:
+      context: ${HOLLAEX_CLI_INIT_PATH}/plugins
+      dockerfile: ${HOLLAEX_CLI_INIT_PATH}/plugins/Dockerfile
+    env_file:
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+EOL
+
 
 #LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE=$ENVIRONMENT_EXCHANGE_RUN_MODE
 
@@ -817,6 +748,33 @@ spec:
   - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
     hosts:
     - $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+    
+---
+
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-plugins-controller
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
+    nginx.ingress.kubernetes.io/proxy-body-size: "2m"
+spec:
+  rules:
+  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+    http:
+      paths:
+      - path: /plugins
+        backend:
+          serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller
+          servicePort: 10011
+          
+tls:
+  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
+    hosts:
+    - $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
 
 ---
 apiVersion: extensions/v1beta1
@@ -1045,7 +1003,7 @@ function check_empty_values_on_settings() {
 
           if [[ "$k" == "${GENERATE_VALUES_FILTER}" ]] ; then
 
-              echo -n "\"$k\" is a value should be automatically generated by hollaex-cli."
+              echo -n "\"$k\" is a value should be automatically generated by HollaEx CLI."
               printf "\n"
 
           fi
@@ -3925,37 +3883,37 @@ EOF
 
 function kubernetes_set_backend_image_target() {
 
-            # $1 DOCKER REGISTRY
-            # $2 DOCKER TAG
-            # $3 NODEPORT ENABLE
-            # $4 NODEPORT PORT NUMBER
+    # $1 DOCKER REGISTRY
+    # $2 DOCKER TAG
+    # $3 NODEPORT ENABLE
+    # $4 NODEPORT PORT NUMBER
 
-            # $1 is_influxdb
-            # $2 image.repo
-            # $3 image.tag
+    # $1 is_influxdb
+    # $2 image.repo
+    # $3 image.tag
 
-            if [[ "$1" == "is_influxdb" ]]; then
-                
-                if [[ "$2" ]] && [[ "$3" ]]; then
+    if [[ "$1" == "is_influxdb" ]]; then
+        
+        if [[ "$2" ]] && [[ "$3" ]]; then
 
-                echo "--set image.repo=$2 --set image.tag=$3"
+        echo "--set image.repo=$2 --set image.tag=$3"
 
-                fi
+        fi
 
-            else
-            
-                if [[ "$1" ]] && [[ "$2" ]]; then
-                    echo "--set imageRegistry=$1 --set dockerTag=$2"
-                fi
+    else
+    
+        if [[ "$1" ]] && [[ "$2" ]]; then
+            echo "--set imageRegistry=$1 --set dockerTag=$2"
+        fi
 
-            fi
+    fi
 
-        }
+}
 
-        function set_nodeport_access() {
+function set_nodeport_access() {
 
-            if [[ "$1" == true ]] && [[ "$2" ]]; then
-                echo "--set NodePort.enable='true' --set NodePort.port=$4"
-            fi
+    if [[ "$1" == true ]] && [[ "$2" ]]; then
+        echo "--set NodePort.enable='true' --set NodePort.port=$4"
+    fi
 
-        }
+}
