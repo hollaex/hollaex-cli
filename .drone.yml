@@ -81,13 +81,6 @@ steps:
 #     SLACK_WEBHOOK:
 #       from_secret: slack_webhook
 
-- name: qemu_user_static
-  image: ubuntu:18.04
-  commands: 
-    - apt-get update && apt-get install -y qemu-user
-    - mkdir /drone/src/docker/qemu
-    - mv /usr/bin/qemu-s390x /usr/bin/qemu-arm /usr/bin/qemu-aarch64 /drone/src/docker/qemu
-
 - name: docker_build
   image: plugins/docker
   settings:
