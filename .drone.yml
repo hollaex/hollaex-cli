@@ -92,7 +92,7 @@ steps:
 - name: docker_build
   image: plugins/docker
   settings:
-    dockerfile: docker/Dockerfile.arm64
+    dockerfile: docker/Dockerfile.s390x
     repo: bitholla/hollaex-cli
     tag: arm64-test
   environment:

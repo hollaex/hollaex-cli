@@ -1,6 +1,6 @@
-FROM aarch64/ubuntu:18.04
+FROM s390x/ubuntu:18.04
 
-COPY docker/qemu/qemu-aarch64-static /usr/bin/
+COPY docker/qemu/qemu-s390x-static /usr/bin/
 
 RUN apt-get update && apt-get install -y git curl sudo docker.io docker-compose
 
@@ -15,6 +15,6 @@ RUN chmod +x /run.sh
 
 WORKDIR /root
 
-RUN rm /usr/bin/qemu-aarch64-static
+RUN rm /usr/bin/qemu-s390x-static
 
 ENTRYPOINT ["/run.sh"]
