@@ -519,6 +519,7 @@ elif [[ "$1" == "setup" ]]; then
 
         # Updating Dockerfile for Plugins Controller base image to latest HollaEx-Core.
         sed -i.bak "s/FROM bitholla.*/FROM bitholla\/hollaex-core:${ENVIRONMENT_DOCKER_IMAGE_VERSION}/" ${HOLLAEX_CLI_INIT_PATH}/plugins/Dockerfile
+        rm ${HOLLAEX_CLI_INIT_PATH}/Dockerfile.bak
         
         echo "Creating namespace on Kubernetes"
         kubectl create ns $ENVIRONMENT_EXCHANGE_NAME
