@@ -266,6 +266,9 @@ if [[ "$IS_DEVELOP" ]]; then
     ip_hash;
     server ${ENVIRONMENT_EXCHANGE_NAME}-server:10080;
   }
+  upstream plugins-controller {
+    server ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:10011;
+  }
 EOL
 
 fi
