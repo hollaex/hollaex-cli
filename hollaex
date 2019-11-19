@@ -80,8 +80,15 @@ if [[ "$1" == 'dev' ]]; then
             --path)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_CLI_INIT_PATH=$1
+                echo "HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
+                shift; continue
+                ;;
+            --codebase)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 HOLLAEX_CODEBASE_PATH=$1
-                echo "hollaex-core codebase : $HOLLAEX_CODEBASE_PATH."
+                echo "HollaEx Core Codebase Path : $HOLLAEX_CODEBASE_PATH."
                 shift; continue
                 ;;
             --command)
@@ -122,18 +129,37 @@ if [[ "$1" == 'dev' ]]; then
 
     IS_DEVELOP=true
 
+    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        echo "HollaEx CLI Dev command requires HollaEx Kit path to operate."
+        echo "Please pass your Kit path by using '--path' flag."
+        exit 1;
+
+    fi
+    
+    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        CONFIG_FILE_PATH=$(pwd)/settings/*
+        TEMPLATE_GENERATE_PATH=$(pwd)/templates
+        INIT_PATH_CHECK=$(pwd)/.hollaex
+
+    fi
+
+    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        
+    fi
+
     if [[ "$HOLLAEX_CODEBASE_PATH" ]]; then
 
-        CONFIG_FILE_PATH=$HOLLAEX_CODEBASE_PATH/tools/hollaex-cli-settings/*
-        TEMPLATE_GENERATE_PATH=$HOLLAEX_CODEBASE_PATH/tools/hollaex-cli-templates
-        INIT_PATH_CHECK=$HOLLAEX_CODEBASE_PATH/.hollaex
         DOCKER_COMPOSE_NAME_PREFIX=$(basename "$HOLLAEX_CODEBASE_PATH")
 
     elif [[ ! "$HOLLAEX_CODEBASE_PATH" ]]; then
 
-        CONFIG_FILE_PATH=$(pwd)/tools/hollaex-cli-settings/*
-        TEMPLATE_GENERATE_PATH=$(pwd)/tools/hollaex-cli-templates
-        INIT_PATH_CHECK=$(pwd)/.hollaex
         HOLLAEX_CODEBASE_PATH=$(pwd)
         DOCKER_COMPOSE_NAME_PREFIX=$(basename "$HOLLAEX_CODEBASE_PATH")
 
@@ -237,7 +263,7 @@ if [[ "$1" == 'dev' ]]; then
 
         generate_nginx_upstream;
 
-        docker-compose -f $HOLLAEX_CODEBASE_PATH/.${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml $LOCAL_COMMAND
+        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml $LOCAL_COMMAND
 
         # Running database jobs for local db.
         if [[ "$LOCAL_DATABASE_INIT" == true ]]; then

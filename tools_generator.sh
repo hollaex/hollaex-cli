@@ -300,9 +300,8 @@ function apply_nginx_user_defined_values(){
 
 function generate_local_docker_compose_for_dev() {
 
-echo $HOLLAEX_CODEBASE_PATH
 # Generate docker-compose
-cat > $HOLLAEX_CODEBASE_PATH/.${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml <<EOL
 version: '3'
 services:
   ${ENVIRONMENT_EXCHANGE_NAME}-redis:
@@ -345,13 +344,25 @@ services:
       - ${ENVIRONMENT_EXCHANGE_NAME}-redis
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
+    image: ${ENVIRONMENT_DOCKER_PLUGINS_CONTROLLER_REGISTRY:-bitholla/plugins-controller}:${ENVIRONMENT_DOCKER_PLUGINS_VERSION:-latest}
+    restart: always
+    build:
+      context: ${HOLLAEX_CLI_INIT_PATH}/plugins
+      dockerfile: ${HOLLAEX_CLI_INIT_PATH}/plugins/Dockerfile
+    volumes: 
+      - ${HOLLAEX_CLI_INIT_PATH}/plugins:/app/plugins
+    env_file:
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
   ${ENVIRONMENT_EXCHANGE_NAME}-server:
     image: ${ENVIRONMENT_EXCHANGE_NAME}-server-pm2
     build:
-      context: .
+      context: ${HOLLAEX_CODEBASE_PATH}
       dockerfile: ${HOLLAEX_CODEBASE_PATH}/tools/Dockerfile.pm2
     env_file:
-      - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
     entrypoint:
       - pm2-runtime
       - start
