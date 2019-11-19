@@ -347,6 +347,8 @@ services:
   ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
     image: ${ENVIRONMENT_DOCKER_PLUGINS_CONTROLLER_REGISTRY:-bitholla/plugins-controller}:${ENVIRONMENT_DOCKER_PLUGINS_VERSION:-latest}
     restart: always
+    ports:
+      - 10011
     build:
       context: ${HOLLAEX_CLI_INIT_PATH}/plugins
       dockerfile: ${HOLLAEX_CLI_INIT_PATH}/plugins/Dockerfile
