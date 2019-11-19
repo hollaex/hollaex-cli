@@ -401,7 +401,7 @@ services:
     volumes:
       - ${TEMPLATE_GENERATE_PATH}/local/nginx:/etc/nginx
       - ${TEMPLATE_GENERATE_PATH}/local/nginx/conf.d:/etc/nginx/conf.d
-      - ${TEMPLATE_GENERATE_PATH}/local/logs/nginx:/var/log
+      - ${TEMPLATE_GENERATE_PATH}/local/logs/nginx:/var/log/nginx
       - ${TEMPLATE_GENERATE_PATH}/local/nginx/static/:/usr/share/nginx/html
     ports:
       - 80:80
