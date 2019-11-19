@@ -217,7 +217,7 @@ function load_config_variables() {
 function generate_local_env() {
 
 # Generate local env
-cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local <<EOL
+cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-dev.env.local <<EOL
 DB_DIALECT=postgres
 
 $(echo "$HOLLAEX_CONFIGMAP_VARIABLES" | tr -d '\'\')
@@ -353,7 +353,7 @@ services:
     volumes: 
       - ${HOLLAEX_CLI_INIT_PATH}/plugins:/app/plugins
     env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+      - ${ENVIRONMENT_EXCHANGE_NAME}-dev.env.local
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
   ${ENVIRONMENT_EXCHANGE_NAME}-server:
@@ -362,7 +362,7 @@ services:
       context: ${HOLLAEX_CODEBASE_PATH}
       dockerfile: ${HOLLAEX_CODEBASE_PATH}/tools/Dockerfile.pm2
     env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+      - ${ENVIRONMENT_EXCHANGE_NAME}-dev.env.local
     entrypoint:
       - pm2-runtime
       - start
