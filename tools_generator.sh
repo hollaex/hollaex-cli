@@ -348,7 +348,7 @@ services:
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
   ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
-    image: ${ENVIRONMENT_DOCKER_PLUGINS_CONTROLLER_REGISTRY:-bitholla/plugins-controller}:${ENVIRONMENT_DOCKER_PLUGINS_VERSION:-latest}
+    image: ${ENVIRONMENT_KUBERNETES_PLUGINS_CONTROLLER_REGISTRY:-bitholla/plugins-controller}:${ENVIRONMENT_KUBERNETES_PLUGINS_VERSION:-latest}
     restart: always
     ports:
       - 10011
@@ -497,7 +497,7 @@ fi
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
-    image: ${ENVIRONMENT_DOCKER_PLUGINS_CONTROLLER_REGISTRY:-bitholla/plugins-controller}:${ENVIRONMENT_DOCKER_PLUGINS_VERSION:-latest}
+    image: ${ENVIRONMENT_KUBERNETES_PLUGINS_CONTROLLER_REGISTRY:-bitholla/plugins-controller}:${ENVIRONMENT_KUBERNETES_PLUGINS_VERSION:-latest}
     restart: always
     ports:
       - 10011:10011
