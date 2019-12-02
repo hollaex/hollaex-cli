@@ -2648,6 +2648,14 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "HollaEx CLI will rolling-upgrade API containers only for Kubernetes."
                 shift; continue
                 ;;
+            # Version flag for --upgrade_api_only (rolling upgrade) for Kubernetes deployment.
+             --version)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$1
+                echo "Target HollaEx release version for API rolling upgrade : v $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE."
+                shift; continue
+                ;;
             --add_coin)
                 ADD_COIN=true
                 TOOLBOX_ENABLE=true
@@ -2772,6 +2780,15 @@ elif [[ "$1" == "toolbox" ]]; then
 
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
+
+    # --version flag for --upgrade_api_only
+    # Override target docker image version if user passed it manually with flag.
+    if [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
+        
+        override_docker_image_version;
+        export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+        
+    fi
 
     if [[ "$USE_KUBERNETES" ]]; then
 
@@ -3064,14 +3081,25 @@ elif [[ "$1" == "toolbox" ]]; then
 
             fi
 
+             if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]]; then
+
+                echo "Generating Kubernetes Secret"
+                generate_kubernetes_secret;
+
+            fi
+
             echo "Applying latest configmap env on the cluster."
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
 
-            echo "Applying $HOLLAEX_CONFIGMAP_API_NAME API pods only on Kubernetes."
-
+            echo "Applying latest secret on the cluster"
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
             echo "Upgrading $HOLLAEX_CONFIGMAP_API_NAME API pods only on Kubernetes."
-            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="2" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api \
+                        --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                        --reuse-values \
+                        --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" \
+                        $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
             echo "Rolling upgrade process has been finished."
             echo "It would take few minutes to Kubernetes replace api pods to new version completely. Please check the status constantly."

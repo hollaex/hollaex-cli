@@ -991,7 +991,18 @@ function helm_dynamic_trading_paris() {
     if [[ "$1" == "run" ]]; then
 
       #Running and Upgrading
-      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="engine" --set PAIR="$TRADE_PARIS_DEPLOYMENT" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME \
+                   --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                   --recreate-pods \
+                   --set DEPLOYMENT_MODE="engine" \
+                   --set PAIR="$TRADE_PARIS_DEPLOYMENT" \
+                   --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" \
+                   --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" \
+                   --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                   --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                   --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
+                   -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                   -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
     elif [[ "$1" == "scaleup" ]]; then
       
@@ -2381,7 +2392,7 @@ function remove_pair_exec() {
       PAIR_BASE=$(echo $PAIR_NAME | cut -f1 -d '-')
       PAIR_2=$(echo $PAIR_NAME | cut -f2 -d '-')
 
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-queue-$PAIR_BASE$PAIR_2
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-engine-$PAIR_BASE$PAIR_2
 
       echo "*** Updating settings file to remove existing $PAIR_NAME. ***"
       for i in ${CONFIG_FILE_PATH[@]}; do
