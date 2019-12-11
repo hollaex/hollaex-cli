@@ -1,6 +1,6 @@
 {{- if eq .Values.job.enable false }}
 
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
@@ -90,7 +90,7 @@ spec:
         lifecycle:
           preStop:
             exec:
-              command: ["/bin/sh", "-c", "export hostname=`hostname` && curl -X POST -H 'Content-type: application/json' --data '{\"attachments\": [ { \"color\": \"#A569BD\", \"title\": \"Pod has been terminated!\", \"text\": \"⚠️Pod '\"${hostname}\"' just has been terminated.⚠️\" } ] }' {{.Values.podRestart_webhook_url}}"]
+              command: ["/bin/sh", "-c", "export hostname=`hostname` && curl -X POST -H 'Content-type: application/json' --data '{\"attachments\": [ { \"color\": \"#A569BD\", \"title\": \"😵  Pod has been terminated!\", \"text\": \"Pod '\"${hostname}\"' just has been terminated.\" } ] }' {{.Values.podRestart_webhook_url}}"]
 {{- end }}
 
 {{- if eq .Values.DEPLOYMENT_MODE "api" }}
