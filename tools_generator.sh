@@ -4170,7 +4170,8 @@ function build_user_hollaex_web() {
           if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
 
             echo "Skipping..."
-            echo "Your current image name: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION."
+            echo "Your current image name: $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION."
+            echo "You can later tag and push it by using 'docker tag' and 'docker push' command manually."
           
           else
 

@@ -2109,6 +2109,14 @@ elif [[ "$1" == "terminate" ]]; then
         fi
 
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml down --remove-orphans -v
+
+        # Remove web server together if it exists.
+        if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null ; then
+
+            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml down --remove-orphans -v
+        
+        fi
+
         exit 0;
 
     fi
