@@ -637,7 +637,7 @@ EOL
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-${i}-$TRADE_PARIS_DEPLOYMENT:
-    image: $ENVIRONMENT_DOCKER_IMAGE_REGISTRY:$ENVIRONMENT_DOCKER_IMAGE_VERSION
+    image: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
     restart: always
     env_file:
       - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
@@ -1115,22 +1115,23 @@ function override_docker_image_version() {
 
 }
 
-function override_docker_registry() {
+function override_user_docker_registry() {
 
   for i in ${CONFIG_FILE_PATH[@]}; do
 
-    local ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE_PARSED=${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE//\//\\\/}
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$(echo ${answer:-$ENVIRONMENT_USER_REGISTRY_OVERRIDE} | cut -f1 -d ":")
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$(echo ${answer:-$ENVIRONMENT_USER_REGISTRY_OVERRIDE} | cut -f2 -d ":")
+
+    local ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_PARSED=${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY//\//\\\/}
 
     if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
       CONFIGMAP_FILE_PATH=$i
-      sed -i.bak "s/ENVIRONMENT_DOCKER_IMAGE_REGISTRY=.*/ENVIRONMENT_DOCKER_IMAGE_REGISTRY=$ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE_PARSED/" $CONFIGMAP_FILE_PATH
+      sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_PARSED/" $CONFIGMAP_FILE_PATH
+      sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION/" $CONFIGMAP_FILE_PATH
     fi
     
   done
 
-  sed -i.bak "s/ENVIRONMENT_DOCKER_IMAGE_REGISTRY=.*/ENVIRONMENT_DOCKER_IMAGE_REGISTRY=$ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE_PARSED/" $HOLLAEX_CLI_INIT_PATH/Dockerfile
-
-  rm $HOLLAEX_CLI_INIT_PATH/Dockerfile.bak
   rm $CONFIGMAP_FILE_PATH.bak
 
 }
@@ -4047,15 +4048,19 @@ function build_user_hollaex_core() {
 
       echo "Your custom HollaEx Core image has been successfully built."
 
-      if [[ "$USE_KUBERNETES" ]]; then
+      if [[ "$USE_KUBERNETES" ]] || [[ "$RUN_WITH_VERIFY" == false ]]; then
 
-        echo "Info: Deployment to Kubernetes mandatorily requires image to gets pushed."
+        if [[ "$USE_KUBERNETES" ]]; then
+
+          echo "Info: Deployment to Kubernetes mandatorily requires image to gets pushed."
+
+        fi
+
         push_user_hollaex_core;
       
       else 
         
         echo "Do you want to also push it at your Docker Registry? (Y/n)"
-
         read answer
 
           if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
@@ -4086,8 +4091,16 @@ function build_user_hollaex_core() {
 
 function push_user_hollaex_core() {
 
-  echo "Please type in your new image name. ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION)"
-  read answer
+  if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
+
+    echo "Please type in your new image name. ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION)"
+    read answer
+  
+  else 
+
+    echo "Using $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE as Docker image tag..."
+  
+  fi
 
   export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE=$(echo ${answer:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} | cut -f1 -d ":")
   export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$(echo ${answer:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION} | cut -f2 -d ":")
@@ -4139,6 +4152,9 @@ function build_user_hollaex_web() {
     exit 1;
   
   fi
+
+  echo "Generating .env for Web Client"
+  generate_hollaex_web_local_env
 
   if command docker build -t $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION -f $HOLLAEX_CLI_INIT_PATH/web/docker/Dockerfile $HOLLAEX_CLI_INIT_PATH/web; then
 

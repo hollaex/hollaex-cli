@@ -1618,18 +1618,18 @@ elif [[ "$1" == "upgrade" ]]; then
                 echo "HollaEx CLI will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
-            --registry)
+            --user-image-registry)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE=$1
-                echo "Target hollaex docker registry : $ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE."
+                ENVIRONMENT_USER_REGISTRY_OVERRIDE=$1
+                echo "User HollaEx Core image registry and version : $ENVIRONMENT_USER_REGISTRY_OVERRIDE."
                 shift; continue
                 ;;
             --version)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$1
-                echo "Target hollaex release version : v $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE."
+                echo "Target HollaEx Core release version : v $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE."
                 shift; continue
                 ;;
             --skip)
@@ -1688,10 +1688,9 @@ elif [[ "$1" == "upgrade" ]]; then
     fi
 
     # Override target docker registry if user passed it manually with flag.
-    if [[ "$ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE" ]]; then
+    if [[ "$ENVIRONMENT_USER_REGISTRY_OVERRIDE" ]]; then
         
-        override_docker_registry;
-        export ENVIRONMENT_DOCKER_IMAGE_REGISTRY=$ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE
+        override_user_docker_registry;
         
     fi
 
@@ -2111,12 +2110,13 @@ elif [[ "$1" == "terminate" ]]; then
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml down --remove-orphans -v
 
         # Remove web server together if it exists.
-        if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null ; then
+        if [[ -f "$TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml" ]] ; then
 
-            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml down --remove-orphans -v
-        
+            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client down 
         fi
 
+        echo "$HOLLAEX_CONFIGMAP_API_NAME ($HOLLAEX_CONFIGMAP_API_HOST) has been successfully terminated. If there's an issue, please review the logs and try it again."
+        
         exit 0;
 
     fi
@@ -2234,7 +2234,28 @@ elif [[ "$1" == "web" ]]; then
 
     if [[ "$WEB_CLIENT_START" ]]; then
 
-        build_user_hollaex_web;
+        if command docker images | grep $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY > /dev/null && command docker images | grep $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION > /dev/null; then
+
+            echo "Pre-built image for web server has been detected on your system."
+            echo "Do you want to proceed with this pre-built image? (Y/n)"
+            read answer 
+
+            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+
+                build_user_hollaex_web;
+            
+            else 
+
+                echo "Proceeding..."
+            
+            fi
+        
+        else 
+
+            echo "Building the web server image..."
+            build_user_hollaex_web;
+
+        fi
 
         if [[ "$USE_KUBERNETES" ]]; then
 
