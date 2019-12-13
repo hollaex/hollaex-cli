@@ -1188,6 +1188,21 @@ function add_coin_input() {
   echo "${answer:-eth} ✔"
   printf "\n"
 
+  for i in ${CONFIG_FILE_PATH[@]}; do
+
+    if command grep -q "HOLLAEX_CONFIGMAP_$(echo $COIN_SYMBOL | tr a-z A-Z)" $i > /dev/null ; then
+
+      echo "Detected configurations for coin $COIN_SYMBOL in your settings file."
+      echo "Proceeding with stored configurations..."
+      export VALUE_IMPORTED_FROM_CONFIGMAP=true
+
+      add_coin_exec;
+    
+    fi
+
+
+  done
+
   echo "***************************************************************"
   echo "[2/11] Full Name of Coin: (Ethereum)"
   printf "\033[2m- The full name of the coin.\033[22m\n" 
@@ -1410,13 +1425,99 @@ function add_coin_input() {
     exit 1;
   
   fi
+
+  save_add_coin_input_at_settings;
+
+}
+
+function save_add_coin_input_at_settings() {
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+
+    if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
+        echo $CONFIGMAP_FILE_PATH
+        local CONFIGMAP_FILE_PATH=$i
+    fi
+
+  done
+
+  local COIN_PREFIX=$(echo $COIN_SYMBOL | tr a-z A-Z)
+
+  local COIN_DEPOSIT_LIMITS_PARSED=$(echo ${COIN_DEPOSIT_LIMITS//\"/\\\"})
+  local COIN_WITHDRAWAL_LIMITS_PARSED=$(echo ${COIN_WITHDRAWAL_LIMITS//\"/\\\"})
+
+  cat >> $CONFIGMAP_FILE_PATH << EOL
+
+HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_SYMBOL=$COIN_SYMBOL
+HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_FULLNAME=$COIN_FULLNAME
+HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_ALLOW_DEPOSIT=$COIN_ALLOW_DEPOSIT
+HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_ALLOW_WITHDRAWAL=$COIN_ALLOW_WITHDRAWAL
+HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_WITHDRAWAL_FEE=$COIN_MIN
+HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_MIN=$COIN_MIN
+HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_MAX=$COIN_MIN
+HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_INCREMENT_UNIT=$COIN_INCREMENT_UNIT
+HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_DEPOSIT_LIMITS=$COIN_DEPOSIT_LIMITS_PARSED
+HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_WITHDRAWAL_LIMITS=$COIN_WITHDRAWAL_LIMITS_PARSED
+HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_ACTIVE=$COIN_ACTIVE
+
+EOL
+
+}
+
+function export_add_coin_configuration_env() {
+
+  COIN_SYMBOL_OVERRIDE=HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_SYMBOL
+  COIN_FULLNAME_OVERRIDE=HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_FULLNAME
+  COIN_ALLOW_DEPOSIT_OVERRIDE=HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_ALLOW_DEPOSIT
+  COIN_ALLOW_WITHDRAWAL_OVERRIDE=HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_ALLOW_WITHDRAWAL
+  COIN_WITHDRAWAL_FEE_OVERRIDE=HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_WITHDRAWAL_FEE
+  COIN_MIN_OVERRIDE=HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_MIN
+  COIN_MAX_OVERRIDE=HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_MAX
+  COIN_INCREMENT_UNIT_OVERRIDE=HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_INCREMENT_UNIT
+  COIN_DEPOSIT_LIMITS_OVERRIDE=HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_DEPOSIT_LIMITS
+  COIN_WITHDRAWAL_LIMITS_OVERRIDE=HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_WITHDRAWAL_LIMITS
+  COIN_ACTIVE_OVERRIDE=HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_ACTIVE
+
+  if [[ "$VALUE_IMPORTED_FROM_CONFIGMAP" ]]; then
+
+    COIN_SYMBOL_OVERRIDE=$(echo ${COIN_SYMBOL_OVERRIDE})
+    COIN_FULLNAME_OVERRIDE=$(echo ${COIN_FULLNAME_OVERRIDE})
+    COIN_ALLOW_DEPOSIT_OVERRIDE=$(echo ${COIN_ALLOW_DEPOSIT_OVERRIDE})
+    COIN_ALLOW_WITHDRAWAL_OVERRIDE=$(echo ${COIN_ALLOW_WITHDRAWAL_OVERRIDE})
+    COIN_WITHDRAWAL_FEE_OVERRIDE=$(echo ${COIN_WITHDRAWAL_FEE_OVERRIDE})
+    COIN_MIN_OVERRIDE=$(echo ${COIN_MIN_OVERRIDE})
+    COIN_MAX_OVERRIDE=$(echo ${COIN_MAX_OVERRIDE})
+    COIN_INCREMENT_UNIT_OVERRIDE=$(echo ${COIN_INCREMENT_UNIT_OVERRIDE})
+    COIN_DEPOSIT_LIMITS_OVERRIDE=$(echo ${COIN_DEPOSIT_LIMITS_OVERRIDE})
+    COIN_WITHDRAWAL_LIMITS_OVERRIDE=$(echo ${COIN_WITHDRAWAL_LIMITS_OVERRIDE})
+    COIN_ACTIVE_OVERRIDE=$(echo ${COIN_ACTIVE_OVERRIDE})
+
+  else 
+
+    export $(echo $COIN_SYMBOL_OVERRIDE)=$COIN_SYMBOL
+    export $(echo $COIN_FULLNAME_OVERRIDE)=$COIN_FULLNAME
+    export $(echo $COIN_ALLOW_DEPOSIT_OVERRIDE)=$COIN_ALLOW_DEPOSIT
+    export $(echo $COIN_ALLOW_WITHDRAWAL_OVERRIDE)=$COIN_ALLOW_WITHDRAWAL
+    export $(echo $COIN_WITHDRAWAL_FEE_OVERRIDE)=$COIN_WITHDRAWAL_FEE
+    export $(echo $COIN_MIN_OVERRIDE)=$COIN_MIN
+    export $(echo $COIN_MAX_OVERRIDE)=$COIN_MAX
+    export $(echo $COIN_INCREMENT_UNIT_OVERRIDE)=$COIN_INCREMENT_UNIT
+    export $(echo $COIN_DEPOSIT_LIMITS_OVERRIDE)=$COIN_DEPOSIT_LIMITS
+    export $(echo $COIN_WITHDRAWAL_LIMITS_OVERRIDE)=$COIN_WITHDRAWAL_LIMITS
+    export $(echo $COIN_ACTIVE_OVERRIDE)=$COIN_ACTIVE
+  
+  fi
+
 }
 
 
 function add_coin_exec() {
 
-  if [[ "$USE_KUBERNETES" ]]; then
+  local COIN_PREFIX=$(echo $COIN_SYMBOL | tr a-z A-Z)
 
+  export_add_coin_configuration_env;
+
+  if [[ "$USE_KUBERNETES" ]]; then
 
     function generate_kubernetes_add_coin_values() {
 
@@ -1426,17 +1527,17 @@ job:
   enable: true
   mode: add_coin
   env:
-    coin_symbol: ${COIN_SYMBOL}
-    coin_fullname: ${COIN_FULLNAME}
-    coin_allow_deposit: ${COIN_ALLOW_DEPOSIT}
-    coin_allow_withdrawal: ${COIN_ALLOW_WITHDRAWAL}
-    coin_withdrawal_fee: ${COIN_WITHDRAWAL_FEE}
-    coin_min: ${COIN_MIN}
-    coin_max: ${COIN_MAX}
-    coin_increment_unit: ${COIN_INCREMENT_UNIT}
-    coin_deposit_limits: '${COIN_DEPOSIT_LIMITS}'
-    coin_withdrawal_limits: '${COIN_WITHDRAWAL_LIMITS}'
-    coin_active: ${COIN_ACTIVE}
+    coin_symbol: $(echo ${!COIN_SYMBOL_OVERRIDE})
+    coin_fullname: $(echo ${!COIN_FULLNAME_OVERRIDE})
+    coin_allow_deposit: $(echo ${!COIN_ALLOW_DEPOSIT_OVERRIDE})
+    coin_allow_withdrawal: $$(echo ${!COIN_ALLOW_WITHDRAWAL_OVERRIDE})
+    coin_withdrawal_fee: $(echo ${!COIN_WITHDRAWAL_FEE_OVERRIDE})
+    coin_min: $(echo ${!COIN_MIN_OVERRIDE})
+    coin_max: $(echo ${!COIN_MAX_OVERRIDE})
+    coin_increment_unit: $(echo ${!COIN_INCREMENT_UNIT_OVERRIDE})
+    coin_deposit_limits: '$(echo ${!COIN_DEPOSIT_LIMITS_OVERRIDE})'
+    coin_withdrawal_limits: '$(echo ${!COIN_WITHDRAWAL_LIMITS_OVERRIDE})'
+    coin_active: $(echo ${!COIN_ACTIVE_OVERRIDE})
 EOL
 
     }
@@ -1534,18 +1635,18 @@ EOL
       echo "Shutting down Nginx to block exchange external access"
       docker stop $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ")
 
-      echo "Adding new coin $COIN_SYMBOL on local exchange"
-      if command docker exec --env "COIN_FULLNAME=${COIN_FULLNAME}" \
-                  --env "COIN_SYMBOL=${COIN_SYMBOL}" \
-                  --env "COIN_ALLOW_DEPOSIT=${COIN_ALLOW_DEPOSIT}" \
-                  --env "COIN_ALLOW_WITHDRAWAL=${COIN_ALLOW_WITHDRAWAL}" \
-                  --env "COIN_WITHDRAWAL_FEE=${COIN_WITHDRAWAL_FEE}" \
-                  --env "COIN_MIN=${COIN_MIN}" \
-                  --env "COIN_MAX=${COIN_MAX}" \
-                  --env "COIN_INCREMENT_UNIT=${COIN_INCREMENT_UNIT}" \
-                  --env "COIN_DEPOSIT_LIMITS=${COIN_DEPOSIT_LIMITS}" \
-                  --env "COIN_WITHDRAWAL_LIMITS=${COIN_WITHDRAWAL_LIMITS}" \
-                  --env "COIN_ACTIVE=${COIN_ACTIVE}"  \
+      echo "Adding new coin $(echo ${!COIN_SYMBOL_OVERRIDE}) on local exchange"
+      if command docker exec --env "COIN_FULLNAME=$(echo ${!COIN_FULLNAME_OVERRIDE})" \
+                  --env "COIN_SYMBOL=$(echo ${!COIN_SYMBOL_OVERRIDE})" \
+                  --env "COIN_ALLOW_DEPOSIT=$(echo ${!COIN_ALLOW_DEPOSIT_OVERRIDE})" \
+                  --env "COIN_ALLOW_WITHDRAWAL=$(echo ${!COIN_ALLOW_WITHDRAWAL_OVERRIDE})" \
+                  --env "COIN_WITHDRAWAL_FEE=$(echo ${!COIN_WITHDRAWAL_FEE_OVERRIDE})" \
+                  --env "COIN_MIN=$(echo ${!COIN_MIN_OVERRIDE})" \
+                  --env "COIN_MAX=$(echo ${!COIN_MAX_OVERRIDE})" \
+                  --env "COIN_INCREMENT_UNIT=$(echo ${!COIN_INCREMENT_UNIT_OVERRIDE})" \
+                  --env "COIN_DEPOSIT_LIMITS=$(echo ${!COIN_DEPOSIT_LIMITS_OVERRIDE})" \
+                  --env "COIN_WITHDRAWAL_LIMITS=$(echo ${!COIN_WITHDRAWAL_LIMITS_OVERRIDE})" \
+                  --env "COIN_ACTIVE=$(echo ${!COIN_ACTIVE_OVERRIDE})"  \
                   ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
                   node tools/dbs/addCoin.js; then
 
@@ -1633,6 +1734,8 @@ EOL
       fi
       
   fi
+
+  exit 0;
 
 }
 
@@ -3884,9 +3987,7 @@ function hollaex_ascii_exchange_has_been_setup() {
 1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
 
                      Your Exchange has been setup!
-                 Run 'hollaex start$(if [[ $"USE_KUBERNETES" ]]; then echo " --kube"; fi)' to start the exchange.
                  
-
 EOF
 
 }
