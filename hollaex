@@ -20,7 +20,7 @@ function print_usage() {
 /bin/cat << EOF
 
 Usage : 
-    hollaex [ init ] [ setup ] [ start ] [ stop ] [ upgrade ] [ terminate ] [ web ] [ toolbox ] [ status ] [ logs ] [ version ] (--flags)
+    hollaex [ init ] [ setup ] [ start ] [ restart ] [ stop ] [ build ] [ upgrade ] [ terminate ] [ web ] [ toolbox ] [ status ] [ logs ] [ version ] (--flags)
 
 General Flags (Except for 'hollaex init'):
     --path, Manually pointing HollaEx Kit path. Should be always absolute path.
@@ -34,10 +34,12 @@ Options:
         --reconfigure, Reconfigure basic settings such as Server domain or Activation Code.
 
     start: Start the exchange which already been configured by 'hollaex setup' command.
+
+    restart: Restart the existing exchange.
     
     stop: Stop the exchagne which already been running.
-    
-    restart: Restart the existing exchange.
+
+    build: Build the Docker image for running HollaEx Kit, includes user custom configurations.
     
     upgrade: Upgrade the exchange to new version.
         --version, Version number of HollaEx Core to upgrade.
@@ -49,7 +51,7 @@ Options:
         --start, Start the web client which already been configured.
         --stop, Stop the web client.
         --restart, Restart the web client.
-        --rebuild, Rebuild the web client docker image.
+        --build, Rebuild the web client docker image.
         --terminate, Terminate the web client. THIS COMMAND WILL COMPLETELY REMOVE YOUR WEB CLIENT.
 
     toolbox: Toolbox for advanced features which could be helpful for your exchange operations.
@@ -444,13 +446,34 @@ elif [[ "$1" == "setup" ]]; then
         exit 0;
 
     fi
+    
+    # Check that settings files are already configured.
+    if [[ $HOLLAEX_SECRET_ACTIVATION_CODE ]]; then
+
+        echo "HollaEx CLI detected the preconfigured values on your HollaEx Kit."
+        echo "Do you want to proceed with this configurations? (Y/n)"
+        read answer
+
+        if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+            
+            launch_basic_settings_input;
+        
+        fi
+
+    else 
+
+        launch_basic_settings_input;
+    
+    fi
+
+    build_user_hollaex_core;
 
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
         check_kubernetes_dependencies;
 
-        launch_basic_settings_input;
+        # launch_basic_settings_input;
 
         #Creating kubernetes_config directory for generating config for Kubernetes.
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
@@ -500,62 +523,47 @@ elif [[ "$1" == "setup" ]]; then
 
         if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
 
-            echo "Generating Kubernetes Configmap"
+            echo "Generating Kubernetes Configmap."
             generate_kubernetes_configmap;
 
         fi
 
         if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]]; then
 
-            echo "Generating Kubernetes Secret"
+            echo "Generating Kubernetes Secret."
             generate_kubernetes_secret;
-
-        fi
-
-        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
-
-            echo "Generating Web client Configmap"
-            generate_hollaex_web_configmap;
 
         fi
 
 
         if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
 
-            echo "Generating Kubernetes Ingress"
+            echo "Generating Kubernetes Ingress."
             generate_kubernetes_ingress;
 
         fi
 
         if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == true ]]; then
 
-            echo "Generating Kubernetes Ingress for custom plugins"
+            echo "Generating Kubernetes Ingress for custom plugins."
             generate_nginx_config_for_plugin;
 
         fi
         
-
-        echo "Creating namespace on Kubernetes"
+        echo "Creating namespace on Kubernetes."
         kubectl create ns $ENVIRONMENT_EXCHANGE_NAME
 
-        echo "Applying configmap on the namespace"
+        echo "Applying configmap on the namespace."
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
-
-        echo "Applying secret on the namespace"
-        kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
-
-        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
         
-            echo "Applying web client configmap on the namespace"
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-web-configmap.yaml
-
-        fi
+        echo "Applying secret on the namespace."
+        kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
         if [[ "$ENVIRONMENT_KUBERNETES_RUN_REDIS" == true ]]; then
 
             generate_nodeselector_values $ENVIRONMENT_KUBERNETES_REDIS_NODESELECTOR redis
 
-            echo "Running Redis"
+            echo "Running Redis."
             helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-redis --namespace $ENVIRONMENT_EXCHANGE_NAME --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT)
         
         fi
@@ -563,7 +571,7 @@ elif [[ "$1" == "setup" ]]; then
         if [[ "$ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB" == true ]]; then
 
             generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
-            echo "Running PostgreSQL DB"
+            echo "Running PostgreSQL DB."
 
             helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db --namespace $ENVIRONMENT_EXCHANGE_NAME --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
 
@@ -577,87 +585,63 @@ elif [[ "$1" == "setup" ]]; then
 
             fi
 
-            echo "Running InfluxDB"
+            echo "Running InfluxDB."
             helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-influxdb --namespace $ENVIRONMENT_EXCHANGE_NAME --set setCustomUser.enabled="true" --set setCustomUser.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set persistence.size="$ENVIRONMENT_KUBERNETES_INFLUXDB_VOLUMESIZE" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-influxdb.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb $(kubernetes_set_backend_image_target is_influxdb $ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION)
 
         fi
 
-        echo "Applying ingress on the namespace"
+        echo "Applying ingress on the namespace."
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
-
-        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
-
-            echo "Applying ingress for web client on the namespace"
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
-
-        fi
-
-        if [[ "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_CREDENTIALS_CREATE" == true ]]; then
-
-            if [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_USERNAME" ]] || [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_PASSWORD" ]] || [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL" ]]; then
-
-                echo "One of your docker registry credentials are missing!"
-
-                echo "Docker registry username :"
-                read username
-                    
-                ENVIRONMENT_KUBERNETES_DOCKER_HUB_USERNAME=$username
-
-
-                echo "Docker registry password :"
-                read password
-
-                ENVIRONMENT_KUBERNETES_DOCKER_HUB_PASSWORD=$password
-
-                echo "Docker registry email :"
-                read email
-
-                ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL=$email
-
-                echo "Your docker registry credentials"
-                echo "USERNAME - $ENVIRONMENT_KUBERNETES_DOCKER_HUB_USERNAME"
-                echo "PASSWORD - $ENVIRONMENT_KUBERNETES_DOCKER_HUB_PASSWORD" 
-                echo "EMAIL - $ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL"
-                echo "Are you sure you want to proceed with this credentials? (Y/n)"
-
-                read answer
-
-                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-                    echo "Exiting..."
-                    exit 0;
-                fi
-
-            fi
-
-            echo "Creating Docker registry secret on $HOLLAEX_CONFIGMAP_API_NAME namespace"
-            kubectl create secret docker-registry bitholla-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME --docker-server=docker.io --docker-username=$ENVIRONMENT_KUBERNETES_DOCKER_HUB_USERNAME --docker-password=$ENVIRONMENT_KUBERNETES_DOCKER_HUB_PASSWORD --docker-email=$ENVIRONMENT_KUBERNETES_DOCKER_HUB_EMAIL
-
-        fi
+        
+        create_kubernetes_docker_registry_secert;
 
         # FOR GENERATING NODESELECTOR VALUES
         generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hollaex
 
-        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
+        echo "Running $HOLLAEX_CONFIGMAP_API_NAME workload containers."
 
-            echo "Running $HOLLAEX_CONFIGMAP_API_NAME web client container"
-            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-web --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set imageRegistry="$ENVIRONMENT_KUBERNETES_WEB_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION" --set stable.replicaCount="1" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-web-env" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web
+        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api \
+                     --wait \
+                     --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                     --recreate-pods \
+                     --set DEPLOYMENT_MODE="api" \
+                     --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                     --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                     --set stable.replicaCount="$ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS" \
+                     --set autoScaling.hpa.enable="false" \
+                     --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                     --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                     -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
-        fi
-
-        echo "Running $HOLLAEX_CONFIGMAP_API_NAME workload containers"
-
-        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --wait --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="$ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
-
-        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="stream" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream \
+                     --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                     --recreate-pods \
+                     --set DEPLOYMENT_MODE="stream" \
+                     --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                     --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                     --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                     --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                     -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
         helm_dynamic_trading_paris run;
 
         sleep 5;
 
         kubernetes_database_init launch;
+
+        hollaex_setup_finalization;
+
+        echo "Shutting down the exchange..."
+        hollaex stop --kube --skip
         
-        echo "All done!"
-        echo "Your $HOLLAEX_CONFIGMAP_API_NAME ($HOLLAEX_CONFIGMAP_API_HOST) will be available in few minutes. If there's an issue, please review logs and try it again."
+        echo "Finalizing the exchange setup..."
+        sleep 5;
+
+        hollaex_ascii_exchange_has_been_setup;
+
+        exit 0;
 
     fi
 
@@ -689,8 +673,6 @@ elif [[ "$1" == "setup" ]]; then
             exit 1;
 
         fi
-
-        launch_basic_settings_input;
 
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local;
@@ -777,58 +759,10 @@ elif [[ "$1" == "setup" ]]; then
        
         fi
         
-        echo "*********************************************"
-        printf "\n"
-        echo "Your exchange is all set!"
-        echo "You can proceed to add your own currencies, trading pairs right away from now on."
-        echo "It doesn't matter you want to skip it for now. You can always add new currencies and trading pairs with 'hollaex toolbox' command."
-        echo "Do you want to proceed? (Y/n)"
-        read answer
+        hollaex_setup_finalization;
 
-        if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
-      
-            echo "Finishing the setup process..."
-            echo "Shutting down the exchange"
-            echo "To start the exchange, Please use 'hollaex start' command"
-            hollaex stop --skip
-            exit 0;
-        
-        fi
-
-        while true;
-        do read -r -p "Do you want to add new currency? (y/N)" answer   
-            if [[ ! "$answer" = "${answer#[Yy]}" ]];
-            then
-                if [[ "$USE_KUBERNETES" ]]; then
-                    hollaex toolbox --add_coin --kube
-               
-                elif [[ ! "$USE_KUBERNETES" ]]; then
-                    hollaex toolbox --add_coin
-                fi
-            else
-                while true;
-                    do read -r -p "Do you want to add new trading pair? (y/N)" answer   
-                        if [[ ! "$answer" = "${answer#[Yy]}" ]];
-                        then
-                            if [[ "$USE_KUBERNETES" ]]; then
-                                hollaex toolbox --add_trading_pair --kube
-                            elif [[ ! "$USE_KUBERNETES" ]]; then
-                                hollaex toolbox --add_trading_pair
-                            fi
-                        else   
-                            echo "Finishing the setup process..."
-                            echo "Shutting down the exchange"
-                            if [[ "$USE_KUBERNETES" ]]; then
-                                hollaex stop --kube --skip
-                            elif [[ ! "$USE_KUBERNETES" ]]; then
-                                hollaex stop --skip
-                            fi
-                            exit 0;
-                        fi
-                    done
-            fi
-
-        done
+        echo "Finalizing the exchange setup..."
+        sleep 5;
 
         hollaex_ascii_exchange_has_been_setup;
 
@@ -1261,9 +1195,9 @@ elif [[ "$1" == "stop" ]]; then
 
         kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-influxdb --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-        hollaex_ascii_exchange_has_been_stopped
+        hollaex_ascii_exchange_has_been_stopped;
 
-        exit 0;
+        # exit 0;
 
     fi
 
@@ -1308,7 +1242,7 @@ elif [[ "$1" == "stop" ]]; then
         
         fi
 
-        exit 0;
+        #exit 0;
 
     fi
 
@@ -1457,6 +1391,9 @@ elif [[ "$1" == "restart" ]]; then
         echo "Applying latest secret on the cluster"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
+        echo "Applying latest ingress rules on the cluster."
+        kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
         # FOR GENERATING NODESELECTOR VALUES
         generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hollaex
 
@@ -1588,6 +1525,82 @@ elif [[ "$1" == "restart" ]]; then
 
     fi
 
+elif [[ "$1" == "build" ]]; then
+
+    while true; do
+        [[ $# -eq 0 ]] && break
+        case $1 in
+            --path)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_CLI_INIT_PATH=$1
+                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
+                shift; continue
+                ;;
+            --registry)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE=$1
+                echo "Target hollaex docker registry : $ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE."
+                shift; continue
+                ;;
+            --version)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$1
+                echo "Target hollaex release version : v $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE."
+                shift; continue
+                ;;
+            --skip)
+                RUN_WITH_VERIFY=false
+                echo "Skipping the command confirmation."
+                shift; continue
+                ;;
+            --*) 
+                err_msg "Invalid option: $1"
+                print_usage;
+                exit 1;
+                ;;
+        esac
+        shift
+    done
+
+    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        CONFIG_FILE_PATH=$(pwd)/settings/*
+        TEMPLATE_GENERATE_PATH=$(pwd)/templates
+        INIT_PATH_CHECK=$(pwd)/.hollaex
+
+    fi
+
+    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        
+    fi
+    
+    #Quit if necessary flags are missing
+    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
+
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
+        print_usage;
+        exit 1;
+
+    fi
+
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
+    
+    source $SCRIPTPATH/tools_generator.sh
+    load_config_variables;
+
+    build_user_hollaex_core;
+
+
 elif [[ "$1" == "upgrade" ]]; then
 
     while true; do
@@ -1682,28 +1695,11 @@ elif [[ "$1" == "upgrade" ]]; then
         
     fi
 
-    echo "Checking for a newer version of HollaEx CLI is available..."
-    LATEST_HOLLAEX_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version)
+    # Update HollaEx CLI to latest if there is newer release available.
+    update_hollaex_cli_to_latest;
 
-    if [[ $LATEST_HOLLAEX_CLI_VERSION > $(cat $SCRIPTPATH/version) ]]; then
-
-        printf "\033[93m\nNewer version of HollaEx CLI has been detected.\033[39m\n"
-        printf "\nLatest version of HollaEx CLI : \033[92m$LATEST_HOLLAEX_CLI_VERSION\033[39m"
-        printf "\nCurrent installed version of HollaEx CLI : \033[93m$(cat $SCRIPTPATH/version)\033[39m\n\n"
-        echo "Upgrading HollaEx CLI to latest..."
-        curl -L https://raw.githubusercontent.com/bitholla/hollaex-cli/master/install.sh | bash;
-        printf "\nPlease run 'hollaex upgrade' again to proceed upgrading your exchange.\n"
-
-        exit 0;
-
-    else 
-
-        printf "\nLatest version of HollaEx CLI : \033[92m$LATEST_HOLLAEX_CLI_VERSION\033[39m"
-        printf "\nCurrent installed version of HollaEx CLI : \033[92m$(cat $SCRIPTPATH/version)\033[39m\n"
-        printf "\n\033[92mYour HollaEx CLI is already up to date!\033[39m\n\n"
-        printf "Proceeding to upgrade...\n"
-
-    fi
+    # Building new HollaEx Core image based on passed (or specified) version.
+    build_user_hollaex_core;
 
     if [[ "$USE_KUBERNETES" ]]; then
 
@@ -1731,7 +1727,7 @@ elif [[ "$1" == "upgrade" ]]; then
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
             printf "\033[93mWarning: Exchange service will be unavailable during the upgrade!\033[39m\n"
-            echo "Are you sure you want to upgrade $HOLLAEX_CONFIGMAP_API_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION with $ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS api containers on this cluster? (y/N)"
+            echo "Are you sure you want to upgrade $HOLLAEX_CONFIGMAP_API_NAME by using $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION with $ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS api containers on this cluster? (y/N)"
 
             read answer
 
@@ -1770,9 +1766,14 @@ elif [[ "$1" == "upgrade" ]]; then
             generate_nginx_config_for_plugin;
 
         fi
+        
+        # Only tries to attempt remove ingress rules from Kubernetes if it exists.
+        if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+        
+            echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
+            kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
-        echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-        kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+        fi
 
         echo "Applying latest configmap env on the cluster."
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
@@ -1791,16 +1792,16 @@ elif [[ "$1" == "upgrade" ]]; then
         generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hollaex
 
         echo "Upgrading $HOLLAEX_CONFIGMAP_API_NAME Pods on Kubernetes."
-        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --wait --recreate-pods --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set stable.replicaCount="2" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --wait --recreate-pods --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" --set stable.replicaCount="2" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
-        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="stream" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="stream" --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
         
         helm_dynamic_trading_paris run;
 
         if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
 
             echo "Running $HOLLAEX_CONFIGMAP_API_NAME web client container"
-            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-web --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set imageRegistry="$ENVIRONMENT_KUBERNETES_WEB_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION" --set stable.replicaCount="1" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-web-env" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web
+            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-web --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION" --set stable.replicaCount="1" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-web-env" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web
 
         fi
         
@@ -2043,13 +2044,11 @@ elif [[ "$1" == "terminate" ]]; then
 
         fi
 
-        echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-        kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
-
-        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
-            
-            echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule for web client on the cluster."
-            kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
+         # Only tries to attempt remove ingress rules from Kubernetes if it exists.
+        if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+        
+            echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
+            kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
         fi
 
@@ -2063,8 +2062,9 @@ elif [[ "$1" == "terminate" ]]; then
         helm del --purge $ENVIRONMENT_EXCHANGE_NAME-db
         helm del --purge $ENVIRONMENT_EXCHANGE_NAME-influxdb
 
-        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
-
+        #Remove web server together if it exists on same namespace.
+        if command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-web; then
+            
             helm del --purge $ENVIRONMENT_EXCHANGE_NAME-web
 
         fi
@@ -2072,8 +2072,7 @@ elif [[ "$1" == "terminate" ]]; then
         echo "Removing $HOLLAEX_CONFIGMAP_API_NAME namespace."
         kubectl delete ns $ENVIRONMENT_EXCHANGE_NAME
 
-        echo "All done!"
-        echo "$HOLLAEX_CONFIGMAP_API_NAME ($HOLLAEX_CONFIGMAP_API_HOST) has been successfully removed. If there's an issue, please review logs and try it again."
+        echo "$HOLLAEX_CONFIGMAP_API_NAME ($HOLLAEX_CONFIGMAP_API_HOST) has been successfully terminated. If there's an issue, please review the logs and try it again."
 
         exit 0;
 
@@ -2156,7 +2155,7 @@ elif [[ "$1" == "web" ]]; then
                 echo "Restart the web client."
                 shift; continue
                 ;;
-            --rebuild)
+            --build)
                 WEB_CLIENT_REBUILD=true
                 echo "Rebuild the web client."
                 shift; continue
@@ -2216,6 +2215,8 @@ elif [[ "$1" == "web" ]]; then
 
         basic_settings_for_web_client_input;
 
+        build_user_hollaex_web;
+
         echo "Values are successfully set!"
         echo "Use 'hollaex web --start' to start the Web Server."
 
@@ -2225,10 +2226,73 @@ elif [[ "$1" == "web" ]]; then
 
     if [[ "$WEB_CLIENT_START" ]]; then
 
+        build_user_hollaex_web;
+
         if [[ "$USE_KUBERNETES" ]]; then
 
-            echo "Starting the web client on Kubernetes..."
+            #Checking Kubernetes dependencies
+            check_kubernetes_dependencies;
 
+            echo "*********************************************"
+            #Verify remote Kubernetes cluster is correct.
+            echo "Verifying current KUBECONFIG on the machine"
+            kubectl get nodes
+            echo "*********************************************"
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "Are you sure you want to start web server for the exchange on this cluster? (Y/n)"
+
+                read answer
+
+                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+                    echo "Exiting..."
+                    exit 0;
+                fi
+
+            fi
+
+
+            echo "Generating web configmap for Kubernetes."
+            generate_hollaex_web_configmap
+
+            echo "Generating web ingress rules for Kubernetes."
+            generate_kubernetes_ingress_for_web;
+
+            echo "Applying configmap for web on the namespace."
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-web-configmap.yaml
+
+            echo "Applying ingress rules for web on the namespace."
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
+
+            if command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-web; then
+
+                echo "Starting web server..."
+                kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-web --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+            
+            else 
+
+                if ! command kubectl get secret docker-registry-secert --namespace $ENVIRONMENT_EXCHANGE_NAME; then
+
+                    create_kubernetes_docker_registry_secert;
+                
+                fi
+
+                echo "Running $HOLLAEX_CONFIGMAP_API_NAME web server."
+                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-web \
+                            --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                            --recreate-pods \
+                            --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY" \
+                            --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION" \
+                            --set stable.replicaCount="1" \
+                            --set autoScaling.hpa.enable="false" \
+                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-web-env" \
+                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                            -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web
+
+            hollaex_ascii_web_server_is_up;
+        
+        fi
 
 
         elif [[ ! "$USE_KUBERNETES" ]]; then
@@ -2288,28 +2352,7 @@ elif [[ "$1" == "web" ]]; then
                     echo "Reloading Nginx..."
                     docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
                     
-                    /bin/cat << EOF
-
-1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
-.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
-.0@G                                                                  L@8,
-.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
-.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
-.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
-.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
-.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
-.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
-.0@G
-.@@@888888888888888888888888888888888888888888888888888888888888888888880.
-1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
-
-                  Web Client for your exchange is ready!
-             Try to reach $HOLLAEX_CONFIGMAP_DOMAIN or http://localhost:8080
-
-EOF
-
-                    echo "Web is up!"
-                    echo "Web is now reachable both from $HOLLAEX_CONFIGMAP_DOMAIN and localhost:8080".
+                    hollaex_ascii_web_server_is_up;
                 
                 else
 
@@ -2332,8 +2375,38 @@ EOF
     if [[ "$WEB_CLIENT_STOP" ]]; then
 
         if [[ "$USE_KUBERNETES" ]]; then
-        echo "Stopping the web client on Kubernetes..."
 
+        #Checking Kubernetes dependencies
+        check_kubernetes_dependencies;
+
+        echo "*********************************************"
+        #Verify remote Kubernetes cluster is correct.
+        echo "Verifying current KUBECONFIG on the machine"
+        kubectl get nodes
+        echo "*********************************************"
+
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+            echo "Are you sure you want to stop web server for the exchange on this cluster? (Y/n)"
+
+            read answer
+
+            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+                echo "Exiting..."
+                exit 0;
+            fi
+
+        fi
+
+        echo "Removing ingress rules for web on the namespace."
+        kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
+
+        echo "Stopping web server..."
+        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-web --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+        echo "Successfully stopped web client."
+        echo "To bring it up, Use 'hollaex web --start --kube' command".
+    
         elif [[ ! "$USE_KUBERNETES" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
@@ -2392,11 +2465,45 @@ EOF
 
         if [[ "$USE_KUBERNETES" ]]; then
 
-            echo "Starting the web client on Kubernetes..."
+            #Checking Kubernetes dependencies
+            check_kubernetes_dependencies;
 
-            echo "Generating Web client Configmap"
-            generate_hollaex_web_configmap;
+            echo "*********************************************"
+            #Verify remote Kubernetes cluster is correct.
+            echo "Verifying current KUBECONFIG on the machine"
+            kubectl get nodes
+            echo "*********************************************"
 
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "Are you sure you want to restart web client for the exchange on this cluster? (Y/n)"
+
+                read answer
+
+                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+                    echo "Exiting..."
+                    exit 0;
+                fi
+
+            fi
+
+            echo "Generating web configmap for Kubernetes."
+            generate_hollaex_web_configmap
+
+            echo "Generating web ingress rules for Kubernetes."
+            generate_kubernetes_ingress_for_web;
+
+            echo "Applying configmap for web on the namespace."
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-web-configmap.yaml
+
+            echo "Applying ingress rules for web on the namespace."
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
+
+            echo "Restarting web server..."
+            kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l app=$ENVIRONMENT_EXCHANGE_NAME-web
+
+            echo "Web server has been restarted!"
+            echo "Web server will be reachable at $HOLLAEX_CONFIGMAP_DOMAIN very soon".
 
         elif [[ ! "$USE_KUBERNETES" ]]; then
 
@@ -2470,61 +2577,9 @@ EOF
         fi
     fi
 
-    if [[ "$WEB_CLIENT_REBUILD" ]]; then
-
-        # Checking docker-compose is installed on this machine.
-        if command docker-compose version > /dev/null 2>&1; then
-
-            echo "*********************************************"
-            echo "docker-compose detected"
-            echo "version: $(docker-compose version)"
-            echo "*********************************************"
-
-        else
-
-            echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
-            exit 1;
-
-        fi
-
-        if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-            echo "Are you sure you want to rebuild the web client? (Y/n)"
-
-            read answer
-
-            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-                echo "Exiting..."
-                exit 0;
-            fi
-
-        fi
-
-        basic_settings_for_web_client_input;
-
-        echo "Generating docker-compose file for Web Client"
-        generate_local_docker_compose_for_web
-
-        echo "Generating .env for Web Client"
-        generate_hollaex_web_local_env
-
-        echo "Generating Nginx conf for Web Client"
-        generate_hollaex_web_local_nginx_conf
-
-        echo "Updating nginx conf file based on user settings"
-        apply_nginx_user_defined_values
-
-        if command docker build -t ${ENVIRONMENT_KUBERNETES_WEB_IMAGE_REGISTRY}:${ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION} -f  ${HOLLAEX_CLI_INIT_PATH}/web/docker/Dockerfile  ${HOLLAEX_CLI_INIT_PATH}/web/; then
-
-            echo "New Web image has been successfully built!"
-            echo "Use 'hollaex web --start' to start the Web Server with new image".
-            
-        else 
-
-            echo "HollaEx CLI failed to rebuild the web client. Please review your settings and try again."
-            exit 1;
-        
-        fi
+    if [[ "$WEB_CLIENT_REBUILD" ]];  then
+    
+        build_user_hollaex_web;
 
         exit 0;
 
@@ -2534,8 +2589,41 @@ EOF
 
         if [[ "$USE_KUBERNETES" ]]; then
 
-            echo "Terminate the web client on Kubernetes..."
+            #Checking Kubernetes dependencies
+            check_kubernetes_dependencies;
 
+            echo "*********************************************"
+            #Verify remote Kubernetes cluster is correct.
+            echo "Verifying current KUBECONFIG on the machine"
+            kubectl get nodes
+            echo "*********************************************"
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "Are you sure you want to TERMINATE web client for the exchange on this cluster? (Y/n)"
+
+                read answer
+
+                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+                    echo "Exiting..."
+                    exit 0;
+                fi
+
+            fi
+
+            echo "Terminating the web server on Kubernetes..."
+
+            echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
+            kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
+
+            echo "Removing web server..."
+            helm del --purge $ENVIRONMENT_EXCHANGE_NAME-web
+
+            echo "Web is down!"
+            echo "Web server has been successfully removed."
+
+            exit 0;
+                
 
         elif [[ ! "$USE_KUBERNETES" ]]; then
 
@@ -3098,7 +3186,7 @@ elif [[ "$1" == "toolbox" ]]; then
             helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api \
                         --namespace $ENVIRONMENT_EXCHANGE_NAME \
                         --reuse-values \
-                        --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" \
+                        --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
                         $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
             echo "Rolling upgrade process has been finished."
@@ -3300,7 +3388,7 @@ elif [[ "$1" == "status" ]]; then
 
         if [[ -z $(docker ps -a | grep $ENVIRONMENT_EXCHANGE_NAME) ]]; then
 
-            printf "\033[91m\nFailed to detect $ENVIRONMENT_EXCHANGE_NAME on this machine. Please try it again.\033[39m\n"
+            printf "\033[91m\nFailed to detect HollaEx on this machine. Please try it again.\033[39m\n"
 
         else 
 
