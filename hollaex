@@ -265,25 +265,25 @@ if [[ "$1" == 'dev' ]]; then
 
 elif [[ "$1" == "init" ]]; then
     
-    while true; do
-        [[ $# -eq 0 ]] && break
-        case $1 in
-            # --name)
-            #     shift 
-            #     case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-            #     ENVIRONMENT_EXCHANGE_NAME=$1
-            #     echo "Name of your Exchange : $ENVIRONMENT_EXCHANGE_NAME."
-            #     shift; continue
-            #     ;;
-            --standalone)
-                shift 
-                HOLLAEX_INIT_STANDALONE=true
-                echo "HollaEx CLI will proceed to generate initialized directory without pulling HollaEx Kit repo."
-                shift; continue
-                ;;
-        esac
-        shift
-    done
+    # while true; do
+    #     [[ $# -eq 0 ]] && break
+    #     case $1 in
+    #         # --name)
+    #         #     shift 
+    #         #     case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+    #         #     ENVIRONMENT_EXCHANGE_NAME=$1
+    #         #     echo "Name of your Exchange : $ENVIRONMENT_EXCHANGE_NAME."
+    #         #     shift; continue
+    #         #     ;;
+    #         --standalone)
+    #             shift 
+    #             HOLLAEX_INIT_STANDALONE=true
+    #             echo "HollaEx CLI will proceed to generate initialized directory without pulling HollaEx Kit repo."
+    #             shift; continue
+    #             ;;
+    #     esac
+    #     shift
+    # done
 
     # #Quit if name of exchange is missing
     # if [[ ! "$ENVIRONMENT_EXCHANGE_NAME" ]]; then
@@ -294,7 +294,7 @@ elif [[ "$1" == "init" ]]; then
 
     # fi
 
-    if [[ ! "$HOLLAEX_INIT_STANDALONE" ]]; then
+    # if [[ ! "$HOLLAEX_INIT_STANDALONE" ]]; then
 
         echo "Pulling remote HollaEx Kit repo on $(pwd)"
         if command git clone https://github.com/bitholla/hollaex-kit.git; then
@@ -320,34 +320,34 @@ elif [[ "$1" == "init" ]]; then
 
         fi
 
-    else 
+    # else 
 
-        HOLLAEX_CLI_INIT_PATH=$(pwd)/$ENVIRONMENT_EXCHANGE_NAME
+    #     HOLLAEX_CLI_INIT_PATH=$(pwd)/$ENVIRONMENT_EXCHANGE_NAME
 
-        if [[ -d "$HOLLAEX_CLI_INIT_PATH" ]]; then
+    #     if [[ -d "$HOLLAEX_CLI_INIT_PATH" ]]; then
 
-            echo "Init path exists! HollaEx CLI can't override exsiting exchange files."
-            exit 1;
-        fi
+    #         echo "Init path exists! HollaEx CLI can't override exsiting exchange files."
+    #         exit 1;
+    #     fi
 
-        echo "Initializing new Exchange - $HOLLAEX_CONFIGMAP_API_NAME on $HOLLAEX_CLI_INIT_PATH ..."
+    #     echo "Initializing new Exchange - $HOLLAEX_CONFIGMAP_API_NAME on $HOLLAEX_CLI_INIT_PATH ..."
 
-        mkdir $HOLLAEX_CLI_INIT_PATH
+    #     mkdir $HOLLAEX_CLI_INIT_PATH
 
-        cp -r $SCRIPTPATH/settings $HOLLAEX_CLI_INIT_PATH/settings
-        cp -r $SCRIPTPATH/plugins $HOLLAEX_CLI_INIT_PATH/plugins
-        cp -r $SCRIPTPATH/templates $HOLLAEX_CLI_INIT_PATH/templates
-        touch $HOLLAEX_CLI_INIT_PATH/.hollaex
-        echo "Initialized by using HollaEx CLI v$(cat $SCRIPTPATH/version)" >> $HOLLAEX_CLI_INIT_PATH/.hollaex
+    #     cp -r $SCRIPTPATH/settings $HOLLAEX_CLI_INIT_PATH/settings
+    #     cp -r $SCRIPTPATH/plugins $HOLLAEX_CLI_INIT_PATH/plugins
+    #     cp -r $SCRIPTPATH/templates $HOLLAEX_CLI_INIT_PATH/templates
+    #     touch $HOLLAEX_CLI_INIT_PATH/.hollaex
+    #     echo "Initialized by using HollaEx CLI v$(cat $SCRIPTPATH/version)" >> $HOLLAEX_CLI_INIT_PATH/.hollaex
 
-        # grep -v ENVIRONMENT_EXCHANGE_NAME= $HOLLAEX_CLI_INIT_PATH/settings/configmap > temp.init && mv temp.init $HOLLAEX_CLI_INIT_PATH/settings/configmap
+    #     # grep -v ENVIRONMENT_EXCHANGE_NAME= $HOLLAEX_CLI_INIT_PATH/settings/configmap > temp.init && mv temp.init $HOLLAEX_CLI_INIT_PATH/settings/configmap
 
-        # (echo "ENVIRONMENT_EXCHANGE_NAME=$ENVIRONMENT_EXCHANGE_NAME" && cat $HOLLAEX_CLI_INIT_PATH/settings/configmap) > temp.init && mv temp.init $HOLLAEX_CLI_INIT_PATH/settings/configmap
+    #     # (echo "ENVIRONMENT_EXCHANGE_NAME=$ENVIRONMENT_EXCHANGE_NAME" && cat $HOLLAEX_CLI_INIT_PATH/settings/configmap) > temp.init && mv temp.init $HOLLAEX_CLI_INIT_PATH/settings/configmap
 
-        echo "All done!"
-        echo "To run HollaEx CLI commands further, Please get into initialized path first to let HollaEx CLI reads settings."
+    #     echo "All done!"
+    #     echo "To run HollaEx CLI commands further, Please get into initialized path first to let HollaEx CLI reads settings."
 
-    fi
+    # fi
         
         exit 0;
     
