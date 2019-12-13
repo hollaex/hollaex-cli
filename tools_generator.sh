@@ -4048,7 +4048,7 @@ function build_user_hollaex_core() {
 
       echo "Your custom HollaEx Core image has been successfully built."
 
-      if [[ "$USE_KUBERNETES" ]] || [[ "$RUN_WITH_VERIFY" == false ]]; then
+      if [[ "$RUN_WITH_VERIFY" == false ]]; then
 
         if [[ "$USE_KUBERNETES" ]]; then
 
@@ -4091,7 +4091,7 @@ function build_user_hollaex_core() {
 
 function push_user_hollaex_core() {
 
-  if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
+  if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
     echo "Please type in your new image name. ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION)"
     read answer
