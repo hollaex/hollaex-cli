@@ -1190,13 +1190,25 @@ function add_coin_input() {
 
   for i in ${CONFIG_FILE_PATH[@]}; do
 
-    if command grep -q "HOLLAEX_CONFIGMAP_$(echo $COIN_SYMBOL | tr a-z A-Z)" $i > /dev/null ; then
+    if command grep -q "HOLLAEX_CONFIGMAP_$(echo $COIN_SYMBOL | tr a-z A-Z)_COIN" $i > /dev/null ; then
 
       echo "Detected configurations for coin $COIN_SYMBOL in your settings file."
-      echo "Proceeding with stored configurations..."
-      export VALUE_IMPORTED_FROM_CONFIGMAP=true
+      echo "Do you want to proceed with these values?? (Y/n)"
+      read answer
 
-      add_coin_exec;
+      if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+          
+        echo "You picked false. Please confirm the values and run the command again."
+        #exit 1;
+      
+      else 
+
+        echo "Proceeding with stored configurations..."
+        export VALUE_IMPORTED_FROM_CONFIGMAP=true
+
+        add_coin_exec;
+      
+      fi
     
     fi
 
@@ -1446,6 +1458,17 @@ function save_add_coin_input_at_settings() {
   local COIN_DEPOSIT_LIMITS_PARSED=$(echo ${COIN_DEPOSIT_LIMITS//\"/\\\"})
   local COIN_WITHDRAWAL_LIMITS_PARSED=$(echo ${COIN_WITHDRAWAL_LIMITS//\"/\\\"})
 
+  # REMOVE STORED VALUES AT CONFIGMAP FOR COIN 
+  if [[ ! "$VALUE_IMPORTED_FROM_CONFIGMAP" ]]; then 
+  
+    if command grep -q "HOLLAEX_CONFIGMAP_$(echo $COIN_SYMBOL | tr a-z A-Z)_COIN" $CONFIGMAP_FILE_PATH > /dev/null ; then
+
+      grep -v "HOLLAEX_CONFIGMAP_$(echo $COIN_SYMBOL | tr a-z A-Z)_COIN" $CONFIGMAP_FILE_PATH > temp && mv temp $CONFIGMAP_FILE_PATH
+
+    fi
+
+  fi
+
   cat >> $CONFIGMAP_FILE_PATH << EOL
 
 HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_SYMBOL=$COIN_SYMBOL
@@ -1461,7 +1484,6 @@ HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_WITHDRAWAL_LIMITS=$COIN_WITHDRAWAL_LIMITS_
 HOLLAEX_CONFIGMAP_${COIN_PREFIX}_COIN_ACTIVE=$COIN_ACTIVE
 
 EOL
-
 }
 
 function export_add_coin_configuration_env() {
@@ -1997,6 +2019,33 @@ function add_pair_input() {
   echo "${answer:-eth-usdt} ✔"
   printf "\n"
 
+  for i in ${CONFIG_FILE_PATH[@]}; do
+
+    if command grep -q "HOLLAEX_CONFIGMAP_$(echo $PAIR_BASE | tr a-z A-Z)_$(echo $PAIR_2 | tr a-z A-Z)" $i > /dev/null ; then
+
+      echo "Detected configurations for trading pair $PAIR_NAME in your settings file."
+      echo "Do you want to proceed with these values?? (Y/n)"
+      read answer
+
+      if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+          
+        echo "You picked false. Please confirm the values and run the command again."
+        #exit 1;
+      
+      else 
+
+        echo "Proceeding with stored configurations..."
+        export VALUE_IMPORTED_FROM_CONFIGMAP=true
+
+        add_pair_exec;
+
+      fi
+
+    fi
+
+
+  done
+
   # Checking user level setup on settings file is set or not
   if [[ ! "$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER" ]]; then
 
@@ -2192,10 +2241,112 @@ function add_pair_input() {
   
   fi
 
+  save_add_pair_input_at_settings;
+
+}
+
+function save_add_pair_input_at_settings() {
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+
+    if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
+        echo $CONFIGMAP_FILE_PATH
+        local CONFIGMAP_FILE_PATH=$i
+    fi
+
+  done
+
+  export PAIR_PREFIX="$(echo $PAIR_BASE | tr a-z A-Z)_$(echo $PAIR_2 | tr a-z A-Z)"
+
+  local TAKER_FEES_PARSED=$(echo ${TAKER_FEES//\"/\\\"})
+  local MAKER_FEES_PARSED=$(echo ${MAKER_FEES//\"/\\\"})
+
+   # REMOVE STORED VALUES AT CONFIGMAP FOR COIN 
+  if [[ ! "$VALUE_IMPORTED_FROM_CONFIGMAP" ]]; then 
+  
+    if command grep -q "HOLLAEX_CONFIGMAP_$(echo $PAIR_BASE | tr a-z A-Z)_$(echo $PAIR_2 | tr a-z A-Z)" $CONFIGMAP_FILE_PATH > /dev/null ; then
+
+      grep -v "HOLLAEX_CONFIGMAP_$(echo $PAIR_BASE | tr a-z A-Z)_$(echo $PAIR_2 | tr a-z A-Z)" $CONFIGMAP_FILE_PATH > temp && mv temp $CONFIGMAP_FILE_PATH
+
+    fi
+
+  fi
+
+  cat >> $CONFIGMAP_FILE_PATH << EOL
+
+HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_PAIR_NAME=$PAIR_NAME
+HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_PAIR_BASE=$PAIR_BASE
+HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_PAIR_2=$PAIR_2
+HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_TAKER_FEES=$TAKER_FEES_PARSED
+HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_MAKER_FEES=$MAKER_FEES_PARSED
+HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_MIN_SIZE=$MIN_SIZE
+HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_MAX_SIZE=$MAX_SIZE
+HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_MIN_PRICE=$MIN_PRICE
+HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_MAX_PRICE=$MAX_PRICE
+HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_INCREMENT_SIZE=$INCREMENT_SIZE
+HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_INCREMENT_PRICE=$INCREMENT_PRICE
+HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_PAIR_ACTIVE=$PAIR_ACTIVE
+
+EOL
+
+}
+
+function export_add_pair_configuration_env() {
+
+  PAIR_NAME_OVERRIDE=HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_PAIR_NAME
+  PAIR_BASE_OVERRIDE=HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_PAIR_BASE
+  PAIR_2_OVERRIDE=HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_PAIR_2
+  TAKER_FEES_OVERRIDE=HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_TAKER_FEES
+  MAKER_FEES_OVERRIDE=HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_MAKER_FEES
+  MIN_SIZE_OVERRIDE=HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_MIN_SIZE
+  MAX_SIZE_OVERRIDE=HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_MAX_SIZE
+  MIN_PRICE_OVERRIDE=HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_MIN_PRICE
+  MAX_PRICE_OVERRIDE=HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_MAX_PRICE
+  INCREMENT_SIZE_OVERRIDE=HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_INCREMENT_SIZE
+  INCREMENT_PRICE_OVERRIDE=HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_INCREMENT_PRICE
+  PAIR_ACTIVE_OVERRIDE=HOLLAEX_CONFIGMAP_${PAIR_PREFIX}_PAIR_ACTIVE
+
+
+  if [[ "$VALUE_IMPORTED_FROM_CONFIGMAP" ]]; then
+
+    PAIR_NAME_OVERRIDE=$(echo ${PAIR_NAME_OVERRIDE})
+    PAIR_BASE_OVERRIDE=$(echo ${PAIR_BASE_OVERRIDE})
+    PAIR_2_OVERRIDE=$(echo ${PAIR_2_OVERRIDE})
+    TAKER_FEES_OVERRIDE=$(echo ${TAKER_FEES_OVERRIDE})
+    MAKER_FEES_OVERRIDE=$(echo ${MAKER_FEES_OVERRIDE})
+    MIN_SIZE_OVERRIDE=$(echo ${MIN_SIZE_OVERRIDE})
+    MAX_SIZE_OVERRIDE=$(echo ${MAX_SIZE_OVERRIDE})
+    MIN_PRICE_OVERRIDE=$(echo ${MIN_PRICE_OVERRIDE})
+    MAX_PRICE_OVERRIDE=$(echo ${MAX_PRICE_OVERRIDE})
+    INCREMENT_SIZE_OVERRIDE=$(echo ${INCREMENT_SIZE_OVERRIDE})
+    INCREMENT_PRICE_OVERRIDE=$(echo ${INCREMENT_PRICE_OVERRIDE})
+    PAIR_ACTIVE_OVERRIDE=$(echo ${PAIR_ACTIVE_OVERRIDE})
+
+  else 
+
+    export $(echo $PAIR_NAME_OVERRIDE)=$PAIR_NAME
+    export $(echo $PAIR_BASE_OVERRIDE)=$PAIR_BASE
+    export $(echo $PAIR_2_OVERRIDE)=$PAIR_2
+    export $(echo $TAKER_FEES_OVERRIDE)=$TAKER_FEES
+    export $(echo $MAKER_FEES_OVERRIDE)=$MAKER_FEES
+    export $(echo $MIN_SIZE_OVERRIDE)=$MIN_SIZE
+    export $(echo $MAX_SIZE_OVERRIDE)=$MAX_SIZE
+    export $(echo $MIN_PRICE_OVERRIDE)=$MIN_PRICE
+    export $(echo $MAX_PRICE_OVERRIDE)=$MAX_PRICE
+    export $(echo $INCREMENT_SIZE_OVERRIDE)=$INCREMENT_SIZE
+    export $(echo $INCREMENT_PRICE_OVERRIDE)=$INCREMENT_PRICE
+    export $(echo $PAIR_ACTIVE_OVERRIDE)=$PAIR_ACTIVE
+  
+  fi
+
 }
 
 
 function add_pair_exec() {
+
+  export PAIR_PREFIX="$(echo $PAIR_BASE | tr a-z A-Z)_$(echo $PAIR_2 | tr a-z A-Z)"
+
+  export_add_pair_configuration_env;
 
   if [[ "$USE_KUBERNETES" ]]; then
 
@@ -2207,18 +2358,18 @@ job:
   enable: true
   mode: add_pair
   env:
-    pair_name: ${PAIR_NAME}
-    pair_base: ${PAIR_BASE}
-    pair_2: ${PAIR_2}
-    taker_fees: '${TAKER_FEES}'
-    maker_fees: '${MAKER_FEES}'
-    min_size: ${MIN_SIZE}
-    max_size: ${MAX_SIZE}
-    min_price: ${MIN_PRICE}
-    max_price: ${MAX_PRICE}
-    increment_size: ${INCREMENT_SIZE}
-    increment_price: ${INCREMENT_PRICE}
-    pair_active: ${PAIR_ACTIVE}
+    pair_name: $(echo ${!PAIR_NAME_OVERRIDE})
+    pair_base: $(echo ${!PAIR_BASE_OVERRIDE})
+    pair_2: $(echo ${!PAIR_2_OVERRIDE})
+    taker_fees: '$(echo ${!TAKER_FEES_OVERRIDE})'
+    maker_fees: '$(echo ${!MAKER_FEES_OVERRIDE})'
+    min_size: $(echo ${!MIN_SIZE_OVERRIDE})
+    max_size: $(echo ${!MAX_SIZE_OVERRIDE})
+    min_price: $(echo ${!MIN_PRICE_OVERRIDE})
+    max_price: $(echo ${!MAX_PRICE_OVERRIDE})
+    increment_size: $(echo ${!INCREMENT_SIZE_OVERRIDE})
+    increment_price: $(echo ${!INCREMENT_PRICE_OVERRIDE})
+    pair_active: $(echo ${!PAIR_ACTIVE_OVERRIDE})
 EOL
 
       }
@@ -2329,18 +2480,18 @@ EOL
       docker stop $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ")
 
       echo "Adding new pair $PAIR_NAME on local exchange"
-      if command docker exec --env "PAIR_NAME=${PAIR_NAME}" \
-                  --env "PAIR_BASE=${PAIR_BASE}" \
-                  --env "PAIR_2=${PAIR_2}" \
-                  --env "TAKER_FEES=${TAKER_FEES}" \
-                  --env "MAKER_FEES=${MAKER_FEES}" \
-                  --env "MIN_SIZE=${MIN_SIZE}" \
-                  --env "MAX_SIZE=${MAX_SIZE}" \
-                  --env "MIN_PRICE=${MIN_PRICE}" \
-                  --env "MAX_PRICE=${MAX_PRICE}" \
-                  --env "INCREMENT_SIZE=${INCREMENT_SIZE}" \
-                  --env "INCREMENT_PRICE=${INCREMENT_PRICE}"  \
-                  --env "PAIR_ACTIVE=${PAIR_ACTIVE}" \
+      if command docker exec --env "PAIR_NAME=$(echo ${!PAIR_NAME_OVERRIDE})" \
+                  --env "PAIR_BASE=$(echo ${!PAIR_BASE_OVERRIDE})" \
+                  --env "PAIR_2=$(echo ${!PAIR_2_OVERRIDE})" \
+                  --env "TAKER_FEES=$(echo ${!TAKER_FEES_OVERRIDE})" \
+                  --env "MAKER_FEES=$(echo ${!MAKER_FEES_OVERRIDE})" \
+                  --env "MIN_SIZE=$(echo ${!MIN_SIZE_OVERRIDE})" \
+                  --env "MAX_SIZE=$(echo ${!MAX_SIZE_OVERRIDE})" \
+                  --env "MIN_PRICE=$(echo ${!MIN_PRICE_OVERRIDE})" \
+                  --env "MAX_PRICE=$(echo ${!MAX_PRICE_OVERRIDE})" \
+                  --env "INCREMENT_SIZE=$(echo ${!INCREMENT_SIZE_OVERRIDE})" \
+                  --env "INCREMENT_PRICE=$(echo ${!INCREMENT_PRICE_OVERRIDE})"  \
+                  --env "PAIR_ACTIVE=$(echo ${!PAIR_ACTIVE_OVERRIDE})" \
                   ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
                   node tools/dbs/addPair.js; then
 
@@ -2424,6 +2575,8 @@ EOL
       fi
 
   fi
+
+  exit 0;
 
 }
 
