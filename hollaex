@@ -442,10 +442,11 @@ elif [[ "$1" == "setup" ]]; then
         # Ask for basic necessary settings
         launch_basic_settings_input;
 
-        hollaex upgrade --skip $(if [[ "$USE_KUBERNETES" ]]; then echo "--kube"; fi)
+        #hollaex upgrade --skip $(if [[ "$USE_KUBERNETES" ]]; then echo "--kube"; fi)
 
         echo "All done!"
         echo "Make sure to check your settings files been successfully updated by following your provided values."
+        echo "You can run 'hollaex restart (--kube)' for applying the updated values on your exchange."
 
         exit 0;
 
