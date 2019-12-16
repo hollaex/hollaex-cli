@@ -2971,6 +2971,13 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "HollaEx CLI will proceed to renew SSL certificate by using Let's Encrypt for local exchange."
                 shift; continue
                 ;;
+             --update_registry_secret)
+                UPDATE_REGISTRY_SECRET=true
+                TOOLBOX_ENABLE=true
+                echo "HollaEx CLI will update your docker image registry secert for Kubernetes."
+                shift; continue
+                ;;
+            # Version fl
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
@@ -3585,7 +3592,60 @@ elif [[ "$1" == "toolbox" ]]; then
 
         fi
       
+
+    elif [[ "$UPDATE_REGISTRY_SECRET" ]]; then
+
+        if [[ ! "$USE_KUBERNETES" ]]; then 
+
+            echo "Warning: Docker registry secret update is only available for Kubernetes."
+            echo "Please use 'hollaex toolbox --update_registry_secert --kube' command instead."
+            exit 1;
+
+        fi
+
+        check_kubernetes_dependencies;
         
+        echo "*********************************************"
+        echo "Verifying current KUBECONFIG on the machine"
+        kubectl get nodes
+        echo "*********************************************"
+
+        echo "Are you sure that you want to update your existing Docker registry secert at this Kubernets cluster? (y/N)"
+        read answer 
+
+        if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+            echo "Exiting..."
+            exit 0;
+        fi
+
+        echo "Removing the current Docker registry secret at $ENVIRONMENT_EXCHANGE_NAME namespace."
+        kubectl delete secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+         if [[ "$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME" ]] && [[ "$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD" ]] && [[ "$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL" ]]; then
+
+            echo "Docker registry credentials are detected at your configmap file."
+
+            echo "*********************************************"
+            echo "Docker Registry Host: $ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_HOST"
+            echo "Docker Registry Email: $ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL"
+            echo "Docker Registery Username: $ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME"
+            echo "Docker Registry Password: $(echo ${ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD//?/◼︎}$(echo $ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD | grep -o '....$'))"
+            echo "*********************************************"
+            echo "You can either proceed with this values, or set it again manually by yourself."
+            echo "Do you want to proceed with this values? (Y/n)"
+            read answer
+
+            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+
+                echo "Proceeding to a from to re-fill up the credentials."
+                MANUAL_DOCKER_REGISTRY_SECRET_UPDATE=true
+
+            fi
+        
+        fi
+
+        create_kubernetes_docker_registry_secert;
+
     fi
 
 
