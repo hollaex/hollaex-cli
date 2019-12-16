@@ -904,11 +904,11 @@ EOL
 
     if [[ "$IS_IMPORT_SUCCESS" == true ]]; then 
 
-        echo "Your settings files (or directory) has been imported into your HollaEx Kit!"
+        printf "\033[92mYour settings files (or directory) has been imported into your HollaEx Kit!\033[39m\n"
 
     else 
 
-        echo "Failed to import your files into HollaEx Kit."
+        printf "\033[91m\nFailed to import your files into HollaEx Kit.\033[39m\n"
         echo "Please confirm that you passed the correct path of your settings files, and try again."
 
         exit 1;
@@ -2942,6 +2942,10 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "HollaEx CLI will proceed to remove trading pair on your existing exchange."
                 shift; continue
                 ;;
+            --is_hollaex_setup)
+                IS_HOLLAEX_SETUP=true
+                shift; continue
+                ;;
             # --reconfigure_basic_settings)
             #     RECONFIGURE_BASIC_SETTINGS=true
             #     TOOLBOX_ENABLE=true
@@ -3381,12 +3385,57 @@ elif [[ "$1" == "toolbox" ]]; then
 
     elif [[ "$ADD_COIN" ]]; then
 
-        printf "\033[93mWarning: Adding new coin requires full restart of the exchange!\033[39m\n"
-        echo "Please double confirm that you are good to proceed"
-        
-        add_coin_input;
+        if [[ "$IS_HOLLAEX_SETUP" ]]; then
 
-        add_coin_exec;
+            echo "Adding user custom currencies on the exchange..."
+
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
+
+                    export CONFIGMAP_FILE_PATH=$i
+
+                fi
+
+            done
+
+            IFS=',' read -ra CUSTOM_CURRENCIES_TO_ADD <<< "$HOLLAEX_CONFIGMAP_CURRENCIES"
+
+            for j in ${CUSTOM_CURRENCIES_TO_ADD[@]}; do
+
+                if command grep -q $j $CONFIGMAP_FILE_PATH > /dev/null; then
+
+                    export COIN_SYMBOL=$j
+                    export VALUE_IMPORTED_FROM_CONFIGMAP=true
+
+                    if command grep -q "HOLLAEX_CONFIGMAP_$(echo $j | tr a-z A-Z)_COIN" $CONFIGMAP_FILE_PATH > /dev/null ; then
+
+                        printf "\033[92mCoin configurations for $j has been detected at user's configmap file!\033[39m\n"
+                        echo "Proceeding to add..."
+
+                        add_coin_exec;
+                    
+                    else 
+
+                        printf "\033[91mError: Coin configurations for $j doesn't exists at user's configmap file.\033[39m\n"
+                        echo "Skipping to add..."
+
+                    fi
+                
+                fi
+            
+            done
+
+        else 
+
+            printf "\033[93mWarning: Adding new coin requires full restart of the exchange!\033[39m\n"
+            echo "Please double confirm that you are good to proceed"
+            
+            add_coin_input;
+
+            add_coin_exec;
+        
+        fi
         
     elif [[ "$REMOVE_COIN" ]]; then
 
@@ -3399,12 +3448,61 @@ elif [[ "$1" == "toolbox" ]]; then
     
     elif [[ "$ADD_TRADING_PAIR" ]]; then
 
-        printf "\033[93mWarning: Adding new pair requires full restart of the exchange!\033[39m\n"
-        echo "Please double confirm that you are good to proceed"
-        
-        add_pair_input;
+        if [[ "$IS_HOLLAEX_SETUP" ]]; then
 
-        add_pair_exec;
+            echo "Adding user custom trading pairs on the exchange..."
+
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
+
+                    export CONFIGMAP_FILE_PATH=$i
+
+                fi
+
+            done
+
+            IFS=',' read -ra CUSTOM_PAIRS_TO_ADD <<< "$HOLLAEX_CONFIGMAP_PAIRS"
+
+            for j in ${CUSTOM_PAIRS_TO_ADD[@]}; do
+
+                if command grep -q $j $CONFIGMAP_FILE_PATH > /dev/null; then
+
+                    export PAIR_NAME=$j
+                    export PAIR_BASE=$(echo $j | cut -f1 -d "-")
+                    export PAIR_2=$(echo $j | cut -f2 -d "-")
+                    export PAIR_PREFIX=$(echo $PAIR_BASE | tr a-z A-Z)_$(echo $PAIR_2 | tr a-z A-Z)
+     
+                    export VALUE_IMPORTED_FROM_CONFIGMAP=true
+
+                    if command grep -q "HOLLAEX_CONFIGMAP_$(echo $PAIR_PREFIX)" $CONFIGMAP_FILE_PATH > /dev/null ; then
+
+                        printf "\033[92Trading pair configurations for $j has been detected at user's configmap file!\033[39m\n"
+                        echo "Proceeding to add..."
+
+                        add_pair_exec;
+                    
+                    else 
+
+                        printf "\033[91mError: Trading pair configurations for $j doesn't exists at user's configmap file.\033[39m\n"
+                        echo "Skipping to add..."
+                    
+                    fi
+                
+                fi
+            
+            done
+
+        else 
+
+            printf "\033[93mWarning: Adding new pair requires full restart of the exchange!\033[39m\n"
+            echo "Please double confirm that you are good to proceed"
+            
+            add_pair_input;
+
+            add_pair_exec;
+        
+        fi
 
     elif [[ "$REMOVE_TRADING_PAIR" ]]; then
 

@@ -1192,7 +1192,7 @@ function add_coin_input() {
 
     if command grep -q "HOLLAEX_CONFIGMAP_$(echo $COIN_SYMBOL | tr a-z A-Z)_COIN" $i > /dev/null ; then
 
-      echo "Detected configurations for coin $COIN_SYMBOL in your settings file."
+      printf "\033[92mDetected configurations for coin $COIN_SYMBOL in your settings file.\033[39m\n"
       echo "Do you want to proceed with these values?? (Y/n)"
       read answer
 
@@ -1602,12 +1602,23 @@ EOL
       echo "Updating settings file to add new $COIN_SYMBOL."
       for i in ${CONFIG_FILE_PATH[@]}; do
 
-      if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
-          CONFIGMAP_FILE_PATH=$i
-          HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE="${HOLLAEX_CONFIGMAP_CURRENCIES},${COIN_SYMBOL}"
-          sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
-          rm $CONFIGMAP_FILE_PATH.bak
-      fi
+        if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+
+            CONFIGMAP_FILE_PATH=$i
+            
+            if ! command grep -q "HOLLAEX_CONFIGMAP_CURRENCIES.*${COIN_SYMBOL}.*" $i ; then
+
+              HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE="${HOLLAEX_CONFIGMAP_CURRENCIES},${COIN_SYMBOL}"
+              sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+              rm $CONFIGMAP_FILE_PATH.bak
+
+            else
+
+              HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE=$HOLLAEX_CONFIGMAP_CURRENCIES
+                
+            fi
+
+        fi
 
       done
 
@@ -1676,10 +1687,21 @@ EOL
          for i in ${CONFIG_FILE_PATH[@]}; do
 
             if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+
               CONFIGMAP_FILE_PATH=$i
-              HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE="${HOLLAEX_CONFIGMAP_CURRENCIES},${COIN_SYMBOL}"
-              sed -i.bak "s/CURRENCIES=$HOLLAEX_CONFIGMAP_CURRENCIES/CURRENCIES=$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
-              rm $CONFIGMAP_FILE_PATH.bak
+              
+              if ! command grep -q "HOLLAEX_CONFIGMAP_CURRENCIES.*${COIN_SYMBOL}.*" $i ; then
+
+                HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE="${HOLLAEX_CONFIGMAP_CURRENCIES},${COIN_SYMBOL}"
+                sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+                rm $CONFIGMAP_FILE_PATH.bak
+
+              else
+
+                HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE=$HOLLAEX_CONFIGMAP_CURRENCIES
+                
+              fi
+
             fi
 
          done
@@ -1751,13 +1773,17 @@ EOL
 
         fi
 
-        exit 1;
+        #exit 1;
 
       fi
       
   fi
 
-  exit 0;
+  if [[ "$VALUE_IMPORTED_FROM_CONFIGMAP" ]] && ! [[ "$IS_HOLLAEX_SETUP" ]]; then
+
+    exit 0;
+
+  fi
 
 }
 
@@ -2023,7 +2049,7 @@ function add_pair_input() {
 
     if command grep -q "HOLLAEX_CONFIGMAP_$(echo $PAIR_BASE | tr a-z A-Z)_$(echo $PAIR_2 | tr a-z A-Z)" $i > /dev/null ; then
 
-      echo "Detected configurations for trading pair $PAIR_NAME in your settings file."
+      printf "\033[92mDetected configurations for trading pair $PAIR_NAME in your settings file.\033[39m\n"
       echo "Do you want to proceed with these values?? (Y/n)"
       read answer
 
@@ -2425,11 +2451,22 @@ EOL
       echo "Updating settings file to add new $PAIR_NAME."
       for i in ${CONFIG_FILE_PATH[@]}; do
 
-      if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+     if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+          
           CONFIGMAP_FILE_PATH=$i
-          HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE="${HOLLAEX_CONFIGMAP_PAIRS},${PAIR_NAME}"
-          sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE/" $CONFIGMAP_FILE_PATH
-          rm $CONFIGMAP_FILE_PATH.bak
+
+          if ! command grep -q "HOLLAEX_CONFIGMAP_PAIRS.*${PAIR_NAME}.*" $i ; then
+
+            HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE="${HOLLAEX_CONFIGMAP_PAIRS},${PAIR_NAME}"
+            sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE/" $CONFIGMAP_FILE_PATH
+            rm $CONFIGMAP_FILE_PATH.bak
+
+          else
+
+            HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE=$HOLLAEX_CONFIGMAP_PAIRS
+          
+          fi
+
       fi
 
       done
@@ -2498,12 +2535,23 @@ EOL
           echo "Updating settings file to add new $PAIR_NAME."
           for i in ${CONFIG_FILE_PATH[@]}; do
 
-          if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
-              CONFIGMAP_FILE_PATH=$i
-              HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE="${HOLLAEX_CONFIGMAP_PAIRS},${PAIR_NAME}"
-              sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE/" $CONFIGMAP_FILE_PATH
-              rm $CONFIGMAP_FILE_PATH.bak
-          fi
+            if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+          
+                CONFIGMAP_FILE_PATH=$i
+
+                if ! command grep -q "HOLLAEX_CONFIGMAP_PAIRS.*${PAIR_NAME}.*" $i ; then
+
+                  HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE="${HOLLAEX_CONFIGMAP_PAIRS},${PAIR_NAME}"
+                  sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE/" $CONFIGMAP_FILE_PATH
+                  rm $CONFIGMAP_FILE_PATH.bak
+
+                else
+
+                  HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE=$HOLLAEX_CONFIGMAP_PAIRS
+                  
+                fi
+
+            fi
 
           done
 
@@ -4242,6 +4290,32 @@ function hollaex_setup_finalization() {
   printf "\n"
   echo "Your exchange is all set!"
   echo "You can proceed to add your own currencies, trading pairs right away from now on."
+
+  echo "Attempting to add user custom currencies automatically..."
+
+  if [[ "$USE_KUBERNETES" ]]; then
+
+      hollaex toolbox --add_coin --kube --is_hollaex_setup
+  
+  elif [[ ! "$USE_KUBERNETES" ]]; then
+
+      hollaex toolbox --add_coin --is_hollaex_setup
+
+  fi
+
+  echo "Attempting to add user custom trading pairs automatically..."
+
+  if [[ "$USE_KUBERNETES" ]]; then
+
+      hollaex toolbox --add_trading_pair --kube --is_hollaex_setup
+
+  elif [[ ! "$USE_KUBERNETES" ]]; then
+
+      hollaex toolbox --add_trading_pair --is_hollaex_setup
+
+  fi
+
+  echo "You can add more custom currencies or trading pairs manually if you want."
   echo "It doesn't matter you want to skip it for now. You can always add new currencies and trading pairs with 'hollaex toolbox' command."
   echo "Do you want to proceed? (Y/n)"
   read answer
@@ -4257,7 +4331,7 @@ function hollaex_setup_finalization() {
   fi
 
   while true;
-  do read -r -p "Do you want to add new currency? (y/N)" answer   
+  do read -r -p "Do you want to add (setup) new currency? (y/N)" answer   
       if [[ ! "$answer" = "${answer#[Yy]}" ]];
       then
           if [[ "$USE_KUBERNETES" ]]; then
@@ -4268,7 +4342,7 @@ function hollaex_setup_finalization() {
           fi
       else
           while true;
-              do read -r -p "Do you want to add new trading pair? (y/N)" answer   
+              do read -r -p "Do you want to add (setup) new trading pair? (y/N)" answer   
                   if [[ ! "$answer" = "${answer#[Yy]}" ]];
                   then
                       if [[ "$USE_KUBERNETES" ]]; then
@@ -4279,6 +4353,7 @@ function hollaex_setup_finalization() {
                   else   
                       echo "Finishing the setup process..."
                       echo "Shutting down the exchange"
+                      echo "To start the exchange, Please use 'hollaex start' command"
                       if [[ "$USE_KUBERNETES" ]]; then
                           hollaex stop --kube --skip
                       elif [[ ! "$USE_KUBERNETES" ]]; then
@@ -4333,7 +4408,7 @@ function build_user_hollaex_core() {
 
   else 
 
-      echo "Failed to build the image."
+      printf "\033[91mFailed to build the image.\033[39m\n"
       echo "Please confirm your configurations and try again."
       echo "If you are not on a latest HollaEx Kit, Please update it first to latest."
       
@@ -4371,11 +4446,11 @@ function push_user_hollaex_core() {
 
   if command docker push $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION; then 
 
-      echo "Successfully pushed the image to docker registry."
+      printf "\033[92mSuccessfully pushed the image to docker registry.\033[39m\n"
   
   else 
 
-      echo "Failed to push the image to docker registry."
+      printf "\033[91mFailed to push the image to docker registry.\033[39m\n"
 
       if [[ ! $USE_KUBERNETES ]]; then
 
@@ -4384,7 +4459,7 @@ function push_user_hollaex_core() {
   
       else
 
-          echo "HollaEx Kit deployment for Kubernetes requires user's HollaEx Core image pushed at Docker Registry."
+          printf "\033[93mHollaEx Kit deployment for Kubernetes requires user's HollaEx Core image pushed at Docker Registry.\033[39m\n"
           echo "Plesae try again after you confirm the image name is correct, and got proper Docker Registry access."
           exit 1;
 
