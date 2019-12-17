@@ -1913,7 +1913,7 @@ elif [[ "$1" == "upgrade" ]]; then
         fi
         
         # Only tries to attempt remove ingress rules from Kubernetes if it exists.
-        if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+        if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
         
             echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
             kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml

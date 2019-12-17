@@ -1103,7 +1103,8 @@ function override_docker_image_version() {
 
     if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
       CONFIGMAP_FILE_PATH=$i
-      sed -i.bak "s/$ENVIRONMENT_DOCKER_IMAGE_VERSION/$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
+      sed -i.bak "s/ENVIRONMENT_DOCKER_IMAGE_VERSION=.*/ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
+      sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
     fi
     
   done
@@ -4448,13 +4449,13 @@ function build_user_hollaex_core() {
 
       echo "Your custom HollaEx Core image has been successfully built."
 
+      if [[ "$USE_KUBERNETES" ]]; then
+
+        echo "Info: Deployment to Kubernetes mandatorily requires image to gets pushed on your Docker registry."
+
+      fi
+
       if [[ "$RUN_WITH_VERIFY" == false ]]; then
-
-        if [[ "$USE_KUBERNETES" ]]; then
-
-          echo "Info: Deployment to Kubernetes mandatorily requires image to gets pushed."
-
-        fi
 
         push_user_hollaex_core;
       
@@ -4523,7 +4524,7 @@ function push_user_hollaex_core() {
 
       printf "\033[91mFailed to push the image to docker registry.\033[39m\n"
 
-      if [[ ! $USE_KUBERNETES ]]; then
+      if [[ ! "$USE_KUBERNETES" ]]; then
 
           echo "Proceeding setup processes without pushing the image at Docker Registry."
           echo "You can push it later by using 'docker push' command manually."
@@ -4719,7 +4720,7 @@ function create_kubernetes_docker_registry_secert() {
   
   fi
 
-  echo "Creating Docker registry secret on $HOLLAEX_CONFIGMAP_API_NAME namespace."
+  echo "Creating Docker registry secret on $ENVIRONMENT_EXCHANGE_NAME namespace."
   kubectl create secret docker-registry docker-registry-secret \
                         --namespace $ENVIRONMENT_EXCHANGE_NAME \
                         --docker-server=$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_HOST \
