@@ -470,7 +470,7 @@ elif [[ "$1" == "setup" ]]; then
         launch_basic_settings_input;
     
     fi
-
+    
     build_user_hollaex_core;
 
     if [[ "$USE_KUBERNETES" ]]; then
@@ -638,7 +638,7 @@ elif [[ "$1" == "setup" ]]; then
 
         hollaex_setup_finalization;
 
-        hollaex_ascii_exchange_has_been_setup;
+        # hollaex_ascii_exchange_has_been_setup;
 
         echo "Shutting down the exchange..."
         hollaex stop --kube --skip
@@ -766,10 +766,10 @@ elif [[ "$1" == "setup" ]]; then
         
         hollaex_setup_finalization;
 
-        hollaex_ascii_exchange_has_been_setup;
+        # hollaex_ascii_exchange_has_been_setup;
 
-        echo "Finalizing the exchange setup..."
-        sleep 5;
+        # echo "Finalizing the exchange setup..."
+        # sleep 5;
 
         exit 0;
 
@@ -1644,9 +1644,9 @@ elif [[ "$1" == "restart" ]]; then
         echo "Updating nginx conf file based on user settings"
         apply_nginx_user_defined_values;
 
-        echo "Restarting containers to apply new changes..."
-        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+        # echo "Restarting containers to apply new changes..."
+        # docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+        # docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
         
         if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop; then
 
@@ -3416,7 +3416,7 @@ elif [[ "$1" == "toolbox" ]]; then
                     export COIN_SYMBOL=$j
                     export VALUE_IMPORTED_FROM_CONFIGMAP=true
 
-                    if command grep -q "HOLLAEX_CONFIGMAP_$(echo $j | tr a-z A-Z)_COIN" $CONFIGMAP_FILE_PATH > /dev/null ; then
+                    if command grep -q "ENVIRONMENT_ADD_COIN_$(echo $j | tr a-z A-Z)_" $CONFIGMAP_FILE_PATH > /dev/null ; then
 
                         printf "\033[92mCoin configurations for $j has been detected at user's configmap file!\033[39m\n"
                         echo "Proceeding to add..."
@@ -3433,6 +3433,17 @@ elif [[ "$1" == "toolbox" ]]; then
                 fi
             
             done
+
+            if [[ "$USE_KUBERNETES" ]]; then
+
+                kubernetes_database_init upgrade;
+
+            else 
+
+                echo "Running database triggers"
+                docker exec --env "CURRENCIES=${HOLLAEX_CONFIGMAP_CURRENCIES}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null;
+            
+            fi
 
         else 
 
@@ -3483,9 +3494,9 @@ elif [[ "$1" == "toolbox" ]]; then
      
                     export VALUE_IMPORTED_FROM_CONFIGMAP=true
 
-                    if command grep -q "HOLLAEX_CONFIGMAP_$(echo $PAIR_PREFIX)" $CONFIGMAP_FILE_PATH > /dev/null ; then
+                    if command grep -q "ENVIRONMENT_ADD_PAIR_$(echo $PAIR_PREFIX)_" $CONFIGMAP_FILE_PATH > /dev/null ; then
 
-                        printf "\033[92Trading pair configurations for $j has been detected at user's configmap file!\033[39m\n"
+                        printf "\033[92mTrading pair configurations for $j has been detected at user's configmap file!\033[39m\n"
                         echo "Proceeding to add..."
 
                         add_pair_exec;
@@ -3500,6 +3511,17 @@ elif [[ "$1" == "toolbox" ]]; then
                 fi
             
             done
+
+            if [[ "$USE_KUBERNETES" ]]; then
+
+                kubernetes_database_init upgrade;
+
+            else 
+
+                echo "Running database triggers"
+                docker exec --env "PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null;
+            
+            fi
 
         else 
 
