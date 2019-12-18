@@ -1811,6 +1811,18 @@ function remove_coin_input() {
 
 function remove_coin_exec() {
 
+  IFS=',' read -ra CURRENT_CURRENCIES <<< "${HOLLAEX_CONFIGMAP_CURRENCIES}"
+
+  if (( "${#CURRENT_CURRENCIES[@]}" <= "2" )); then
+
+    printf "\n\033[91mError: You should have at least 2 currencies on your exchange.\033[39m\n"
+    echo "Current Currencies : ${HOLLAEX_CONFIGMAP_CURRENCIES}."
+    printf "Exiting...\n\n"
+
+    exit 1;
+
+  fi
+
   if [[ "$USE_KUBERNETES" ]]; then
 
   # Only tries to attempt remove ingress rules from Kubernetes if it exists.
@@ -1972,7 +1984,7 @@ function remove_coin_exec() {
       # Running database triggers
       docker exec --env="CURRENCIES=${HOLLAEX_CONFIGMAP_CURRENCIES}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
 
-      echo "Coin $COIN_SYMBLE has been successfully removed."
+      echo "Coin $COIN_SYMBOL has been successfully removed."
       echo "Please run 'hollaex restart' to apply it."
 
     else
@@ -2617,6 +2629,18 @@ function remove_pair_input() {
 
 function remove_pair_exec() {
 
+  IFS=',' read -ra CURRENT_PAIRS <<< "${HOLLAEX_CONFIGMAP_PAIRS}"
+
+  if (( "${#CURRENT_PAIRS[@]}" <= "1" )); then
+
+    printf "\n\033[91mError: You should have at least 1 trading pair on your exchange.\033[39m\n"
+    echo "Current Trading Pair(s) : ${HOLLAEX_CONFIGMAP_PAIRS}."
+    printf "Exiting...\n\n"
+
+    exit 1;
+
+  fi
+
   if [[ "$USE_KUBERNETES" ]]; then
 
     # # Only tries to attempt remove ingress rules from Kubernetes if it exists.
@@ -2836,6 +2860,9 @@ REACT_APP_CAPTCHA_SITE_KEY=${ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}
 
 REACT_APP_DEFAULT_LANGUAGE=${ENVIRONMENT_WEB_DEFAULT_LANGUAGE}
 REACT_APP_DEFAULT_COUNTRY=${ENVIRONMENT_WEB_DEFAULT_COUNTRY}
+
+REACT_APP_LOGO_PATH=${HOLLAEX_CONFIGMAP_LOGO_PATH}
+REACT_APP_LOGO_BLACK_PATH=${HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH}
 
 EOL
 }
