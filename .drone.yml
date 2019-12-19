@@ -1,81 +1,109 @@
-clone:
-  git:
-    image: bitholla/devops-tools:drone_git-80f15d1
-    when:
-      branch: [ master ]
+kind: pipeline
+type: docker
+name: amd64
 
-pipeline:
-  ### SLACK NOTIFY - Build start ###
-  notify_job_start:
-    image: bitholla/devops-tools:drone_slack-8a15f61
-    channel: deployment
-    secrets: [ slack_webhook ]
-    template: "<{{build.link}}|Deployment> - #{{build.number}} started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
-    when:
-      branch: [ master ]
-      event: push
+platform:
+  arch: amd64
+  os: linux
 
-  #### Filtering branches to not build it ####
-  not_building_this_branch:
-    image: golang:1.10.0-alpine
-    commands:
-      - echo "Your latest code is now up on ${DRONE_BRANCH}. but Drone will not build this branch. have fun :)"
-    when:
-      branch:
-        exclude: [ master ]
-        event: push
+steps:
 
-  #### Docker image tagging - PRODUCTION RELEASES ####
-  docker_tagging:
-    image: alpine
-    commands:
-      - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION" > .tags
-      - echo -n ",latest" >> .tags
-      - echo "Current Docker tag is :" && cat .tags
-      - echo "dockerTag:$(cat .tags)" > .dockerTag.yml
-    when:
-      branch: [ master ]
-      event: push
+- name: notify_job_start
+  image: plugins/slack
+  settings:
+    template: "<{{build.link}}|Deployment> - #{{build.number}} for AMD64 Arch  started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
+  channel: deployment
+  environment:
+    SLACK_WEBHOOK:
+      from_secret: slack_webhook
+  
+- name: docker_tagging
+  image: alpine
+  commands: 
+    - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION" > .tags
+    - echo -n ",latest" >> .tags
+    - echo "Current Docker tag is :" && cat .tags
+    - echo "dockerTag:$(cat .tags)" > .dockerTag.yml
 
-      
-  #### Docker image build ####
-  docker_build:
-    #image: bitholla/devops-tools:drone_docker-1086846
-    image: plugins/docker
-    secrets: [ docker_username, docker_password ]
+- name: docker_build
+  image: plugins/docker
+  settings:
+    dockerfile: docker/Dockerfile.arm64
     repo: bitholla/hollaex-cli
-    dockerfile: docker/Dockerfile
-    when:
-      branch: [ master ] 
-      event: push
-  
-  #### SLACK NOTIFY - Build status report ####
-  notify_to_deployment:
-    image: bitholla/devops-tools:drone_slack-8a15f61
-    channel: deployment
-    secrets: [ slack_webhook ]
-    when:
-      status: [success, failure]
-      branch: [ master ]
-      event: push
+    tag: test-arm64
+  environment:
+    DOCKER_USERNAME:
+      from_secret: docker_username
+    DOCKER_PASSWORD:
+      from_secret: docker_password
 
-  
-  version_tagging_for_partymaker:
-    image: alpine
-    commands:
-      - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION" > .tags
-    when:
-      branch: [ master ]
-      event: push
+- name: notify_job_done
+  image: bitholla/devops-tools:drone_slack-8a15f61
+  channel: deployment
+  environment:
+    SLACK_WEBHOOK:
+      from_secret: slack_webhook
+  when:
+    status: [ success, failure ]
 
-  #### SLACK NOTIFY - to releases channel ####
-  notify_to_releases:
-    image: bitholla/devops-tools:drone_partymaker-0.1.1
-    #pull: true
-    secrets:
-      - source: slack_webhook_releases
-        target: webhook_url
-    when:
-      status: [success]
-      branch: [ master ]
-      event: push
+- name: partymaker_version_tagging
+  image: alpine
+  commands: 
+    - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION" > .tags
+
+- name: notify_to_releases
+  image: bitholla/devops-tools:drone_partymaker-0.1.1
+  channel: deployment
+  environment:
+    WEBHOOK_URL:
+      from_secret: webhook_url
+  when:
+    status: [ success, failure ]
+  
+trigger:
+  branch: 
+    - master
+  event:
+    - push
+
+# ---
+
+# kind: pipeline
+# type: docker
+# name: arm64
+
+# steps:
+# # - name: notify_job_start
+# #   image: plugins/slack
+# #   template: "<{{build.link}}|Deployment> - #{{build.number}} for ARM64 Arch started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
+# #   channel: deployment
+# #   environment:
+# #     SLACK_WEBHOOK:
+# #       from_secret: slack_webhook
+
+# - name: docker_build
+#   image: plugins/docker
+#   settings:
+#     dockerfile: docker/Dockerfile.s390x
+#     repo: bitholla/hollaex-cli
+#     tag: arm64-test
+#   environment:
+#     USERNAME:
+#       from_secret: docker_username
+#     PASSWORD:
+#       from_secret: docker_password
+  
+# # - name: notify_job_done
+# #   image: bitholla/devops-tools:drone_slack-8a15f61
+# #   channel: deployment
+# #   environment:
+# #     SLACK_WEBHOOK:
+# #       from_secret: slack_webhook
+#   when:
+#     status: [ success, failure ]
+
+# trigger:
+#   branch: 
+#     - develop
+#   event:
+#     - push

@@ -5,7 +5,7 @@ imageRegistry: bitholla/hollaex-core
 dockerTag:
   
 imagePullSecrets:
-  - name: bitholla-registry-secret
+  - name: docker-registry-secret
 
 envName: hollaex-env
 secretName: hollaex-secret
@@ -40,6 +40,7 @@ job:
         #remove_coin
         #add_pair
         #remove_pair
+        #hollaex_upgrade
   env:
     coin_symbol:
     pair_name:

@@ -47,6 +47,14 @@ spec:
         args:
           - node tools/dbs/setExchange.js;
 
+{{- else if eq .Values.job.mode "hollaex_upgrade" }}
+
+        args:
+          - sequelize db:migrate;
+            node tools/dbs/runTriggers.js;
+            node tools/dbs/initializeInflux.js;
+            node tools/dbs/setExchange.js;
+
 {{- end }}
 
         imagePullPolicy: Always
