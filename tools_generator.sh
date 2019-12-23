@@ -4567,6 +4567,7 @@ function build_user_hollaex_web() {
             echo "Skipping..."
             echo "Your current image name: $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION."
             echo "You can later tag and push it by using 'docker tag' and 'docker push' command manually."
+            echo "Please run 'hollaex web --restart' to apply the new image."
           
           else
 
@@ -4619,6 +4620,7 @@ function push_user_hollaex_web() {
 
           echo "Proceeding setup processes without pushing the image at Docker Registry."
           echo "You can push it later by using 'docker push' command manually."
+          echo "Please run 'hollaex web --restart' to apply the new image."
   
       else
 
