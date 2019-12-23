@@ -148,12 +148,6 @@ function kubernetes_database_init() {
 
   fi
 
-  echo "Restarting all containers to apply latest database changes..."
-  kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
-
-  echo "Waiting for the containers get fully ready..."
-  sleep 30;
-
 }
 
 function local_code_test() {
@@ -2466,6 +2460,7 @@ EOL
       echo "Applying configmap on the namespace"
       kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
 
+
       if [[ ! "$IS_HOLLAEX_SETUP" ]]; then 
 
         # Running database job for Kubernetes
@@ -2473,6 +2468,19 @@ EOL
         kubernetes_database_init upgrade;
       
       fi
+
+      echo "Running $(echo ${!PAIR_NAME_OVERRIDE}) on the Kubernetes."
+      helm install --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                   --name $ENVIRONMENT_EXCHANGE_NAME-server-engine-$(echo ${!PAIR_BASE_OVERRIDE})$(echo ${!PAIR_2_OVERRIDE}) \
+                   --set DEPLOYMENT_MODE="engine" \
+                   --set PAIR="$(echo ${!PAIR_NAME_OVERRIDE})" \
+                   --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                   --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                   --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                   --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                   --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
+                   -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                   -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
       hollaex_ascii_pair_has_been_added;
 

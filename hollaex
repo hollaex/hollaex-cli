@@ -1537,9 +1537,6 @@ elif [[ "$1" == "restart" ]]; then
         echo "Applying latest secret on the cluster"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
-        echo "Applying latest ingress rules on the cluster."
-        kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
-
         # FOR GENERATING NODESELECTOR VALUES
         generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hollaex
 
@@ -1952,6 +1949,12 @@ elif [[ "$1" == "upgrade" ]]; then
         
         # Running database job for Kubernetes
         kubernetes_database_init upgrade;
+
+        echo "Restarting all containers to apply latest database changes..."
+        kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+
+        echo "Waiting for the containers get fully ready..."
+        sleep 15;
 
         echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
