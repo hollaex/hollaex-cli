@@ -42,7 +42,7 @@ spec:
         args:
           - node tools/dbs/removePair.js;
 
-{{- else if eq .Values.job.mode "reactivate_exchange" }}
+{{- else if eq .Values.job.mode "set_activation_code" }}
 
         args:
           - node tools/dbs/setExchange.js;
@@ -130,6 +130,11 @@ spec:
 
           - name: PAIR_NAME
             value: {{.Values.job.env.pair_name}}
+
+{{- else if eq .Values.job.mode "set_activation_code" }}
+
+          - name: ACTIVATION_CODE
+            value: "{{.Values.job.env.activation_code}}"
 
 {{- end }}
 

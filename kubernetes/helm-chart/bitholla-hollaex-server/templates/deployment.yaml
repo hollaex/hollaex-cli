@@ -90,7 +90,11 @@ spec:
         
         resources:
           limits:
+{{- if or (eq .Values.DEPLOYMENT_MODE "api") (eq .Values.DEPLOYMENT_MODE "stream") }}
+            memory: "1024Mi"
+{{- else }}
             memory: "2048Mi"
+{{- end }}
             cpu: "1000m"
           requests:
             memory: "100Mi"
