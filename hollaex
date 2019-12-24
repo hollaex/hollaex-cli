@@ -2980,7 +2980,12 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "HollaEx CLI will update your docker image registry secert for Kubernetes."
                 shift; continue
                 ;;
-            # Version fl
+            --set_activation_code)
+                SET_ACTIVATION_CODE=true
+                TOOLBOX_ENABLE=true
+                echo "HollaEx CLI will update your activation code for the exchange."
+                shift; continue
+                ;;
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
@@ -3670,6 +3675,54 @@ elif [[ "$1" == "toolbox" ]]; then
         fi
 
         create_kubernetes_docker_registry_secert;
+    
+    elif [[ "$SET_ACTIVATION_CODE" ]]; then
+        
+        if [[ "$USE_KUBERNETES" ]]; then 
+
+            check_kubernetes_dependencies;
+        
+            echo "*********************************************"
+            echo "Verifying current KUBECONFIG on the machine"
+            kubectl get nodes
+            echo "*********************************************"
+
+            echo "Are you sure that you want to update your activation code for the exchange on this Kubernets cluster? (y/N)"
+            read answer 
+
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                echo "Exiting..."
+                exit 0;
+            fi
+
+            update_activation_code_input;
+
+            update_activation_code_exec;
+
+            echo "Your activation code has been successfully updated!"
+            echo "Make sure to run 'hollaex restart --kube' to fully apply it."
+
+
+        elif [[ ! "$USE_KUBERNETES" ]]; then
+
+            check_docker_compose_dependencies;
+
+            echo "Are you sure that you want to update your activation code for the exchange on this machine? (y/N)"
+            read answer 
+
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                echo "Exiting..."
+                exit 0;
+            fi
+
+            update_activation_code_input;
+
+            update_activation_code_exec;
+
+            echo "Your activation code has been successfully updated!"
+            echo "Make sure to run 'hollaex restart' to fully apply it."
+
+        fi
 
     fi
 

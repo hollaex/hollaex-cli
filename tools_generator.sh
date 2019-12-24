@@ -1596,9 +1596,8 @@ EOL
       printf "\033[91mFailed to create Kubernetes Job for adding new coin $COIN_SYMBOL, Please confirm your input values and try again.\033[39m\n"
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
 
-      echo "Allowing exchange external connections"
-      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
-
+      # echo "Allowing exchange external connections"
+      # kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
     fi
 
@@ -1660,8 +1659,8 @@ EOL
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
 
-      echo "Allowing exchange external connections"
-      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+      # echo "Allowing exchange external connections"
+      # kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
       
     fi
 
@@ -2455,7 +2454,7 @@ EOL
       rm $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml.bak
 
       export HOLLAEX_CONFIGMAP_PAIRS=$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE
-      echo "Current Trading Pairs: ${HOLLAEX_CONFIGMAP_PAIRS}"
+      echo "ㅠCurrent Trading Pairs: ${HOLLAEX_CONFIGMAP_PAIRS}"
 
       echo "Applying configmap on the namespace"
       kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
@@ -2871,6 +2870,8 @@ REACT_APP_DEFAULT_COUNTRY=${ENVIRONMENT_WEB_DEFAULT_COUNTRY}
 
 REACT_APP_LOGO_PATH=${HOLLAEX_CONFIGMAP_LOGO_PATH}
 REACT_APP_LOGO_BLACK_PATH=${HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH}
+
+REACT_APP_EXCHANGE_NAME=${HOLLAEX_CONFIGMAP_API_NAME}
 
 EOL
 }
@@ -3754,7 +3755,7 @@ FreshDesk Auth (Optional): $HOLLAEX_SECRET_FRESHDESK_AUTH_MASKED
 
 EOF
 
-  echo "Are the values are all correct? (Y/n)"
+  echo "Are the values all correct? (Y/n)"
   read answer
 
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
@@ -3764,7 +3765,7 @@ EOF
   
   fi
 
-  echo "Provided values would be updated on your settings files automatically."
+  echo "Provided values would be updated on your settings file(s) automatically."
 
   for i in ${CONFIG_FILE_PATH[@]}; do
 
@@ -4836,6 +4837,143 @@ function update_hollaex_cli_to_latest() {
       printf "\nCurrent installed version of HollaEx CLI : \033[92m$(cat $SCRIPTPATH/version)\033[39m\n"
       printf "\n\033[92mYour HollaEx CLI is already up to date!\033[39m\n\n"
       printf "Proceeding to upgrade...\n"
+
+  fi
+
+}
+
+function update_activation_code_input() {
+  # Activation Code
+  echo "***************************************************************"
+  echo "Activation Code: ($(echo ${HOLLAEX_SECRET_ACTIVATION_CODE//?/◼︎}$(echo $HOLLAEX_SECRET_ACTIVATION_CODE | grep -o '....$')))"
+  printf "\033[2m- Go to https://dash.bitholla.com to issue your activation code.\033[22m\n" 
+  read answer
+
+  local EXCHANGE_ACTIVATION_CODE_OVERRIDE=${answer:-$HOLLAEX_SECRET_ACTIVATION_CODE}
+
+  local EXCHANGE_ACTIVATION_CODE_MASKED=$(echo ${EXCHANGE_ACTIVATION_CODE_OVERRIDE//?/◼︎}$(echo $EXCHANGE_ACTIVATION_CODE_OVERRIDE | grep -o '....$'))
+
+  printf "\n"
+  echo "$EXCHANGE_ACTIVATION_CODE_MASKED ✔"
+  printf "\n"
+
+  echo "***************************************************************"
+  echo "Activation Code: $EXCHANGE_ACTIVATION_CODE_MASKED"
+  echo "***************************************************************"
+
+  echo "Is the value all correct? (Y/n)"
+  read answer
+
+  if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+
+      echo "You picked false. Please confirm the values and run the command again."
+      exit 1;
+  
+  fi
+
+  echo "Provided value would be updated on your settings file(s) automatically."
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+
+      if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE" $i > /dev/null ; then
+          SECRET_FILE_PATH=$i
+          sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=$HOLLAEX_SECRET_ACTIVATION_CODE/HOLLAEX_SECRET_ACTIVATION_CODE=$EXCHANGE_ACTIVATION_CODE_OVERRIDE/" $SECRET_FILE_PATH
+      fi
+
+  done
+
+  export HOLLAEX_SECRET_ACTIVATION_CODE=$EXCHANGE_ACTIVATION_CODE_OVERRIDE
+}
+
+function update_activation_code_exec() {
+
+  if [[ "$USE_KUBERNETES" ]]; then 
+
+    # Generate Kubernetes Configmap
+    cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/set-activation-code.yaml <<EOL
+job:
+  enable: true
+  mode: set_activaion_code
+  env:
+    activation_code: ${HOLLAEX_SECRET_ACTIVATION_CODE}
+EOL
+
+    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-set-activation-code \
+                            --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                            --set job.enable="true" \
+                            --set job.mode="set_activation_code" \
+                            --set DEPLOYMENT_MODE="api" \
+                            --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                            --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                            --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                            -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/set-activation-code.yaml \
+                            $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+
+      echo "Kubernetes Job has been created for updating activation code."
+
+      echo "Waiting until Job get completely run..."
+      sleep 30;
+
+    else 
+
+      printf "\033[91mFailed to create Kubernetes Job for updating activation code, Please confirm your input values and try again.\033[39m\n"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-activation-code
+
+    fi
+
+    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-set-activation-code --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+
+      echo "Your activation code has been successfully updated on your exchange!"
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-activation-code
+
+      echo "Removing created Kubernetes Job for updating the activation code..."
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-activation-code
+
+    else 
+
+      printf "\033[91mFailed to update the activation code! Please try again.\033[39m\n"
+      
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-activation-code
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-activation-code
+
+    fi
+
+
+  elif [[ ! "$USE_KUBERNETES" ]]; then
+
+    IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+          
+    # Overriding container prefix for develop server
+    if [[ "$IS_DEVELOP" ]]; then
+      
+      CONTAINER_PREFIX=
+
+    fi
+
+    echo "Setting up the exchange with provided activation code"
+    docker exec --env "ACTIVATION_CODE=${HOLLAEX_SECRET_ACTIVATION_CODE}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/setExchange.js
+          
+  fi
+
+}
+
+function check_docker_compose_dependencies() {
+
+  # Checking docker-compose is installed on this machine.
+  if command docker-compose version > /dev/null 2>&1; then
+
+      echo "*********************************************"
+      echo "docker-compose detected"  
+      echo "version: $(docker-compose version)"
+      echo "*********************************************"
+
+  else
+
+      echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
+      exit 1;
 
   fi
 
