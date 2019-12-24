@@ -3680,12 +3680,12 @@ elif [[ "$1" == "toolbox" ]]; then
         
         if [[ "$USE_KUBERNETES" ]]; then 
 
-            check_kubernetes_dependencies;
+            # check_kubernetes_dependencies;
         
-            echo "*********************************************"
-            echo "Verifying current KUBECONFIG on the machine"
-            kubectl get nodes
-            echo "*********************************************"
+            # echo "*********************************************"
+            # echo "Verifying current KUBECONFIG on the machine"
+            # kubectl get nodes
+            # echo "*********************************************"
 
             echo "Are you sure that you want to update your activation code for the exchange on this Kubernets cluster? (y/N)"
             read answer 

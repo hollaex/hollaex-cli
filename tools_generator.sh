@@ -4878,6 +4878,7 @@ function update_activation_code_input() {
       if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE" $i > /dev/null ; then
           SECRET_FILE_PATH=$i
           sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=$HOLLAEX_SECRET_ACTIVATION_CODE/HOLLAEX_SECRET_ACTIVATION_CODE=$EXCHANGE_ACTIVATION_CODE_OVERRIDE/" $SECRET_FILE_PATH
+          rm $SECRET_FILE_PATH.bak
       fi
 
   done
@@ -4938,6 +4939,8 @@ EOL
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-activation-code
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-activation-code
+
+      exit 1;
 
     fi
 
