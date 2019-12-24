@@ -1,10 +1,6 @@
 kind: pipeline
 type: docker
-name: amd64
-
-platform:
-  arch: amd64
-  os: linux
+name: docker_build
 
 steps:
 
@@ -28,9 +24,8 @@ steps:
 - name: docker_build
   image: plugins/docker
   settings:
-    dockerfile: docker/Dockerfile.arm64
+    dockerfile: docker/Dockerfile
     repo: bitholla/hollaex-cli
-    tag: test-arm64
   environment:
     DOCKER_USERNAME:
       from_secret: docker_username
