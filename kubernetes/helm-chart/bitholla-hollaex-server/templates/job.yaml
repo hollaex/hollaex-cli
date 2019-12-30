@@ -67,9 +67,6 @@ spec:
         
         env:
 
-          - name: DEPLOYMENT_MODE
-            value: {{.Values.DEPLOYMENT_MODE}}
-
 {{- if eq .Values.job.mode "add_coin" }}
 
           - name: COIN_SYMBOL
