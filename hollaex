@@ -68,7 +68,10 @@ Options:
         --remove_trading_pair, Remove existing trading pair from exchange.
         --issue_ssl, Issue SSL certificate on local Nginx by using Let's Encrypt.
         --renew_ssl, Renew SSL certificate on local Nginx by using Let's Encrypt.
-
+        --connect_database, Direct connection to PostgreSQL Database via postgresql-client.
+        --connect_redis, Direct connection to Redis via redis-client.
+        --connect_influxdb, Direct connection to InfluxDB via influx-client.
+        
     status: Show the exchange server status.
 
     logs: Show overview of logs from the exchange server. 
@@ -1775,6 +1778,11 @@ elif [[ "$1" == "upgrade" ]]; then
                 echo "Target HollaEx Core release version : v $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE."
                 shift; continue
                 ;;
+             --no_image_build)
+                NO_IMAGE_BUILD=true
+                echo "Skipping the new image build."
+                shift; continue
+                ;;
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
@@ -1840,8 +1848,12 @@ elif [[ "$1" == "upgrade" ]]; then
     # Update HollaEx CLI to latest if there is newer release available.
     update_hollaex_cli_to_latest;
 
-    # Building new HollaEx Core image based on passed (or specified) version.
-    build_user_hollaex_core;
+    if [[ ! "$NO_IMAGE_BUILD" ]]; then
+
+        # Building new HollaEx Core image based on passed (or specified) version.
+        build_user_hollaex_core;
+    
+    fi
 
     if [[ "$USE_KUBERNETES" ]]; then
 
@@ -2986,6 +2998,24 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "HollaEx CLI will update your activation code for the exchange."
                 shift; continue
                 ;;
+             --connect_database)
+                CONNECT_DATABASE=true
+                TOOLBOX_ENABLE=true
+                echo "HollaEx CLI will open a direct connection to your PostgreSQL database via postgresql-client."
+                shift; continue
+                ;;
+             --connect_redis)
+                CONNECT_REDIS=true
+                TOOLBOX_ENABLE=true
+                echo "HollaEx CLI will open a direct connection to your PostgreSQL database via redis-client."
+                shift; continue
+                ;;
+             --connect_influxdb)
+                CONNECT_INFLUXDB=true
+                TOOLBOX_ENABLE=true
+                echo "HollaEx CLI will open a direct connection to your PostgreSQL database via influx-client."
+                shift; continue
+                ;;
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
@@ -3721,6 +3751,206 @@ elif [[ "$1" == "toolbox" ]]; then
 
             echo "Your activation code has been successfully updated!"
             echo "Make sure to run 'hollaex restart' to fully apply it."
+
+        fi
+
+    elif [[ "$CONNECT_DATABASE" ]]; then
+
+        if ! command psql --version > /dev/null 2>&1; then
+
+            printf "\033[91mHollaEx CLI failed to detect postgresql-client at your computer.\033[39m\n"
+            echo "Please install it first, before proceeding."
+            exit 1;
+        
+        fi
+
+        if [[ "$USE_KUBERNETES" ]]; then 
+
+            check_kubernetes_dependencies;
+
+            if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 && command kubectl get pods -n $ENVIRONMENT_EXCHANGE_NAME -l app=$ENVIRONMENT_EXCHANGE_NAME-db > /dev/null 2>&1; then
+
+                echo "Successfully detected the PostgreSQL DB created by HollaEx CLI."
+                echo "Opening kube-proxy tunnel for database connection..."
+
+                kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-db" -o name | sed 's/pod\///' | head -n 1) 5432:5432 &
+                sleep 5;
+                
+                echo "Opening local proxy on 5432 port of your machine..."
+                export PGUSER=$HOLLAEX_SECRET_DB_USERNAME
+                export PGPASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
+                export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
+                export PGHOST=localhost
+
+                echo "Opening postgresql-client shell..."
+                psql 
+
+                echo "Killing the opened proxy tunnel..."
+                kill $(ps -ef | grep "kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME" | awk '{print $2}' | head -n 1)
+
+                exit 0;
+            
+            else
+
+                echo "Failed to detect PostgreSQL database at your Kubernetes which created by HollaEx CLI."
+                echo "If you setup PostgreSQL database in a custom way, Please connect to it manually."
+                exit 1;
+            
+            fi
+
+        elif [[ ! "$USE_KUBERNETES" ]]; then
+
+            check_docker_compose_dependencies;
+
+            if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-db > /dev/null 2>&1; then
+
+                echo "Successfully detected the PostgreSQL DB created by HollaEx CLI."
+
+                echo "Opening postgresql-client shell..."
+                export PGUSER=$HOLLAEX_SECRET_DB_USERNAME
+                export PGPASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
+                export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
+                export PGHOST=localhost
+
+                psql 
+
+                exit 0;
+
+            else
+
+                echo "Failed to detect PostgreSQL database at your machine which created by HollaEx CLI."
+                echo "If you setup PostgreSQL database in a custom way, Please connect to it manually."
+                exit 1;
+            
+            fi
+
+        fi
+
+    elif [[ "$CONNECT_REDIS" ]]; then
+
+        if ! command rdcli --version > /dev/null 2>&1; then
+
+            printf "\033[91mHollaEx CLI failed to detect redis-cli at your computer.\033[39m\n"
+            echo "Please install it first, before proceeding."
+            exit 1;
+        
+        fi
+
+        if [[ "$USE_KUBERNETES" ]]; then 
+
+            check_kubernetes_dependencies;
+
+            if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 && command kubectl get pods -n $ENVIRONMENT_EXCHANGE_NAME -l app=$ENVIRONMENT_EXCHANGE_NAME-redis > /dev/null 2>&1; then
+
+                echo "Successfully detected the Redis created by HollaEx CLI."
+                echo "Opening kube-proxy tunnel for Redis connection..."
+
+                kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-redis" -o name | sed 's/pod\///' | head -n 1) 6379:6379 &
+                sleep 5;
+                
+                echo "Opening local proxy on 6379 port of your machine..."
+                export REDISCLI_AUTH=$HOLLAEX_SECRET_REDIS_PASSWORD
+
+                echo "Opening redis-client shell..."
+                redis-cli 
+
+                echo "Killing the opened proxy tunnel..."
+                kill $(ps -ef | grep "kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME" | awk '{print $2}' | head -n 1)
+
+                exit 0;
+            
+            else
+
+                echo "Failed to detect Redis at your Kubernetes which created by HollaEx CLI."
+                echo "If you setup Redis in a custom way, Please connect to it manually."
+                exit 1;
+            
+            fi
+
+        elif [[ ! "$USE_KUBERNETES" ]]; then
+
+            check_docker_compose_dependencies;
+
+            if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-redis > /dev/null 2>&1; then
+
+                echo "Successfully detected the Redis created by HollaEx CLI."
+
+                echo "Opening redis-cli shell..."
+                export REDISCLI_AUTH=$HOLLAEX_SECRET_REDIS_PASSWORD
+
+                redis-cli 
+
+                exit 0;
+
+            else
+
+                echo "Failed to detect Redis at your machine which created by HollaEx CLI."
+                echo "If you setup Redis in a custom way, Please connect to it manually."
+                exit 1;
+            
+            fi
+
+        fi
+
+    elif [[ "$CONNECT_INFLUXDB" ]]; then
+
+        if ! command influx --version > /dev/null 2>&1; then
+
+            printf "\033[91mHollaEx CLI failed to detect influx-cli at your computer.\033[39m\n"
+            echo "Please install it first, before proceeding."
+            exit 1;
+        
+        fi
+
+        if [[ "$USE_KUBERNETES" ]]; then 
+
+            check_kubernetes_dependencies;
+
+            if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 && command kubectl get pods -n $ENVIRONMENT_EXCHANGE_NAME -l app=$ENVIRONMENT_EXCHANGE_NAME-influxdb > /dev/null 2>&1; then
+
+                echo "Successfully detected the InfluxDB created by HollaEx CLI."
+                echo "Opening kube-proxy tunnel for InfluxDB connection..."
+                
+                echo "Opening local proxy on 8086 port of your machine..."
+                kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-influxdb" -o name | sed 's/pod\///' | head -n 1) 8086:8086 &
+                sleep 5;
+
+                echo "Opening influx-cli shell..."
+                influx -database $HOLLAEX_SECRET_INFLUX_DB -username $HOLLAEX_SECRET_INFLUX_USER -password $HOLLAEX_SECRET_INFLUX_PASSWORD
+
+                echo "Killing the opened proxy tunnel..."
+                kill $(ps -ef | grep "kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME" | awk '{print $2}' | head -n 1)
+
+                exit 0;
+            
+            else
+
+                echo "Failed to detect InfluxDB at your Kubernetes which created by HollaEx CLI."
+                echo "If you setup InfluxDB in a custom way, Please connect to it manually."
+                exit 1;
+            
+            fi
+
+        elif [[ ! "$USE_KUBERNETES" ]]; then
+
+            check_docker_compose_dependencies;
+
+            if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-influxdb > /dev/null 2>&1; then
+
+                echo "Successfully detected the influx-cli created by HollaEx CLI."
+
+                echo "Opening influx-cli shell..."
+                influx -database $HOLLAEX_SECRET_INFLUX_DB -username $HOLLAEX_SECRET_INFLUX_USER -password $HOLLAEX_SECRET_INFLUX_PASSWORD
+
+                exit 0;
+
+            else
+
+                echo "Failed to detect InfluxDB at your machine which created by HollaEx CLI."
+                echo "If you setup InfluxDB in a custom way, Please connect to it manually."
+                exit 1;
+            
+            fi
 
         fi
 

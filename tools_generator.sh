@@ -4056,162 +4056,162 @@ EOF
 
 }
 
-function reactivate_exchange() {
+# function reactivate_exchange() {
   
-echo "Are the sure your want to reactivate your exchange? (y/N)"
-echo "Make sure you already updated your Activation Code, Exchange Name, or API Server URL."
-read answer
+# echo "Are the sure your want to reactivate your exchange? (y/N)"
+# echo "Make sure you already updated your Activation Code, Exchange Name, or API Server URL."
+# read answer
 
-if [[ "$answer" = "${answer#[Yy]}" ]]; then
+# if [[ "$answer" = "${answer#[Yy]}" ]]; then
     
-  echo "You picked false. Please confirm the values and run the command again."
-  exit 1;
+#   echo "You picked false. Please confirm the values and run the command again."
+#   exit 1;
 
-fi
+# fi
 
-if [[ "$USE_KUBERNETES" ]]; then
-
-
-  echo "*********************************************"
-  echo "Verifying current KUBECONFIG on the machine"
-  kubectl get nodes
-  echo "*********************************************"
-
-  if [[ "$RUN_WITH_VERIFY" == true ]]; then
+# if [[ "$USE_KUBERNETES" ]]; then
 
 
-      echo "Is this a correct Kubernetes cluster? (Y/n)"
+#   echo "*********************************************"
+#   echo "Verifying current KUBECONFIG on the machine"
+#   kubectl get nodes
+#   echo "*********************************************"
 
-      read answer
+#   if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-      if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-          echo "Exiting..."
-          exit 0;
-      fi
 
-  fi
+#       echo "Is this a correct Kubernetes cluster? (Y/n)"
 
-  echo "Reactivating the exchange..."
+#       read answer
+
+#       if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+#           echo "Exiting..."
+#           exit 0;
+#       fi
+
+#   fi
+
+#   echo "Reactivating the exchange..."
   
-  # Generate Kubernetes Configmap
-    cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/reactivate-exchange.yaml <<EOL
-job:
-  enable: true
-  mode: reactivate_exchange
-EOL
+#   # Generate Kubernetes Configmap
+#     cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/reactivate-exchange.yaml <<EOL
+# job:
+#   enable: true
+#   mode: reactivate_exchange
+# EOL
 
 
-  echo "Generating Kubernetes Configmap"
-  generate_kubernetes_configmap;
+#   echo "Generating Kubernetes Configmap"
+#   generate_kubernetes_configmap;
 
-  echo "Generating Kubernetes Secret"
-  generate_kubernetes_secret;
+#   echo "Generating Kubernetes Secret"
+#   generate_kubernetes_secret;
 
-  echo "Applying configmap on the namespace"
-  kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+#   echo "Applying configmap on the namespace"
+#   kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
 
-  echo "Applying secret on the namespace"
-  kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+#   echo "Applying secret on the namespace"
+#   kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
-  if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange \
-                --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                --set DEPLOYMENT_MODE="api" \
-                --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
-                --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
-                --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
-                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
-                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/reactivate-exchange.yaml \
-                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+#   if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange \
+#                 --namespace $ENVIRONMENT_EXCHANGE_NAME \
+#                 --set DEPLOYMENT_MODE="api" \
+#                 --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+#                 --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+#                 --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+#                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+#                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+#                 -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+#                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/reactivate-exchange.yaml \
+#                 $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
 
-    echo "Kubernetes Job has been created for reactivating your exchange."
+#     echo "Kubernetes Job has been created for reactivating your exchange."
 
-    echo "Waiting until Job get completely run"
-    sleep 30;
+#     echo "Waiting until Job get completely run"
+#     sleep 30;
 
 
-  else 
+#   else 
 
-    printf "\033[91mFailed to create Kubernetes Job for reactivating your exchange, Please confirm your input values and try again.\033[39m\n"
-    helm del --purge $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
+#     printf "\033[91mFailed to create Kubernetes Job for reactivating your exchange, Please confirm your input values and try again.\033[39m\n"
+#     helm del --purge $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
   
-  fi
+#   fi
 
-  if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange \
-            --namespace $ENVIRONMENT_EXCHANGE_NAME \
-            -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+#   if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange \
+#             --namespace $ENVIRONMENT_EXCHANGE_NAME \
+#             -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
 
-    echo "Successfully reactivated your exchange!"
-    kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
+#     echo "Successfully reactivated your exchange!"
+#     kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
 
-    echo "Removing created Kubernetes Job for reactivating the exchange..."
-    helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
+#     echo "Removing created Kubernetes Job for reactivating the exchange..."
+#     helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
 
-    echo "Restarting the exchange..."
-    kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$$ENVIRONMENT_EXCHANGE_NAME
+#     echo "Restarting the exchange..."
+#     kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$$ENVIRONMENT_EXCHANGE_NAME
   
-  else 
+#   else 
 
-    printf "\033[91mFailed to create Kubernetes Job for reactivating your exchange, Please confirm your input values and try again.\033[39m\n"
+#     printf "\033[91mFailed to create Kubernetes Job for reactivating your exchange, Please confirm your input values and try again.\033[39m\n"
 
-    echo "Displaying logs..."
-    kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
+#     echo "Displaying logs..."
+#     kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
 
-    helm del --purge $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
+#     helm del --purge $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
   
-  fi
+#   fi
 
-elif [[ ! "$USE_KUBERNETES" ]]; then
+# elif [[ ! "$USE_KUBERNETES" ]]; then
 
-  IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+#   IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
-  # Overriding container prefix for develop server
-  if [[ "$IS_DEVELOP" ]]; then
+#   # Overriding container prefix for develop server
+#   if [[ "$IS_DEVELOP" ]]; then
     
-    CONTAINER_PREFIX=
+#     CONTAINER_PREFIX=
 
-  fi
+#   fi
 
-  echo "Reactivating the exchange..."
-  if command docker exec --env "API_HOST=${PAIR_NAME}" \
-                  --env "API_NA<E=${PAIR_BASE}" \
-                  --env "ACTIVATION_CODE=${PAIR_2}" \
-                  ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
-                  node tools/dbs/setExchange.js; then
+#   echo "Reactivating the exchange..."
+#   if command docker exec --env "API_HOST=${PAIR_NAME}" \
+#                   --env "API_NA<E=${PAIR_BASE}" \
+#                   --env "ACTIVATION_CODE=${PAIR_2}" \
+#                   ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
+#                   node tools/dbs/setExchange.js; then
   
-    echo "Restarting the exchange to apply changes."
+#     echo "Restarting the exchange to apply changes."
 
-    if  [[ "$IS_DEVELOP" ]]; then
+#     if  [[ "$IS_DEVELOP" ]]; then
 
-      # Restarting containers after database init jobs.
-      echo "Restarting containers to apply database changes."
-      docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-      docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+#       # Restarting containers after database init jobs.
+#       echo "Restarting containers to apply database changes."
+#       docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+#       docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
-    else
+#     else
 
-      # Restarting containers after database init jobs.
-      echo "Restarting containers to apply database changes."
-      docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-      docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+#       # Restarting containers after database init jobs.
+#       echo "Restarting containers to apply database changes."
+#       docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+#       docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
-    fi
+#     fi
 
-    echo "Successfully reactivated the exchange."
+#     echo "Successfully reactivated the exchange."
   
-  else 
+#   else 
 
-    printf "\033[91mFailed to reactivate the exchange. Please review your configurations and try again.\033[39m\n"
-    exit 1;
+#     printf "\033[91mFailed to reactivate the exchange. Please review your configurations and try again.\033[39m\n"
+#     exit 1;
 
-  fi
+#   fi
 
-fi
+# fi
 
-exit 0;
+# exit 0;
 
-} 
+# } 
 
 function hollaex_ascii_exchange_is_up() {
 
