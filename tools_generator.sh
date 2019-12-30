@@ -2454,7 +2454,7 @@ EOL
       rm $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml.bak
 
       export HOLLAEX_CONFIGMAP_PAIRS=$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE
-      echo "ㅠCurrent Trading Pairs: ${HOLLAEX_CONFIGMAP_PAIRS}"
+      echo "Current Trading Pairs: ${HOLLAEX_CONFIGMAP_PAIRS}"
 
       echo "Applying configmap on the namespace"
       kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
