@@ -4,14 +4,14 @@ name: docker_build
 
 steps:
 
-- name: notify_job_start
-  image: plugins/slack
-  settings:
-    template: "<{{build.link}}|Deployment> - #{{build.number}} for AMD64 Arch  started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
-  channel: deployment
-  environment:
-    SLACK_WEBHOOK:
-      from_secret: slack_webhook
+# - name: notify_job_start
+#   image: plugins/slack
+#   settings:
+#     template: "<{{build.link}}|Deployment> - #{{build.number}} for AMD64 Arch  started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
+#   channel: deployment
+#   environment:
+#     SLACK_WEBHOOK:
+#       from_secret: slack_webhook
   
 - name: docker_tagging
   image: alpine
@@ -22,9 +22,9 @@ steps:
     - echo "dockerTag:$(cat .tags)" > .dockerTag.yml
 
 - name: docker_build
-  image: plugins/docker
+  image: bitholla/devops-tools:drone_docker-18.06.2
   settings:
-    dockerfile: docker/Dockerfile
+    dockerfile: docker/Dockerfile.s390x
     repo: bitholla/hollaex-cli
   environment:
     DOCKER_USERNAME:
@@ -32,31 +32,31 @@ steps:
     DOCKER_PASSWORD:
       from_secret: docker_password
 
-- name: notify_job_done
-  image: bitholla/devops-tools:drone_slack-8a15f61
-  channel: deployment
-  environment:
-    SLACK_WEBHOOK:
-      from_secret: slack_webhook
-  when:
-    status: [ success, failure ]
+# - name: notify_job_done
+#   image: bitholla/devops-tools:drone_slack-8a15f61
+#   channel: deployment
+#   environment:
+#     SLACK_WEBHOOK:
+#       from_secret: slack_webhook
+#   when:
+#     status: [ success, failure ]
 
-- name: partymaker_version_tagging
-  image: alpine
-  commands: 
-    - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION" > .tags
+# - name: partymaker_version_tagging
+#   image: alpine
+#   commands: 
+#     - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION" > .tags
 
-- name: notify_to_releases
-  image: bitholla/devops-tools:drone_partymaker-0.1.4
-  channel: deployment
-  environment:
-    WEBHOOK_URL:
-      from_secret: webhook_url
-  when:
-    status: [ success, failure ]
+# - name: notify_to_releases
+#   image: bitholla/devops-tools:drone_partymaker-0.1.4
+#   channel: deployment
+#   environment:
+#     WEBHOOK_URL:
+#       from_secret: webhook_url
+#   when:
+#     status: [ success, failure ]
   
 trigger:
   branch: 
-    - master
+    - develop
   event:
     - push
