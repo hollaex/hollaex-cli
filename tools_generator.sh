@@ -328,7 +328,8 @@ metadata:
   namespace: ${ENVIRONMENT_EXCHANGE_NAME}
   annotations:
     kubernetes.io/ingress.class: "nginx"
-    cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
     nginx.ingress.kubernetes.io/proxy-body-size: "2m"
     $(websocket_upgrade;)
 spec:
@@ -720,6 +721,19 @@ ${HOLLAEX_SECRET_VARIABLES_YAML}
 EOL
 }
 
+function ingress-tls-snippets() {
+
+/bin/cat << EOF 
+
+  tls:
+  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
+    hosts:
+    - $(echo $1 | cut -f3 -d "/")
+
+EOF
+  
+}
+
 function generate_kubernetes_ingress() {
 
 # Generate Kubernetes Secret
@@ -748,10 +762,7 @@ spec:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
           servicePort: 10010
 
-  tls:
-  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
-    hosts:
-    - $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress-tls-snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
 
 ---
 apiVersion: extensions/v1beta1
@@ -778,10 +789,7 @@ spec:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
           servicePort: 10010
   
-  tls:
-  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
-    hosts:
-    - $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress-tls-snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
 
 ---
 apiVersion: extensions/v1beta1
@@ -804,10 +812,7 @@ spec:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
           servicePort: 10010
 
-  tls:
-  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
-    hosts:
-    - $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress-tls-snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
 
 ---
 apiVersion: extensions/v1beta1
@@ -831,10 +836,7 @@ spec:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-stream
           servicePort: 10080
   
-  tls:
-  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
-    hosts:
-    - $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress-tls-snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
 EOL
 
 }
@@ -865,10 +867,7 @@ spec:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-web
           servicePort: 80
   
-  tls:
-  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-web-tls-cert
-    hosts:
-    - $(echo ${HOLLAEX_CONFIGMAP_DOMAIN} | cut -f3 -d "/")
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress-tls-snippets $HOLLAEX_CONFIGMAP_DOMAIN; fi)
 
 EOL
 
@@ -893,7 +892,7 @@ for j in ${CONFIG_FILE_PATH[@]}; do
 
     if [[ ! -z "$HOLLAEX_SECRET_SECRET" ]] ; then
   
-      echo "Pre-generated secrets are detected on your secert file!"
+      echo "Pre-generated secrets are detected on your secret file!"
       printf "\033[93mIf you are trying to migrate your existing Exchange on new machine, DO NOT OVERRIDE IT.\033[39m\n"
       echo "Are you sure you want to override them? (y/N)"
 
@@ -4668,7 +4667,7 @@ EOF
 
 }
 
-function create_kubernetes_docker_registry_secert() {
+function create_kubernetes_docker_registry_secret() {
 
    if [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME" ]] || [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD" ]] || [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL" ]] || [[ "$MANUAL_DOCKER_REGISTRY_SECRET_UPDATE" ]] ; then
 
@@ -4714,7 +4713,7 @@ function create_kubernetes_docker_registry_secert() {
     if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
         echo "HollaEx Kit on Kubernetes mandatorily requires docker registry secret for running."
         echo "Please try it again."
-        create_kubernetes_docker_registry_secert;
+        create_kubernetes_docker_registry_secret;
     fi
 
     override_kubernetes_docker_registry_secret;

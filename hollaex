@@ -601,7 +601,7 @@ elif [[ "$1" == "setup" ]]; then
         echo "Applying ingress on the namespace."
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
         
-        create_kubernetes_docker_registry_secert;
+        create_kubernetes_docker_registry_secret;
 
         # FOR GENERATING NODESELECTOR VALUES
         generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hollaex
@@ -2462,9 +2462,9 @@ elif [[ "$1" == "web" ]]; then
             
             else 
 
-                if ! command kubectl get secret docker-registry-secert --namespace $ENVIRONMENT_EXCHANGE_NAME; then
+                if ! command kubectl get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME; then
 
-                    create_kubernetes_docker_registry_secert;
+                    create_kubernetes_docker_registry_secret;
                 
                 fi
 
@@ -2989,7 +2989,7 @@ elif [[ "$1" == "toolbox" ]]; then
              --update_registry_secret)
                 UPDATE_REGISTRY_SECRET=true
                 TOOLBOX_ENABLE=true
-                echo "HollaEx CLI will update your docker image registry secert for Kubernetes."
+                echo "HollaEx CLI will update your docker image registry secret for Kubernetes."
                 shift; continue
                 ;;
             --set_activation_code)
@@ -3658,7 +3658,7 @@ elif [[ "$1" == "toolbox" ]]; then
         if [[ ! "$USE_KUBERNETES" ]]; then 
 
             echo "Warning: Docker registry secret update is only available for Kubernetes."
-            echo "Please use 'hollaex toolbox --update_registry_secert --kube' command instead."
+            echo "Please use 'hollaex toolbox --update_registry_secret --kube' command instead."
             exit 1;
 
         fi
@@ -3670,7 +3670,7 @@ elif [[ "$1" == "toolbox" ]]; then
         kubectl get nodes
         echo "*********************************************"
 
-        echo "Are you sure that you want to update your existing Docker registry secert at this Kubernets cluster? (y/N)"
+        echo "Are you sure that you want to update your existing Docker registry secret at this Kubernets cluster? (y/N)"
         read answer 
 
         if [[ "$answer" = "${answer#[Yy]}" ]] ;then
@@ -3704,7 +3704,7 @@ elif [[ "$1" == "toolbox" ]]; then
         
         fi
 
-        create_kubernetes_docker_registry_secert;
+        create_kubernetes_docker_registry_secret;
     
     elif [[ "$SET_ACTIVATION_CODE" ]]; then
         
