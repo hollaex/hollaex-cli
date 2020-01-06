@@ -26,6 +26,7 @@ steps:
   settings:
     dockerfile: docker/Dockerfile.s390x
     repo: bitholla/hollaex-cli
+    insecure: true
   environment:
     DOCKER_USERNAME:
       from_secret: docker_username
