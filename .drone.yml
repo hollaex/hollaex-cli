@@ -142,11 +142,10 @@ steps:
       path: /root/.docker
   commands:
     - export DOCKER_CLI_EXPERIMENTAL=enabled
-    - docker manifest create bitholla/hollaex-cli:$(cat version) bitholla/hollaex-cli:$(cat version)-amd64 bitholla/hollaex-cli:$(cat version)-arm32v7
-    - docker manifest annotate bitholla/hollaex-cli:$(cat version) bitholla/hollaex-cli:$(cat version)-amd64 --arch linux/amd64
-    - docker manifest annotate bitholla/hollaex-cli:$(cat version) bitholla/hollaex-cli:$(cat version)-arm32v7 --arch linux/arm
-    - docker manifest push bitholla/hollaex-cli:$(cat version)
-  
+    - docker manifest create bitholla/hollaex-cli:$(cat version)-develop bitholla/hollaex-cli:$(cat version)-develop-amd64 bitholla/hollaex-cli:$(cat version)-develop-arm64v8 --amend
+    - docker manifest annotate bitholla/hollaex-cli:$(cat version)-develop bitholla/hollaex-cli:$(cat version)-develop-amd64 --arch linux/amd64
+    - docker manifest annotate bitholla/hollaex-cli:$(cat version)-develop bitholla/hollaex-cli:$(cat version)-develop-arm64v8 --arch linux/arm64
+    - docker manifest push bitholla/hollaex-cli:$(cat version)-develop
 volumes:
   - name: docker
     host:
