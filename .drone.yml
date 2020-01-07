@@ -133,10 +133,13 @@ name: docker_manifest_create
 steps:
 
 - name: manifest
-  image: docker
+  image: docker:dind
+  privileged: true
   volumes:
-    - /var/run/docker.sock:/var/run/docker.sock
-    - /root/.docker:/root/.docker
+    - name: docker
+      path: /var/run/docker.sock
+    - name: docker-secret
+      path: /root/.docker
   commands:
     - export DOCKER_CLI_EXPERIMENTAL=enabled
     - docker manifest create bitholla/hollaex-cli:$(cat version) bitholla/hollaex-cli:$(cat version)-amd64 bitholla/hollaex-cli:$(cat version)-arm32v7
@@ -144,6 +147,14 @@ steps:
     - docker manifest annotate bitholla/hollaex-cli:$(cat version) bitholla/hollaex-cli:$(cat version)-arm32v7 --arch linux/arm
     - docker manifest push bitholla/hollaex-cli:$(cat version)
   
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+  - name: docker-secret
+    host:
+      path: /root/.docker
+
 trigger:
   branch: 
     - develop
