@@ -23,10 +23,10 @@ steps:
 
 - name: docker_build
   image: bitholla/devops-tools:drone_docker-18.06.2
+  privileged: true
   settings:
     dockerfile: docker/Dockerfile.s390x
     repo: bitholla/hollaex-cli
-    insecure: true
   environment:
     DOCKER_USERNAME:
       from_secret: docker_username
