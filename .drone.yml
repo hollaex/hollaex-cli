@@ -22,10 +22,10 @@ steps:
     - echo "dockerTag:$(cat .tags)" > .dockerTag.yml
 
 - name: docker_build
-  image: bitholla/devops-tools:drone_docker-18.06.2
+  image: plugins/docker
   privileged: true
   settings:
-    dockerfile: docker/Dockerfile.s390x
+    dockerfile: docker/Dockerfile.arm64v8
     repo: bitholla/hollaex-cli
   environment:
     DOCKER_USERNAME:

@@ -2,7 +2,7 @@ FROM ubuntu:18.04 as dependencies
 
 RUN apt-get update && apt-get install -y qemu-user-static 
 
-FROM s390x/ubuntu:18.04 
+FROM arm32v7/ubuntu:18.04 
 
 COPY --from=dependencies /usr/bin/qemu-* /usr/bin/
 
