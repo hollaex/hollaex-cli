@@ -1,6 +1,10 @@
-FROM s390x/ubuntu:18.04
+FROM ubuntu:18.04 as dependencies
 
-COPY /usr/bin/qemu-s390x-static /usr/bin
+RUN apt-get update && apt-get install -y qemu-user-static 
+
+FROM s390x/ubuntu:18.04 
+
+COPY --from=dependencies /usr/bin/qemu-s390x-static /usr/bin
 
 RUN apt-get update && apt-get install -y git curl sudo docker.io docker-compose
 
