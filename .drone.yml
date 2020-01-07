@@ -135,12 +135,18 @@ steps:
 - name: manifest
   image: docker:dind
   privileged: true
+  environment:
+    DOCKER_USERNAME:
+      from_secret: docker_username
+    DOCKER_PASSWORD:
+      from_secret: docker_password
   volumes:
     - name: docker
       path: /var/run/docker.sock
-    - name: docker-secret
-      path: /root/.docker
+    # - name: docker-secret
+    #   path: /root/.docker
   commands:
+    - docker login -u $${DOCKER_USERNAME} -p $${DOCKER_PASSWORD}
     - export DOCKER_CLI_EXPERIMENTAL=enabled
     - docker manifest create bitholla/hollaex-cli:$(cat version)-develop bitholla/hollaex-cli:$(cat version)-develop-amd64 bitholla/hollaex-cli:$(cat version)-develop-arm64v8 --amend
     - docker manifest annotate bitholla/hollaex-cli:$(cat version)-develop bitholla/hollaex-cli:$(cat version)-develop-amd64 --arch amd64
@@ -150,9 +156,9 @@ volumes:
   - name: docker
     host:
       path: /var/run/docker.sock
-  - name: docker-secret
-    host:
-      path: /root/.docker
+  # - name: docker-secret
+  #   host:
+  #     path: /root/.docker
 
 trigger:
   branch: 
