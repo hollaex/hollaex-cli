@@ -16,7 +16,7 @@ steps:
 - name: docker_tagging
   image: alpine
   commands: 
-    - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION-amd64" > .tags 
+    - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION,$PACKAGE_VERSION-amd64" > .tags 
     - echo "Current Docker tag is :" && cat .tags
     - echo "dockerTag:$(cat .tags)" > .dockerTag.yml
 
@@ -103,20 +103,6 @@ steps:
       from_secret: slack_webhook
   when:
     status: [ success, failure ]
-
-# - name: partymaker_version_tagging
-#   image: alpine
-#   commands: 
-#     - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION" > .tags
-
-# - name: notify_to_releases
-#   image: bitholla/devops-tools:drone_partymaker-0.1.4
-#   channel: deployment
-#   environment:
-#     WEBHOOK_URL:
-#       from_secret: webhook_url
-#   when:
-#     status: [ success, failure ]
   
 trigger:
   branch: 
@@ -143,154 +129,21 @@ steps:
   volumes:
     - name: docker
       path: /var/run/docker.sock
-    # - name: docker-secret
-    #   path: /root/.docker
   commands:
     - docker login -u $${DOCKER_USERNAME} -p $${DOCKER_PASSWORD}
     - export DOCKER_CLI_EXPERIMENTAL=enabled
-    - docker manifest create bitholla/hollaex-cli:$(cat version)-develop bitholla/hollaex-cli:$(cat version)-develop-amd64 bitholla/hollaex-cli:$(cat version)-develop-arm64v8 --amend
-    - docker manifest annotate bitholla/hollaex-cli:$(cat version)-develop bitholla/hollaex-cli:$(cat version)-develop-amd64 --arch amd64
-    - docker manifest annotate bitholla/hollaex-cli:$(cat version)-develop bitholla/hollaex-cli:$(cat version)-develop-arm64v8 --arch arm64
-    - docker manifest push bitholla/hollaex-cli:$(cat version)-develop
+    - docker manifest create bitholla/hollaex-cli:$(cat version) bitholla/hollaex-cli:$(cat version)-amd64 bitholla/hollaex-cli:$(cat version)-arm64v8 --amend
+    - docker manifest annotate bitholla/hollaex-cli:$(cat version) bitholla/hollaex-cli:$(cat version)-amd64 --arch amd64
+    - docker manifest annotate bitholla/hollaex-cli:$(cat version) bitholla/hollaex-cli:$(cat version)-arm64v8 --arch arm64
+    - docker manifest push bitholla/hollaex-cli:$(cat version)
+
 volumes:
   - name: docker
     host:
       path: /var/run/docker.sock
-  # - name: docker-secret
-  #   host:
-  #     path: /root/.docker
 
 trigger:
   branch: 
     - develop
   event:
     - push
-
-
-# ---
-
-# kind: pipeline
-# type: docker
-# name: docker_build_arm32v7
-
-# steps:
-
-# - name: notify_job_start
-#   image: plugins/slack
-#   settings:
-#     template: "<{{build.link}}|Docker Build for Arm64v8> - #{{build.number}} started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
-#   channel: deployment
-#   environment:
-#     SLACK_WEBHOOK:
-#       from_secret: slack_webhook
-  
-# - name: docker_tagging
-#   image: alpine
-#   commands: 
-#     - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION-arm32v7" > .tags
-#     - echo "Current Docker tag is :" && cat .tags
-#     - echo "dockerTag:$(cat .tags)" > .dockerTag.yml
-
-# - name: docker_build
-#   image: plugins/docker
-#   settings:
-#     dockerfile: docker/Dockerfile.arm32v7
-#     repo: bitholla/hollaex-cli
-#   environment:
-#     DOCKER_USERNAME:
-#       from_secret: docker_username
-#     DOCKER_PASSWORD:
-#       from_secret: docker_password
-
-# - name: notify_job_done
-#   image: bitholla/devops-tools:drone_slack-8a15f61
-#   channel: deployment
-#   environment:
-#     SLACK_WEBHOOK:
-#       from_secret: slack_webhook
-#   when:
-#     status: [ success, failure ]
-
-# # - name: partymaker_version_tagging
-# #   image: alpine
-# #   commands: 
-# #     - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION" > .tags
-
-# # - name: notify_to_releases
-# #   image: bitholla/devops-tools:drone_partymaker-0.1.4
-# #   channel: deployment
-# #   environment:
-# #     WEBHOOK_URL:
-# #       from_secret: webhook_url
-# #   when:
-# #     status: [ success, failure ]
-  
-# trigger:
-#   branch: 
-#     - master
-#   event:
-#     - push
-
-# ---
-
-# kind: pipeline
-# type: docker
-# name: docker_build_s390x
-
-# steps:
-
-# - name: notify_job_start
-#   image: plugins/slack
-#   settings:
-#     template: "<{{build.link}}|Docker Build for s390x> - #{{build.number}} started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
-#   channel: deployment
-#   environment:
-#     SLACK_WEBHOOK:
-#       from_secret: slack_webhook
-  
-# - name: docker_tagging
-#   image: alpine
-#   commands: 
-#     - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION-s390x" > .tags
-#     - echo "Current Docker tag is :" && cat .tags
-#     - echo "dockerTag:$(cat .tags)" > .dockerTag.yml
-
-# - name: docker_build
-#   image: plugins/docker
-#   settings:
-#     dockerfile: docker/Dockerfile.s390x
-#     repo: bitholla/hollaex-cli
-#   environment:
-#     DOCKER_USERNAME:
-#       from_secret: docker_username
-#     DOCKER_PASSWORD:
-#       from_secret: docker_password
-
-# - name: notify_job_done
-#   image: bitholla/devops-tools:drone_slack-8a15f61
-#   channel: deployment
-#   environment:
-#     SLACK_WEBHOOK:
-#       from_secret: slack_webhook
-#   when:
-#     status: [ success, failure ]
-
-# # - name: partymaker_version_tagging
-# #   image: alpine
-# #   commands: 
-# #     - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION" > .tags
-
-# # - name: notify_to_releases
-# #   image: bitholla/devops-tools:drone_partymaker-0.1.4
-# #   channel: deployment
-# #   environment:
-# #     WEBHOOK_URL:
-# #       from_secret: webhook_url
-# #   when:
-# #     status: [ success, failure ]
-  
-# trigger:
-#   branch: 
-#     - master
-#   event:
-#     - push
