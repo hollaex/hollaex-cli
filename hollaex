@@ -1835,6 +1835,7 @@ elif [[ "$1" == "upgrade" ]]; then
         
         override_docker_image_version;
         export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
         
     fi
 
