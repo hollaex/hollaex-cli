@@ -475,6 +475,13 @@ elif [[ "$1" == "setup" ]]; then
         launch_basic_settings_input;
     
     fi
+
+    
+    export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_DOCKER_IMAGE_VERSION
+
+    override_docker_image_version;
+    export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
     
     build_user_hollaex_core;
 

@@ -136,6 +136,9 @@ steps:
     - docker manifest annotate bitholla/hollaex-cli:$(cat version) bitholla/hollaex-cli:$(cat version)-amd64 --arch amd64
     - docker manifest annotate bitholla/hollaex-cli:$(cat version) bitholla/hollaex-cli:$(cat version)-arm64v8 --arch arm64
     - docker manifest push bitholla/hollaex-cli:$(cat version)
+  depends_on:
+    - docker_build_amd64
+    - docker_build_arm64v8
 
 volumes:
   - name: docker
