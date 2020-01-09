@@ -68,6 +68,8 @@ Options:
         --remove_trading_pair, Remove existing trading pair from exchange.
         --issue_ssl, Issue SSL certificate on local Nginx by using Let's Encrypt.
         --renew_ssl, Renew SSL certificate on local Nginx by using Let's Encrypt.
+        --update_registry_secret, Update existing docker registry secret for Kubernetes.
+        --set_activation_code, Set or update activation code for the exchange.
         --connect_database, Direct connection to PostgreSQL Database via postgresql-client.
         --connect_redis, Direct connection to Redis via redis-client.
         --connect_influxdb, Direct connection to InfluxDB via influx-client.

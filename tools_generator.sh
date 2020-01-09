@@ -721,7 +721,7 @@ ${HOLLAEX_SECRET_VARIABLES_YAML}
 EOL
 }
 
-function ingress-tls-snippets() {
+function ingress_tls_snippets() {
 
 /bin/cat << EOF 
 
@@ -762,7 +762,7 @@ spec:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
           servicePort: 10010
 
-  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress-tls-snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
 
 ---
 apiVersion: extensions/v1beta1
@@ -789,7 +789,7 @@ spec:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
           servicePort: 10010
   
-  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress-tls-snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
 
 ---
 apiVersion: extensions/v1beta1
@@ -812,7 +812,7 @@ spec:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
           servicePort: 10010
 
-  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress-tls-snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
 
 ---
 apiVersion: extensions/v1beta1
@@ -836,7 +836,7 @@ spec:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-stream
           servicePort: 10080
   
-  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress-tls-snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
 EOL
 
 }
@@ -867,7 +867,7 @@ spec:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-web
           servicePort: 80
   
-  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress-tls-snippets $HOLLAEX_CONFIGMAP_DOMAIN; fi)
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_DOMAIN; fi)
 
 EOL
 
