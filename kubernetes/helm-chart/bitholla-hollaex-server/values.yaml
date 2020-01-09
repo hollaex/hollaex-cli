@@ -27,7 +27,7 @@ autoScaling:
   hpa:
     enable: false 
     maxReplicas: 4
-    cpu: 500m
+    cpu: 200m
 
 APM_URL:
 
