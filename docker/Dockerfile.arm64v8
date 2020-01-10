@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y git curl sudo docker.io docker-compose
 
 RUN curl --retry 3 --connect-timeout 10 -LO https://storage.googleapis.com/kubernetes-release/release/v1.13.4/bin/linux/amd64/kubectl && chmod +x ./kubectl && mv ./kubectl /usr/local/bin/kubectl
 
-RUN curl --retry 3 --connect-timeout 10 https://get.helm.sh/helm-v2.16.1-linux-arm64.tar.gz && tar -zxvf helm-v2.16.1-linux-arm64.tar.gz && mv linux-arm64/helm /usr/local/bin/helm
+RUN curl --retry 3 --connect-timeout 10 -LO https://get.helm.sh/helm-v2.16.1-linux-arm64.tar.gz && tar -zxvf helm-v2.16.1-linux-arm64.tar.gz && mv linux-arm64/helm /usr/local/bin/helm
 
 RUN curl --retry 3 --connect-timeout 10 https://raw.githubusercontent.com/bitholla/hollaex-cli/master/install.sh | bash
 
