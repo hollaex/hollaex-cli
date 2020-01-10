@@ -1105,7 +1105,7 @@ function override_docker_image_version() {
     
   done
 
-  sed -i.bak "s/$(echo $ENVIRONMENT_DOCKER_IMAGE_REGISTRY | cut -f1 -d '/'):.*/$(echo $ENVIRONMENT_DOCKER_IMAGE_REGISTRY | cut -f1 -d '/'):$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $HOLLAEX_CLI_INIT_PATH/Dockerfile
+  sed -i.bak "s/$(echo $ENVIRONMENT_DOCKER_IMAGE_REGISTRY | cut -f2 -d '/'):.*/$(echo $ENVIRONMENT_DOCKER_IMAGE_REGISTRY | cut -f2 -d '/'):$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $HOLLAEX_CLI_INIT_PATH/Dockerfile
 
   rm $HOLLAEX_CLI_INIT_PATH/Dockerfile.bak
   rm $CONFIGMAP_FILE_PATH.bak

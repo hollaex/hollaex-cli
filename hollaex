@@ -1,4 +1,4 @@
- #!/bin/bash 
+#!/bin/bash 
 
 SCRIPTPATH="$HOME/.hollaex-cli"
 
@@ -478,10 +478,7 @@ elif [[ "$1" == "setup" ]]; then
 
     
     export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_DOCKER_IMAGE_VERSION
-
     override_docker_image_version;
-    export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
     
     build_user_hollaex_core;
 
@@ -917,12 +914,14 @@ EOL
 
     if [[ "$IS_IMPORT_SUCCESS" == true ]]; then 
 
-        printf "\033[92mYour settings files (or directory) has been imported into your HollaEx Kit!\033[39m\n"
+        printf "\033[92mYour settings files has been imported into your HollaEx Kit!\033[39m\n"
+        echo "If you are trying to run a brand-new exchange, proceed to run 'hollaex setup'."
+        echo "If you are already running the exchange, and trying to apply reconfigured files, run 'hollaex restart'."
 
     else 
 
         printf "\033[91m\nFailed to import your files into HollaEx Kit.\033[39m\n"
-        echo "Please confirm that you passed the correct path of your settings files, and try again."
+        echo "Please confirm that you passed the correct path of your settings files (or directory), and try again."
 
         exit 1;
     
@@ -4075,6 +4074,19 @@ elif [[ "$1" == "logs" ]]; then
                 echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
+            --target)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_LOGS_TARGET=$1
+                echo "Displaying Logs from $1..."
+                shift; continue
+                ;;
+            --line)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_LOGS_TARGET_LINE=$1
+                shift; continue
+                ;;
             --kube)
                 USE_KUBERNETES=true
                 echo "HollaEx CLI will use your Kubernetes cluster as a target."
@@ -4122,28 +4134,57 @@ elif [[ "$1" == "logs" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
+    function hollaex_log_target_whitelist() {
+
+        local whitelist=("api" "stream" "engine" "db" "redis" "influxdb")
+
+        if ! command printf '%s\n' ${whitelist[@]} | grep $HOLLAEX_LOGS_TARGET > /dev/null; then
+        
+            printf "\033[91mError: Invalid target $HOLLAEX_LOGS_TARGET.\033[39m\n"
+            echo "Command 'hollaex logs' only supports '${whitelist[@]}' as log target."
+            echo "Pleases try it again."
+
+            exit 1;
+
+        fi
+    }
+    
+    if [[ "$HOLLAEX_LOGS_TARGET" ]]; then
+
+        hollaex_log_target_whitelist;
+    
+    fi
+
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
         check_kubernetes_dependencies;
 
         function show_kubernetes_logs_simple() {
+
+            if [[ "$HOLLAEX_LOGS_TARGET" ]]; then
+
+                local POD_ID=$(kubectl get pods --namespace $ENVIRONMENT_EXCHANGE_NAME | grep $ENVIRONMENT_EXCHANGE_NAME | grep $ENVIRONMENT_EXCHANGE_NAME-*-$HOLLAEX_LOGS_TARGET | cut -f1 -d " ")
+
+            else 
                 
-            local POD_ID=$(kubectl get pods --namespace $ENVIRONMENT_EXCHANGE_NAME | grep $ENVIRONMENT_EXCHANGE_NAME | cut -f1 -d " ")
+                local POD_ID=$(kubectl get pods --namespace $ENVIRONMENT_EXCHANGE_NAME | grep $ENVIRONMENT_EXCHANGE_NAME | cut -f1 -d " ")
+            
+            fi
 
             for i in ${POD_ID[@]}; do
 
                 printf "\nPod : $i\n"
 
-                if [[ $(kubectl logs $i --namespace $ENVIRONMENT_EXCHANGE_NAME --tail 10) ]]; then
+                    if [[ $(kubectl logs $i --namespace $ENVIRONMENT_EXCHANGE_NAME --tail 10) ]]; then
 
-                    kubectl logs $i --namespace $ENVIRONMENT_EXCHANGE_NAME --tail 10
+                            kubectl logs $i --namespace $ENVIRONMENT_EXCHANGE_NAME --tail ${HOLLAEX_LOGS_TARGET_LINE:-10}
 
-                else 
+                    else 
 
-                    echo "There are no logs for Pod : $i."
+                        echo "There are no logs for Pod : $i."
 
-                fi
+                    fi
 
                 printf "\n"
 
@@ -4154,9 +4195,14 @@ elif [[ "$1" == "logs" ]]; then
         show_kubernetes_logs_simple;
 
         printf "\n"
-        echo "Displayed last 10 lines of logs from each pods."
-        echo "To see more detailed logs, Please run 'kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME <NAME_OF_POD>'."
-        echo "For example, 'kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME myAPIPod>'."
+        echo "Displayed last ${HOLLAEX_LOGS_TARGET_LINE:-10} lines of logs from pod(s)."
+
+        if [[ ! "$HOLLAEX_LOGS_TARGET" ]]; then
+            
+            echo "To see logs from specific pod(s), Please run 'hollaex logs --kube --target <NAME_OF_COMPONENT> --lines <LINES_OF_LOGS>'."
+            echo "For example, 'hollaex logs --kube --targer api --lines 20'."
+        
+        fi
 
     fi
     
@@ -4169,8 +4215,17 @@ elif [[ "$1" == "logs" ]]; then
         else 
 
             function show_docker_logs_simple() {
+
+                if [[ "$HOLLAEX_LOGS_TARGET" ]]; then
+
+                    local CONTAINER_ID=$(docker ps -a --format "{{.Names}}" | grep $ENVIRONMENT_EXCHANGE_NAME | grep $ENVIRONMENT_EXCHANGE_NAME-.*-$HOLLAEX_LOGS_TARGET)
+                    echo $CONTAINER_ID
+
+                else 
                 
-                local CONTAINER_ID=$(docker ps -a --format "{{.Names}}" | grep $ENVIRONMENT_EXCHANGE_NAME)
+                    local CONTAINER_ID=$(docker ps -a --format "{{.Names}}" | grep $ENVIRONMENT_EXCHANGE_NAME)
+
+                fi
 
                 for i in ${CONTAINER_ID[@]}; do
 
@@ -4178,7 +4233,7 @@ elif [[ "$1" == "logs" ]]; then
 
                     if [[ $(docker logs $i --tail 10) ]]; then
 
-                        docker logs $i --tail 10
+                            docker logs $i --tail ${HOLLAEX_LOGS_TARGET_LINE:-10}
 
                     else 
 
@@ -4195,9 +4250,14 @@ elif [[ "$1" == "logs" ]]; then
             show_docker_logs_simple;
 
             printf "\n"
-            echo "Displayed last 10 lines of logs from each containers."
-            echo "To see more detailed logs, Please run 'docker logs <NAME_OF_CONTAINER>'."
-            echo "For example, 'docker logs myAPIContainer'."
+            echo "Displayed last ${HOLLAEX_LOGS_TARGET_LINE:-10} lines of logs from container(s)."
+
+            if [[ ! "$HOLLAEX_LOGS_TARGET" ]]; then
+
+                echo "To see logs from specific container(s), Please run 'hollaex logs --target <NAME_OF_COMPONENT> --lines <LINES_OF_LOGS>'."
+                echo "For example, 'hollaex logs --target api --lines 20'."
+            
+            fi
 
         fi
 
