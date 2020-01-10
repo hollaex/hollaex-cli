@@ -12,7 +12,7 @@ RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.13.4/b
 
 RUN curl -LO https://get.helm.sh/helm-v2.16.1-linux-arm64.tar.gz && tar -zxvf helm-v2.16.1-linux-arm64.tar.gz && mv linux-arm64/helm /usr/local/bin/helm
 
-RUN curl -L https://raw.githubusercontent.com/bitholla/hollaex-cli/master/install.sh | bash
+RUN curl -LO https://raw.githubusercontent.com/bitholla/hollaex-cli/master/install.sh | bash
 
 COPY docker/run.sh /run.sh
 RUN chmod +x /run.sh
