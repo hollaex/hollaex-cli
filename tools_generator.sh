@@ -1815,6 +1815,16 @@ function remove_coin_exec() {
 
   fi
 
+  if [[ $(echo ${HOLLAEX_CONFIGMAP_PAIRS} | grep $COIN_SYMBOL) ]]; then
+
+    printf "\n\033[91mError: You can't remove coin $COIN_SYMBOL which already being used by trading pair.\033[39m\n"
+    echo "Current Trading Pair(s) : ${HOLLAEX_CONFIGMAP_PAIRS}."
+    printf "Exiting...\n\n"
+
+    exit 1;
+
+  fi
+
   if [[ "$USE_KUBERNETES" ]]; then
 
   # Only tries to attempt remove ingress rules from Kubernetes if it exists.
@@ -2645,7 +2655,7 @@ function remove_pair_exec() {
 
     exit 1;
 
-  fi
+  fi 
 
   if [[ "$USE_KUBERNETES" ]]; then
 
