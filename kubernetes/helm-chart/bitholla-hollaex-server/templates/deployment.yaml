@@ -48,6 +48,19 @@ spec:
       nodeSelector:
 {{ toYaml .Values.nodeSelector | indent 8 }}
 {{- end }}
+      
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm: 
+              labelSelector:
+                matchExpressions:
+                - key: role
+                  operator: In
+                  values:
+                    - {{.Release.Namespace}}
+              topologyKey: "kubernetes.io/hostname"
 
       containers:
       - name: {{.Release.Name}}
