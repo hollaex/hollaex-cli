@@ -1499,17 +1499,17 @@ function export_add_coin_configuration_env() {
 
   if [[ "$VALUE_IMPORTED_FROM_CONFIGMAP" ]]; then
 
-    COIN_SYMBOL_OVERRIDE=$(echo ${COIN_SYMBOL_OVERRIDE})
-    COIN_FULLNAME_OVERRIDE=$(echo ${COIN_FULLNAME_OVERRIDE})
-    COIN_ALLOW_DEPOSIT_OVERRIDE=$(echo ${COIN_ALLOW_DEPOSIT_OVERRIDE})
-    COIN_ALLOW_WITHDRAWAL_OVERRIDE=$(echo ${COIN_ALLOW_WITHDRAWAL_OVERRIDE})
-    COIN_WITHDRAWAL_FEE_OVERRIDE=$(echo ${COIN_WITHDRAWAL_FEE_OVERRIDE})
-    COIN_MIN_OVERRIDE=$(echo ${COIN_MIN_OVERRIDE})
-    COIN_MAX_OVERRIDE=$(echo ${COIN_MAX_OVERRIDE})
-    COIN_INCREMENT_UNIT_OVERRIDE=$(echo ${COIN_INCREMENT_UNIT_OVERRIDE})
-    COIN_DEPOSIT_LIMITS_OVERRIDE=$(echo ${COIN_DEPOSIT_LIMITS_OVERRIDE})
-    COIN_WITHDRAWAL_LIMITS_OVERRIDE=$(echo ${COIN_WITHDRAWAL_LIMITS_OVERRIDE})
-    COIN_ACTIVE_OVERRIDE=$(echo ${COIN_ACTIVE_OVERRIDE})
+    export COIN_SYMBOL_OVERRIDE=$(echo ${COIN_SYMBOL_OVERRIDE})
+    export COIN_FULLNAME_OVERRIDE=$(echo ${COIN_FULLNAME_OVERRIDE})
+    export COIN_ALLOW_DEPOSIT_OVERRIDE=$(echo ${COIN_ALLOW_DEPOSIT_OVERRIDE})
+    export COIN_ALLOW_WITHDRAWAL_OVERRIDE=$(echo ${COIN_ALLOW_WITHDRAWAL_OVERRIDE})
+    export COIN_WITHDRAWAL_FEE_OVERRIDE=$(echo ${COIN_WITHDRAWAL_FEE_OVERRIDE})
+    export COIN_MIN_OVERRIDE=$(echo ${COIN_MIN_OVERRIDE})
+    export COIN_MAX_OVERRIDE=$(echo ${COIN_MAX_OVERRIDE})
+    export COIN_INCREMENT_UNIT_OVERRIDE=$(echo ${COIN_INCREMENT_UNIT_OVERRIDE})
+    export COIN_DEPOSIT_LIMITS_OVERRIDE=$(echo ${COIN_DEPOSIT_LIMITS_OVERRIDE})
+    export COIN_WITHDRAWAL_LIMITS_OVERRIDE=$(echo ${COIN_WITHDRAWAL_LIMITS_OVERRIDE})
+    export COIN_ACTIVE_OVERRIDE=$(echo ${COIN_ACTIVE_OVERRIDE})
 
     # if [[ ! "$COIN_DEPOSIT_LIMITS_OVERRIDE" == *"\""* ]] &&  [[ ! "$COIN_WITHDRAWAL_LIMITS_OVERRIDE" == *"\""* ]]; then
 
@@ -1559,7 +1559,7 @@ job:
     coin_symbol: $(echo ${!COIN_SYMBOL_OVERRIDE})
     coin_fullname: $(echo ${!COIN_FULLNAME_OVERRIDE})
     coin_allow_deposit: $(echo ${!COIN_ALLOW_DEPOSIT_OVERRIDE})
-    coin_allow_withdrawal: $$(echo ${!COIN_ALLOW_WITHDRAWAL_OVERRIDE})
+    coin_allow_withdrawal: $(echo ${!COIN_ALLOW_WITHDRAWAL_OVERRIDE})
     coin_withdrawal_fee: $(echo ${!COIN_WITHDRAWAL_FEE_OVERRIDE})
     coin_min: $(echo ${!COIN_MIN_OVERRIDE})
     coin_max: $(echo ${!COIN_MAX_OVERRIDE})
@@ -1809,6 +1809,16 @@ function remove_coin_exec() {
 
     printf "\n\033[91mError: You should have at least 2 currencies on your exchange.\033[39m\n"
     echo "Current Currencies : ${HOLLAEX_CONFIGMAP_CURRENCIES}."
+    printf "Exiting...\n\n"
+
+    exit 1;
+
+  fi
+
+  if [[ $(echo ${HOLLAEX_CONFIGMAP_PAIRS} | grep $COIN_SYMBOL) ]]; then
+
+    printf "\n\033[91mError: You can't remove coin $COIN_SYMBOL which already being used by trading pair.\033[39m\n"
+    echo "Current Trading Pair(s) : ${HOLLAEX_CONFIGMAP_PAIRS}."
     printf "Exiting...\n\n"
 
     exit 1;
@@ -2645,7 +2655,7 @@ function remove_pair_exec() {
 
     exit 1;
 
-  fi
+  fi 
 
   if [[ "$USE_KUBERNETES" ]]; then
 
@@ -4686,7 +4696,8 @@ function create_kubernetes_docker_registry_secret() {
 
 
     echo "[3/4] Docker registry password ($ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD):"
-    read password
+    read -s password
+    printf "\n"
 
     ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD_OVERRIDE=${password:-$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD}
 
