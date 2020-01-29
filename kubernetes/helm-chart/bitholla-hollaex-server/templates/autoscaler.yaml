@@ -1,6 +1,6 @@
 {{- if .Values.autoScaling.hpa.enable }}
 
-apiVersion: autoscaling/v2beta1
+apiVersion: autoscaling/v2beta2
 kind: HorizontalPodAutoscaler
 metadata:
   name: {{.Release.Name}}
@@ -15,7 +15,9 @@ spec:
   metrics:
   - type: Resource
     resource:
-      name: cpu
-      targetAverageValue: {{.Values.autoScaling.hpa.cpu}}
+      name: memory
+      target:
+        type: AverageValue
+        averageValue: {{.Values.autoScaling.hpa.avgMemory}}
 
 {{- end }}
