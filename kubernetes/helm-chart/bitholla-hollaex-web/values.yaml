@@ -7,8 +7,6 @@ dockerTag:
 imagePullSecrets:
   - name: docker-registry-secret
 
-envName: hollaex-web-env
-
 stable:
   replicaCount: 1
 

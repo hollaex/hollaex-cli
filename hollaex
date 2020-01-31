@@ -2446,15 +2446,8 @@ elif [[ "$1" == "web" ]]; then
 
             fi
 
-
-            echo "Generating web configmap for Kubernetes."
-            generate_hollaex_web_configmap
-
             echo "Generating web ingress rules for Kubernetes."
             generate_kubernetes_ingress_for_web;
-
-            echo "Applying configmap for web on the namespace."
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-web-configmap.yaml
 
             echo "Applying ingress rules for web on the namespace."
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
@@ -2466,7 +2459,7 @@ elif [[ "$1" == "web" ]]; then
             
             else 
 
-                if ! command kubectl get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME; then
+                if ! command kubectl get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
 
                     create_kubernetes_docker_registry_secret;
                 
@@ -2681,14 +2674,8 @@ elif [[ "$1" == "web" ]]; then
 
             fi
 
-            echo "Generating web configmap for Kubernetes."
-            generate_hollaex_web_configmap
-
             echo "Generating web ingress rules for Kubernetes."
             generate_kubernetes_ingress_for_web;
-
-            echo "Applying configmap for web on the namespace."
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-web-configmap.yaml
 
             echo "Applying ingress rules for web on the namespace."
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
@@ -2794,11 +2781,11 @@ elif [[ "$1" == "web" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to TERMINATE web client for the exchange on this cluster? (Y/n)"
+                echo "Are you sure you want to terminate web client for the exchange on this cluster? (y/N)"
 
                 read answer
 
-                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+                if [[ "$answer" = "${answer#[Yy]}" ]] ;then
                     echo "Exiting..."
                     exit 0;
                 fi
