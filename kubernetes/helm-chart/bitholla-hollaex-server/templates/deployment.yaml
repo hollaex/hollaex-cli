@@ -104,14 +104,18 @@ spec:
         resources:
           limits:
 {{- if or (eq .Values.DEPLOYMENT_MODE "api") (eq .Values.DEPLOYMENT_MODE "stream") }}
-            memory: "1024Mi"
+            memory: "1536Mi"
 {{- else }}
             memory: "2048Mi"
 {{- end }}
             cpu: "1000m"
           requests:
-            memory: "100Mi"
-            cpu: "2m"
+{{- if eq .Values.DEPLOYMENT_MODE "api" }}
+            memory: "1536Mi"
+{{- else }}
+            memory: "512Mi"
+{{- end }}
+            cpu: "10m"
         
 {{- if .Values.podRestart_webhook_url }}
         lifecycle:

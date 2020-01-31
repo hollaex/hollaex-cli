@@ -27,7 +27,7 @@ autoScaling:
   hpa:
     enable: false 
     maxReplicas: 4
-    cpu: 200m
+    avgMemory: 1300m
 
 APM_URL:
 

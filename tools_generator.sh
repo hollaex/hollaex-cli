@@ -734,6 +734,19 @@ EOF
   
 }
 
+function ingress_web_tls_snippets() {
+
+/bin/cat << EOF 
+
+  tls:
+  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-web-tls-cert
+    hosts:
+    - $(echo $1 | cut -f3 -d "/")
+
+EOF
+  
+}
+
 function generate_kubernetes_ingress() {
 
 # Generate Kubernetes Secret
@@ -867,7 +880,7 @@ spec:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-web
           servicePort: 80
   
-  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_DOMAIN; fi)
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress_web_tls_snippets $HOLLAEX_CONFIGMAP_DOMAIN; fi)
 
 EOL
 
