@@ -140,31 +140,21 @@ if [[ "$1" == "dev" ]]; then
 
     IS_DEVELOP=true
 
-    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+    if [[ ! "$HOLLAEX_KIT_PATH" ]]; then
 
-        HOLLAEX_CLI_INIT_PATH=$(pwd)
-        CONFIG_FILE_PATH=$(pwd)/settings/*
-        TEMPLATE_GENERATE_PATH=$(pwd)/templates
-        INIT_PATH_CHECK=$(pwd)/.hollaex
-
-    fi
-
-    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
-
-        CONFIG_FILE_PATH=$HOLLAEX_KIT_PATH/settings/*
-        TEMPLATE_GENERATE_PATH=$HOLLAEX_KIT_PATH/templates
-        INIT_PATH_CHECK=$HOLLAEX_KIT_PATH/.hollaex
-        
-    fi
-
-    echo $HOLLAEX_CODEBASE_PATH
-
-    #Quit if necessary flags are missing
-    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
-
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
-        print_usage;
+        echo "Error: HollaEx Kit path has not been defined."
+        echo "Please use '--kit-path' flag to specify your Kit path."
         exit 1;
+
+    fi
+
+    CONFIG_FILE_PATH=$HOLLAEX_KIT_PATH/settings/*
+    TEMPLATE_GENERATE_PATH=$HOLLAEX_KIT_PATH/templates
+    INIT_PATH_CHECK=$HOLLAEX_KIT_PATH/.hollaex
+
+    if [[ ! "$HOLLAEX_CODEBASE_PATH" ]]; then
+
+        HOLLAEX_CODEBASE_PATH=$(pwd)
 
     fi
 

@@ -263,7 +263,7 @@ if [[ "$IS_DEVELOP" ]]; then
     server ${ENVIRONMENT_EXCHANGE_NAME}-server:10080;
   }
   upstream plugins-controller {
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:10011;
+    server ${ENVIRONMENT_EXCHANGE_NAME}-server:10011;
   }
 EOL
 
@@ -357,6 +357,7 @@ services:
       - --env
       - development
     volumes:
+      - ${HOLLAEX_KIT_PATH}/plugins:/app/plugins
       - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
       - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
       - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
@@ -376,36 +377,6 @@ services:
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
       - ${ENVIRONMENT_EXCHANGE_NAME}-redis
       - ${ENVIRONMENT_EXCHANGE_NAME}-influxdb
-    networks:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-network
-  ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
-    image: ${ENVIRONMENT_EXCHANGE_NAME}-server-pm2
-    restart: always
-    ports:
-      - 10011
-    working_dir: /app/plugins
-    volumes: 
-      - ${HOLLAEX_KIT_PATH}/plugins:/app/plugins
-      - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
-      - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
-      - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
-      - ${HOLLAEX_KIT_PATH}/mail:/app/mail
-      - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
-      - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
-      - ${HOLLAEX_CODEBASE_PATH}/app.js:/app/app.js
-      - ${HOLLAEX_CODEBASE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
-      - ${HOLLAEX_CODEBASE_PATH}/constants.js:/app/constants.js
-      - ${HOLLAEX_CODEBASE_PATH}/messages.js:/app/messages.js
-      - ${HOLLAEX_CODEBASE_PATH}/logs:/app/logs
-      - ${HOLLAEX_CODEBASE_PATH}/test:/app/test
-      - ${HOLLAEX_CODEBASE_PATH}/tools:/app/tools
-      - ${HOLLAEX_CODEBASE_PATH}/utils:/app/utils
-      - ${HOLLAEX_CODEBASE_PATH}/init.js:/app/init.js
-    entrypoint: 
-      - node
-      - index.js
-    env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-dev.env.local
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
   ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
