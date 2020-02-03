@@ -157,17 +157,6 @@ if [[ "$1" == "dev" ]]; then
         
     fi
 
-    if [[ "$HOLLAEX_CODEBASE_PATH" ]]; then
-
-        DOCKER_COMPOSE_NAME_PREFIX=$(basename "$HOLLAEX_CODEBASE_PATH")
-
-    elif [[ ! "$HOLLAEX_CODEBASE_PATH" ]]; then
-
-        HOLLAEX_CODEBASE_PATH=$(pwd)
-        DOCKER_COMPOSE_NAME_PREFIX=$(basename "$HOLLAEX_CODEBASE_PATH")
-
-    fi
-
     echo $HOLLAEX_CODEBASE_PATH
 
     #Quit if necessary flags are missing
@@ -2983,7 +2972,6 @@ elif [[ "$1" == "toolbox" ]]; then
             CONFIG_FILE_PATH=$HOLLAEX_CODEBASE_PATH/tools/hollaex-cli-settings/*
             TEMPLATE_GENERATE_PATH=$HOLLAEX_CODEBASE_PATH/tools/hollaex-cli-templates
             INIT_PATH_CHECK=$HOLLAEX_CODEBASE_PATH/.hollaex
-            DOCKER_COMPOSE_NAME_PREFIX=$(basename "$HOLLAEX_CODEBASE_PATH")
 
         elif [[ ! "$HOLLAEX_CODEBASE_PATH" ]]; then
 
@@ -2991,7 +2979,6 @@ elif [[ "$1" == "toolbox" ]]; then
             TEMPLATE_GENERATE_PATH=$(pwd)/tools/hollaex-cli-templates
             INIT_PATH_CHECK=$(pwd)/.hollaex
             HOLLAEX_CODEBASE_PATH=$(pwd)
-            DOCKER_COMPOSE_NAME_PREFIX=$(basename "$HOLLAEX_CODEBASE_PATH")
 
         fi
 
