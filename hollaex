@@ -2064,20 +2064,8 @@ elif [[ "$1" == "upgrade" ]]; then
         
         fi
 
-        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
-
-            echo "Generating .env for Web Client"
-            generate_hollaex_web_local_env
-
-            echo "Generating Nginx conf for Web Client"
-            generate_hollaex_web_local_nginx_conf
-
-        elif [[ "$ENVIRONMENT_WEB_ENABLE" == false ]]; then
-
-            echo "Cleaning up Nginx conf for Web Client"
-            cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf 
-
-        fi
+        echo "Cleaning up Nginx conf for Web Client (If it remains)"
+        cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf 
 
         if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
 
@@ -2721,9 +2709,6 @@ elif [[ "$1" == "web" ]]; then
 
             echo "Generating .env for Web Client"
             generate_hollaex_web_local_env
-
-            echo "Generating Nginx conf for Web Client"
-            generate_hollaex_web_local_nginx_conf
 
             echo "Updating nginx conf file based on user settings"
             apply_nginx_user_defined_values
