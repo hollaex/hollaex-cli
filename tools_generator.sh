@@ -15,6 +15,9 @@ function local_database_init() {
       fi
 
     fi
+
+    echo "Preparing to initialize exchange database..."
+    sleep 10;
     
     if [[ "$1" == "start" ]]; then
 
@@ -109,8 +112,8 @@ function kubernetes_database_init() {
     if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade \
                 --namespace $ENVIRONMENT_EXCHANGE_NAME \
                 --set DEPLOYMENT_MODE="api" \
-                --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" \
-                --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" \
+                --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
                 --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                 --set job.enable=true \
@@ -144,12 +147,6 @@ function kubernetes_database_init() {
     fi
 
   fi
-
-  echo "Restarting all containers to apply latest database changes..."
-  kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
-
-  echo "Waiting for the containers get fully ready..."
-  sleep 30;
 
 }
 
@@ -200,11 +197,10 @@ function load_config_variables() {
   done)
 
   HOLLAEX_SECRET_VARIABLES_BASE64=$(for value in ${HOLLAEX_SECRET_VARIABLES} 
-  do
-      printf "${value//$(cut -d "=" -f 2 <<< "$value")/$(cut -d "=" -f 2 <<< "$value" | tr -d '\n' | tr -d "'" | base64)} ";
+  do   
+      printf "${value//=$(cut -d "=" -f 2 <<< "$value")/=\'$(cut -d "=" -f 2 <<< "$value" | tr -d '\n' | base64)\'} ";
   
   done)
-
   HOLLAEX_SECRET_VARIABLES_YAML=$(for value in ${HOLLAEX_SECRET_VARIABLES_BASE64} 
   do
 
@@ -347,20 +343,6 @@ services:
       - ${ENVIRONMENT_EXCHANGE_NAME}-redis
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
-  ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
-    image: ${ENVIRONMENT_KUBERNETES_PLUGINS_CONTROLLER_REGISTRY:-bitholla/plugins-controller}:${ENVIRONMENT_KUBERNETES_PLUGINS_VERSION:-latest}
-    restart: always
-    ports:
-      - 10011
-    build:
-      context: ${HOLLAEX_CLI_INIT_PATH}/plugins
-      dockerfile: ${HOLLAEX_CLI_INIT_PATH}/plugins/Dockerfile
-    volumes: 
-      - ${HOLLAEX_CLI_INIT_PATH}/plugins:/app/plugins
-    env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-dev.env.local
-    networks:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-network
   ${ENVIRONMENT_EXCHANGE_NAME}-server:
     image: ${ENVIRONMENT_EXCHANGE_NAME}-server-pm2
     build:
@@ -378,7 +360,7 @@ services:
       - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
       - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
       - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
-      - ${HOLLAEX_CODEBASE_PATH}/mail:/app/mail
+      - ${HOLLAEX_KIT_PATH}/mail:/app/mail
       - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
       - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
       - ${HOLLAEX_CODEBASE_PATH}/app.js:/app/app.js
@@ -394,6 +376,36 @@ services:
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
       - ${ENVIRONMENT_EXCHANGE_NAME}-redis
       - ${ENVIRONMENT_EXCHANGE_NAME}-influxdb
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
+    image: ${ENVIRONMENT_EXCHANGE_NAME}-server-pm2
+    restart: always
+    ports:
+      - 10011
+    working_dir: /app/plugins
+    volumes: 
+      - ${HOLLAEX_KIT_PATH}/plugins:/app/plugins
+      - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
+      - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
+      - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
+      - ${HOLLAEX_KIT_PATH}/mail:/app/mail
+      - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
+      - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
+      - ${HOLLAEX_CODEBASE_PATH}/app.js:/app/app.js
+      - ${HOLLAEX_CODEBASE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
+      - ${HOLLAEX_CODEBASE_PATH}/constants.js:/app/constants.js
+      - ${HOLLAEX_CODEBASE_PATH}/messages.js:/app/messages.js
+      - ${HOLLAEX_CODEBASE_PATH}/logs:/app/logs
+      - ${HOLLAEX_CODEBASE_PATH}/test:/app/test
+      - ${HOLLAEX_CODEBASE_PATH}/tools:/app/tools
+      - ${HOLLAEX_CODEBASE_PATH}/utils:/app/utils
+      - ${HOLLAEX_CODEBASE_PATH}/init.js:/app/init.js
+    entrypoint: 
+      - node
+      - index.js
+    env_file:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-dev.env.local
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
   ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
@@ -523,7 +535,7 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-${i}:
-    image: $ENVIRONMENT_DOCKER_IMAGE_REGISTRY:$ENVIRONMENT_DOCKER_IMAGE_VERSION
+    image: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
     restart: always
     env_file:
       - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
@@ -532,8 +544,6 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
     $(if [[ "${i}" == "api" ]] || [[ "${i}" == "stream" ]]; then echo "ports:"; fi)
       $(if [[ "${i}" == "api" ]]; then echo "- 10010:10010"; fi) 
       $(if [[ "${i}" == "stream" ]]; then echo "- 10080:10080"; fi)
-    volumes:
-      - ${HOLLAEX_CLI_INIT_PATH}/mail:/app/mail
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" ]] || [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" ]] || [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" ]]; then echo "depends_on:"; fi)
@@ -587,7 +597,7 @@ EOL
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-${i}-$TRADE_PARIS_DEPLOYMENT:
-    image: $ENVIRONMENT_DOCKER_IMAGE_REGISTRY:$ENVIRONMENT_DOCKER_IMAGE_VERSION
+    image: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
     restart: always
     env_file:
       - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
@@ -627,11 +637,10 @@ version: '3'
 services:
 EOL
 
-if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose-web.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-web:
-    image: ${ENVIRONMENT_KUBERNETES_WEB_IMAGE_REGISTRY}:${ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION}
+    image: ${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION}
     build:
       context: ${HOLLAEX_CLI_INIT_PATH}/web/
       dockerfile: ${HOLLAEX_CLI_INIT_PATH}/web/docker/Dockerfile
@@ -639,8 +648,6 @@ if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
     ports:
       - 8080:80
 EOL
-
-fi
 
 }
 
@@ -676,6 +683,32 @@ ${HOLLAEX_SECRET_VARIABLES_YAML}
 EOL
 }
 
+function ingress_tls_snippets() {
+
+/bin/cat << EOF 
+
+  tls:
+  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
+    hosts:
+    - $(echo $1 | cut -f3 -d "/")
+
+EOF
+  
+}
+
+function ingress_web_tls_snippets() {
+
+/bin/cat << EOF 
+
+  tls:
+  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-web-tls-cert
+    hosts:
+    - $(echo $1 | cut -f3 -d "/")
+
+EOF
+  
+}
+
 function generate_kubernetes_ingress() {
 
 # Generate Kubernetes Secret
@@ -704,10 +737,7 @@ spec:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
           servicePort: 10010
 
-  tls:
-  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
-    hosts:
-    - $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
 
 ---
 apiVersion: extensions/v1beta1
@@ -734,10 +764,7 @@ spec:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
           servicePort: 10010
   
-  tls:
-  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
-    hosts:
-    - $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
 
 ---
 apiVersion: extensions/v1beta1
@@ -760,10 +787,8 @@ spec:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
           servicePort: 10010
 
-  tls:
-  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
-    hosts:
-    - $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
+
     
 ---
 
@@ -786,11 +811,8 @@ spec:
         backend:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller
           servicePort: 10011
-          
-tls:
-  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
-    hosts:
-    - $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+    
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
 
 ---
 apiVersion: extensions/v1beta1
@@ -814,15 +836,13 @@ spec:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-stream
           servicePort: 10080
   
-  tls:
-  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
-    hosts:
-    - $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
+
 EOL
 
-if [[ "$ENVIRONMENT_WEB_ENABLE" ]]; then
+}
 
-local WEB_DOMAIN_FOR_INGRESS=$HOLLAEX_CONFIGMAP_DOMAIN
+function generate_kubernetes_ingress_for_web() { 
 
   # Generate Kubernetes Secret
 cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress-web.yaml <<EOL
@@ -840,7 +860,7 @@ metadata:
 
 spec:
   rules:
-  - host: ${WEB_DOMAIN_FOR_INGRESS}
+  - host: $(echo ${HOLLAEX_CONFIGMAP_DOMAIN} | cut -f3 -d "/")
     http:
       paths:
       - path: /
@@ -848,14 +868,9 @@ spec:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-web
           servicePort: 80
   
-  tls:
-  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-web-tls-cert
-    hosts:
-    - ${WEB_DOMAIN_FOR_INGRESS}
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress_web_tls_snippets $HOLLAEX_CONFIGMAP_DOMAIN; fi)
 
 EOL
-
-fi
 
 }
 
@@ -878,7 +893,7 @@ for j in ${CONFIG_FILE_PATH[@]}; do
 
     if [[ ! -z "$HOLLAEX_SECRET_SECRET" ]] ; then
   
-      echo "Pre-generated secrets are detected on your secert file!"
+      echo "Pre-generated secrets are detected on your secret file!"
       printf "\033[93mIf you are trying to migrate your existing Exchange on new machine, DO NOT OVERRIDE IT.\033[39m\n"
       echo "Are you sure you want to override them? (y/N)"
 
@@ -966,7 +981,18 @@ function helm_dynamic_trading_paris() {
     if [[ "$1" == "run" ]]; then
 
       #Running and Upgrading
-      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="engine" --set PAIR="$TRADE_PARIS_DEPLOYMENT" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME \
+                   --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                   --recreate-pods \
+                   --set DEPLOYMENT_MODE="engine" \
+                   --set PAIR="$TRADE_PARIS_DEPLOYMENT" \
+                   --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                   --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                   --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                   --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                   --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
+                   -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                   -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
     elif [[ "$1" == "scaleup" ]]; then
       
@@ -1032,13 +1058,16 @@ function check_empty_values_on_settings() {
 
 }
 
-function override_docker_image_version() {
+function override_user_hollaex_core() {
 
   for i in ${CONFIG_FILE_PATH[@]}; do
 
-    if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+    local ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE_PARSED=${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE//\//\\\/}
+
+    if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
       CONFIGMAP_FILE_PATH=$i
-      sed -i.bak "s/$ENVIRONMENT_DOCKER_IMAGE_VERSION/$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
+      sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE_PARSED/" $CONFIGMAP_FILE_PATH
+      sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
     fi
     
   done
@@ -1047,15 +1076,56 @@ function override_docker_image_version() {
 
 }
 
-function override_docker_registry() {
+function override_user_hollaex_web() {
 
   for i in ${CONFIG_FILE_PATH[@]}; do
 
-    local ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE_PARSED=${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE//\//\\\/}
+    local ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE_PARSED=${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE//\//\\\/}
+
+    if command grep -q "ENVIRONMENT_USER_HOLLAEX_WEB_" $i > /dev/null ; then
+      CONFIGMAP_FILE_PATH=$i
+      sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY=.*/ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE_PARSED/" $CONFIGMAP_FILE_PATH
+      sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION=.*/ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION=$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    fi
+    
+  done
+
+  rm $CONFIGMAP_FILE_PATH.bak
+
+}
+
+function override_docker_image_version() {
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
 
     if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
       CONFIGMAP_FILE_PATH=$i
-      sed -i.bak "s/ENVIRONMENT_DOCKER_IMAGE_REGISTRY=.*/ENVIRONMENT_DOCKER_IMAGE_REGISTRY=$ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE_PARSED/" $CONFIGMAP_FILE_PATH
+      sed -i.bak "s/ENVIRONMENT_DOCKER_IMAGE_VERSION=.*/ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
+      sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    fi
+    
+  done
+
+  sed -i.bak "s/$(echo $ENVIRONMENT_DOCKER_IMAGE_REGISTRY | cut -f2 -d '/'):.*/$(echo $ENVIRONMENT_DOCKER_IMAGE_REGISTRY | cut -f2 -d '/'):$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $HOLLAEX_CLI_INIT_PATH/Dockerfile
+
+  rm $HOLLAEX_CLI_INIT_PATH/Dockerfile.bak
+  rm $CONFIGMAP_FILE_PATH.bak
+
+}
+
+function override_user_docker_registry() {
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$(echo ${answer:-$ENVIRONMENT_USER_REGISTRY_OVERRIDE} | cut -f1 -d ":")
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$(echo ${answer:-$ENVIRONMENT_USER_REGISTRY_OVERRIDE} | cut -f2 -d ":")
+
+    local ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_PARSED=${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY//\//\\\/}
+
+    if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+      CONFIGMAP_FILE_PATH=$i
+      sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_PARSED/" $CONFIGMAP_FILE_PATH
+      sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION/" $CONFIGMAP_FILE_PATH
     fi
     
   done
@@ -1115,6 +1185,33 @@ function add_coin_input() {
   printf "\n"
   echo "${answer:-eth} ✔"
   printf "\n"
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+
+    if command grep -q "ENVIRONMENT_ADD_COIN_$(echo $COIN_SYMBOL | tr a-z A-Z)_" $i > /dev/null ; then
+
+      printf "\033[92mDetected configurations for coin $COIN_SYMBOL in your settings file.\033[39m\n"
+      echo "Do you want to proceed with these values? (Y/n)"
+      read answer
+
+      if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+          
+        echo "You picked false. Please confirm the values and run the command again."
+        #exit 1;
+      
+      else 
+
+        echo "Proceeding with stored configurations..."
+        export VALUE_IMPORTED_FROM_CONFIGMAP=true
+
+        add_coin_exec;
+      
+      fi
+    
+    fi
+
+
+  done
 
   echo "***************************************************************"
   echo "[2/11] Full Name of Coin: (Ethereum)"
@@ -1236,10 +1333,10 @@ function add_coin_input() {
   for i in $(seq 1 $HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER);
 
     do echo "***************************************************************"
-       echo "[9/11] Deposit limit of user level $i: (1)"
-       printf "\033[2m- Set the coins deposit limit amount for the user level $i. \033[22m\n"
+       echo "[9/11] Deposit limit of user level $i: (0)"
+       printf "\033[2m- Set the coins deposit limit amount for the user level $i. Set zero (0) for no limits. \033[22m\n"
        read answer
-       export DEPOSIT_LIMITS_LEVEL_$i=${answer:-1}
+       export DEPOSIT_LIMITS_LEVEL_$i=${answer:-0}
        printf "\n"
        echo "${answer:-1} ✔"
        printf "\n"
@@ -1258,10 +1355,10 @@ function add_coin_input() {
   for i in $(seq 1 $HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER);
 
     do echo "***************************************************************"
-       echo "[10/11] Withdrawal limit of user level $i: (1)"
-       printf "\033[2m- Set the coins withdrawal limit amount for the user level $i. \033[22m\n"
+       echo "[10/11] Withdrawal limit of user level $i: (0)"
+       printf "\033[2m- Set the coins withdrawal limit amount for the user level $i. Set zero (0) for no limits. \033[22m\n"
        read answer
-       export WITHDRAWAL_LIMITS_LEVEL_$i=${answer:-1}
+       export WITHDRAWAL_LIMITS_LEVEL_$i=${answer:-0}
        printf "\n"
        echo "${answer:-1} ✔"
        printf "\n"
@@ -1338,13 +1435,119 @@ function add_coin_input() {
     exit 1;
   
   fi
+
+  save_add_coin_input_at_settings;
+
+}
+
+function save_add_coin_input_at_settings() {
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+
+    if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
+        echo $CONFIGMAP_FILE_PATH
+        local CONFIGMAP_FILE_PATH=$i
+    fi
+
+  done
+
+  local COIN_PREFIX=$(echo $COIN_SYMBOL | tr a-z A-Z)
+
+  local COIN_DEPOSIT_LIMITS_PARSED=$(echo ${COIN_DEPOSIT_LIMITS//\"/\\\"})
+  local COIN_WITHDRAWAL_LIMITS_PARSED=$(echo ${COIN_WITHDRAWAL_LIMITS//\"/\\\"})
+
+  # REMOVE STORED VALUES AT CONFIGMAP FOR COIN 
+  if [[ ! "$VALUE_IMPORTED_FROM_CONFIGMAP" ]]; then 
+  
+    if command grep -q "HOLLAEX_CONFIGMAP_$(echo $COIN_SYMBOL | tr a-z A-Z)_COIN" $CONFIGMAP_FILE_PATH > /dev/null ; then
+
+      grep -v "HOLLAEX_CONFIGMAP_$(echo $COIN_SYMBOL | tr a-z A-Z)_COIN" $CONFIGMAP_FILE_PATH > temp && mv temp $CONFIGMAP_FILE_PATH
+
+    fi
+
+  fi
+
+  cat >> $CONFIGMAP_FILE_PATH << EOL
+
+ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_SYMBOL=$COIN_SYMBOL
+ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_FULLNAME=$COIN_FULLNAME
+ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_ALLOW_DEPOSIT=$COIN_ALLOW_DEPOSIT
+ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_ALLOW_WITHDRAWAL=$COIN_ALLOW_WITHDRAWAL
+ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_WITHDRAWAL_FEE=$COIN_MIN
+ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_MIN=$COIN_MIN
+ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_MAX=$COIN_MIN
+ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_INCREMENT_UNIT=$COIN_INCREMENT_UNIT
+ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_DEPOSIT_LIMITS=$COIN_DEPOSIT_LIMITS_PARSED
+ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_WITHDRAWAL_LIMITS=$COIN_WITHDRAWAL_LIMITS_PARSED
+ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_ACTIVE=$COIN_ACTIVE
+
+EOL
+}
+
+function export_add_coin_configuration_env() {
+
+  COIN_SYMBOL_OVERRIDE=ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_SYMBOL
+  COIN_FULLNAME_OVERRIDE=ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_FULLNAME
+  COIN_ALLOW_DEPOSIT_OVERRIDE=ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_ALLOW_DEPOSIT
+  COIN_ALLOW_WITHDRAWAL_OVERRIDE=ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_ALLOW_WITHDRAWAL
+  COIN_WITHDRAWAL_FEE_OVERRIDE=ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_WITHDRAWAL_FEE
+  COIN_MIN_OVERRIDE=ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_MIN
+  COIN_MAX_OVERRIDE=ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_MAX
+  COIN_INCREMENT_UNIT_OVERRIDE=ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_INCREMENT_UNIT
+  COIN_DEPOSIT_LIMITS_OVERRIDE=ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_DEPOSIT_LIMITS
+  COIN_WITHDRAWAL_LIMITS_OVERRIDE=ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_WITHDRAWAL_LIMITS
+  COIN_ACTIVE_OVERRIDE=ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_ACTIVE
+
+  if [[ "$VALUE_IMPORTED_FROM_CONFIGMAP" ]]; then
+
+    export COIN_SYMBOL_OVERRIDE=$(echo ${COIN_SYMBOL_OVERRIDE})
+    export COIN_FULLNAME_OVERRIDE=$(echo ${COIN_FULLNAME_OVERRIDE})
+    export COIN_ALLOW_DEPOSIT_OVERRIDE=$(echo ${COIN_ALLOW_DEPOSIT_OVERRIDE})
+    export COIN_ALLOW_WITHDRAWAL_OVERRIDE=$(echo ${COIN_ALLOW_WITHDRAWAL_OVERRIDE})
+    export COIN_WITHDRAWAL_FEE_OVERRIDE=$(echo ${COIN_WITHDRAWAL_FEE_OVERRIDE})
+    export COIN_MIN_OVERRIDE=$(echo ${COIN_MIN_OVERRIDE})
+    export COIN_MAX_OVERRIDE=$(echo ${COIN_MAX_OVERRIDE})
+    export COIN_INCREMENT_UNIT_OVERRIDE=$(echo ${COIN_INCREMENT_UNIT_OVERRIDE})
+    export COIN_DEPOSIT_LIMITS_OVERRIDE=$(echo ${COIN_DEPOSIT_LIMITS_OVERRIDE})
+    export COIN_WITHDRAWAL_LIMITS_OVERRIDE=$(echo ${COIN_WITHDRAWAL_LIMITS_OVERRIDE})
+    export COIN_ACTIVE_OVERRIDE=$(echo ${COIN_ACTIVE_OVERRIDE})
+
+    # if [[ ! "$COIN_DEPOSIT_LIMITS_OVERRIDE" == *"\""* ]] &&  [[ ! "$COIN_WITHDRAWAL_LIMITS_OVERRIDE" == *"\""* ]]; then
+
+    #   COIN_DEPOSIT_LIMITS_OVERRIDE=$(echo ${!COIN_DEPOSIT_LIMITS_OVERRIDE}) #| awk '{ gsub(/"/,"\\\"") } 1')
+    #   COIN_WITHDRAWAL_LIMITS_OVERRIDE=$(echo ${!COIN_WITHDRAWAL_LIMITS_OVERRIDE}) #| awk '{ gsub(/"/,"\\\"") } 1')
+
+    #   echo $COIN_DEPOSIT_LIMITS_OVERRIDE
+    #   echo $COIN_WITHDRAWAL_LIMITS_OVERRIDE
+
+    # fi
+
+  else 
+
+    export $(echo $COIN_SYMBOL_OVERRIDE)=$COIN_SYMBOL
+    export $(echo $COIN_FULLNAME_OVERRIDE)=$COIN_FULLNAME
+    export $(echo $COIN_ALLOW_DEPOSIT_OVERRIDE)=$COIN_ALLOW_DEPOSIT
+    export $(echo $COIN_ALLOW_WITHDRAWAL_OVERRIDE)=$COIN_ALLOW_WITHDRAWAL
+    export $(echo $COIN_WITHDRAWAL_FEE_OVERRIDE)=$COIN_WITHDRAWAL_FEE
+    export $(echo $COIN_MIN_OVERRIDE)=$COIN_MIN
+    export $(echo $COIN_MAX_OVERRIDE)=$COIN_MAX
+    export $(echo $COIN_INCREMENT_UNIT_OVERRIDE)=$COIN_INCREMENT_UNIT
+    export $(echo $COIN_DEPOSIT_LIMITS_OVERRIDE)=$COIN_DEPOSIT_LIMITS
+    export $(echo $COIN_WITHDRAWAL_LIMITS_OVERRIDE)=$COIN_WITHDRAWAL_LIMITS
+    export $(echo $COIN_ACTIVE_OVERRIDE)=$COIN_ACTIVE
+  
+  fi
+
 }
 
 
 function add_coin_exec() {
 
-  if [[ "$USE_KUBERNETES" ]]; then
+  local COIN_PREFIX=$(echo $COIN_SYMBOL | tr a-z A-Z)
 
+  export_add_coin_configuration_env;
+
+  if [[ "$USE_KUBERNETES" ]]; then
 
     function generate_kubernetes_add_coin_values() {
 
@@ -1354,29 +1557,34 @@ job:
   enable: true
   mode: add_coin
   env:
-    coin_symbol: ${COIN_SYMBOL}
-    coin_fullname: ${COIN_FULLNAME}
-    coin_allow_deposit: ${COIN_ALLOW_DEPOSIT}
-    coin_allow_withdrawal: ${COIN_ALLOW_WITHDRAWAL}
-    coin_withdrawal_fee: ${COIN_WITHDRAWAL_FEE}
-    coin_min: ${COIN_MIN}
-    coin_max: ${COIN_MAX}
-    coin_increment_unit: ${COIN_INCREMENT_UNIT}
-    coin_deposit_limits: '${COIN_DEPOSIT_LIMITS}'
-    coin_withdrawal_limits: '${COIN_WITHDRAWAL_LIMITS}'
-    coin_active: ${COIN_ACTIVE}
+    coin_symbol: $(echo ${!COIN_SYMBOL_OVERRIDE})
+    coin_fullname: $(echo ${!COIN_FULLNAME_OVERRIDE})
+    coin_allow_deposit: $(echo ${!COIN_ALLOW_DEPOSIT_OVERRIDE})
+    coin_allow_withdrawal: $(echo ${!COIN_ALLOW_WITHDRAWAL_OVERRIDE})
+    coin_withdrawal_fee: $(echo ${!COIN_WITHDRAWAL_FEE_OVERRIDE})
+    coin_min: $(echo ${!COIN_MIN_OVERRIDE})
+    coin_max: $(echo ${!COIN_MAX_OVERRIDE})
+    coin_increment_unit: $(echo ${!COIN_INCREMENT_UNIT_OVERRIDE})
+    coin_deposit_limits: '$(echo ${!COIN_DEPOSIT_LIMITS_OVERRIDE})'
+    coin_withdrawal_limits: '$(echo ${!COIN_WITHDRAWAL_LIMITS_OVERRIDE})'
+    coin_active: $(echo ${!COIN_ACTIVE_OVERRIDE})
 EOL
 
     }
 
     generate_kubernetes_add_coin_values;
 
-    echo "Blocking exchange external connections"
-    kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+    # Only tries to attempt remove ingress rules from Kubernetes if it exists.
+    # if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+    
+    #     echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
+    #     kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+    # fi
 
     echo "Adding new coin $COIN_SYMBOL on Kubernetes"
     
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL --namespace $ENVIRONMENT_EXCHANGE_NAME --set job.enable="true" --set job.mode="add_coin" --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/add-coin.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL --namespace $ENVIRONMENT_EXCHANGE_NAME --set job.enable="true" --set job.mode="add_coin" --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/add-coin.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
 
       echo "Kubernetes Job has been created for adding new coin $COIN_SYMBOL."
 
@@ -1388,9 +1596,8 @@ EOL
       printf "\033[91mFailed to create Kubernetes Job for adding new coin $COIN_SYMBOL, Please confirm your input values and try again.\033[39m\n"
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
 
-      echo "Allowing exchange external connections"
-      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
-
+      # echo "Allowing exchange external connections"
+      # kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
     fi
 
@@ -1399,42 +1606,61 @@ EOL
       echo "Coin $COIN_SYMBOL has been successfully added on your exchange!"
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
 
+      echo "Removing created Kubernetes Job for adding new coin..."
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
+
       echo "Updating settings file to add new $COIN_SYMBOL."
       for i in ${CONFIG_FILE_PATH[@]}; do
 
-      if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
-          CONFIGMAP_FILE_PATH=$i
-          HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE="${HOLLAEX_CONFIGMAP_CURRENCIES},${COIN_SYMBOL}"
-          sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
-          rm $CONFIGMAP_FILE_PATH.bak
-      fi
+        if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+
+            CONFIGMAP_FILE_PATH=$i
+            
+            if ! command grep -q "HOLLAEX_CONFIGMAP_CURRENCIES.*${COIN_SYMBOL}.*" $i ; then
+
+              HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE="${HOLLAEX_CONFIGMAP_CURRENCIES},${COIN_SYMBOL}"
+              sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+              rm $CONFIGMAP_FILE_PATH.bak
+
+            else
+
+              HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE=$HOLLAEX_CONFIGMAP_CURRENCIES
+                
+            fi
+
+        fi
 
       done
+
+      # Adding new value directly at generated env / configmap file
+      sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+      rm $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml.bak
 
       export HOLLAEX_CONFIGMAP_CURRENCIES=$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE
       echo "Current Currencies: ${HOLLAEX_CONFIGMAP_CURRENCIES}"
 
-      load_config_variables;
-      generate_kubernetes_configmap;
-
       echo "Applying configmap on the namespace"
       kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
-      
-      echo "Upgrading exchange with latest settings..."
-      hollaex upgrade --kube --skip
 
-      echo "Removing created Kubernetes Job for adding new coin..."
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
+      if [[ ! "$IS_HOLLAEX_SETUP" ]]; then
+        
+        # Running database job for Kubernetes
+        echo "Applying changes on database..."
+        kubernetes_database_init upgrade;
+
+      fi
+
+      hollaex_ascii_coin_has_been_added;
 
     else
 
-      printf "\033[91mFailed to remove existing coin $COIN_SYMBOL! Please try again.\033[39m\n"
+      printf "\033[91mFailed to add coin $COIN_SYMBOL! Please try again.\033[39m\n"
       
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
 
-      echo "Allowing exchange external connections"
-      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+      # echo "Allowing exchange external connections"
+      # kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
       
     fi
 
@@ -1450,133 +1676,92 @@ EOL
 
       fi
 
-      echo "Shutting down Nginx to block exchange external access"
-      docker stop $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ")
+      # echo "Shutting down Nginx to block exchange external access"
+      # docker stop $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ")
 
-      echo "Adding new coin $COIN_SYMBOL on local exchange"
-      if command docker exec --env "COIN_FULLNAME=${COIN_FULLNAME}" \
-                  --env "COIN_SYMBOL=${COIN_SYMBOL}" \
-                  --env "COIN_ALLOW_DEPOSIT=${COIN_ALLOW_DEPOSIT}" \
-                  --env "COIN_ALLOW_WITHDRAWAL=${COIN_ALLOW_WITHDRAWAL}" \
-                  --env "COIN_WITHDRAWAL_FEE=${COIN_WITHDRAWAL_FEE}" \
-                  --env "COIN_MIN=${COIN_MIN}" \
-                  --env "COIN_MAX=${COIN_MAX}" \
-                  --env "COIN_INCREMENT_UNIT=${COIN_INCREMENT_UNIT}" \
-                  --env "COIN_DEPOSIT_LIMITS=${COIN_DEPOSIT_LIMITS}" \
-                  --env "COIN_WITHDRAWAL_LIMITS=${COIN_WITHDRAWAL_LIMITS}" \
-                  --env "COIN_ACTIVE=${COIN_ACTIVE}"  \
+      echo "Adding new coin $(echo ${!COIN_SYMBOL_OVERRIDE}) on local exchange"
+      if command docker exec --env "COIN_FULLNAME=$(echo ${!COIN_FULLNAME_OVERRIDE})" \
+                  --env "COIN_SYMBOL=$(echo ${!COIN_SYMBOL_OVERRIDE})" \
+                  --env "COIN_ALLOW_DEPOSIT=$(echo ${!COIN_ALLOW_DEPOSIT_OVERRIDE})" \
+                  --env "COIN_ALLOW_WITHDRAWAL=$(echo ${!COIN_ALLOW_WITHDRAWAL_OVERRIDE})" \
+                  --env "COIN_WITHDRAWAL_FEE=$(echo ${!COIN_WITHDRAWAL_FEE_OVERRIDE})" \
+                  --env "COIN_MIN=$(echo ${!COIN_MIN_OVERRIDE})" \
+                  --env "COIN_MAX=$(echo ${!COIN_MAX_OVERRIDE})" \
+                  --env "COIN_INCREMENT_UNIT=$(echo ${!COIN_INCREMENT_UNIT_OVERRIDE})" \
+                  --env "COIN_DEPOSIT_LIMITS=$(echo ${!COIN_DEPOSIT_LIMITS_OVERRIDE})" \
+                  --env "COIN_WITHDRAWAL_LIMITS=$(echo ${!COIN_WITHDRAWAL_LIMITS_OVERRIDE})" \
+                  --env "COIN_ACTIVE=$(echo ${!COIN_ACTIVE_OVERRIDE})"  \
                   ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
                   node tools/dbs/addCoin.js; then
 
-         echo "Updating settings file to add new $COIN_SYMBOL."
+         echo "Updating configmap file to add new $COIN_SYMBOL."
          for i in ${CONFIG_FILE_PATH[@]}; do
 
-         if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
-            CONFIGMAP_FILE_PATH=$i
-            HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE="${HOLLAEX_CONFIGMAP_CURRENCIES},${COIN_SYMBOL}"
-            sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
-            rm $CONFIGMAP_FILE_PATH.bak
-         fi
+            if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+
+              CONFIGMAP_FILE_PATH=$i
+              
+              if ! command grep -q "HOLLAEX_CONFIGMAP_CURRENCIES.*${COIN_SYMBOL}.*" $i ; then
+
+                HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE="${HOLLAEX_CONFIGMAP_CURRENCIES},${COIN_SYMBOL}"
+                sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+                rm $CONFIGMAP_FILE_PATH.bak
+
+              else
+
+                export HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE=$HOLLAEX_CONFIGMAP_CURRENCIES
+                
+              fi
+
+            fi
 
          done
 
-         export HOLLAEX_CONFIGMAP_CURRENCIES=$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE
-         echo "Current Currencies: ${HOLLAEX_CONFIGMAP_CURRENCIES}"
+        sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME.env.local
+        rm $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME.env.local.bak
 
-         load_config_variables;
-         generate_local_env;
+        export HOLLAEX_CONFIGMAP_CURRENCIES=$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE
+        echo -e "\nCurrent currencies: ${HOLLAEX_CONFIGMAP_CURRENCIES}\n"
+        
+        if [[ ! "$IS_HOLLAEX_SETUP" ]]; then
 
-         if  [[ "$IS_DEVELOP" ]]; then
-
-          # Restarting containers after database init jobs.
-          echo "Restarting containers to apply database changes."
-          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
-          
-
-        else
-
-          # Restarting containers after database init jobs.
-          echo "Restarting containers to apply database changes."
-          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
-          
-
+          echo "Running database triggers"
+          docker exec --env "CURRENCIES=${HOLLAEX_CONFIGMAP_CURRENCIES}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
+        
         fi
 
-        echo "Running database triggers"
-        docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
-
-        if  [[ "$IS_DEVELOP" ]]; then
-
-          # Restarting containers after database init jobs.
-          echo "Restarting containers to apply database changes."
-          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
-          
-
-        else
-
-          # Restarting containers after database init jobs.
-          echo "Restarting containers to apply database changes."
-          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
-          
-
-        fi
-
-         /bin/cat << EOF
-
-                                  
-           f888888G              .,:;ii;,
-           C@L,,i@8.         :tC08@88888@8Ci
-           L@f  :@0        L8@0L1:,.   .,iG@Gi
-    ,::::::C@L  ;@8::::::,.i1,             t@@0i
-   :@@88888881  ,0888888@@t                 0@8@0i
-   ;@0                  f@f                 0@i:0@f
-   ;@@ttttt11,  .i1tttttG@L                :@@@f;8@;
-   ,LCCGGGG8@f  ;@@GGGGGCL;                C@f1@@8@f
-           f@f  ;@0                       f@@t  1@@t
-           f@t  :@0.                     f@GL@@1;@@,
-           L@0LLG@8                    ,G@8, ,L@@@f
-           :ffffffi                  .t@@L@@t  G@C
-              i1                   .18@G. ,L@00@L
-             .@@;                ,t8@C0@L:  t@@1
-              1@0,            :t0@@0, .10@LG@C:
-               18@Li,,.,,:ifG8@0tiC@01  i@@0i
-                .t@@@808@@@GfC@0;  :C@08@Gi
-                  .t8@C;;C8L, ,L@01t0@8f:
-                    .t8@Cf0@@GfC@@@Gf:
-                      .;tLCCCCLfi:.
-
-          Coin $COIN_SYMBOL has been successfully added
-
-EOF
+        hollaex_ascii_coin_has_been_added;
 
       else
 
         printf "\033[91mFailed to add new coin $COIN_SYMBOL on local exchange. Please confirm your input values and try again.\033[39m\n"
 
-        if  [[ "$IS_DEVELOP" ]]; then
+        # if  [[ "$IS_DEVELOP" ]]; then
 
-          # Restarting containers after database init jobs.
-          echo "Restarting containers to apply database changes."
-          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+        #   # Restarting containers after database init jobs.
+        #   echo "Restarting containers to apply database changes."
+        #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+        #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
-        else
+        # else
 
-          # Restarting containers after database init jobs.
-          echo "Restarting containers to apply database changes."
-          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+        #   # Restarting containers after database init jobs.
+        #   echo "Restarting containers to apply database changes."
+        #   docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+        #   docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
-        fi
+        # fi
 
-        exit 1;
+        # exit 1;
 
       fi
       
+  fi
+
+  if [[ "$VALUE_IMPORTED_FROM_CONFIGMAP" ]] && ! [[ "$IS_HOLLAEX_SETUP" ]]; then
+
+    exit 0;
+
   fi
 
 }
@@ -1619,10 +1804,37 @@ function remove_coin_input() {
 
 function remove_coin_exec() {
 
+  IFS=',' read -ra CURRENT_CURRENCIES <<< "${HOLLAEX_CONFIGMAP_CURRENCIES}"
+
+  if (( "${#CURRENT_CURRENCIES[@]}" <= "2" )); then
+
+    printf "\n\033[91mError: You should have at least 2 currencies on your exchange.\033[39m\n"
+    echo "Current Currencies : ${HOLLAEX_CONFIGMAP_CURRENCIES}."
+    printf "Exiting...\n\n"
+
+    exit 1;
+
+  fi
+
+  if [[ $(echo ${HOLLAEX_CONFIGMAP_PAIRS} | grep $COIN_SYMBOL) ]]; then
+
+    printf "\n\033[91mError: You can't remove coin $COIN_SYMBOL which already being used by trading pair.\033[39m\n"
+    echo "Current Trading Pair(s) : ${HOLLAEX_CONFIGMAP_PAIRS}."
+    printf "Exiting...\n\n"
+
+    exit 1;
+
+  fi
+
   if [[ "$USE_KUBERNETES" ]]; then
 
-  echo "Blocking exchange external connections"
-  kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+  # Only tries to attempt remove ingress rules from Kubernetes if it exists.
+  # if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+  
+  #     echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
+  #     kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+  # fi
 
   echo "Removing existing coin $COIN_SYMBOL on Kubernetes"
     
@@ -1632,8 +1844,8 @@ function remove_coin_exec() {
                 --set job.mode="remove_coin" \
                 --set job.env.coin_symbol="$COIN_SYMBOL" \
                 --set DEPLOYMENT_MODE="api" \
-                --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" \
-                --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" \
+                --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
                 --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
@@ -1662,12 +1874,15 @@ function remove_coin_exec() {
       echo "Coin $COIN_SYMBOL has been successfully removed on your exchange!"
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
 
+      echo "Removing created Kubernetes Job for removing existing coin..."
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
+
       echo "Updating settings file to remove $COIN_SYMBOL."
       for i in ${CONFIG_FILE_PATH[@]}; do
 
       if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
           CONFIGMAP_FILE_PATH=$i
-          if [[ "$COIN_SYMBOL" == "hollaex" ]]; then
+          if [[ "$COIN_SYMBOL" == "hex" ]]; then
             HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HOLLAEX_CONFIGMAP_CURRENCIES//$COIN_SYMBOL,}")
           else
             HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HOLLAEX_CONFIGMAP_CURRENCIES//,$COIN_SYMBOL}")
@@ -1678,20 +1893,25 @@ function remove_coin_exec() {
 
       done
 
+      #Removing targeted coin directly at .configmap file for Kubernetes.
+      sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+      rm $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml.bak
+
       export HOLLAEX_CONFIGMAP_CURRENCIES=$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE
       echo "Current Currencies: ${HOLLAEX_CONFIGMAP_CURRENCIES}"
 
-      load_config_variables;
-      generate_kubernetes_configmap;
+      # load_config_variables;
+      # generate_kubernetes_configmap;
 
       echo "Applying configmap on the namespace"
       kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
 
-      echo "Upgrading exchange with latest settings..."
-      hollaex upgrade --kube --skip
+      # Running database job for Kubernetes
+      echo "Applying changes on database..."
+      kubernetes_database_init upgrade;
 
-      echo "Removing created Kubernetes Job for removing existing coin..."
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
+      echo "Coin $COIN_SYMBOL has been successfully removed."
+      echo "Please run 'hollaex restart --kube' to apply it."
 
     else
 
@@ -1700,9 +1920,6 @@ function remove_coin_exec() {
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
 
-      echo "Allowing exchange external connections"
-      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
-      
     fi
 
   elif [[ ! "$USE_KUBERNETES" ]]; then
@@ -1716,13 +1933,13 @@ function remove_coin_exec() {
 
       fi
 
-      echo "Shutting down Nginx to block exchange external access"
-      docker stop $(docker ps -a | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ")
+      # echo "Shutting down Nginx to block exchange external access"
+      # docker stop $(docker ps -a | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ")
 
-      echo "Removing new coin $COIN_SYMBOL on local docker"
-      if command docker exec --env "COIN_SYMBOL=${COIN_SYMBOL}" \
-                  ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
-                  node tools/dbs/removeCoin.js; then
+    echo "Removing new coin $COIN_SYMBOL on local docker"
+    if command docker exec --env "COIN_SYMBOL=${COIN_SYMBOL}" \
+                ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
+                node tools/dbs/removeCoin.js; then
 
       echo "Updating settings file to remove $COIN_SYMBOL."
       for i in ${CONFIG_FILE_PATH[@]}; do
@@ -1737,78 +1954,64 @@ function remove_coin_exec() {
 
           sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$CURRENCIES_STRING_TO_COMMNA_SEPARATED/" $CONFIGMAP_FILE_PATH
 
-          export HOLLAEX_CONFIGMAP_CURRENCIES=$CURRENCIES_STRING_TO_COMMNA_SEPARATED
-
           rm $CONFIGMAP_FILE_PATH.bak
-      fi
+      fi  
 
       done
+
+      export HOLLAEX_CONFIGMAP_CURRENCIES=$CURRENCIES_STRING_TO_COMMNA_SEPARATED
+
+      # Removing directly from generated env file
+      sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME.env.local
+      rm $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME.env.local.bak
       
       echo "Current Currencies: ${HOLLAEX_CONFIGMAP_CURRENCIES}"
 
-      #Regenerating env based on changes of PAIRs
-      load_config_variables;
-      generate_local_env;
+      #  if  [[ "$IS_DEVELOP" ]]; then
 
-       if  [[ "$IS_DEVELOP" ]]; then
-
-        # Restarting containers after database init jobs.
-        echo "Restarting containers to apply database changes."
-        docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-        docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+      #   # Restarting containers after database init jobs.
+      #   echo "Restarting containers to apply database changes."
+      #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+      #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
 
-      else
+      # else
 
-        # Restarting containers after database init jobs.
-        echo "Restarting containers to apply database changes."
-        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+      #   # Restarting containers after database init jobs.
+      #   echo "Restarting containers to apply database changes."
+      #   docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+      #   docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
-      fi
+      # fi
 
       # Running database triggers
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
+      docker exec --env="CURRENCIES=${HOLLAEX_CONFIGMAP_CURRENCIES}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
 
-      if  [[ "$IS_DEVELOP" ]]; then
+      echo "Coin $COIN_SYMBOL has been successfully removed."
+      echo "Please run 'hollaex restart' to apply it."
 
-        # Restarting containers after database init jobs.
-        echo "Restarting containers to apply database changes."
-        docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-        docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
-
-
-      else
-
-        # Restarting containers after database init jobs.
-        echo "Restarting containers to apply database changes."
-        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
-
-      fi
-
-      else
+    else
 
         printf "\033[91mFailed to remove coin $COIN_SYMBOL on local exchange. Please confirm your input values and try again.\033[39m\n"
-        exit 1;
+        # exit 1;
 
-        if  [[ "$IS_DEVELOP" ]]; then
+        # if  [[ "$IS_DEVELOP" ]]; then
 
-          # Restarting containers after database init jobs.
-          echo "Restarting containers to apply database changes."
-          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+        #   # Restarting containers after database init jobs.
+        #   echo "Restarting containers to apply database changes."
+        #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+        #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
-        else
+        # else
 
-          # Restarting containers after database init jobs.
-          echo "Restarting containers to apply database changes."
-          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+        #   # Restarting containers after database init jobs.
+        #   echo "Restarting containers to apply database changes."
+        #   docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+        #   docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
-        fi
+        # fi
 
-      fi
+    fi
 
   fi
 
@@ -1828,6 +2031,33 @@ function add_pair_input() {
   printf "\n"
   echo "${answer:-eth-usdt} ✔"
   printf "\n"
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+
+    if command grep -q "ENVIRONMENT_ADD_PAIR_$(echo $PAIR_BASE | tr a-z A-Z)_$(echo $PAIR_2 | tr a-z A-Z)_" $i > /dev/null ; then
+
+      printf "\033[92mDetected configurations for trading pair $PAIR_NAME in your settings file.\033[39m\n"
+      echo "Do you want to proceed with these values?? (Y/n)"
+      read answer
+
+      if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+          
+        echo "You picked false. Please confirm the values and run the command again."
+        #exit 1;
+      
+      else 
+
+        echo "Proceeding with stored configurations..."
+        export VALUE_IMPORTED_FROM_CONFIGMAP=true
+
+        add_pair_exec;
+
+      fi
+
+    fi
+
+
+  done
 
   # Checking user level setup on settings file is set or not
   if [[ ! "$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER" ]]; then
@@ -1855,13 +2085,13 @@ function add_pair_input() {
   for i in $(seq 1 $HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER);
 
     do echo "***************************************************************"
-       echo "[2/10] Taker fee of user level $i? (0.2)"
-       echo "- As Percentage %, Number only." 
+       echo "[2/10] Taker fee of user level $i? (0)"
+       echo "- As Percentage %, Number only. Set zero (0) for no limits." 
        read answer
        printf "\n"
-       echo "${answer:-0.2} ✔"
+       echo "${answer:-0} ✔"
        printf "\n"
-       export TAKER_FEES_LEVEL_$i=${answer:-0.2}
+       export TAKER_FEES_LEVEL_$i=${answer:-0}
   
   done;
 
@@ -1876,13 +2106,13 @@ function add_pair_input() {
   # Asking withdrawal limit of new coin per level
   for i in $(seq 1 $HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER);
     do echo "***************************************************************"
-       echo "[3/10] Maker fee of user level $i? (0.2)"
-       echo "- As Percentage %, Number only."
+       echo "[3/10] Maker fee of user level $i? (0)"
+       echo "- As Percentage %, Number only. Set zero (0) for no limits."
        read answer
        printf "\n"
-       echo "${answer:-0.2} ✔"
+       echo "${answer:-0} ✔"
        printf "\n"
-       export MAKER_FEES_LEVEL_$i=${answer:-0.2}
+       export MAKER_FEES_LEVEL_$i=${answer:-0}
   
   done;
 
@@ -2024,10 +2254,112 @@ function add_pair_input() {
   
   fi
 
+  save_add_pair_input_at_settings;
+
+}
+
+function save_add_pair_input_at_settings() {
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+
+    if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
+        echo $CONFIGMAP_FILE_PATH
+        local CONFIGMAP_FILE_PATH=$i
+    fi
+
+  done
+
+  export PAIR_PREFIX="$(echo $PAIR_BASE | tr a-z A-Z)_$(echo $PAIR_2 | tr a-z A-Z)"
+
+  local TAKER_FEES_PARSED=$(echo ${TAKER_FEES//\"/\\\"})
+  local MAKER_FEES_PARSED=$(echo ${MAKER_FEES//\"/\\\"})
+
+   # REMOVE STORED VALUES AT CONFIGMAP FOR COIN 
+  if [[ ! "$VALUE_IMPORTED_FROM_CONFIGMAP" ]]; then 
+  
+    if command grep -q "HOLLAEX_CONFIGMAP_$(echo $PAIR_BASE | tr a-z A-Z)_$(echo $PAIR_2 | tr a-z A-Z)" $CONFIGMAP_FILE_PATH > /dev/null ; then
+
+      grep -v "HOLLAEX_CONFIGMAP_$(echo $PAIR_BASE | tr a-z A-Z)_$(echo $PAIR_2 | tr a-z A-Z)" $CONFIGMAP_FILE_PATH > temp && mv temp $CONFIGMAP_FILE_PATH
+
+    fi
+
+  fi
+
+  cat >> $CONFIGMAP_FILE_PATH << EOL
+
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_PAIR_NAME=$PAIR_NAME
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_PAIR_BASE=$PAIR_BASE
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_PAIR_2=$PAIR_2
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_TAKER_FEES=$TAKER_FEES_PARSED
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_MAKER_FEES=$MAKER_FEES_PARSED
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_MIN_SIZE=$MIN_SIZE
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_MAX_SIZE=$MAX_SIZE
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_MIN_PRICE=$MIN_PRICE
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_MAX_PRICE=$MAX_PRICE
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_INCREMENT_SIZE=$INCREMENT_SIZE
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_INCREMENT_PRICE=$INCREMENT_PRICE
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_PAIR_ACTIVE=$PAIR_ACTIVE
+
+EOL
+
+}
+
+function export_add_pair_configuration_env() {
+
+  PAIR_NAME_OVERRIDE=ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_PAIR_NAME
+  PAIR_BASE_OVERRIDE=ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_PAIR_BASE
+  PAIR_2_OVERRIDE=ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_PAIR_2
+  TAKER_FEES_OVERRIDE=ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_TAKER_FEES
+  MAKER_FEES_OVERRIDE=ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_MAKER_FEES
+  MIN_SIZE_OVERRIDE=ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_MIN_SIZE
+  MAX_SIZE_OVERRIDE=ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_MAX_SIZE
+  MIN_PRICE_OVERRIDE=ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_MIN_PRICE
+  MAX_PRICE_OVERRIDE=ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_MAX_PRICE
+  INCREMENT_SIZE_OVERRIDE=ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_INCREMENT_SIZE
+  INCREMENT_PRICE_OVERRIDE=ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_INCREMENT_PRICE
+  PAIR_ACTIVE_OVERRIDE=ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_PAIR_ACTIVE
+
+
+  if [[ "$VALUE_IMPORTED_FROM_CONFIGMAP" ]]; then
+
+    PAIR_NAME_OVERRIDE=$(echo ${PAIR_NAME_OVERRIDE})
+    PAIR_BASE_OVERRIDE=$(echo ${PAIR_BASE_OVERRIDE})
+    PAIR_2_OVERRIDE=$(echo ${PAIR_2_OVERRIDE})
+    TAKER_FEES_OVERRIDE=$(echo ${TAKER_FEES_OVERRIDE})
+    MAKER_FEES_OVERRIDE=$(echo ${MAKER_FEES_OVERRIDE})
+    MIN_SIZE_OVERRIDE=$(echo ${MIN_SIZE_OVERRIDE})
+    MAX_SIZE_OVERRIDE=$(echo ${MAX_SIZE_OVERRIDE})
+    MIN_PRICE_OVERRIDE=$(echo ${MIN_PRICE_OVERRIDE})
+    MAX_PRICE_OVERRIDE=$(echo ${MAX_PRICE_OVERRIDE})
+    INCREMENT_SIZE_OVERRIDE=$(echo ${INCREMENT_SIZE_OVERRIDE})
+    INCREMENT_PRICE_OVERRIDE=$(echo ${INCREMENT_PRICE_OVERRIDE})
+    PAIR_ACTIVE_OVERRIDE=$(echo ${PAIR_ACTIVE_OVERRIDE})
+
+  else 
+
+    export $(echo $PAIR_NAME_OVERRIDE)=$PAIR_NAME
+    export $(echo $PAIR_BASE_OVERRIDE)=$PAIR_BASE
+    export $(echo $PAIR_2_OVERRIDE)=$PAIR_2
+    export $(echo $TAKER_FEES_OVERRIDE)=$TAKER_FEES
+    export $(echo $MAKER_FEES_OVERRIDE)=$MAKER_FEES
+    export $(echo $MIN_SIZE_OVERRIDE)=$MIN_SIZE
+    export $(echo $MAX_SIZE_OVERRIDE)=$MAX_SIZE
+    export $(echo $MIN_PRICE_OVERRIDE)=$MIN_PRICE
+    export $(echo $MAX_PRICE_OVERRIDE)=$MAX_PRICE
+    export $(echo $INCREMENT_SIZE_OVERRIDE)=$INCREMENT_SIZE
+    export $(echo $INCREMENT_PRICE_OVERRIDE)=$INCREMENT_PRICE
+    export $(echo $PAIR_ACTIVE_OVERRIDE)=$PAIR_ACTIVE
+  
+  fi
+
 }
 
 
 function add_pair_exec() {
+
+  export PAIR_PREFIX="$(echo $PAIR_BASE | tr a-z A-Z)_$(echo $PAIR_2 | tr a-z A-Z)"
+
+  export_add_pair_configuration_env;
 
   if [[ "$USE_KUBERNETES" ]]; then
 
@@ -2039,26 +2371,31 @@ job:
   enable: true
   mode: add_pair
   env:
-    pair_name: ${PAIR_NAME}
-    pair_base: ${PAIR_BASE}
-    pair_2: ${PAIR_2}
-    taker_fees: '${TAKER_FEES}'
-    maker_fees: '${MAKER_FEES}'
-    min_size: ${MIN_SIZE}
-    max_size: ${MAX_SIZE}
-    min_price: ${MIN_PRICE}
-    max_price: ${MAX_PRICE}
-    increment_size: ${INCREMENT_SIZE}
-    increment_price: ${INCREMENT_PRICE}
-    pair_active: ${PAIR_ACTIVE}
+    pair_name: $(echo ${!PAIR_NAME_OVERRIDE})
+    pair_base: $(echo ${!PAIR_BASE_OVERRIDE})
+    pair_2: $(echo ${!PAIR_2_OVERRIDE})
+    taker_fees: '$(echo ${!TAKER_FEES_OVERRIDE})'
+    maker_fees: '$(echo ${!MAKER_FEES_OVERRIDE})'
+    min_size: $(echo ${!MIN_SIZE_OVERRIDE})
+    max_size: $(echo ${!MAX_SIZE_OVERRIDE})
+    min_price: $(echo ${!MIN_PRICE_OVERRIDE})
+    max_price: $(echo ${!MAX_PRICE_OVERRIDE})
+    increment_size: $(echo ${!INCREMENT_SIZE_OVERRIDE})
+    increment_price: $(echo ${!INCREMENT_PRICE_OVERRIDE})
+    pair_active: $(echo ${!PAIR_ACTIVE_OVERRIDE})
 EOL
 
       }
 
     generate_kubernetes_add_pair_values;
 
-    echo "Blocking exchange external connections"
-    kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+    # Only tries to attempt remove ingress rules from Kubernetes if it exists.
+    # if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+    
+    #     echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
+    #     kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+    # fi
 
     echo "Adding new pair $PAIR_NAME on Kubernetes"
     
@@ -2067,8 +2404,8 @@ EOL
                 --set job.enable="true" \
                 --set job.mode="add_pair" \
                 --set DEPLOYMENT_MODE="api" \
-                --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" \
-                --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" \
+                --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
                 --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
@@ -2086,9 +2423,6 @@ EOL
       printf "\033[91mFailed to create Kubernetes Job for adding new pair $PAIR_NAME, Please confirm your input values and try again.\033[39m\n"
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
 
-      echo "Allowing exchange external connections"
-      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
-
     fi
 
     if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME \
@@ -2098,32 +2432,66 @@ EOL
       echo "Pair $PAIR_NAME has been successfully added on your exchange!"
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
 
+      echo "Removing created Kubernetes Job for adding new coin..."
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
+
       echo "Updating settings file to add new $PAIR_NAME."
       for i in ${CONFIG_FILE_PATH[@]}; do
 
-      if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+     if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+          
           CONFIGMAP_FILE_PATH=$i
-          HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE="${HOLLAEX_CONFIGMAP_PAIRS},${PAIR_NAME}"
-          sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE/" $CONFIGMAP_FILE_PATH
-          rm $CONFIGMAP_FILE_PATH.bak
+
+          if ! command grep -q "HOLLAEX_CONFIGMAP_PAIRS=.*${PAIR_NAME}.*" $i ; then
+
+            HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE="${HOLLAEX_CONFIGMAP_PAIRS},${PAIR_NAME}"
+            sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE/" $CONFIGMAP_FILE_PATH
+            rm $CONFIGMAP_FILE_PATH.bak
+
+          else
+
+            HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE=$HOLLAEX_CONFIGMAP_PAIRS
+            echo $HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE
+          
+          fi
+
       fi
 
       done
 
+      # Adding new value directly at generated env / configmap file
+      sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE/" $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+      rm $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml.bak
+
       export HOLLAEX_CONFIGMAP_PAIRS=$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE
       echo "Current Trading Pairs: ${HOLLAEX_CONFIGMAP_PAIRS}"
-
-      load_config_variables;
-      generate_kubernetes_configmap;
 
       echo "Applying configmap on the namespace"
       kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
 
-      echo "Upgrading exchange with latest settings..."
-      hollaex upgrade --kube --skip
 
-      echo "Removing created Kubernetes Job for adding new coin..."
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
+      if [[ ! "$IS_HOLLAEX_SETUP" ]]; then 
+
+        # Running database job for Kubernetes
+        echo "Applying changes on database..."
+        kubernetes_database_init upgrade;
+      
+      fi
+
+      echo "Running $(echo ${!PAIR_NAME_OVERRIDE}) on the Kubernetes."
+      helm install --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                   --name $ENVIRONMENT_EXCHANGE_NAME-server-engine-$(echo ${!PAIR_BASE_OVERRIDE})$(echo ${!PAIR_2_OVERRIDE}) \
+                   --set DEPLOYMENT_MODE="engine" \
+                   --set PAIR="$(echo ${!PAIR_NAME_OVERRIDE})" \
+                   --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                   --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                   --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                   --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                   --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
+                   -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                   -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+
+      hollaex_ascii_pair_has_been_added;
 
     else
 
@@ -2148,126 +2516,96 @@ EOL
 
       fi
 
-      echo "Shutting down Nginx to block exchange external access"
-      docker stop $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ")
+      # echo "Shutting down Nginx to block exchange external access"
+      # docker stop $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ")
 
       echo "Adding new pair $PAIR_NAME on local exchange"
-      if command docker exec --env "PAIR_NAME=${PAIR_NAME}" \
-                  --env "PAIR_BASE=${PAIR_BASE}" \
-                  --env "PAIR_2=${PAIR_2}" \
-                  --env "TAKER_FEES=${TAKER_FEES}" \
-                  --env "MAKER_FEES=${MAKER_FEES}" \
-                  --env "MIN_SIZE=${MIN_SIZE}" \
-                  --env "MAX_SIZE=${MAX_SIZE}" \
-                  --env "MIN_PRICE=${MIN_PRICE}" \
-                  --env "MAX_PRICE=${MAX_PRICE}" \
-                  --env "INCREMENT_SIZE=${INCREMENT_SIZE}" \
-                  --env "INCREMENT_PRICE=${INCREMENT_PRICE}"  \
-                  --env "PAIR_ACTIVE=${PAIR_ACTIVE}" \
+      if command docker exec --env "PAIR_NAME=$(echo ${!PAIR_NAME_OVERRIDE})" \
+                  --env "PAIR_BASE=$(echo ${!PAIR_BASE_OVERRIDE})" \
+                  --env "PAIR_2=$(echo ${!PAIR_2_OVERRIDE})" \
+                  --env "TAKER_FEES=$(echo ${!TAKER_FEES_OVERRIDE})" \
+                  --env "MAKER_FEES=$(echo ${!MAKER_FEES_OVERRIDE})" \
+                  --env "MIN_SIZE=$(echo ${!MIN_SIZE_OVERRIDE})" \
+                  --env "MAX_SIZE=$(echo ${!MAX_SIZE_OVERRIDE})" \
+                  --env "MIN_PRICE=$(echo ${!MIN_PRICE_OVERRIDE})" \
+                  --env "MAX_PRICE=$(echo ${!MAX_PRICE_OVERRIDE})" \
+                  --env "INCREMENT_SIZE=$(echo ${!INCREMENT_SIZE_OVERRIDE})" \
+                  --env "INCREMENT_PRICE=$(echo ${!INCREMENT_PRICE_OVERRIDE})"  \
+                  --env "PAIR_ACTIVE=$(echo ${!PAIR_ACTIVE_OVERRIDE})" \
                   ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
                   node tools/dbs/addPair.js; then
 
           echo "Updating settings file to add new $PAIR_NAME."
           for i in ${CONFIG_FILE_PATH[@]}; do
 
-          if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
-              CONFIGMAP_FILE_PATH=$i
-              HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE="${HOLLAEX_CONFIGMAP_PAIRS},${PAIR_NAME}"
-              sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE/" $CONFIGMAP_FILE_PATH
-              export HOLLAEX_CONFIGMAP_PAIRS="$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE"
-              rm $CONFIGMAP_FILE_PATH.bak
-          fi
+            if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+          
+                CONFIGMAP_FILE_PATH=$i
+
+                if ! command grep -q "HOLLAEX_CONFIGMAP_PAIRS.*${PAIR_NAME}.*" $i ; then
+
+                  HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE="${HOLLAEX_CONFIGMAP_PAIRS},${PAIR_NAME}"
+                  sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE/" $CONFIGMAP_FILE_PATH
+                  rm $CONFIGMAP_FILE_PATH.bak
+
+                else
+
+                  HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE=$HOLLAEX_CONFIGMAP_PAIRS
+                  
+                fi
+
+            fi
 
           done
 
+          sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE/" $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME.env.local
+          rm $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME.env.local.bak
+
+          export HOLLAEX_CONFIGMAP_PAIRS="$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE"
           echo "Current Trading Pairs: ${HOLLAEX_CONFIGMAP_PAIRS}"
           #Regenerating env based on changes of PAIRs
-          load_config_variables;
-          generate_local_env;
           generate_local_docker_compose;
 
-           if  [[ "$IS_DEVELOP" ]]; then
+          if [[ ! "$IS_HOLLAEX_SETUP" ]]; then
 
-            # Restarting containers after database init jobs.
-            echo "Restarting containers to apply database changes."
-            docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-            docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
-
-          else
-
-            # Restarting containers after database init jobs.
-            echo "Restarting containers to apply database changes."
-            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+            # Running database triggers
+            docker exec  --env "PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
 
           fi
 
-          # Running database triggers
-          docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
-
-          if  [[ "$IS_DEVELOP" ]]; then
-
-            # Restarting containers after database init jobs.
-            echo "Restarting containers to apply database changes."
-            docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-            docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
-
-          else
-
-            # Restarting containers after database init jobs.
-            echo "Restarting containers to apply database changes."
-            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
-
-          fi
-
-          /bin/cat << EOF
-  
-                .::::,.                 .:;;;:.
-            .,;i1111111i:.           ,;1tffffff1;,.
-          .:i1t111tttt111tt1;.    .:i1tfftt111tfffft1:.
-      ,;1tttttttffffffft1;,.  ,;ittfttt11111111ttffLLft;,
-    :tfftttttffft1ii11;,   ,;1ttttttt1111i;;;i1111ttffLLLt:
-    :ffttttttt1i:.      .:i1ttttttt1111i:.     .,;11111tffff,
-    ;ftftttt1,      .,;1ttttttttttt1;,   .:i11;,   :1111tfff;
-    ;ffft111.    .:i11t11ttttttt1;,   ,;1ttttttt1;  ,111tfff;
-    ;fff111i  .;i111111tttttti:.  .,i1tttttt111111.  i11tfff;
-    ;fff111i  .1111tttttt1i,   .:i1ttttt111111i:,   .111tfff;
-    ;fff1111;  .:1tfft1;,   ,;i1tttttttttt1i:.     .;t11tfff;
-    ;Lfft1111i:.   ,,.   ,;11tttttttttt1;,       ,;1tttttttf:
-    .1LLfftt1111i;,..,:i1111ttttttt1i:.  .,,,,:i1tfttttttffi
-      :1fLLfftt11111111111tttttt1;,.  .;1ffffffffttttttt1i:
-        .:itfLfftt11111ttfffti:,   .;1tttttffftt11tt1i;,
-            ,;1tfffftffft1i:.       .:;i1111111111;:.
-              .:i1tt11;,               ,:ii1ii;,
-
-      Trading Pair ${PAIR_NAME} has been successfully added
-
-EOF
+          hollaex_ascii_pair_has_been_added;
 
       else
 
         printf "\033[91mFailed to add new pair $PAIR_NAME on local exchange. Please confirm your input values and try again.\033[39m\n"
 
-        if  [[ "$IS_DEVELOP" ]]; then
+        # if  [[ "$IS_DEVELOP" ]]; then
 
-          # Restarting containers after database init jobs.
-          echo "Restarting containers to apply database changes."
-          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+        #   # Restarting containers after database init jobs.
+        #   echo "Restarting containers to apply database changes."
+        #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
 
-        else
+        # else
 
-          # Restarting containers after database init jobs.
-          echo "Restarting containers to apply database changes."
-          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+        #   # Restarting containers after database init jobs.
+        #   echo "Restarting containers to apply database changes."
+        #   docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
 
-        fi
+        # fi
 
-        exit 1;
+        # exit 1;
 
       fi
 
   fi
+
+  if [[ "$VALUE_IMPORTED_FROM_CONFIGMAP" ]] && ! [[ "$IS_HOLLAEX_SETUP" ]]; then
+
+    exit 0;
+
+  fi
+
+  #exit 0;
 
 }
 
@@ -2308,10 +2646,27 @@ function remove_pair_input() {
 
 function remove_pair_exec() {
 
+  IFS=',' read -ra CURRENT_PAIRS <<< "${HOLLAEX_CONFIGMAP_PAIRS}"
+
+  if (( "${#CURRENT_PAIRS[@]}" <= "1" )); then
+
+    printf "\n\033[91mError: You should have at least 1 trading pair on your exchange.\033[39m\n"
+    echo "Current Trading Pair(s) : ${HOLLAEX_CONFIGMAP_PAIRS}."
+    printf "Exiting...\n\n"
+
+    exit 1;
+
+  fi 
+
   if [[ "$USE_KUBERNETES" ]]; then
 
-    echo "Blocking exchange external connections"
-    kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+    # # Only tries to attempt remove ingress rules from Kubernetes if it exists.
+    # if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+    
+    #     echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
+    #     kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+    # fi
 
 
     echo "*** Removing existing pair $PAIR_NAME on Kubernetes ***"
@@ -2322,8 +2677,8 @@ function remove_pair_exec() {
                 --set job.mode="remove_pair" \
                 --set job.env.pair_name="$PAIR_NAME" \
                 --set DEPLOYMENT_MODE="api" \
-                --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" \
-                --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" \
+                --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
                 --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
@@ -2340,9 +2695,6 @@ function remove_pair_exec() {
       printf "\033[91mFailed to create Kubernetes Job for removing existing pair $PAIR_NAME, Please confirm your input values and try again.\033[39m\n"
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
 
-      echo "Allowing exchange external connections"
-      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
-
     fi
 
     if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME \
@@ -2352,18 +2704,21 @@ function remove_pair_exec() {
       echo "*** Pair $PAIR_NAME has been successfully removed on your exchange! ***"
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
 
+      echo "*** Removing created Kubernetes Job for removing existing pair... ***"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
+
       echo "*** Removing existing $PAIR_NAME container from Kubernetes ***"
       PAIR_BASE=$(echo $PAIR_NAME | cut -f1 -d '-')
       PAIR_2=$(echo $PAIR_NAME | cut -f2 -d '-')
 
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-queue-$PAIR_BASE$PAIR_2
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-engine-$PAIR_BASE$PAIR_2
 
       echo "*** Updating settings file to remove existing $PAIR_NAME. ***"
       for i in ${CONFIG_FILE_PATH[@]}; do
 
       if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
           CONFIGMAP_FILE_PATH=$i
-          if [[ "$PAIR_NAME" == "hollaex-usdt" ]]; then
+          if [[ "$PAIR_NAME" == "hex-usdt" ]]; then
               HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HOLLAEX_CONFIGMAP_PAIRS//$PAIR_NAME,}")
             else
               HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(echo "${HOLLAEX_CONFIGMAP_PAIRS//,$PAIR_NAME}")
@@ -2374,23 +2729,21 @@ function remove_pair_exec() {
 
       done
 
+      sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+      rm $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml.bak
+
       export HOLLAEX_CONFIGMAP_PAIRS=$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE
       echo "Current Trading Pairs: ${HOLLAEX_CONFIGMAP_PAIRS}"
-
-      load_config_variables;
-      generate_kubernetes_configmap;
 
       echo "Applying configmap on the namespace"
       kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
 
-      echo "Restarting containers to apply database changes."
-      kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+      # Running database job for Kubernetes
+      echo "Applying changes on database..."
+      kubernetes_database_init upgrade;
 
-      echo "Upgrading exchange with latest settings..."
-      hollaex upgrade --kube --skip
-
-      echo "*** Removing created Kubernetes Job for removing existing pair... ***"
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
+      echo "Trading pair $PAIR_NAME has been successfully removed."
+      echo "Please run 'hollaex restart --kube' to fully apply it."
 
     else
 
@@ -2398,9 +2751,6 @@ function remove_pair_exec() {
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
-
-      echo "Allowing exchange external connections"
-      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
       
     fi
 
@@ -2415,8 +2765,8 @@ function remove_pair_exec() {
 
       fi
 
-      echo "Shutting down Nginx to block exchange external access"
-      docker stop $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ")
+      # echo "Shutting down Nginx to block exchange external access"
+      # docker stop $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ")
 
       echo "*** Removing new pair $PAIR_NAME on local exchange ***"
       if command docker exec --env "PAIR_NAME=${PAIR_NAME}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/removePair.js; then
@@ -2434,73 +2784,76 @@ function remove_pair_exec() {
 
             sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$PAIRS_STRING_TO_COMMNA_SEPARATED/" $CONFIGMAP_FILE_PATH
 
-            export HOLLAEX_CONFIGMAP_PAIRS=$PAIRS_STRING_TO_COMMNA_SEPARATED
-
             rm $CONFIGMAP_FILE_PATH.bak
         fi
 
         done
 
+        sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$PAIRS_STRING_TO_COMMNA_SEPARATED/" $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME.env.local
+        rm $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME.env.local.bak
+
+        export HOLLAEX_CONFIGMAP_PAIRS=$PAIRS_STRING_TO_COMMNA_SEPARATED
         echo "Current Trading Pairs: ${HOLLAEX_CONFIGMAP_PAIRS}"
-        #Regenerating env based on changes of PAIRs
-        load_config_variables;
-        generate_local_env;
+
         generate_local_docker_compose;
         
-        if  [[ "$IS_DEVELOP" ]]; then
+        # if  [[ "$IS_DEVELOP" ]]; then
 
-          # Restarting containers after database init jobs.
-          echo "Restarting containers to apply database changes."
-          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
+        #   # Restarting containers after database init jobs.
+        #   echo "Restarting containers to apply database changes."
+        #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+        #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
 
-        else
+        # else
 
-          # Restarting containers after database init jobs.
-          echo "Restarting containers to apply database changes."
-          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
+        #   # Restarting containers after database init jobs.
+        #   echo "Restarting containers to apply database changes."
+        #   docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+        #   docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
 
-        fi
+        # fi
 
         # Running database triggers
-        docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
+        docker exec --env="PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
 
-        if  [[ "$IS_DEVELOP" ]]; then
+        echo "Trading pair $PAIR_NAME has been successfully removed."
+        echo "Please run 'hollaex restart' to fully apply it."
 
-          # Restarting containers after database init jobs.
-          echo "Restarting containers to apply database changes."
-          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
+        # if  [[ "$IS_DEVELOP" ]]; then
 
-        else
+        #   # Restarting containers after database init jobs.
+        #   echo "Restarting containers to apply database changes."
+        #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+        #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
 
-          # Restarting containers after database init jobs.
-          echo "Restarting containers to apply database changes."
-          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
+        # else
 
-        fi
+        #   # Restarting containers after database init jobs.
+        #   echo "Restarting containers to apply database changes."
+        #   docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+        #   docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
+
+        # fi
 
       else
 
         printf "\033[91mFailed to remove trading pair $PAIR_NAME on local exchange. Please confirm your input values and try again.\033[39m\n"
 
-        if  [[ "$IS_DEVELOP" ]]; then
+        # if  [[ "$IS_DEVELOP" ]]; then
 
-          # Restarting containers after database init jobs.
-          echo "Restarting containers to apply database changes."
-          docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+        #   # Restarting containers after database init jobs.
+        #   echo "Restarting containers to apply database changes."
+        #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
 
-        else
+        # else
 
-          # Restarting containers after database init jobs.
-          echo "Restarting containers to apply database changes."
-          docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+        #   # Restarting containers after database init jobs.
+        #   echo "Restarting containers to apply database changes."
+        #   docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
 
-        fi
+        # fi
         
-        exit 1;
+        # exit 1;
 
       fi
 
@@ -2525,7 +2878,10 @@ REACT_APP_CAPTCHA_SITE_KEY=${ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}
 REACT_APP_DEFAULT_LANGUAGE=${ENVIRONMENT_WEB_DEFAULT_LANGUAGE}
 REACT_APP_DEFAULT_COUNTRY=${ENVIRONMENT_WEB_DEFAULT_COUNTRY}
 
-REACT_APP_BASE_CURRENCY=${ENVIRONMENT_WEB_BASE_CURRENCY}
+REACT_APP_LOGO_PATH=${HOLLAEX_CONFIGMAP_LOGO_PATH}
+REACT_APP_LOGO_BLACK_PATH=${HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH}
+
+REACT_APP_EXCHANGE_NAME=${HOLLAEX_CONFIGMAP_API_NAME}
 
 EOL
 }
@@ -2587,11 +2943,11 @@ Check https://docs.bitholla.com to read full docs regarding whole HollaEx Kit op
 EOF
   
   # SET TOTAL NUMBERS OF QUESTIONS
-  local TOTAL_QUESTIONS=30
+  local TOTAL_QUESTIONS=33
 
   if [[ "$RECONFIGURE_BASIC_SETTINGS" ]]; then 
 
-    local TOTAL_QUESTIONS=25
+    local TOTAL_QUESTIONS=28
 
   fi
 
@@ -2649,7 +3005,7 @@ EOF
   local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN="${answer:-$HOLLAEX_CONFIGMAP_DOMAIN}"
 
   while true;
-    do if [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN" == *"http"* ]] && [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN" == *"https"* ]]; then
+    do if [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN" == *"http"* ]]; then
       printf "\nValue should be a full URL including 'http' or 'https'.\n"
       echo  "Exchange URL: "
       read answer
@@ -2671,14 +3027,14 @@ EOF
   # Light Logo Path
   echo "***************************************************************"
   echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Exchange Light Logo URL: ($HOLLAEX_CONFIGMAP_LOGO_PATH)"
-  printf "\033[2m- Graphic file should always be a PNG file type. \033[22m\n"
+  printf "\033[2m- Logo file should be always a http(s) link. \033[22m\n"
   read answer
 
   local ORIGINAL_CHARACTER_FOR_LOGO_PATH="${answer:-$HOLLAEX_CONFIGMAP_LOGO_PATH}"
 
   while true;
-    do if [[ ! "$ORIGINAL_CHARACTER_FOR_LOGO_PATH" == *".png"* ]]; then
-      printf "\nGraphic file should always be a PNG file type.\n"
+    do if [[ ! "$ORIGINAL_CHARACTER_FOR_LOGO_PATH" == *"http"* ]]; then
+      printf "\nLogo file should be always a http(s) link.\n"
       echo  "Exchange Light Logo Path: "
       read answer
       local ORIGINAL_CHARACTER_FOR_LOGO_PATH="${answer}"
@@ -2701,14 +3057,14 @@ EOF
   # Dark Logo Path
   echo "***************************************************************"
   echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Exchange Dark Logo URL: ($HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH)"
-  printf "\033[2m- Graphic file should always be a PNG file type. \033[22m\n"
+  printf "\033[2m- Logo file should be always a http(s) link. \033[22m\n"
   read answer
 
   local ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH="${answer:-$HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH}"
 
   while true;
-    do if [[ ! "$ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH" == *".png"* ]]; then
-      printf "\nGraphic file should always be a PNG file type.\n"
+    do if [[ ! "$ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH" == *"http"* ]]; then
+      printf "\nLogo file should be always a http(s) link.\n"
       echo  "Exchange Dark Logo Path: "
       read answer
       local ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH="${answer}"
@@ -2884,7 +3240,7 @@ EOF
   local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST="${answer:-$HOLLAEX_CONFIGMAP_API_HOST}"
 
   while true;
-    do if [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST" == *"http"* ]] && [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST" == *"https"* ]]; then
+    do if [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST" == *"http"* ]]; then
       printf "\nValue should be a full URL including 'http' or 'https'.\n"
       echo  "Exchange Server API URL: "
       read answer
@@ -3140,10 +3496,75 @@ EOF
 
   local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
 
+  # SMTP Server
+  echo "***************************************************************"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] SMTP Server Endpoint?: ($HOLLAEX_CONFIGMAP_SMTP_SERVER)"
+  printf "\033[2m- SMTP Server Endpoint for sending email. \033[22m\n"
+  read answer
+
+  local HOLLAEX_CONFIGMAP_SMTP_SERVER_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_SMTP_SERVER}
+
+  while true;
+    do if [[ "$HOLLAEX_CONFIGMAP_SMTP_SERVER_OVERRIDE" == *"http"* ]]; then
+      printf "\nSMTP Server Endpoint should not have http(s) included.\n"
+      echo  "Exchange URL: "
+      read answer
+      local HOLLAEX_CONFIGMAP_SMTP_SERVER_OVERRIDE="${answer}"
+    else
+      break;
+    fi
+  done
+
+  printf "\n"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_SMTP_SERVER} ✔"
+  printf "\n"
+
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
+  # SMTP Port
+  echo "***************************************************************"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] SMTP Port?: ($HOLLAEX_CONFIGMAP_SMTP_PORT)"
+  printf "\033[2m- SMTP Server port number for sending email. \033[22m\n"
+  read answer
+
+  local HOLLAEX_CONFIGMAP_SMTP_PORT_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_SMTP_PORT}
+
+  printf "\n"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_SMTP_PORT} ✔"
+  printf "\n"
+
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
+  # SMTP User
+  echo "***************************************************************"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] SMTP User?: ($HOLLAEX_CONFIGMAP_SMTP_USER)"
+  printf "\033[2m- SMTP Server username for sending email. \033[22m\n"
+  read answer
+
+  local HOLLAEX_CONFIGMAP_SMTP_USER_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_SMTP_USER}
+
+  printf "\n"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_SMTP_USER} ✔"
+  printf "\n"
+
+  # SMTP Password
+  echo "***************************************************************"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] SMTP Password?: ($HOLLAEX_CONFIGMAP_SMTP_PASSWORD)"
+  printf "\033[2m- SMTP Server password for sending email. \033[22m\n"
+  read answer
+
+  local HOLLAEX_SECRET_SMTP_PASSWORD_OVERRIDE=${answer:-$HOLLAEX_CONFIGMAP_SMTP_PASSWORD}
+
+  printf "\n"
+  echo "${answer:-$HOLLAEX_SECRET_SMTP_PASSWORD} ✔"
+  printf "\n"
+
+  local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
+
   # AWS AccessKey
   echo "***************************************************************"
   echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] AWS AccessKey?: ($HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID) - Optional"
-  printf "\033[2m- AWS IAM AccessKey for S3, SES, SNS.\033[22m\n"
+  printf "\033[2m- AWS IAM AccessKey for S3, SNS.\033[22m\n"
   read answer
 
   local HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE=${answer:-$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID}
@@ -3157,7 +3578,7 @@ EOF
   # AWS SecretKey
   echo "***************************************************************"
   echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] AWS SecretKey?: ($(echo ${HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY//?/◼︎}$(echo $HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY | grep -o '....$'))) - Optional"
-  printf "\033[2m- AWS IAM SecretKey for S3, SES, SNS.\033[22m\n"
+  printf "\033[2m- AWS IAM SecretKey for S3, SNS.\033[22m\n"
   read answer
   local ESCAPED_HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=${HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY//\//\\\/}
 
@@ -3175,14 +3596,14 @@ EOF
 
   # AWS Region
   echo "***************************************************************"
-  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] AWS Region?: ($HOLLAEX_SECRET_SES_REGION) - Optional"
-  printf "\033[2m- AWS Region SES, SNS.\033[22m\n"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] AWS Region?: ($HOLLAEX_SECRET_SNS_REGION) - Optional"
+  printf "\033[2m- AWS Region for SNS.\033[22m\n"
   read answer
 
-  local HOLLAEX_SECRET_SES_REGION_OVERRIDE=${answer:-$HOLLAEX_SECRET_SES_REGION}
+  local HOLLAEX_SECRET_SNS_REGION_OVERRIDE=${answer:-$HOLLAEX_SECRET_SNS_REGION}
 
   printf "\n"
-  echo "${answer:-$HOLLAEX_SECRET_SES_REGION} ✔"
+  echo "${answer:-$HOLLAEX_SECRET_SNS_REGION} ✔"
   printf "\n"
 
   local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
@@ -3323,9 +3744,14 @@ printf "\n"
 fi)
 Allow New User Signup: $HOLLAEX_CONFIGMAP_NEW_USER_IS_ACTIVATED_OVERRIDE
 
+SMTP Server: $HOLLAEX_CONFIGMAP_SMTP_SERVER_OVERRIDE
+SMTP Port: $HOLLAEX_CONFIGMAP_SMTP_PORT_OVERRIDE
+SMTP User: $HOLLAEX_CONFIGMAP_SMTP_USER_OVERRIDE
+SMTP Password: $HOLLAEX_SECRET_SMTP_PASSWORD_OVERRIDE
+
 AWS AccessKey (Optional): $HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE
 AWS SecretKey (Optional): $HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_MASKED
-AWS Region (Optional): $HOLLAEX_SECRET_SES_REGION_OVERRIDE
+AWS Region (Optional): $HOLLAEX_SECRET_SNS_REGION_OVERRIDE
 AWS S3 Bucket (Optional): $HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET_OVERRIDE
 
 Vault Name (Optional): $HOLLAEX_CONFIGMAP_VAULT_NAME_OVERRIDE
@@ -3339,7 +3765,7 @@ FreshDesk Auth (Optional): $HOLLAEX_SECRET_FRESHDESK_AUTH_MASKED
 
 EOF
 
-  echo "Are the values are all correct? (Y/n)"
+  echo "Are the values all correct? (Y/n)"
   read answer
 
   if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
@@ -3349,7 +3775,7 @@ EOF
   
   fi
 
-  echo "Provided values would be updated on your settings files automatically."
+  echo "Provided values would be updated on your settings file(s) automatically."
 
   for i in ${CONFIG_FILE_PATH[@]}; do
 
@@ -3383,7 +3809,11 @@ EOF
 
     sed -i.bak "s/HOLLAEX_CONFIGMAP_VAULT_NAME=$HOLLAEX_CONFIGMAP_VAULT_NAME/HOLLAEX_CONFIGMAP_VAULT_NAME=$HOLLAEX_CONFIGMAP_VAULT_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
-    sed -i.bak "s/ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION=.*/ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION=$EXCHANGE_API_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_SMTP_SERVER=.*/HOLLAEX_CONFIGMAP_SMTP_SERVER=$HOLLAEX_CONFIGMAP_SMTP_SERVER_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_SMTP_PORT=.*/HOLLAEX_CONFIGMAP_SMTP_PORT=$HOLLAEX_CONFIGMAP_SMTP_PORT_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_SMTP_USER=.*/HOLLAEX_CONFIGMAP_SMTP_USER=$HOLLAEX_CONFIGMAP_SMTP_USER_OVERRIDE/" $CONFIGMAP_FILE_PATH
+
+    #sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION=.*/ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION=$EXCHANGE_API_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
     sed -i.bak "s/HOLLAEX_CONFIGMAP_FRESHDESK_HOST=$HOLLAEX_CONFIGMAP_FRESHDESK_HOST/HOLLAEX_CONFIGMAP_FRESHDESK_HOST=$HOLLAEX_CONFIGMAP_FRESHDESK_HOST_OVERRIDE/" $CONFIGMAP_FILE_PATH
     rm $CONFIGMAP_FILE_PATH.bak
@@ -3408,14 +3838,17 @@ EOF
     sed -i.bak "s/HOLLAEX_SECRET_SNS_ACCESSKEYID=$HOLLAEX_SECRET_SNS_ACCESSKEYID/HOLLAEX_SECRET_SNS_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE/" $SECRET_FILE_PATH
     sed -i.bak "s/HOLLAEX_SECRET_SNS_SECRETACCESSKEY=.*/HOLLAEX_SECRET_SNS_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE/" $SECRET_FILE_PATH
 
-    sed -i.bak "s/HOLLAEX_SECRET_SES_REGION=$HOLLAEX_SECRET_SES_REGION/HOLLAEX_SECRET_SES_REGION=$HOLLAEX_SECRET_SES_REGION_OVERRIDE/" $SECRET_FILE_PATH
-    sed -i.bak "s/HOLLAEX_SECRET_SNS_REGION=$HOLLAEX_SECRET_SNS_REGION/HOLLAEX_SECRET_SNS_REGION=$HOLLAEX_SECRET_SES_REGION_OVERRIDE/" $SECRET_FILE_PATH
+    sed -i.bak "s/HOLLAEX_SECRET_SES_REGION=$HOLLAEX_SECRET_SES_REGION/HOLLAEX_SECRET_SES_REGION=$HOLLAEX_SECRET_SNS_REGION_OVERRIDE/" $SECRET_FILE_PATH
+    sed -i.bak "s/HOLLAEX_SECRET_SNS_REGION=$HOLLAEX_SECRET_SNS_REGION/HOLLAEX_SECRET_SNS_REGION=$HOLLAEX_SECRET_SNS_REGION_OVERRIDE/" $SECRET_FILE_PATH
 
     sed -i.bak "s/HOLLAEX_SECRET_VAULT_KEY=$HOLLAEX_SECRET_VAULT_KEY/HOLLAEX_SECRET_VAULT_KEY=$HOLLAEX_SECRET_VAULT_KEY_OVERRIDE/" $SECRET_FILE_PATH
     sed -i.bak "s/HOLLAEX_SECRET_VAULT_SECRET=$HOLLAEX_SECRET_VAULT_SECRET/HOLLAEX_SECRET_VAULT_SECRET=$HOLLAEX_SECRET_VAULT_SECRET_OVERRIDE/" $SECRET_FILE_PATH
 
     sed -i.bak "s/HOLLAEX_SECRET_FRESHDESK_KEY=$HOLLAEX_SECRET_FRESHDESK_KEY/HOLLAEX_SECRET_FRESHDESK_KEY=$HOLLAEX_SECRET_FRESHDESK_KEY_OVERRIDE/" $SECRET_FILE_PATH
     sed -i.bak "s/HOLLAEX_SECRET_FRESHDESK_AUTH=$HOLLAEX_SECRET_FRESHDESK_AUTH/HOLLAEX_SECRET_FRESHDESK_AUTH=$HOLLAEX_SECRET_FRESHDESK_AUTH_OVERRIDE/" $SECRET_FILE_PATH
+
+    sed -i.bak "s/HOLLAEX_SECRET_SMTP_PASSWORD=.*/HOLLAEX_SECRET_SMTP_PASSWORD=$HOLLAEX_SECRET_SMTP_PASSWORD_OVERRIDE/" $SECRET_FILE_PATH
+
     rm $SECRET_FILE_PATH.bak
     fi
       
@@ -3425,7 +3858,7 @@ EOF
   export HOLLAEX_CONFIGMAP_API_NAME=$EXCHANGE_API_NAME_OVERRIDE
   export HOLLAEX_SECRET_ACTIVATION_CODE=$EXCHANGE_ACTIVATION_CODE_OVERRIDE
 
-  export ENVIRONMENT_KUBERNETES_WEB_IMAGE_VERSION=$EXCHANGE_API_NAME_OVERRIDE
+  export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION=$EXCHANGE_API_NAME_OVERRIDE
 
   export HOLLAEX_CONFIGMAP_DOMAIN=$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN
 
@@ -3458,7 +3891,7 @@ EOF
 
   export HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE
   export HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE
-  export HOLLAEX_SECRET_SES_REGION=$HOLLAEX_SECRET_SES_REGION_OVERRIDE
+  export HOLLAEX_SECRET_SES_REGION=$HOLLAEX_SECRET_SNS_REGION_OVERRIDE
 
   export HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET=$HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET_OVERRIDE
 
@@ -3469,6 +3902,11 @@ EOF
   export HOLLAEX_CONFIGMAP_FRESHDESK_HOST=$HOLLAEX_CONFIGMAP_FRESHDESK_HOST_OVERRIDE
   export HOLLAEX_SECRET_FRESHDESK_KEY=$HOLLAEX_SECRET_FRESHDESK_KEY_OVERRIDE
   export HOLLAEX_SECRET_FRESHDESK_AUTH=$HOLLAEX_SECRET_FRESHDESK_AUTH_OVERRIDE
+
+  export HOLLAEX_CONFIGMAP_SMTP_SERVER=$HOLLAEX_CONFIGMAP_SMTP_SERVER_OVERRIDE
+  export HOLLAEX_CONFIGMAP_SMTP_PORT=$HOLLAEX_CONFIGMAP_SMTP_PORT_OVERRIDE
+  export HOLLAEX_CONFIGMAP_SMTP_USER=$HOLLAEX_CONFIGMAP_SMTP_USER_OVERRIDE
+  export HOLLAEX_SECRET_SMTP_PASSWORD=$HOLLAEX_SECRET_SMTP_PASSWORD_OVERRIDE
 
 }
 
@@ -3494,7 +3932,7 @@ EOF
   local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN="${answer:-$HOLLAEX_CONFIGMAP_DOMAIN}"
 
   while true;
-    do if [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN" == *"http"* ]] && [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN" == *"https"* ]]; then
+    do if [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN" == *"http"* ]]; then
       printf "\nValue should be a full URL including 'http' or 'https'.\n"
       echo  "Exchange URL: "
       read answer
@@ -3520,7 +3958,7 @@ EOF
   local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST="${answer:-$HOLLAEX_CONFIGMAP_API_HOST}"
 
   while true;
-    do if [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST" == *"http"* ]] && [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST" == *"https"* ]]; then
+    do if [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST" == *"http"* ]]; then
       printf "\nValue should be a full URL including 'http' or 'https'.\n"
       echo  "Exchange Server API URL: "
       read answer
@@ -3573,11 +4011,6 @@ EOF
   echo "${answer:-$ENVIRONMENT_WEB_DEFAULT_LANGUAGE} ✔"
   printf "\n"
 
-  # echo "Default Currency: ($ENVIRONMENT_WEB_BASE_CURRENCY)"
-  # read answer
-
-  # local ENVIRONMENT_WEB_BASE_CURRENCY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_BASE_CURRENCY}"
-
   /bin/cat << EOF
   
 *********************************************
@@ -3590,8 +4023,6 @@ Web Captcha Sitekey: $ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE
 Default Country: $ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE
 
 Default Language: $ENVIRONMENT_WEB_DEFAULT_LANGUAGE_OVERRIDE
-
-Default Currency: usdt (Forced)
 *********************************************
 
 EOF
@@ -3618,7 +4049,6 @@ EOF
     sed -i.bak "s/ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY/ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/ENVIRONMENT_WEB_DEFAULT_LANGUAGE=$ENVIRONMENT_WEB_DEFAULT_LANGUAGE/ENVIRONMENT_WEB_DEFAULT_LANGUAGE=$ENVIRONMENT_WEB_DEFAULT_LANGUAGE_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    sed -i.bak "s/ENVIRONMENT_WEB_BASE_CURRENCY=$ENVIRONMENT_WEB_BASE_CURRENCY/ENVIRONMENT_WEB_BASE_CURRENCY=$ENVIRONMENT_WEB_BASE_CURRENCY_OVERRIDE/" $CONFIGMAP_FILE_PATH
     rm $CONFIGMAP_FILE_PATH.bak
     fi
       
@@ -3634,166 +4064,164 @@ EOF
 
   export ENVIRONMENT_WEB_DEFAULT_LANGUAGE=$ENVIRONMENT_WEB_DEFAULT_LANGUAGE_OVERRIDE
 
-  export ENVIRONMENT_WEB_BASE_CURRENCY=$ENVIRONMENT_WEB_BASE_CURRENCY_OVERRIDE
-
 }
 
-function reactivate_exchange() {
+# function reactivate_exchange() {
   
-echo "Are the sure your want to reactivate your exchange? (y/N)"
-echo "Make sure you already updated your Activation Code, Exchange Name, or API Server URL."
-read answer
+# echo "Are the sure your want to reactivate your exchange? (y/N)"
+# echo "Make sure you already updated your Activation Code, Exchange Name, or API Server URL."
+# read answer
 
-if [[ "$answer" = "${answer#[Yy]}" ]]; then
+# if [[ "$answer" = "${answer#[Yy]}" ]]; then
     
-  echo "You picked false. Please confirm the values and run the command again."
-  exit 1;
+#   echo "You picked false. Please confirm the values and run the command again."
+#   exit 1;
 
-fi
+# fi
 
-if [[ "$USE_KUBERNETES" ]]; then
-
-
-  echo "*********************************************"
-  echo "Verifying current KUBECONFIG on the machine"
-  kubectl get nodes
-  echo "*********************************************"
-
-  if [[ "$RUN_WITH_VERIFY" == true ]]; then
+# if [[ "$USE_KUBERNETES" ]]; then
 
 
-      echo "Is this a correct Kubernetes cluster? (Y/n)"
+#   echo "*********************************************"
+#   echo "Verifying current KUBECONFIG on the machine"
+#   kubectl get nodes
+#   echo "*********************************************"
 
-      read answer
+#   if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-      if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-          echo "Exiting..."
-          exit 0;
-      fi
 
-  fi
+#       echo "Is this a correct Kubernetes cluster? (Y/n)"
 
-  echo "Reactivating the exchange..."
+#       read answer
+
+#       if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+#           echo "Exiting..."
+#           exit 0;
+#       fi
+
+#   fi
+
+#   echo "Reactivating the exchange..."
   
-  # Generate Kubernetes Configmap
-    cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/reactivate-exchange.yaml <<EOL
-job:
-  enable: true
-  mode: reactivate_exchange
-EOL
+#   # Generate Kubernetes Configmap
+#     cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/reactivate-exchange.yaml <<EOL
+# job:
+#   enable: true
+#   mode: reactivate_exchange
+# EOL
 
 
-  echo "Generating Kubernetes Configmap"
-  generate_kubernetes_configmap;
+#   echo "Generating Kubernetes Configmap"
+#   generate_kubernetes_configmap;
 
-  echo "Generating Kubernetes Secret"
-  generate_kubernetes_secret;
+#   echo "Generating Kubernetes Secret"
+#   generate_kubernetes_secret;
 
-  echo "Applying configmap on the namespace"
-  kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+#   echo "Applying configmap on the namespace"
+#   kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
 
-  echo "Applying secret on the namespace"
-  kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+#   echo "Applying secret on the namespace"
+#   kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
-  if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange \
-                --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                --set DEPLOYMENT_MODE="api" \
-                --set imageRegistry="$ENVIRONMENT_DOCKER_IMAGE_REGISTRY" \
-                --set dockerTag="$ENVIRONMENT_DOCKER_IMAGE_VERSION" \
-                --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
-                --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
-                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
-                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/reactivate-exchange.yaml \
-                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+#   if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange \
+#                 --namespace $ENVIRONMENT_EXCHANGE_NAME \
+#                 --set DEPLOYMENT_MODE="api" \
+#                 --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+#                 --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+#                 --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+#                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+#                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+#                 -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+#                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/reactivate-exchange.yaml \
+#                 $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
 
-    echo "Kubernetes Job has been created for reactivating your exchange."
+#     echo "Kubernetes Job has been created for reactivating your exchange."
 
-    echo "Waiting until Job get completely run"
-    sleep 30;
+#     echo "Waiting until Job get completely run"
+#     sleep 30;
 
 
-  else 
+#   else 
 
-    printf "\033[91mFailed to create Kubernetes Job for reactivating your exchange, Please confirm your input values and try again.\033[39m\n"
-    helm del --purge $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
+#     printf "\033[91mFailed to create Kubernetes Job for reactivating your exchange, Please confirm your input values and try again.\033[39m\n"
+#     helm del --purge $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
   
-  fi
+#   fi
 
-  if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange \
-            --namespace $ENVIRONMENT_EXCHANGE_NAME \
-            -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+#   if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange \
+#             --namespace $ENVIRONMENT_EXCHANGE_NAME \
+#             -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
 
-    echo "Successfully reactivated your exchange!"
-    kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
+#     echo "Successfully reactivated your exchange!"
+#     kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
 
-    echo "Removing created Kubernetes Job for reactivating the exchange..."
-    helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
+#     echo "Removing created Kubernetes Job for reactivating the exchange..."
+#     helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
 
-    echo "Restarting the exchange..."
-    kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$$ENVIRONMENT_EXCHANGE_NAME
+#     echo "Restarting the exchange..."
+#     kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$$ENVIRONMENT_EXCHANGE_NAME
   
-  else 
+#   else 
 
-    printf "\033[91mFailed to create Kubernetes Job for reactivating your exchange, Please confirm your input values and try again.\033[39m\n"
+#     printf "\033[91mFailed to create Kubernetes Job for reactivating your exchange, Please confirm your input values and try again.\033[39m\n"
 
-    echo "Displaying logs..."
-    kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
+#     echo "Displaying logs..."
+#     kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
 
-    helm del --purge $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
+#     helm del --purge $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
   
-  fi
+#   fi
 
-elif [[ ! "$USE_KUBERNETES" ]]; then
+# elif [[ ! "$USE_KUBERNETES" ]]; then
 
-  IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+#   IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
-  # Overriding container prefix for develop server
-  if [[ "$IS_DEVELOP" ]]; then
+#   # Overriding container prefix for develop server
+#   if [[ "$IS_DEVELOP" ]]; then
     
-    CONTAINER_PREFIX=
+#     CONTAINER_PREFIX=
 
-  fi
+#   fi
 
-  echo "Reactivating the exchange..."
-  if command docker exec --env "API_HOST=${PAIR_NAME}" \
-                  --env "API_NA<E=${PAIR_BASE}" \
-                  --env "ACTIVATION_CODE=${PAIR_2}" \
-                  ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
-                  node tools/dbs/setExchange.js; then
+#   echo "Reactivating the exchange..."
+#   if command docker exec --env "API_HOST=${PAIR_NAME}" \
+#                   --env "API_NA<E=${PAIR_BASE}" \
+#                   --env "ACTIVATION_CODE=${PAIR_2}" \
+#                   ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
+#                   node tools/dbs/setExchange.js; then
   
-    echo "Restarting the exchange to apply changes."
+#     echo "Restarting the exchange to apply changes."
 
-    if  [[ "$IS_DEVELOP" ]]; then
+#     if  [[ "$IS_DEVELOP" ]]; then
 
-      # Restarting containers after database init jobs.
-      echo "Restarting containers to apply database changes."
-      docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-      docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+#       # Restarting containers after database init jobs.
+#       echo "Restarting containers to apply database changes."
+#       docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+#       docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
-    else
+#     else
 
-      # Restarting containers after database init jobs.
-      echo "Restarting containers to apply database changes."
-      docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-      docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+#       # Restarting containers after database init jobs.
+#       echo "Restarting containers to apply database changes."
+#       docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+#       docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
-    fi
+#     fi
 
-    echo "Successfully reactivated the exchange."
+#     echo "Successfully reactivated the exchange."
   
-  else 
+#   else 
 
-    printf "\033[91mFailed to reactivate the exchange. Please review your configurations and try again.\033[39m\n"
-    exit 1;
+#     printf "\033[91mFailed to reactivate the exchange. Please review your configurations and try again.\033[39m\n"
+#     exit 1;
 
-  fi
+#   fi
 
-fi
+# fi
 
-exit 0;
+# exit 0;
 
-} 
+# } 
 
 function hollaex_ascii_exchange_is_up() {
 
@@ -3837,9 +4265,7 @@ function hollaex_ascii_exchange_has_been_setup() {
 1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
 
                      Your Exchange has been setup!
-                 Run 'hollaex start' to start the exchange.
                  
-
 EOF
 
 }
@@ -3862,7 +4288,7 @@ function hollaex_ascii_exchange_has_been_stopped() {
 1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
 
                     Your Exchange has been stopped
-               Run 'hollaex start' to start the exchange.
+               Run 'hollaex start$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to start the exchange.
                  
 
 EOF
@@ -3931,5 +4357,638 @@ function set_nodeport_access() {
     if [[ "$1" == true ]] && [[ "$2" ]]; then
         echo "--set NodePort.enable='true' --set NodePort.port=$4"
     fi
+
+}
+
+function hollaex_setup_finalization() { 
+
+
+  echo "*********************************************"
+  printf "\n"
+  echo "Your exchange is all set!"
+  echo "You can proceed to add your own currencies, trading pairs right away from now on."
+
+  echo "Attempting to add user custom currencies automatically..."
+
+  if [[ "$USE_KUBERNETES" ]]; then
+
+      hollaex toolbox --add_coin --kube --is_hollaex_setup
+  
+  elif [[ ! "$USE_KUBERNETES" ]]; then
+
+      hollaex toolbox --add_coin --is_hollaex_setup
+
+  fi
+
+  echo "Attempting to add user custom trading pairs automatically..."
+
+  if [[ "$USE_KUBERNETES" ]]; then
+
+      hollaex toolbox --add_trading_pair --kube --is_hollaex_setup
+
+  elif [[ ! "$USE_KUBERNETES" ]]; then
+
+      hollaex toolbox --add_trading_pair --is_hollaex_setup
+
+  fi
+  
+
+  # echo "You can add more custom currencies or trading pairs manually if you want."
+  # echo "It doesn't matter you want to skip it for now. You can always add new currencies and trading pairs with 'hollaex toolbox' command."
+  # echo "Do you want to proceed? (Y/n)"
+  # read answer
+
+  # if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+
+      echo "Finishing the setup process..."
+      echo "Shutting down the exchange"
+      echo "To start the exchange, Please use 'hollaex start$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' command"
+      if [[ "$USE_KUBERNETES" ]]; then
+          hollaex stop --kube --skip
+      elif [[ ! "$USE_KUBERNETES" ]]; then
+          hollaex stop --skip
+      fi
+
+  # fi
+
+  # while true;
+  # do read -r -p "Do you want to add (setup) new currency? (y/N)" answer   
+  #     if [[ ! "$answer" = "${answer#[Yy]}" ]];
+  #     then
+  #         if [[ "$USE_KUBERNETES" ]]; then
+  #             hollaex toolbox --add_coin --kube
+          
+  #         elif [[ ! "$USE_KUBERNETES" ]]; then
+  #             hollaex toolbox --add_coin
+  #         fi
+  #     else
+  #         while true;
+  #             do read -r -p "Do you want to add (setup) new trading pair? (y/N)" answer   
+  #                 if [[ ! "$answer" = "${answer#[Yy]}" ]];
+  #                 then
+  #                     if [[ "$USE_KUBERNETES" ]]; then
+  #                         hollaex toolbox --add_trading_pair --kube
+  #                     elif [[ ! "$USE_KUBERNETES" ]]; then
+  #                         hollaex toolbox --add_trading_pair
+  #                     fi
+  #                 else   
+  #                     echo "Finishing the setup process..."
+  #                     echo "Shutting down the exchange"
+  #                     echo "To start the exchange, Please use 'hollaex start' command"
+  #                     if [[ "$USE_KUBERNETES" ]]; then
+  #                         hollaex stop --kube --skip
+  #                     elif [[ ! "$USE_KUBERNETES" ]]; then
+  #                         hollaex stop --skip
+  #                     fi
+  #                     exit 0;
+  #                 fi
+  #             done
+  #     fi
+
+  # done
+
+}
+
+function build_user_hollaex_core() {
+
+  # Preparing HollaEx Core image with custom mail configurations
+  echo "Building the user HollaEx Core image with user mail folder & plugins setup."
+
+  if command docker build -t $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION -f $HOLLAEX_CLI_INIT_PATH/Dockerfile $HOLLAEX_CLI_INIT_PATH; then
+
+      echo "Your custom HollaEx Core image has been successfully built."
+
+      if [[ "$USE_KUBERNETES" ]]; then
+
+        echo "Info: Deployment to Kubernetes mandatorily requires image to gets pushed on your Docker registry."
+
+      fi
+
+      if [[ "$RUN_WITH_VERIFY" == false ]]; then
+
+        push_user_hollaex_core;
+      
+      else 
+        
+        echo "Do you want to also push it at your Docker Registry? (Y/n)"
+        read pushAnswer
+
+          if [[ ! "$pushAnswer" = "${pushAnswer#[Nn]}" ]] ;then
+
+            echo "Skipping..."
+            echo "Your image name: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION."
+            echo "You can later tag and push it by using 'docker tag' and 'docker push' command manually."
+          
+          else
+
+            push_user_hollaex_core;
+          
+          fi
+
+      fi
+
+  else 
+
+      printf "\033[91mFailed to build the image.\033[39m\n"
+      echo "Please confirm your configurations and try again."
+      echo "If you are not on a latest HollaEx Kit, Please update it first to latest."
+      
+      exit 1;
+  
+  fi  
+  
+}
+
+function push_user_hollaex_core() {
+
+  if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+    echo "Please type in your new image name. ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION)"
+    read tag
+  
+  else 
+
+    echo "Using $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE as Docker image tag..."
+  
+  fi
+
+  export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} | cut -f1 -d ":")
+  export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION} | cut -f2 -d ":")
+
+  override_user_hollaex_core;
+
+  docker tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
+
+  export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE
+  export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
+
+  echo "Your new image name is: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION."
+  echo "Now pushing it to docker registry..."
+
+  if command docker push $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION; then 
+
+      printf "\033[92mSuccessfully pushed the image to docker registry.\033[39m\n"
+  
+  else 
+
+      printf "\033[91mFailed to push the image to docker registry.\033[39m\n"
+
+      if [[ ! "$USE_KUBERNETES" ]]; then
+
+          echo "Proceeding setup processes without pushing the image at Docker Registry."
+          echo "You can push it later by using 'docker push' command manually."
+  
+      else
+
+          printf "\033[93mHollaEx Kit deployment for Kubernetes requires user's HollaEx Core image pushed at Docker Registry.\033[39m\n"
+          echo "Plesae try again after you confirm the image name is correct, and got proper Docker Registry access."
+          exit 1;
+
+      fi
+  
+  fi
+
+}
+
+function build_user_hollaex_web() {
+
+  # Preparing HollaEx Core image with custom mail configurations
+  echo "Building the user HollaEx Web image."
+
+  if [[ ! "$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY" ]] || [[ ! "$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION" ]]; then
+
+    echo "Error: Your 'ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY' or 'ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION' is missing!"
+    echo "Please make sure you got latest HollaEx Kit first, and check your Configmap file at HollaEx Kit directory."
+    exit 1;
+  
+  fi
+
+  echo "Generating .env for Web Client"
+  generate_hollaex_web_local_env
+
+  if command docker build -t $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION -f $HOLLAEX_CLI_INIT_PATH/web/docker/Dockerfile $HOLLAEX_CLI_INIT_PATH/web; then
+
+      echo "Your custom HollaEx Web image has been successfully built."
+
+      if [[ "$USE_KUBERNETES" ]]; then
+
+        echo "Info: Deployment to Kubernetes mandatorily requires image to gets pushed."
+        push_user_hollaex_web;
+      
+      else 
+        
+        echo "Do you want to also push it at your Docker Registry? (Y/n)"
+
+        read answer
+
+          if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+
+            echo "Skipping..."
+            echo "Your current image name: $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION."
+            echo "You can later tag and push it by using 'docker tag' and 'docker push' command manually."
+            echo "Please run 'hollaex web --restart' to apply the new image."
+          
+          else
+
+            push_user_hollaex_web;
+          
+          fi
+
+      fi
+
+
+  else 
+
+      echo "Failed to build the image."
+      echo "Please confirm your configurations and try again."
+      echo "If you are not on a latest HollaEx Kit, Please update it first to latest."
+      
+      exit 1;
+  
+  fi  
+
+}
+
+function push_user_hollaex_web() {
+
+  echo "Please type in your new image name. ($ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION)"
+  read answer
+
+  export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE=$(echo ${answer:-$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION} | cut -f1 -d ":")
+  export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE=$(echo ${answer:-$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION} | cut -f2 -d ":")
+
+  override_user_hollaex_web;
+
+  docker tag ${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION} ${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE}:${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE}
+
+  export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE
+  export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION=$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE
+
+  echo "Your new image name is: $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION."
+  echo "Now pushing it to docker registry..."
+
+  if command docker push $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION; then 
+
+      echo "Successfully pushed the image to docker registry."
+  
+  else 
+
+      echo "Failed to push the image to docker registry."
+
+      if [[ ! $USE_KUBERNETES ]]; then
+
+          echo "Proceeding setup processes without pushing the image at Docker Registry."
+          echo "You can push it later by using 'docker push' command manually."
+          echo "Please run 'hollaex web --restart' to apply the new image."
+  
+      else
+
+          echo "HollaEx Kit deployment for Kubernetes requires user's HollaEx Core image pushed at Docker Registry."
+          echo "Plesae try again after you confirm the image name is correct, and got proper Docker Registry access."
+          exit 1;
+
+      fi
+  
+  fi
+  
+}
+
+function hollaex_ascii_web_server_is_up() {
+
+      /bin/cat << EOF
+
+1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
+.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
+.0@G                                                                  L@8,
+.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
+.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
+.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
+.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
+.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
+.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
+.0@G
+.@@@888888888888888888888888888888888888888888888888888888888888888888880.
+1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
+
+                  Web Client for your exchange is ready!
+                  Try to reach $HOLLAEX_CONFIGMAP_DOMAIN 
+                  $(if [[ ! "$USE_KUBERNETES" ]]; then echo "or http://localhost:8080!"; fi)
+
+EOF
+
+}
+
+function create_kubernetes_docker_registry_secret() {
+
+   if [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME" ]] || [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD" ]] || [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL" ]] || [[ "$MANUAL_DOCKER_REGISTRY_SECRET_UPDATE" ]] ; then
+
+    echo "Docker registry credentials are not detected on your secret file of HollaEx Kit directory."
+    echo "You can provide them now on here."
+
+    echo "[1/4] Docker registry host ($ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_HOST):"
+    read host
+
+    ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_HOST_OVERRIDE=${host:-$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_HOST}
+
+    echo "[2/4] Docker registry username ($ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME):"
+    read username
+        
+    ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME_OVERRIDE=${username:-$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME}
+
+
+    echo "[3/4] Docker registry password ($ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD):"
+    read -s password
+    printf "\n"
+
+    ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD_OVERRIDE=${password:-$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD}
+
+    echo "[4/4] Docker registry email ($ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL):"
+    read email
+
+    ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL_OVERRIDE=${email:-$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL}
+
+    echo "***************************************************************"
+    echo "Registry Host: $ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_HOST_OVERRIDE"
+    echo "Username: $ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME_OVERRIDE"
+    echo "Password: $(echo ${ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD_OVERRIDE//?/◼︎}$(echo $ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD_OVERRIDE | grep -o '....$'))"
+    echo "Email: $ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL_OVERRIDE"
+    echo "***************************************************************"
+
+    export ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_HOST=$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_HOST_OVERRIDE
+    export ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME=$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME_OVERRIDE
+    export ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD=$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD_OVERRIDE
+    export ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL=$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL_OVERRIDE
+
+    echo "Are you sure you want to proceed with this credentials? (Y/n)"
+    read answer
+
+    if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+        echo "HollaEx Kit on Kubernetes mandatorily requires docker registry secret for running."
+        echo "Please try it again."
+        create_kubernetes_docker_registry_secret;
+    fi
+
+    override_kubernetes_docker_registry_secret;
+  
+  fi
+
+  echo "Creating Docker registry secret on $ENVIRONMENT_EXCHANGE_NAME namespace."
+  kubectl create secret docker-registry docker-registry-secret \
+                        --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                        --docker-server=$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_HOST \
+                        --docker-username=$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME \
+                        --docker-password=$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD \
+                        --docker-email=$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL
+
+}
+
+function override_kubernetes_docker_registry_secret() {
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+
+    local ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_HOST_OVERRIDE_PARSED=${ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_HOST_OVERRIDE//\//\\\/}
+    local ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME_OVERRIDE_PARSED=${ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME_OVERRIDE//\//\\\/}
+    local ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD_OVERRIDE_PARSED=${ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD_OVERRIDE//\//\\\/}
+    local ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL_OVERRIDE_PARSED=${ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL_OVERRIDE//\//\\\/}
+
+    if command grep -q "ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_" $i > /dev/null ; then
+      SECRET_FILE_PATH=$i
+      sed -i.bak "s/ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_HOST=.*/ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_HOST=$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_HOST_OVERRIDE_PARSED/" $SECRET_FILE_PATH
+      sed -i.bak "s/ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME=.*/ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME=$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME_OVERRIDE_PARSED/" $SECRET_FILE_PATH
+      sed -i.bak "s/ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD=.*/ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD=$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD_OVERRIDE_PARSED/" $SECRET_FILE_PATH
+      sed -i.bak "s/ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL=.*/ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL=$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL_OVERRIDE_PARSED/" $SECRET_FILE_PATH
+    fi
+    
+  done
+
+  rm $SECRET_FILE_PATH.bak
+
+}
+
+function hollaex_ascii_coin_has_been_added() {
+
+  /bin/cat << EOF
+
+                                  
+           f888888G              .,:;ii;,
+           C@L,,i@8.         :tC08@88888@8Ci
+           L@f  :@0        L8@0L1:,.   .,iG@Gi
+    ,::::::C@L  ;@8::::::,.i1,             t@@0i
+   :@@88888881  ,0888888@@t                 0@8@0i
+   ;@0                  f@f                 0@i:0@f
+   ;@@ttttt11,  .i1tttttG@L                :@@@f;8@;
+   ,LCCGGGG8@f  ;@@GGGGGCL;                C@f1@@8@f
+           f@f  ;@0                       f@@t  1@@t
+           f@t  :@0.                     f@GL@@1;@@,
+           L@0LLG@8                    ,G@8, ,L@@@f
+           :ffffffi                  .t@@L@@t  G@C
+              i1                   .18@G. ,L@00@L
+             .@@;                ,t8@C0@L:  t@@1
+              1@0,            :t0@@0, .10@LG@C:
+               18@Li,,.,,:ifG8@0tiC@01  i@@0i
+                .t@@@808@@@GfC@0;  :C@08@Gi
+                  .t8@C;;C8L, ,L@01t0@8f:
+                    .t8@Cf0@@GfC@@@Gf:
+                      .;tLCCCCLfi:.
+
+          Coin $COIN_SYMBOL has been successfully added
+          Please run 'hollaex restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to activate it.
+
+EOF
+
+}
+
+function hollaex_ascii_pair_has_been_added() {
+
+   /bin/cat << EOF
+  
+                .::::,.                 .:;;;:.
+            .,;i1111111i:.           ,;1tffffff1;,.
+          .:i1t111tttt111tt1;.    .:i1tfftt111tfffft1:.
+      ,;1tttttttffffffft1;,.  ,;ittfttt11111111ttffLLft;,
+    :tfftttttffft1ii11;,   ,;1ttttttt1111i;;;i1111ttffLLLt:
+    :ffttttttt1i:.      .:i1ttttttt1111i:.     .,;11111tffff,
+    ;ftftttt1,      .,;1ttttttttttt1;,   .:i11;,   :1111tfff;
+    ;ffft111.    .:i11t11ttttttt1;,   ,;1ttttttt1;  ,111tfff;
+    ;fff111i  .;i111111tttttti:.  .,i1tttttt111111.  i11tfff;
+    ;fff111i  .1111tttttt1i,   .:i1ttttt111111i:,   .111tfff;
+    ;fff1111;  .:1tfft1;,   ,;i1tttttttttt1i:.     .;t11tfff;
+    ;Lfft1111i:.   ,,.   ,;11tttttttttt1;,       ,;1tttttttf:
+    .1LLfftt1111i;,..,:i1111ttttttt1i:.  .,,,,:i1tfttttttffi
+      :1fLLfftt11111111111tttttt1;,.  .;1ffffffffttttttt1i:
+        .:itfLfftt11111ttfffti:,   .;1tttttffftt11tt1i;,
+            ,;1tfffftffft1i:.       .:;i1111111111;:.
+              .:i1tt11;,               ,:ii1ii;,
+
+      Trading Pair ${PAIR_NAME} has been successfully added
+      Please run 'hollaex restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to activate it.
+
+EOF
+}
+
+function update_hollaex_cli_to_latest() { 
+  
+  echo "Checking for a newer version of HollaEx CLI is available..."
+  LATEST_HOLLAEX_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version)
+
+  if [[ $LATEST_HOLLAEX_CLI_VERSION > $(cat $SCRIPTPATH/version) ]]; then
+
+      printf "\033[93m\nNewer version of HollaEx CLI has been detected.\033[39m\n"
+      printf "\nLatest version of HollaEx CLI : \033[92m$LATEST_HOLLAEX_CLI_VERSION\033[39m"
+      printf "\nCurrent installed version of HollaEx CLI : \033[93m$(cat $SCRIPTPATH/version)\033[39m\n\n"
+      echo "Upgrading HollaEx CLI to latest..."
+      curl -L https://raw.githubusercontent.com/bitholla/hollaex-cli/master/install.sh | bash;
+      printf "\nPlease run 'hollaex upgrade' again to proceed upgrading your exchange.\n"
+
+      exit 0;
+
+  else 
+
+      printf "\nLatest version of HollaEx CLI : \033[92m$LATEST_HOLLAEX_CLI_VERSION\033[39m"
+      printf "\nCurrent installed version of HollaEx CLI : \033[92m$(cat $SCRIPTPATH/version)\033[39m\n"
+      printf "\n\033[92mYour HollaEx CLI is already up to date!\033[39m\n\n"
+      printf "Proceeding to upgrade...\n"
+
+  fi
+
+}
+
+function update_activation_code_input() {
+  # Activation Code
+  echo "***************************************************************"
+  echo "Activation Code: ($(echo ${HOLLAEX_SECRET_ACTIVATION_CODE//?/◼︎}$(echo $HOLLAEX_SECRET_ACTIVATION_CODE | grep -o '....$')))"
+  printf "\033[2m- Go to https://dash.bitholla.com to issue your activation code.\033[22m\n" 
+  read answer
+
+  local EXCHANGE_ACTIVATION_CODE_OVERRIDE=${answer:-$HOLLAEX_SECRET_ACTIVATION_CODE}
+
+  local EXCHANGE_ACTIVATION_CODE_MASKED=$(echo ${EXCHANGE_ACTIVATION_CODE_OVERRIDE//?/◼︎}$(echo $EXCHANGE_ACTIVATION_CODE_OVERRIDE | grep -o '....$'))
+
+  printf "\n"
+  echo "$EXCHANGE_ACTIVATION_CODE_MASKED ✔"
+  printf "\n"
+
+  echo "***************************************************************"
+  echo "Activation Code: $EXCHANGE_ACTIVATION_CODE_MASKED"
+  echo "***************************************************************"
+
+  echo "Is the value all correct? (Y/n)"
+  read answer
+
+  if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+
+      echo "You picked false. Please confirm the values and run the command again."
+      exit 1;
+  
+  fi
+
+  echo "Provided value would be updated on your settings file(s) automatically."
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+
+      if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE" $i > /dev/null ; then
+          SECRET_FILE_PATH=$i
+          sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=$HOLLAEX_SECRET_ACTIVATION_CODE/HOLLAEX_SECRET_ACTIVATION_CODE=$EXCHANGE_ACTIVATION_CODE_OVERRIDE/" $SECRET_FILE_PATH
+          rm $SECRET_FILE_PATH.bak
+      fi
+
+  done
+
+  export HOLLAEX_SECRET_ACTIVATION_CODE=$EXCHANGE_ACTIVATION_CODE_OVERRIDE
+}
+
+function update_activation_code_exec() {
+
+  if [[ "$USE_KUBERNETES" ]]; then 
+
+    # Generate Kubernetes Configmap
+    cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/set-activation-code.yaml <<EOL
+job:
+  enable: true
+  mode: set_activaion_code
+  env:
+    activation_code: ${HOLLAEX_SECRET_ACTIVATION_CODE}
+EOL
+
+    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-set-activation-code \
+                            --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                            --set job.enable="true" \
+                            --set job.mode="set_activation_code" \
+                            --set DEPLOYMENT_MODE="api" \
+                            --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                            --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                            --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                            -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/set-activation-code.yaml \
+                            $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+
+      echo "Kubernetes Job has been created for updating activation code."
+
+      echo "Waiting until Job get completely run..."
+      sleep 30;
+
+    else 
+
+      printf "\033[91mFailed to create Kubernetes Job for updating activation code, Please confirm your input values and try again.\033[39m\n"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-activation-code
+
+    fi
+
+    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-set-activation-code --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+
+      echo "Your activation code has been successfully updated on your exchange!"
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-activation-code
+
+      echo "Removing created Kubernetes Job for updating the activation code..."
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-activation-code
+
+    else 
+
+      printf "\033[91mFailed to update the activation code! Please try again.\033[39m\n"
+      
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-activation-code
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-activation-code
+
+      exit 1;
+
+    fi
+
+
+  elif [[ ! "$USE_KUBERNETES" ]]; then
+
+    IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+          
+    # Overriding container prefix for develop server
+    if [[ "$IS_DEVELOP" ]]; then
+      
+      CONTAINER_PREFIX=
+
+    fi
+
+    echo "Setting up the exchange with provided activation code"
+    docker exec --env "ACTIVATION_CODE=${HOLLAEX_SECRET_ACTIVATION_CODE}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/setExchange.js
+          
+  fi
+
+}
+
+function check_docker_compose_dependencies() {
+
+  # Checking docker-compose is installed on this machine.
+  if command docker-compose version > /dev/null 2>&1; then
+
+      echo "*********************************************"
+      echo "docker-compose detected"  
+      echo "version: $(docker-compose version)"
+      echo "*********************************************"
+
+  else
+
+      echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
+      exit 1;
+
+  fi
 
 }

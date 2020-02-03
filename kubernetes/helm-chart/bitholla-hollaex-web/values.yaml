@@ -5,9 +5,7 @@ imageRegistry: bitholla/hollaex-web
 dockerTag:
   
 imagePullSecrets:
-  - name: bitholla-registry-secret
-
-envName: hollaex-web-env
+  - name: docker-registry-secret
 
 stable:
   replicaCount: 1

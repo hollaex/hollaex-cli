@@ -5,7 +5,7 @@ imageRegistry: bitholla/hollaex-core
 dockerTag:
   
 imagePullSecrets:
-  - name: bitholla-registry-secret
+  - name: docker-registry-secret
 
 envName: hollaex-env
 secretName: hollaex-secret
@@ -27,7 +27,7 @@ autoScaling:
   hpa:
     enable: false 
     maxReplicas: 4
-    cpu: 500m
+    avgMemory: 1300m
 
 APM_URL:
 

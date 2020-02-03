@@ -43,17 +43,13 @@ spec:
         ports:
         - name: port
           containerPort: 80
-
-        envFrom:
-          - configMapRef:
-              name: {{.Values.envName}}
         
         resources:
           limits:
             memory: "2048Mi"
             cpu: "1000m"
           requests:
-            memory: "20Mi"
+            memory: "100Mi"
             cpu: "2m"
         
 {{- if .Values.podRestart_webhook_url }}

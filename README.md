@@ -1,10 +1,8 @@
-![hollaex-cli](docs/.docs-images/hollaex-cli.png)
-
-## HollaEx CLI
+# HollaEx CLI
 
 HollaEx CLI is a command-line tool for operating [HollaEx Kit](https://github.com/bitholla/hollaex-kit) with simple commands. Anyone even without deep knowledge on Kubernetes and Docker can play with HollaEx Kit easily with this awesome CLI.
 
-### Installation
+## Installation
 
 You can easily install HollaEx CLI with a simple command below.
 
@@ -16,7 +14,7 @@ curl -L https://raw.githubusercontent.com/bitholla/hollaex-cli/master/install.sh
 
 Enjoy :)
 
-### Uninstallation
+## Uninstallation
 
 Similar as installation, Uninstalling HollaEx CLI is easy either. You can use one simple command below to completely remove HollaEx CLI from your computer.
 

@@ -42,7 +42,7 @@ spec:
         args:
           - node tools/dbs/removePair.js;
 
-{{- else if eq .Values.job.mode "reactivate_exchange" }}
+{{- else if eq .Values.job.mode "set_activation_code" }}
 
         args:
           - node tools/dbs/setExchange.js;
@@ -69,8 +69,6 @@ spec:
 
 {{- if eq .Values.job.mode "add_coin" }}
 
-          - name: DEPLOYMENT_MODE
-            value: {{.Values.DEPLOYMENT_MODE}}
           - name: COIN_SYMBOL
             value: {{.Values.job.env.coin_symbol}}
           - name: COIN_FULLNAME
@@ -130,6 +128,11 @@ spec:
 
           - name: PAIR_NAME
             value: {{.Values.job.env.pair_name}}
+
+{{- else if eq .Values.job.mode "set_activation_code" }}
+
+          - name: ACTIVATION_CODE
+            value: "{{.Values.job.env.activation_code}}"
 
 {{- end }}
 
