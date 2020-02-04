@@ -3011,27 +3011,33 @@ EOF
   # Web Domain
   echo "***************************************************************"
   echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Exchange URL: ($HOLLAEX_CONFIGMAP_DOMAIN)"
-  printf "\033[2m- Enter the full URL of your exchange website including 'http' or 'https'.\033[22m\n"
+  printf "\033[2m- Enter the full URL of your exchange website. No need to type 'http' or 'https'.\033[22m\n"
   read answer
 
   local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN="${answer:-$HOLLAEX_CONFIGMAP_DOMAIN}"
 
-  while true;
-    do if [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN" == *"http"* ]]; then
-      printf "\nValue should be a full URL including 'http' or 'https'.\n"
-      echo  "Exchange URL: "
-      read answer
-      local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN="${answer}"
-    else
-      break;
-    fi
-  done
+  # while true;
+  #   do if [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN" == *"http"* ]]; then
+  #     printf "\nValue should be a full URL including 'http' or 'https'.\n"
+  #     echo  "Exchange URL: "
+  #     read answer
+  #     local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN="${answer}"
+  #   else
+  #     break;
+  #   fi
+  # done
+
+  if [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN" == *"http"* ]]; then
+
+    local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN=$(echo "http://${ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN}")
+
+  fi
 
   local PARSE_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN=${ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN//\//\\/}
   local EXCHANGE_WEB_DOMAIN_OVERRIDE="$PARSE_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN"
   
   printf "\n"
-  echo "${answer:-$HOLLAEX_CONFIGMAP_DOMAIN} ✔"
+  echo "${ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN} ✔"
   printf "\n"
 
   local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
@@ -3251,22 +3257,28 @@ EOF
 
   local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST="${answer:-$HOLLAEX_CONFIGMAP_API_HOST}"
 
-  while true;
-    do if [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST" == *"http"* ]]; then
-      printf "\nValue should be a full URL including 'http' or 'https'.\n"
-      echo  "Exchange Server API URL: "
-      read answer
-      local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST="${answer:-$HOLLAEX_CONFIGMAP_API_HOST}"
-    else
-      break;
-    fi
-  done
+  # while true;
+  #   do if [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST" == *"http"* ]]; then
+  #     printf "\nValue should be a full URL including 'http' or 'https'.\n"
+  #     echo  "Exchange Server API URL: "
+  #     read answer
+  #     local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST="${answer:-$HOLLAEX_CONFIGMAP_API_HOST}"
+  #   else
+  #     break;
+  #   fi
+  # done
+
+  if [[ ! "$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST" == *"http"* ]]; then
+
+    local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST=$(echo "http://${ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST}")
+
+  fi
 
   local PARSE_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST=${ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST//\//\\/}
   local EXCHANGE_SERVER_DOMAIN_OVERRIDE="$PARSE_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST"
 
   printf "\n"
-  echo "${answer:-$HOLLAEX_CONFIGMAP_API_HOST} ✔"
+  echo "${ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST} ✔"
   printf "\n"
 
   local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
