@@ -2063,10 +2063,7 @@ elif [[ "$1" == "upgrade" ]]; then
             generate_nginx_upstream
         
         fi
-
-        echo "Cleaning up Nginx conf for Web Client (If it remains)"
-        cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf 
-
+        
         if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
 
             generate_nginx_config_for_plugin;
