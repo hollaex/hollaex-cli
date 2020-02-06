@@ -42,8 +42,6 @@ Options:
 
     pull: Pull my Exchange configurations from bitHolla Dashboard to local.
 
-    push: Push my local Exchange configurations to bitHolla Dashboard.
-
     start: Start the exchange which already been configured by 'hollaex setup' command.
 
     restart: Restart the existing exchange.
@@ -430,6 +428,26 @@ elif [[ "$1" == "setup" ]]; then
     
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
+
+    for i in ${CONFIG_FILE_PATH[@]}; do
+
+        if command grep -q "HOLLAEX_CONFIGMAP_API_NAME=" $i > /dev/null ; then
+
+            export CONFIGMAP_FILE_PATH=$i
+
+        fi
+
+    done
+
+    for i in ${CONFIG_FILE_PATH[@]}; do
+
+        if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE=" $i > /dev/null ; then
+
+            export SECRET_FILE_PATH=$i
+
+        fi
+
+    done
     
     # hollaex setup --reconfigure
     if [[ "$RECONFIGURE_BASIC_SETTINGS" ]]; then
@@ -460,6 +478,9 @@ elif [[ "$1" == "setup" ]]; then
 
     fi
     
+    # PRESET env for user initial setup config value selection
+    CONTINUE_WITH_PRECONFIGURED_VALUES=false 
+
     # Check that settings files are already configured.
     if [[ $HOLLAEX_SECRET_ACTIVATION_CODE ]]; then
 
@@ -469,14 +490,46 @@ elif [[ "$1" == "setup" ]]; then
 
         if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
             
-            launch_basic_settings_input;
+            export CONTINUE_WITH_PRECONFIGURED_VALUES=false
         
+        else 
+
+            export CONTINUE_WITH_PRECONFIGURED_VALUES=true
+
         fi
 
-    else
+    fi
 
-        launch_basic_settings_input;
-    
+    if [[ "$CONTINUE_WITH_PRECONFIGURED_VALUES" == false ]]; then
+
+        printf "\n\033[92mWelcome to HollaEx Setup!\033[39m\n\n"
+
+        echo "You can pull the configurations from bitHolla Dashboard with your account. (Recommended)"
+        echo "It is also possible to manually set the configurations through CLI on the fly."
+        echo "Do you want to login and pull configurations from bitHolla? (Y/n)"
+        read answer
+
+        if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+            
+            echo "Proceeding to a CLI exchange configurator..."
+            launch_basic_settings_input;
+        
+        else 
+
+            if ! command hollaex login; then
+
+                exit 1;
+
+            fi
+
+            if ! command hollaex pull --skip; then
+
+                exit 1;
+
+            fi
+
+        fi
+
     fi
 
     
@@ -976,27 +1029,6 @@ elif [[ "$1" == "login" ]]; then
 
     fi
 
-    for i in ${CONFIG_FILE_PATH[@]}; do
-
-        if command grep -q "HOLLAEX_CONFIGMAP_API_NAME=" $i > /dev/null ; then
-
-            export CONFIGMAP_FILE_PATH=$i
-
-        fi
-
-    done
-
-    for i in ${CONFIG_FILE_PATH[@]}; do
-
-        if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE=" $i > /dev/null ; then
-
-            export SECRET_FILE_PATH=$i
-
-        fi
-
-    done
-
-
     echo "bitHolla Account Email: "
     read email
 
@@ -1188,6 +1220,26 @@ elif [[ "$1" == "logout" ]]; then
 
 elif [[ "$1" == "pull" ]]; then
 
+    while true; do
+        [[ $# -eq 0 ]] && break
+        case $1 in
+            --renew)
+                HOLLAEX_LOGIN_RENEW=true
+                shift; continue
+                ;;
+            --skip)
+                RUN_WITH_VERIFY=false
+                shift; continue
+                ;;
+            --*) 
+                err_msg "Invalid option: $1"
+                print_usage;
+                exit 1;
+                ;;
+        esac
+        shift
+    done
+
     if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
 
         HOLLAEX_CLI_INIT_PATH=$(pwd)
@@ -1251,17 +1303,19 @@ elif [[ "$1" == "pull" ]]; then
     
     fi
 
-    printf "\nCurrent bound Exchange name: \033[92m$HOLLAEX_CONFIGMAP_API_NAME\033[39m\n\n"
-    echo "This command will override the current Exchange settings at '/settings' folder of your HollaEx Kit."
-    echo "Are you sure you want to pull the exchange settings from bitHolla Dashboard? (y/N)"
-    read answer
+    if [[ ! "$RUN_WITH_VERIFY" ]]; then 
 
-    if [[ "$answer" = "${answer#[Yy]}" ]]; then
-        echo "Exiting..."
-        exit 0;
-    fi
+        printf "\nCurrent bound Exchange name: \033[92m$HOLLAEX_CONFIGMAP_API_NAME\033[39m\n\n"
+        echo "This command will override the current Exchange settings at '/settings' folder of your HollaEx Kit."
+        echo "Are you sure you want to pull the exchange settings from bitHolla Dashboard? (y/N)"
+        read answer
 
-    echo "Verifying the access token validity..."
+        if [[ "$answer" = "${answer#[Yy]}" ]]; then
+            echo "Exiting..."
+            exit 0;
+        fi
+    
+    fi 
 
     if [[ -f "$HOLLAEX_CLI_INIT_PATH/.token" ]]; then
 
@@ -1269,9 +1323,9 @@ elif [[ "$1" == "pull" ]]; then
 
     else 
 
-        echo "Error: The access token has not been detected."
-        echo "Please make sure to 'hollaex login' first, before attempting to pull."
-        exit 1;
+        printf "\033[91mError: An access token has not been detected.\033[39m\n"
+        printf "Please login with your bitHolla account to issue an access token.\n\n"
+        hollaex login --renew
 
     fi
 
@@ -1282,14 +1336,15 @@ elif [[ "$1" == "pull" ]]; then
 
     if [[ ! "$BITHOLLA_USER_EXCHANGE_LIST" ]] || [[ "$BITHOLLA_USER_EXCHANGE_LIST" == *"Token is expired"* ]]; then
 
-        printf "\033[91mFailed to pull the exchange data from bitHolla.\033[39m\n"
-        echo "Your access token has been expired!"
-        echo "Please run 'hollaex login' to issue a new access token and try again."
-        exit 1;
+        printf "\033[91mFailed to pull the exchange data from bitHolla.\033[39m\n\n"
+        printf "\033[91mError: Your access token has been expired!\033[39m\n"
+        printf "Please login again with your bitHolla account to issue a new access token.\n\n"
+        hollaex login --renew
 
     else 
 
         printf "\n\033[92mSuccessfully authenticated on bitHolla Server.\033[39m\n"
+        printf "Proceeding to pull data from bitHolla...\n"
 
     fi
 
@@ -1307,139 +1362,100 @@ elif [[ "$1" == "pull" ]]; then
 
     done;
 
-    function hollaex_pull_exchange_data() {
+    if [[ $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].is_completed") == false ]]; then
 
-        #LOGO PATH ESCAPING
-        local ORIGINAL_CHARACTER_FOR_DOMAIN=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.EXCHANGE_CLIENT_URL";)
+        printf "\n\n\033[91mError: Your exchange - $HOLLAEX_CONFIGMAP_API_NAME doesn't seems like fully configurated at bitHolla Dashboard.\033[39m\n"
+        printf "Please finalize the exchange setup at bitHolla Dashboard (https://dash.bitholla.com), and try agian.\n"
 
-        local ESCAPED_HOLLAEX_CONFIGMAP_DOMAIN=${ORIGINAL_CHARACTER_FOR_DOMAIN//\//\\/}
-        local PARSE_CHARACTER_FOR_DOMAIN=${ORIGINAL_CHARACTER_FOR_DOMAIN//\//\\/}
-        local HOLLAEX_CONFIGMAP_DOMAIN_OVERRIDE="$PARSE_CHARACTER_FOR_DOMAIN"
+        exit 1;
 
-        #LOGO PATH ESCAPING
-        local ORIGINAL_CHARACTER_FOR_LOGO_PATH=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.LOGO_IMAGE_LIGHT";)
+    fi
 
-        local ESCAPED_HOLLAEX_CONFIGMAP_LOGO_PATH=${ORIGINAL_CHARACTER_FOR_LOGO_PATH//\//\\/}
-        local PARSE_CHARACTER_FOR_LOGO_PATH=${ORIGINAL_CHARACTER_FOR_LOGO_PATH//\//\\/}
-        local HOLLAEX_CONFIGMAP_LOGO_PATH_OVERRIDE="$PARSE_CHARACTER_FOR_LOGO_PATH"
+    hollaex_pull_and_apply_exchange_data;
 
-        #LOGO BLACK PATH ESCAPING
-        local ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.LOGO_IMAGE_DARK";)
+    # Applying coin (asset) configs to settings file.
 
-        local ESCAPED_HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH=${ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH//\//\\/}}
-        local PARSE_CHARACTER_FOR_LOGO_BLACK_PATH=${ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH//\//\\/}
-        local HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH_OVERRIDE="$PARSE_CHARACTER_FOR_LOGO_BLAKC_PATH"
+    BITHOLLA_USER_EXCHANGE_ASSETS_COUNT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS" | jq '.| length ')
+    BITHOLLA_USER_EXCHANGE_ASSETS_COUNT=$(($BITHOLLA_USER_EXCHANGE_ASSETS_COUNT-1))
 
-        local ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.DEFAULT_COUNTRY";)
+    for ((i=0;i<=BITHOLLA_USER_EXCHANGE_ASSETS_COUNT;i++)); do
 
-        local ORIGINAL_CHARACTER_FOR_TIMEZONE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.TIME_ZONE";)
-        local PARSE_CHARACTER_FOR_TIMEZONE=${ORIGINAL_CHARACTER_FOR_TIMEZONE/\//\\/}
-        local HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE_OVERRIDE="$PARSE_CHARACTER_FOR_TIMEZONE"
+        export COIN_SYMBOL=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_SYMBOL") 
+        export COIN_FULLNAME=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_NAME")
+        export COIN_ALLOW_DEPOSIT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_ALLOW_DEPOSITS")
+        export COIN_ALLOW_WITHDRAWAL=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_ALLOW_WITHDRAWAL")
+        export COIN_WITHDRAWAL_FEE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_WITHDRAWAL_FEE")
+        export COIN_MIN=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_MINIMUM_WITHDRAWAL")
+        export COIN_MAX=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_MAXIMUM_WITHDRAWAL")
+        export COIN_INCREMENT_UNIT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_INCREMENT_AMOUNT")
+        export COIN_DEPOSIT_LIMITS_PARSED=\'$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].deposit" | tr -d '\n')\'
+        export COIN_WITHDRAWAL_LIMITS_PARSED=\'$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].deposit" | tr -d '\n')\'
+        export COIN_ACTIVE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_ACTIVATE")
 
-        local HOLLAEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.LANGUAGE";)
-        local HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.LANGUAGE";)
-        local HOLLAEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.DEFAULT_COLOR";)
+        export COIN_PREFIX=$(echo ${COIN_SYMBOL} | tr a-z A-Z)
+
+        remove_existing_coin_configs_from_settings;
+
+        save_coin_configs;
+
+    done;
+
+    # Applying pair (pairs) configs to settings file.
+    BITHOLLA_USER_EXCHANGE_PAIRS_COUNT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS" | jq '.| length ')
+    BITHOLLA_USER_EXCHANGE_PAIRS_COUNT=$(($BITHOLLA_USER_EXCHANGE_PAIRS_COUNT-1))
+
+    for ((i=0;i<=BITHOLLA_USER_EXCHANGE_PAIRS_COUNT;i++)); do
+
+        export PAIR_BASE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].BASE_ASSET")
+        export PAIR_2=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].PRICED_ASSET")
+        export TAKER_FEES_PARSED=\'$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].TAKER_FEE" | tr -d '\n')\'
+        export MAKER_FEES_PARSED=\'$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].MAKER_FEE" | tr -d '\n')\'
+        export MIN_SIZE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].MINIMUM_TRADABLE_AMOUNT")
+        export MAX_SIZE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].MAXIMUM_TRADABLE_AMOUNT")
+        export MIN_PRICE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].MINIMUM_TRADABLE_PRICE")
+        export MAX_PRICE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].MAXIMUM_TRADABLE_PRICE")
+        export INCREMENT_SIZE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].INCREMENT_AMOUNT")
+        export INCREMENT_PRICE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].INCREMENT_PRICE")
+
+        if [[ "$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].PAIR_ACTIVATE")" == "Y" ]]; then
+
+            export PAIR_ACTIVE_BOOL=true
         
-        #CURRENCIES CONVERTING TO ARRAY AND EXPORT
-        local CURRENCIES_ARRAY_COUNT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS" | jq '.| length ')
-        local CURRENCIES_ARRAY_COUNT=$(($CURRENCIES_ARRAY_COUNT-1))
+        else 
 
-        for ((i=0;i<=CURRENCIES_ARRAY_COUNT;i++)); do 
-
-            currencies_array+=( "$(echo "$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_SYMBOL")" )" )
-
-        done
-
-        local HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(IFS=','; echo "${currencies_array[*]}")
-        unset currencies_array
-
-        #PAIRS CONVERTING TO ARRAY AND EXPORT
-        local PAIRS_ARRAY_COUNT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS" | jq '.| length ')
-        local PAIRS_ARRAY_COUNT=$(($PAIRS_ARRAY_COUNT-1))
-
-        for ((i=0;i<=PAIRS_ARRAY_COUNT;i++)); do 
-
-            pairs_array+=( "$(echo "$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].BASE_ASSET")-$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].PRICED_ASSET")")" )
+            export PAIR_ACTIVE_BOOL=false
         
-        done;
+        fi 
 
-        local HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE=$(IFS=','; echo "${pairs_array[*]}")
-        unset pairs_array
-        
-        local ORIGINAL_CHARACTER_FOR_API_HOST=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.EXCHANGE_SERVER_URL";)
-        local PARSE_CHARACTER_FOR_API_HOST=${ORIGINAL_CHARACTER_FOR_API_HOST//\//\\/}
-        local HOLLAEX_CONFIGMAP_API_HOST_OVERRIDE="$PARSE_CHARACTER_FOR_API_HOST"
+        export PAIR_ACTIVE=${PAIR_ACTIVE_BOOL}
+        export PAIR_NAME=$(echo "${PAIR_BASE}-${PAIR_2}") 
 
-        local HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ACCOUNT_TIERS";)
+        export PAIR_PREFIX="$(echo $PAIR_BASE | tr a-z A-Z)_$(echo $PAIR_2 | tr a-z A-Z)"
 
-        local HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ADMIN_EMAIL";)
-        local HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.RECEIVING_EMAIL";)
-        local HOLLAEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.DISTRIBUTION_EMAIL";)
+        remove_existing_pairs_configs_from_settings;
 
-        local HOLLAEX_CONFIGMAP_SMTP_SERVER_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.AUTOMATED_EMAIL_SERVER";)
-        local HOLLAEX_CONFIGMAP_SMTP_PORT_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.AUTOMATED_EMAIL_PORT";)
-        local HOLLAEX_CONFIGMAP_SMTP_USER_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.AUTOMATED_EMAIL_USER";)
-        
-        local HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET_OVERRIDE=$(echo "$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.STORAGE_TYPE";):$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.STORAGE_REGION";)")
+        save_pairs_configs;
 
-        # Secrets
-        local HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ADMIN_PASSWORD";)
-        
-        ## SMTP Password escaping
-        local ORIGINAL_CHARACTER_FOR_SMTP_PASSWORD=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.AUTOAMTED_EMAIL_PASSWORD";)
-        local PARSE_CHARACTER_FOR_SMTP_PASSWORD=${ORIGINAL_CHARACTER_FOR_SMTP_PASSWORD//\//\\\/}
-        local HOLLAEX_SECRET_SMTP_PASSWORD_OVERRIDE="$PARSE_CHARACTER_FOR_SMTP_PASSWORD"
+    done;
 
-        local HOLLAEX_SECRET_S3_ACCESSKEYID_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.STORAGE_KEY";)
-        local HOLLAEX_SECRET_S3_SECRETACCESSKEY_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.STORAGE_SECRET";)
-        local HOLLAEX_SECRET_S3_REGION_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.STORAGE_REGION";)
+    if command grep -q "ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN" $CONFIGMAP_FILE_PATH > /dev/null && command grep -q "ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}" $CONFIGMAP_FILE_PATH > /dev/null; then
 
-        sed -i.bak "s/HOLLAEX_CONFIGMAP_DOMAIN=.*/HOLLAEX_CONFIGMAP_DOMAIN=$HOLLAEX_CONFIGMAP_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
+        printf "\n\033[92mSuccessfully pulled and applied your exchange data to Hollaex Kit!\033[39m\n\n"
 
-        sed -i.bak "s/ESCAPED_HOLLAEX_CONFIGMAP_LOGO_PATH=.*/ESCAPED_HOLLAEX_CONFIGMAP_LOGO_PATH=$HOLLAEX_CONFIGMAP_LOGO_PATH_OVERRIDE/" $CONFIGMAP_FILE_PATH
+        if [[ ! "$RUN_WITH_VERIFY" ]]; then
 
-        sed -i.bak "s/ESCAPED_HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH=.*/ESCAPED_HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH=$HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH_OVERRIDE/" $CONFIGMAP_FILE_PATH
+            echo "You can now proceed to run 'hollaex setup' to initialize your brand-new exchange."
+            printf "If you already have existing exchange, Please run 'hollaex restart' to apply new configurations.\n"
+            
+        fi
 
-        sed -i.bak "s/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE/" $CONFIGMAP_FILE_PATH
-        sed -i.bak "s/HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE=.*/HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE=$HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE_OVERRIDE/" $CONFIGMAP_FILE_PATH
-        sed -i.bak "s/HOLLAEX_CONFIGMAP_VALID_LANGUAGES=$HOLLAEX_CONFIGMAP_VALID_LANGUAGES/HOLLAEX_CONFIGMAP_VALID_LANGUAGES=$HOLLAEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE/" $CONFIGMAP_FILE_PATH
-        sed -i.bak "s/HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE=$HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE/HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE=$HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE/" $CONFIGMAP_FILE_PATH
-        sed -i.bak "s/HOLLAEX_CONFIGMAP_DEFAULT_THEME=$HOLLAEX_CONFIGMAP_DEFAULT_THEME/HOLLAEX_CONFIGMAP_DEFAULT_THEME=$HOLLAEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    else
 
-        sed -i.bak "s/HOLLAEX_CONFIGMAP_CURRENCIES=$HOLLAEX_CONFIGMAP_CURRENCIES/HOLLAEX_CONFIGMAP_CURRENCIES=$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
-        sed -i.bak "s/HOLLAEX_CONFIGMAP_PAIRS=.*/HOLLAEX_CONFIGMAP_PAIRS='$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE'/" $CONFIGMAP_FILE_PATH
+        printf "\033[91mError: Failed to pull and apply data from bitHolla.\033[39m\n"
+        echo "Please review the logs and try it again."
+        exit 1;
 
-        sed -i.bak "s/HOLLAEX_CONFIGMAP_API_HOST=.*/HOLLAEX_CONFIGMAP_API_HOST=$HOLLAEX_CONFIGMAP_API_HOST_OVERRIDE/" $CONFIGMAP_FILE_PATH
-        sed -i.bak "s/HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER=$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER/HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER=$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER_OVERRIDE/" $CONFIGMAP_FILE_PATH
-        sed -i.bak "s/HOLLAEX_CONFIGMAP_ADMIN_EMAIL=$HOLLAEX_CONFIGMAP_ADMIN_EMAIL/HOLLAEX_CONFIGMAP_ADMIN_EMAIL=$HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
-        sed -i.bak "s/HOLLAEX_CONFIGMAP_SUPPORT_EMAIL=$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL/HOLLAEX_CONFIGMAP_SUPPORT_EMAIL=$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
-        sed -i.bak "s/HOLLAEX_CONFIGMAP_SENDER_EMAIL=$HOLLAEX_CONFIGMAP_SENDER_EMAIL/HOLLAEX_CONFIGMAP_SENDER_EMAIL=$HOLLAEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
-
-        sed -i.bak "s/HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET=$HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET/HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET=$HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET_OVERRIDE/" $CONFIGMAP_FILE_PATH
-
-        sed -i.bak "s/HOLLAEX_CONFIGMAP_SMTP_SERVER=.*/HOLLAEX_CONFIGMAP_SMTP_SERVER=$HOLLAEX_CONFIGMAP_SMTP_SERVER_OVERRIDE/" $CONFIGMAP_FILE_PATH
-        sed -i.bak "s/HOLLAEX_CONFIGMAP_SMTP_PORT=.*/HOLLAEX_CONFIGMAP_SMTP_PORT=$HOLLAEX_CONFIGMAP_SMTP_PORT_OVERRIDE/" $CONFIGMAP_FILE_PATH
-        sed -i.bak "s/HOLLAEX_CONFIGMAP_SMTP_USER=.*/HOLLAEX_CONFIGMAP_SMTP_USER=$HOLLAEX_CONFIGMAP_SMTP_USER_OVERRIDE/" $CONFIGMAP_FILE_PATH
-
-        sed -i.bak "s/HOLLAEX_CONFIGMAP_FRESHDESK_HOST=$HOLLAEX_CONFIGMAP_FRESHDESK_HOST/HOLLAEX_CONFIGMAP_FRESHDESK_HOST=$HOLLAEX_CONFIGMAP_FRESHDESK_HOST_OVERRIDE/" $CONFIGMAP_FILE_PATH
-
-        sed -i.bak "s/HOLLAEX_SECRET_CAPTCHA_SECRET_KEY=.*/HOLLAEX_SECRET_CAPTCHA_SECRET_KEY=$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE/" $SECRET_FILE_PATH
-        sed -i.bak "s/HOLLAEX_SECRET_ADMIN_PASSWORD=.*/HOLLAEX_SECRET_ADMIN_PASSWORD=$HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE/" $SECRET_FILE_PATH
-
-        sed -i.bak "s/HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID/HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE/" $SECRET_FILE_PATH
-        sed -i.bak "s/HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=.*/HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE/" $SECRET_FILE_PATH
-
-        sed -i.bak "s/HOLLAEX_SECRET_S3_READ_ACCESSKEYID=$HOLLAEX_SECRET_S3_READ_ACCESSKEYID/HOLLAEX_SECRET_S3_READ_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE/" $SECRET_FILE_PATH
-        sed -i.bak "s/HOLLAEX_SECRET_S3_READ_SECRETACCESSKEY=.*/HOLLAEX_SECRET_S3_READ_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE/" $SECRET_FILE_PATH
-
-        sed -i.bak "s/HOLLAEX_SECRET_SMTP_PASSWORD=.*/HOLLAEX_SECRET_SMTP_PASSWORD=$HOLLAEX_SECRET_SMTP_PASSWORD_OVERRIDE/" $SECRET_FILE_PATH
-        
-        rm $CONFIGMAP_FILE_PATH.bak
-        rm $SECRET_FILE_PATH.bak
-
-    }
-
-    hollaex_pull_exchange_data;
+    fi
 
 
 elif [[ "$1" == "start" ]]; then
@@ -1518,6 +1534,9 @@ elif [[ "$1" == "start" ]]; then
     
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
+
+    #Regenerate random secrets
+    update_random_values_to_config;
 
 
     if [[ "$USE_KUBERNETES" ]]; then
@@ -1981,6 +2000,9 @@ elif [[ "$1" == "restart" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
+    #Regenerate random secrets
+    update_random_values_to_config;
+
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
@@ -2351,6 +2373,9 @@ elif [[ "$1" == "upgrade" ]]; then
     
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
+
+    #Regenerate random secrets
+    update_random_values_to_config;
 
     # Override target docker image version if user passed it manually with flag.
     if [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
