@@ -482,7 +482,7 @@ elif [[ "$1" == "setup" ]]; then
     CONTINUE_WITH_PRECONFIGURED_VALUES=false 
 
     # Check that settings files are already configured.
-    if [[ $HOLLAEX_SECRET_ACTIVATION_CODE ]]; then
+    if [[ "$HOLLAEX_CONFIGMAP_API_NAME" ]] && [[ $HOLLAEX_SECRET_ACTIVATION_CODE ]]; then
 
         echo "HollaEx CLI detected the preconfigured values on your HollaEx Kit."
         echo "Do you want to proceed with this configurations? (Y/n)"
@@ -496,17 +496,25 @@ elif [[ "$1" == "setup" ]]; then
 
             export CONTINUE_WITH_PRECONFIGURED_VALUES=true
 
+            # Exporting settings values
+            for i in ${CONFIG_FILE_PATH[@]}; do
+            source $i
+            done;
+
+            source $SCRIPTPATH/tools_generator.sh
+            load_config_variables;
+
         fi
 
     fi
 
     if [[ "$CONTINUE_WITH_PRECONFIGURED_VALUES" == false ]]; then
 
-        printf "\n\033[92mWelcome to HollaEx Setup!\033[39m\n\n"
+        printf "\nWelcome to HollaEx Setup!\n\n"
 
-        echo "You can pull the configurations from bitHolla Dashboard with your account. (Recommended)"
-        echo "It is also possible to manually set the configurations through CLI on the fly."
-        echo "Do you want to login and pull configurations from bitHolla? (Y/n)"
+        echo "You need to setup your exchange with the configurations."
+        echo "You can follow the exchange setup wizard on https://dash.bitholla.com before you do this process. (Recommended)"
+        echo "Have you already setup your exchange on bitHolla Dashboard? (Y/n)"
         read answer
 
         if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
@@ -529,6 +537,13 @@ elif [[ "$1" == "setup" ]]; then
             fi
 
         fi
+
+        for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+        done;
+
+        source $SCRIPTPATH/tools_generator.sh
+        load_config_variables;
 
     fi
 
@@ -1036,7 +1051,7 @@ elif [[ "$1" == "login" ]]; then
     read -s password
     printf "\n"
 
-    echo "OTP Code (If required. Leave it as blank if it's not.): "
+    echo "OTP Code (Enter if you don't have OTP set for your account): "
     read otp
 
     BITHOLLA_ACCOUNT_TOKEN=$(curl -s -H "Content-Type: application/json" \
@@ -1048,12 +1063,12 @@ elif [[ "$1" == "login" ]]; then
     if [[ ! "$BITHOLLA_ACCOUNT_TOKEN" ]] || [[ "$BITHOLLA_ACCOUNT_TOKEN" == "null" ]]; then
 
         printf "\033[91mFailed to authenticate on bitHolla Server with your passed credentials.\033[39m\n"
-        echo -e "Please try it again.\n"
+        echo "Please try it again."
         exit 1;
 
     else 
 
-        printf "\n\033[92mSuccessfully authenticated on bitHolla Server.\033[39m\n"
+        printf "\033[92mSuccessfully authenticated on bitHolla Server.\033[39m\n"
         echo "Info: Your authentication will be only available for 24 hours."
 
         echo $BITHOLLA_ACCOUNT_TOKEN > $HOLLAEX_CLI_INIT_PATH/.token
@@ -1076,15 +1091,18 @@ elif [[ "$1" == "login" ]]; then
     # Subtracting 1 from total count due to the array starts from 0, not from 1.
     BITHOLLA_USER_EXCHANGE_COUNT=$((BITHOLLA_USER_EXCHANGE_COUNT-1))
 
-    echo -e "\n"
+    printf "\n"
 
-    for ((i=0;i<=BITHOLLA_USER_EXCHANGE_COUNT;i++)); do 
+    function hollaex_login_select_exchange() {
+
+
+        for ((i=0;i<=BITHOLLA_USER_EXCHANGE_COUNT;i++)); do 
 
         echo "Exchange number : $i";
 
         echo "Name:" $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].name");
         echo "Activation Code:" $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].activation_code");
-        echo -e "\n"
+        printf "\n"
 
         EXCHANGE_NAME_TEMP=EXCHANGE_NAME_${i}
         EXCHANGE_ACTIVATION_CODE_TEMP=EXCHANGE_ACTIVATION_CODE_${i}
@@ -1092,29 +1110,54 @@ elif [[ "$1" == "login" ]]; then
         export $(echo $EXCHANGE_NAME_TEMP)=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].name";);
         export $(echo $EXCHANGE_ACTIVATION_CODE_TEMP)=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].activation_code";);
 
-    done;
+        echo "Please pick up the exchange number you want to bind."
+        read answer
 
-    echo "Please pick up the exchange number you want to bind."
-    read answer
-    
-    printf "\n"
-    SELECTED_EXCHANGE_NAME=EXCHANGE_NAME_${answer}
-    SELECTED_EXCHANGE_ACTIVATION_CODE=EXCHANGE_ACTIVATION_CODE_${answer}
+        while true;
+            do if [[ ! "${answer}" =~ ^[0-9]+$ ]]; then 
+                printf "\033[91m\nError: The input always should be numberic.\033[39m\n"
+                echo "Please pick up the exchange number you want to bind."
+                read answer
+            else
+                break;
+            fi
+        done
+        
+        printf "\n"
+        SELECTED_EXCHANGE_NAME=EXCHANGE_NAME_${answer}
+        SELECTED_EXCHANGE_ACTIVATION_CODE=EXCHANGE_ACTIVATION_CODE_${answer}
 
-    echo "Selected Exchange name: ${!SELECTED_EXCHANGE_NAME}"
-    echo "Selected Activation code: ${!SELECTED_EXCHANGE_ACTIVATION_CODE}"
+        if [[ ! "${!SELECTED_EXCHANGE_NAME}" ]] || [[ ! "${!SELECTED_EXCHANGE_ACTIVATION_CODE}" ]]; then
 
-    if command sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=.*/HOLLAEX_CONFIGMAP_API_NAME=${!SELECTED_EXCHANGE_NAME}/" $CONFIGMAP_FILE_PATH; then
+            printf "\033[91m\nError: Failed to read the data from the selected exchange.\033[39m\n"
+            printf "Please make sure that you selected the correct number, and try again.\n\n"
+            hollaex_login_select_exchange;
 
-        rm $CONFIGMAP_FILE_PATH.bak
-
-        if command sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=.*/HOLLAEX_SECRET_ACTIVATION_CODE=${!SELECTED_EXCHANGE_ACTIVATION_CODE}/" $SECRET_FILE_PATH; then
-
-            rm $SECRET_FILE_PATH.bak
-
-            printf "\n\033[92mSuccessfully bound the selected exchange to HollaEx Kit.\033[39m\n"
         fi
-    
+
+        echo "Selected Exchange name: ${!SELECTED_EXCHANGE_NAME}"
+        echo "Selected Activation code: ${!SELECTED_EXCHANGE_ACTIVATION_CODE}"
+        echo "Do you want to continue? (Y/n)"
+        read answer
+
+        if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+
+            hollaex_login_select_exchange;
+
+        fi
+
+        done;
+
+    }
+
+    hollaex_login_select_exchange;
+
+    if command sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=.*/HOLLAEX_SECRET_ACTIVATION_CODE=${!SELECTED_EXCHANGE_ACTIVATION_CODE}/" $SECRET_FILE_PATH; then
+
+        rm $SECRET_FILE_PATH.bak
+
+        printf "\n\033[92mSuccessfully bound the selected exchange to HollaEx Kit.\033[39m\n"
+
     else
 
         printf "\033[91mFailed to bind selected exchange to HollaEx Kit.\033[39m\n"
@@ -1180,9 +1223,9 @@ elif [[ "$1" == "logout" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
-    if [[ ! "$HOLLAEX_CONFIGMAP_API_NAME" ]] || [[ ! "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then
+    if [[ ! "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then
 
-        printf "\033[91mFailed to read pre-bound Exchange name or Activation code.\033[39m\n"
+        printf "\033[91mFailed to read pre-bound Activation code.\033[39m\n"
         echo "'hollaex logout' works only after you successfully logged in."
         exit 1;
     
@@ -1295,15 +1338,15 @@ elif [[ "$1" == "pull" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
-    if [[ ! "$HOLLAEX_CONFIGMAP_API_NAME" ]] || [[ ! "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then
+    if [[ ! "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then
 
-        printf "\033[91mFailed to read pre-bound Exchange name or Activation code.\033[39m\n"
+        printf "\033[91mFailed to read pre-bound Activation code.\033[39m\n"
         echo "'hollaex pull' works only after you successfully logged in."
         exit 1;
     
     fi
 
-    if [[ ! "$RUN_WITH_VERIFY" ]]; then 
+    if [[ "$RUN_WITH_VERIFY" == true ]]; then 
 
         printf "\nCurrent bound Exchange name: \033[92m$HOLLAEX_CONFIGMAP_API_NAME\033[39m\n\n"
         echo "This command will override the current Exchange settings at '/settings' folder of your HollaEx Kit."
@@ -1354,7 +1397,7 @@ elif [[ "$1" == "pull" ]]; then
 
     for ((i=0;i<=BITHOLLA_USER_EXCHANGE_COUNT;i++)); do 
 
-        if [[ $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].name") == "$HOLLAEX_CONFIGMAP_API_NAME" ]]; then
+        if [[ $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].activation_code") == "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then
 
             export BITHOLLA_USER_EXCHANGE_ORDER=$i
         
@@ -1364,8 +1407,8 @@ elif [[ "$1" == "pull" ]]; then
 
     if [[ $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].is_completed") == false ]]; then
 
-        printf "\n\n\033[91mError: Your exchange - $HOLLAEX_CONFIGMAP_API_NAME doesn't seems like fully configurated at bitHolla Dashboard.\033[39m\n"
-        printf "Please finalize the exchange setup at bitHolla Dashboard (https://dash.bitholla.com), and try agian.\n"
+        printf "\n\033[91mError: Your exchange - $HOLLAEX_CONFIGMAP_API_NAME doesn't seems like fully configurated at bitHolla Dashboard.\033[39m\n"
+        printf "Please finalize the exchange setup at bitHolla Dashboard (https://dash.bitholla.com), and try agian.\n\n"
 
         exit 1;
 
