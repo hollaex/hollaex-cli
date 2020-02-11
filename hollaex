@@ -12,6 +12,8 @@ GENERATE_PASSWORDS=false
 
 DOCKER_COMPOSE_NAME_PREFIX='local'
 
+ENVIRONMENT_BRIDGE_TARGET_SERVER='api.bitholla.com'
+
 err_msg() { echo "$@" ;} >&2
 err_msg_a() { err_msg "-a option argument required" ;}
 err_msg_l() { err_msg "--long option argument required" ;}
@@ -482,7 +484,7 @@ elif [[ "$1" == "setup" ]]; then
     CONTINUE_WITH_PRECONFIGURED_VALUES=false 
 
     # Check that settings files are already configured.
-    if [[ "$HOLLAEX_CONFIGMAP_API_NAME" ]] && [[ $HOLLAEX_SECRET_ACTIVATION_CODE ]]; then
+    if [[ ! "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]] && [[ $HOLLAEX_SECRET_ACTIVATION_CODE ]]; then
 
         echo "HollaEx CLI detected the preconfigured values on your HollaEx Kit."
         echo "Do you want to proceed with this configurations? (Y/n)"
@@ -512,9 +514,9 @@ elif [[ "$1" == "setup" ]]; then
 
         printf "\nWelcome to HollaEx Setup!\n\n"
 
-        echo "You need to setup your exchange with the configurations."
-        echo "You can follow the exchange setup wizard on https://dash.bitholla.com before you do this process. (Recommended)"
-        echo "Have you already setup your exchange on bitHolla Dashboard? (Y/n)"
+        echo -e "You need to \033[1msetup your exchange\033[0m with the configurations."
+        echo -e "You can follow the \033[1mexchange setup wizard\033[0m on \033[1mhttps://dash.bitholla.com\033[0m before you do this process. (Recommended)"
+        echo -e "\033[1mHave you already setup your exchange on bitHolla Dashboard? (Y/n)\033[0m"
         read answer
 
         if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
@@ -549,7 +551,10 @@ elif [[ "$1" == "setup" ]]; then
 
     
     export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_DOCKER_IMAGE_VERSION
+
     override_docker_image_version;
+    export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
     
     build_user_hollaex_core;
 
@@ -1044,46 +1049,89 @@ elif [[ "$1" == "login" ]]; then
 
     fi
 
-    echo "bitHolla Account Email: "
-    read email
+    for i in ${CONFIG_FILE_PATH[@]}; do
 
-    echo "bitHolla Account Password: "
-    read -s password
-    printf "\n"
+        if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE=" $i > /dev/null ; then
 
-    echo "OTP Code (Enter if you don't have OTP set for your account): "
-    read otp
+            export SECRET_FILE_PATH=$i
 
-    BITHOLLA_ACCOUNT_TOKEN=$(curl -s -H "Content-Type: application/json" \
-        --request POST \
-        --data "{\"email\": \"${email}\", \"password\": \"${password}\", \"otp_code\": \"${otp}\", \"service\": \"cli\"}" \
-        https://api.bitholla.com/v1/login \
-        | jq -r '.token')
+        fi
 
-    if [[ ! "$BITHOLLA_ACCOUNT_TOKEN" ]] || [[ "$BITHOLLA_ACCOUNT_TOKEN" == "null" ]]; then
+    done
 
-        printf "\033[91mFailed to authenticate on bitHolla Server with your passed credentials.\033[39m\n"
-        echo "Please try it again."
-        exit 1;
+    function hollaex_login_form() {
+
+        echo -e "\033[1mbitHolla Account Email:\033[0m "
+        read email
+
+        echo -e "\033[1mbitHolla Account Password:\033[0m "
+        read -s password
+        printf "\n"
+
+        echo -e "\033[1mOTP Code\033[0m (Enter if you don't have OTP set for your account): "
+        read otp
+
+        BITHOLLA_ACCOUNT_TOKEN=$(curl -s -H "Content-Type: application/json" \
+            --request POST \
+            --data "{\"email\": \"${email}\", \"password\": \"${password}\", \"otp_code\": \"${otp}\", \"service\": \"cli\"}" \
+            https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/login \
+            | jq -r '.token')
+
+        if [[ ! "$BITHOLLA_ACCOUNT_TOKEN" ]] || [[ "$BITHOLLA_ACCOUNT_TOKEN" == "null" ]]; then
+
+            printf "\033[91mFailed to authenticate on bitHolla Server with your passed credentials.\033[39m\n"
+            echo "Please try it again."
+            exit 1;
+
+        else 
+
+            printf "\033[92mSuccessfully authenticated on bitHolla Server.\033[39m\n"
+            echo "Info: Your authentication will be only available for 24 hours."
+
+            echo $BITHOLLA_ACCOUNT_TOKEN > $HOLLAEX_CLI_INIT_PATH/.token
+
+            if [[ "$HOLLAEX_LOGIN_RENEW" ]]; then 
+
+                exit 0;
+
+            fi 
+
+        fi
+
+    }
+
+    if [[ -f "$HOLLAEX_CLI_INIT_PATH/.token" ]]; then
+
+        echo "Validating the existing access token..."
+        BITHOLLA_ACCOUNT_TOKEN=$(cat $HOLLAEX_CLI_INIT_PATH/.token)
+
+        BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
+            --request GET \
+            https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange \
+            | jq '.')
+
+        if [[ ! "$BITHOLLA_USER_EXCHANGE_LIST" ]] || [[ "$BITHOLLA_USER_EXCHANGE_LIST" == *"Token is expired"* ]]; then
+
+            printf "\033[91mError: Your access token has been expired!\033[39m\n"
+            printf "Please login again with your bitHolla account to issue a new access token.\n\n"
+            hollaex_login_form;
+
+        else
+
+            echo -e "\033[92mYour existing access token is valid!\033[39m"
+            echo "Info: If you want to revoke the existing token manually, remove '.token' file at your Kit."
+
+        fi
 
     else 
 
-        printf "\033[92mSuccessfully authenticated on bitHolla Server.\033[39m\n"
-        echo "Info: Your authentication will be only available for 24 hours."
-
-        echo $BITHOLLA_ACCOUNT_TOKEN > $HOLLAEX_CLI_INIT_PATH/.token
-
-        if [[ "$HOLLAEX_LOGIN_RENEW" ]]; then 
-
-            exit 0;
-
-        fi 
+        hollaex_login_form;
 
     fi
 
     BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
         --request GET \
-        https://api.bitholla.com/v1/exchange \
+        https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange \
        | jq '.')
     
     BITHOLLA_USER_EXCHANGE_COUNT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r '.count')
@@ -1098,7 +1146,7 @@ elif [[ "$1" == "login" ]]; then
 
         for ((i=0;i<=BITHOLLA_USER_EXCHANGE_COUNT;i++)); do 
 
-        echo "Exchange number : $i";
+        echo "Exchange number : $((i+1))";
 
         echo "Name:" $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].name");
         echo "Activation Code:" $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].activation_code");
@@ -1122,6 +1170,8 @@ elif [[ "$1" == "login" ]]; then
                 break;
             fi
         done
+
+        answer=$((answer-1))
         
         printf "\n"
         SELECTED_EXCHANGE_NAME=EXCHANGE_NAME_${answer}
@@ -1134,9 +1184,9 @@ elif [[ "$1" == "login" ]]; then
             hollaex_login_select_exchange;
 
         fi
-
-        echo "Selected Exchange name: ${!SELECTED_EXCHANGE_NAME}"
-        echo "Selected Activation code: ${!SELECTED_EXCHANGE_ACTIVATION_CODE}"
+        
+        echo -e "\033[1mSelected Exchange name: ${!SELECTED_EXCHANGE_NAME}\033[0m"
+        echo -e "\033[1mSelected Activation code: ${!SELECTED_EXCHANGE_ACTIVATION_CODE}\033[0m"
         echo "Do you want to continue? (Y/n)"
         read answer
 
@@ -1374,7 +1424,7 @@ elif [[ "$1" == "pull" ]]; then
 
     BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
         --request GET \
-        https://api.bitholla.com/v1/exchange \
+        https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange \
        | jq '.')
 
     if [[ ! "$BITHOLLA_USER_EXCHANGE_LIST" ]] || [[ "$BITHOLLA_USER_EXCHANGE_LIST" == *"Token is expired"* ]]; then
@@ -1405,14 +1455,14 @@ elif [[ "$1" == "pull" ]]; then
 
     done;
 
-    if [[ $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].is_completed") == false ]]; then
+    # if [[ $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].is_completed") == false ]]; then
 
-        printf "\n\033[91mError: Your exchange - $HOLLAEX_CONFIGMAP_API_NAME doesn't seems like fully configurated at bitHolla Dashboard.\033[39m\n"
-        printf "Please finalize the exchange setup at bitHolla Dashboard (https://dash.bitholla.com), and try agian.\n\n"
+    #     printf "\n\033[91mError: Your exchange doesn't seems like fully configurated at bitHolla Dashboard.\033[39m\n"
+    #     printf "Please finalize the exchange setup at bitHolla Dashboard (https://dash.bitholla.com), and try agian.\n\n"
 
-        exit 1;
+    #     exit 1;
 
-    fi
+    # fi
 
     hollaex_pull_and_apply_exchange_data;
 

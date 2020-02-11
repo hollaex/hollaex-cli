@@ -4996,6 +4996,7 @@ function check_docker_compose_dependencies() {
 
 function hollaex_pull_and_apply_exchange_data() {
 
+  local HOLLAEX_CONFIGMAP_API_NAME_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].name";)
   #LOGO PATH ESCAPING
   local ORIGINAL_CHARACTER_FOR_DOMAIN=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.EXCHANGE_CLIENT_URL";)
 
@@ -5069,7 +5070,7 @@ function hollaex_pull_and_apply_exchange_data() {
   
   local HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET_OVERRIDE=$(echo "$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.STORAGE_TYPE";):$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.STORAGE_REGION";)")
 
-  local ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(curl -s https://api.bitholla.com/v1/core-version | jq -r '.version')"
+  local ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(curl -s https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/core-version | jq -r '.version')"
 
   # Secrets
   local HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ADMIN_PASSWORD";)
@@ -5084,6 +5085,8 @@ function hollaex_pull_and_apply_exchange_data() {
   local HOLLAEX_SECRET_S3_REGION_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.STORAGE_REGION";)
 
   # CONFIGMAP
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=.*/HOLLAEX_CONFIGMAP_API_NAME=$HOLLAEX_CONFIGMAP_API_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
+
   sed -i.bak "s/HOLLAEX_CONFIGMAP_DOMAIN=.*/HOLLAEX_CONFIGMAP_DOMAIN=$HOLLAEX_CONFIGMAP_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
   sed -i.bak "s/ESCAPED_HOLLAEX_CONFIGMAP_LOGO_PATH=.*/ESCAPED_HOLLAEX_CONFIGMAP_LOGO_PATH=$HOLLAEX_CONFIGMAP_LOGO_PATH_OVERRIDE/" $CONFIGMAP_FILE_PATH
@@ -5189,100 +5192,3 @@ function remove_existing_pairs_configs_from_settings() {
     
 }
 
-function hollaex_login_exec() {
-
-      echo "bitHolla Account Email: "
-  read email
-
-  echo "bitHolla Account Password: "
-  read -s password
-  printf "\n"
-
-  echo "OTP Code (If required. Leave it as blank if it's not.): "
-  read otp
-
-  BITHOLLA_ACCOUNT_TOKEN=$(curl -s -H "Content-Type: application/json" \
-      --request POST \
-      --data "{\"email\": \"${email}\", \"password\": \"${password}\", \"otp_code\": \"${otp}\", \"service\": \"cli\"}" \
-      https://api.bitholla.com/v1/login \
-      | jq -r '.token')
-
-  if [[ ! "$BITHOLLA_ACCOUNT_TOKEN" ]] || [[ "$BITHOLLA_ACCOUNT_TOKEN" == "null" ]]; then
-
-      printf "\033[91mFailed to authenticate on bitHolla Server with your passed credentials.\033[39m\n"
-      echo -e "Please try it again.\n"
-      exit 1;
-
-  else 
-
-      printf "\n\033[92mSuccessfully authenticated on bitHolla Server.\033[39m\n"
-      echo "Info: Your authentication will be only available for 24 hours."
-
-      echo $BITHOLLA_ACCOUNT_TOKEN > $HOLLAEX_CLI_INIT_PATH/.token
-
-      if [[ "$HOLLAEX_LOGIN_RENEW" ]]; then 
-
-          exit 0;
-
-      fi 
-
-  fi
-
-  BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
-      --request GET \
-      https://api.bitholla.com/v1/exchange \
-      | jq '.')
-  
-  BITHOLLA_USER_EXCHANGE_COUNT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r '.count')
-
-  # Subtracting 1 from total count due to the array starts from 0, not from 1.
-  BITHOLLA_USER_EXCHANGE_COUNT=$((BITHOLLA_USER_EXCHANGE_COUNT-1))
-
-  echo -e "\n"
-
-  for ((i=0;i<=BITHOLLA_USER_EXCHANGE_COUNT;i++)); do 
-
-      echo "Exchange number : $i";
-
-      echo "Name:" $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].name");
-      echo "Activation Code:" $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].activation_code");
-      echo -e "\n"
-
-      EXCHANGE_NAME_TEMP=EXCHANGE_NAME_${i}
-      EXCHANGE_ACTIVATION_CODE_TEMP=EXCHANGE_ACTIVATION_CODE_${i}
-
-      export $(echo $EXCHANGE_NAME_TEMP)=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].name";);
-      export $(echo $EXCHANGE_ACTIVATION_CODE_TEMP)=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].activation_code";);
-
-  done;
-
-  echo "Please pick up the exchange number you want to bind."
-  read answer
-  
-  printf "\n"
-  SELECTED_EXCHANGE_NAME=EXCHANGE_NAME_${answer}
-  SELECTED_EXCHANGE_ACTIVATION_CODE=EXCHANGE_ACTIVATION_CODE_${answer}
-
-  echo "Selected Exchange name: ${!SELECTED_EXCHANGE_NAME}"
-  echo "Selected Activation code: ${!SELECTED_EXCHANGE_ACTIVATION_CODE}"
-
-  if command sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=.*/HOLLAEX_CONFIGMAP_API_NAME=${!SELECTED_EXCHANGE_NAME}/" $CONFIGMAP_FILE_PATH; then
-
-      rm $CONFIGMAP_FILE_PATH.bak
-
-      if command sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=.*/HOLLAEX_SECRET_ACTIVATION_CODE=${!SELECTED_EXCHANGE_ACTIVATION_CODE}/" $SECRET_FILE_PATH; then
-
-          rm $SECRET_FILE_PATH.bak
-
-          printf "\n\033[92mSuccessfully bound the selected exchange to HollaEx Kit.\033[39m\n"
-      fi
-  
-  else
-
-      printf "\033[91mFailed to bind selected exchange to HollaEx Kit.\033[39m\n"
-      echo "Please review the error and try again."
-      exit 1;
-
-  fi
-
-}
