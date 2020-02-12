@@ -1433,14 +1433,14 @@ elif [[ "$1" == "pull" ]]; then
 
     done;
 
-    # if [[ $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].is_completed") == false ]]; then
+    if [[ $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].is_completed") == false ]]; then
 
-    #     printf "\n\033[91mError: Your exchange doesn't seems like fully configurated at bitHolla Dashboard.\033[39m\n"
-    #     printf "Please finalize the exchange setup at bitHolla Dashboard (https://dash.bitholla.com), and try agian.\n\n"
+        printf "\n\033[91mError: Your exchange doesn't seems like fully configurated at bitHolla Dashboard.\033[39m\n"
+        printf "Please finalize the exchange setup at bitHolla Dashboard (https://dash.bitholla.com), and try agian.\n\n"
 
-    #     exit 1;
+        exit 1;
 
-    # fi
+    fi
 
     hollaex_pull_and_apply_exchange_data;
 
@@ -1452,16 +1452,38 @@ elif [[ "$1" == "pull" ]]; then
     for ((i=0;i<=BITHOLLA_USER_EXCHANGE_ASSETS_COUNT;i++)); do
 
         export COIN_SYMBOL=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_SYMBOL") 
-        export COIN_FULLNAME=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_NAME")
+        export COIN_FULLNAME=\'$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_NAME")\'
+
         export COIN_ALLOW_DEPOSIT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_ALLOW_DEPOSITS")
+
+        if [[ "$COIN_ALLOW_DEPOSIT" == "Y" ]]; then
+            export COIN_ALLOW_DEPOSIT="true"
+        elif [[ "$COIN_ALLOW_DEPOSIT" == "N" ]]; then
+            export COIN_ALLOW_DEPOSIT="false"
+        fi
+
         export COIN_ALLOW_WITHDRAWAL=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_ALLOW_WITHDRAWAL")
+        
+        if [[ "$COIN_ALLOW_WITHDRAWAL" == "Y" ]]; then
+            export COIN_ALLOW_WITHDRAWAL="true"
+        elif [[ "$COIN_ALLOW_WITHDRAWAL" == "N" ]]; then
+            export COIN_ALLOW_WITHDRAWAL="false"
+        fi
+
         export COIN_WITHDRAWAL_FEE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_WITHDRAWAL_FEE")
         export COIN_MIN=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_MINIMUM_WITHDRAWAL")
         export COIN_MAX=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_MAXIMUM_WITHDRAWAL")
         export COIN_INCREMENT_UNIT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_INCREMENT_AMOUNT")
         export COIN_DEPOSIT_LIMITS_PARSED=\'$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].deposit" | tr -d '\n')\'
         export COIN_WITHDRAWAL_LIMITS_PARSED=\'$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].deposit" | tr -d '\n')\'
+
         export COIN_ACTIVE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_ACTIVATE")
+
+        if [[ "$COIN_ACTIVE" == "Y" ]]; then
+            export COIN_ACTIVE="true"
+        elif [[ "$COIN_ACTIVE" == "N" ]]; then
+            export COIN_ACTIVE="false"
+        fi
 
         export COIN_PREFIX=$(echo ${COIN_SYMBOL} | tr a-z A-Z)
 
