@@ -1137,6 +1137,8 @@ elif [[ "$1" == "login" ]]; then
         export $(echo $EXCHANGE_NAME_TEMP)=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].name";);
         export $(echo $EXCHANGE_ACTIVATION_CODE_TEMP)=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].activation_code";);
 
+        done;
+
         echo "Please pick up the exchange number you want to bind."
         read answer
 
@@ -1174,9 +1176,6 @@ elif [[ "$1" == "login" ]]; then
             hollaex_login_select_exchange;
 
         fi
-
-        done;
-
     }
 
     hollaex_login_select_exchange;
