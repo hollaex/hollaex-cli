@@ -411,6 +411,20 @@ elif [[ "$1" == "setup" ]]; then
 
     fi
 
+    # Returns error If 'jq' doesn't exists.
+    if ! command jq --version > /dev/null 2>&1; then
+
+        printf "\033[91mError: 'jq' (https://stedolan.github.io/jq/) has not been detected on your system.\033[39m\n"
+        echo "HollaEx CLI requires 'jq' to handle certain functionalities."
+        echo "Please install it first and try again."
+
+        printf "\nFor Ubuntu (Debian) users: 'apt-get install -y jq'\n"
+        printf "For macOS users with Homebrew: 'brew install jq'\n\n"
+
+        exit 1;
+
+    fi
+
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
     done;
@@ -1028,6 +1042,20 @@ elif [[ "$1" == "login" ]]; then
 
     fi
 
+    # Returns error If 'jq' doesn't exists.
+    if ! command jq --version > /dev/null 2>&1; then
+
+        printf "\033[91mError: 'jq' (https://stedolan.github.io/jq/) has not been detected on your system.\033[39m\n"
+        echo "HollaEx CLI requires 'jq' to handle certain functionalities."
+        echo "Please install it first and try again."
+
+        printf "\nFor Ubuntu (Debian) users: 'apt-get install -y jq'\n"
+        printf "For macOS users with Homebrew: 'brew install jq'\n\n"
+
+        exit 1;
+
+    fi
+
     for i in ${CONFIG_FILE_PATH[@]}; do
 
         if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE=" $i > /dev/null ; then
@@ -1335,6 +1363,20 @@ elif [[ "$1" == "pull" ]]; then
 
         printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
+        exit 1;
+
+    fi
+
+    # Returns error If 'jq' doesn't exists.
+    if ! command jq --version > /dev/null 2>&1; then
+
+        printf "\033[91mError: 'jq' (https://stedolan.github.io/jq/) has not been detected on your system.\033[39m\n"
+        echo "HollaEx CLI requires 'jq' to handle certain functionalities."
+        echo "Please install it first and try again."
+
+        printf "\nFor Ubuntu (Debian) users: 'apt-get install -y jq'\n"
+        printf "For macOS users with Homebrew: 'brew install jq'\n\n"
+
         exit 1;
 
     fi
