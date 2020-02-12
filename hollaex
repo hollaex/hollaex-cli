@@ -695,6 +695,16 @@ elif [[ "$1" == "setup" ]]; then
                      -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
                      -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
+        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-plugins-controller \
+                     --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                     --set DEPLOYMENT_MODE="plugins-controller" \
+                     --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                     --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                     --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                     --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                     -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+
         helm_dynamic_trading_paris run;
 
         sleep 5;
@@ -1910,8 +1920,13 @@ elif [[ "$1" == "stop" ]]; then
 
         fi
 
-        echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-        kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+        # Only tries to attempt remove ingress rules from Kubernetes if it exists.
+        if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+        
+            echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
+            kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+        fi
 
         echo "Scaling down containers on the cluster..."
         kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
@@ -2104,8 +2119,13 @@ elif [[ "$1" == "restart" ]]; then
 
         fi
 
-        echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-        kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+        # Only tries to attempt remove ingress rules from Kubernetes if it exists.
+        if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+        
+            echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
+            kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+        fi
 
         if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
 
@@ -2400,9 +2420,6 @@ elif [[ "$1" == "upgrade" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
-    #Regenerate random secrets
-    update_random_values_to_config;
-
     # Override target docker image version if user passed it manually with flag.
     if [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
         
@@ -2428,6 +2445,9 @@ elif [[ "$1" == "upgrade" ]]; then
         build_user_hollaex_core;
     
     fi
+
+    #Regenerate random secrets
+    update_random_values_to_config;
 
     if [[ "$USE_KUBERNETES" ]]; then
 
@@ -2516,6 +2536,16 @@ elif [[ "$1" == "upgrade" ]]; then
         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" --set stable.replicaCount="2" --set autoScaling.hpa.enable="true" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set DEPLOYMENT_MODE="stream" --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+
+        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-plugins-controller \
+                     --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                     --set DEPLOYMENT_MODE="plugins-controller" \
+                     --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                     --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                     --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                     --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                     -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
         
         helm_dynamic_trading_paris run;
 
@@ -2757,7 +2787,7 @@ elif [[ "$1" == "terminate" ]]; then
         fi
 
          # Only tries to attempt remove ingress rules from Kubernetes if it exists.
-        if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+        if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
         
             echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
             kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
@@ -2767,7 +2797,8 @@ elif [[ "$1" == "terminate" ]]; then
         echo "Removing helm packages on the cluster."
         helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-api
         helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-stream
-        
+        helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-plugins-controller
+
         helm_dynamic_trading_paris terminate;
 
         helm del --purge $ENVIRONMENT_EXCHANGE_NAME-redis 

@@ -82,6 +82,11 @@ spec:
         command: ["/bin/bash"]
         args: ["-c", "/app/engine-binary"]
 
+{{- else if eq .Values.DEPLOYMENT_MODE "plugins-controller" }}
+
+        command: ["/bin/bash"]
+        args: ["-c", "node plugins/index.js"]
+
 {{- end }}
 
         ports:
@@ -89,6 +94,8 @@ spec:
           containerPort: 10080
         - name: port
           containerPort: 10010
+        - name: plugins-port
+          containerPort: 10011
 
         envFrom:
           - configMapRef:
@@ -103,7 +110,7 @@ spec:
         
         resources:
           limits:
-{{- if or (eq .Values.DEPLOYMENT_MODE "api") (eq .Values.DEPLOYMENT_MODE "stream") }}
+{{- if or (eq .Values.DEPLOYMENT_MODE "api") (eq .Values.DEPLOYMENT_MODE "stream") (eq .Values.DEPLOYMENT_MODE "plugins-controller") }}
             memory: "1536Mi"
 {{- else }}
             memory: "2048Mi"

@@ -213,7 +213,7 @@ function load_config_variables() {
 function generate_local_env() {
 
 # Generate local env
-cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-dev.env.local <<EOL
+cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local <<EOL
 DB_DIALECT=postgres
 
 $(echo "$HOLLAEX_CONFIGMAP_VARIABLES" | tr -d '\'\')
@@ -480,13 +480,14 @@ fi
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
-    image: ${ENVIRONMENT_KUBERNETES_PLUGINS_CONTROLLER_REGISTRY:-bitholla/plugins-controller}:${ENVIRONMENT_KUBERNETES_PLUGINS_VERSION:-latest}
+    image: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
     restart: always
     ports:
       - 10011:10011
-    build:
-      context: ${HOLLAEX_CLI_INIT_PATH}/plugins
-      dockerfile: ${HOLLAEX_CLI_INIT_PATH}/plugins/Dockerfile
+    entrypoint:
+      - node
+    command:
+      - plugins/index.js
     env_file:
       - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
     networks:
