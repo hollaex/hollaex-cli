@@ -2427,7 +2427,7 @@ elif [[ "$1" == "upgrade" ]]; then
             --version)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$1
+                ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=${1:-$ENVIRONMENT_DOCKER_IMAGE_VERSION}
                 echo "Target HollaEx Core release version : v $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE."
                 shift; continue
                 ;;
