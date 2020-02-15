@@ -521,9 +521,24 @@ elif [[ "$1" == "setup" ]]; then
         read answer
 
         if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+
+            printf "\n\nWe recommend you to \033[1mquit the CLI setup process\033[0m, and finalize your exchange configuration \033[1mthrough bitHolla Dashboard\033[0m first.\n"
+            echo "You could also do an exchange configuration through the CLI too (Not recommended)."
+            printf "Select \033[1m'Y' to quit the CLI\033[0m, \033[1m'N' to proceed to a CLI exchange wizard\033[0m.\n" 
+            echo "Do you want to quit the CLI setup? (Y/n)"
+            read answer
+
+            if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+                
+                echo "Proceeding to a CLI exchange wizard..."
+                launch_basic_settings_input;
             
-            echo "Proceeding to a CLI exchange configurator..."
-            launch_basic_settings_input;
+            else 
+
+                echo "Go to bitHolla Dashboard (https://dash.bitholla.com) and finalize your exchange configuration."
+                exit 1;
+            
+            fi
         
         else 
 
