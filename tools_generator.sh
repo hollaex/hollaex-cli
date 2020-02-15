@@ -4367,9 +4367,9 @@ function hollaex_setup_finalization() {
 
   # if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
 
-      echo "Finishing the setup process..."
-      echo "Shutting down the exchange"
-      printf "To start the exchange, Please use 'hollaex start$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' command\n\n"
+      printf "\033[93m\nFinishing the setup process...\033[39m\n"
+      printf "\033[93mShutting down the exchange...\033[39m\n"
+      printf "\033[93mTo start the exchange, Please use 'hollaex start$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' command\033[39m\n\n"
       if [[ "$USE_KUBERNETES" ]]; then
           hollaex stop --kube --skip
       elif [[ ! "$USE_KUBERNETES" ]]; then
