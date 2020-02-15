@@ -523,7 +523,7 @@ elif [[ "$1" == "setup" ]]; then
         if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
 
             printf "\n\nWe recommend you to \033[1mquit the CLI setup process\033[0m, and finalize your exchange configuration \033[1mthrough bitHolla Dashboard\033[0m first.\n"
-            echo "You could also do an exchange configuration through the CLI too. We don't recommend it to general users."
+            echo "You could also do an exchange configuration through the CLI too (Not recommended)."
             printf "Select \033[1m'Y' to quit the CLI\033[0m, \033[1m'N' to proceed to a CLI exchange wizard\033[0m.\n" 
             echo "Do you want to quit the CLI setup? (Y/n)"
             read answer
