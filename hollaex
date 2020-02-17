@@ -1490,14 +1490,14 @@ elif [[ "$1" == "pull" ]]; then
 
     done;
 
-    # if [[ $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].is_completed") == false ]]; then
+    if [[ $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].is_completed") == false ]]; then
 
-    #     printf "\n\033[91mError: Your exchange doesn't seems like fully configurated at bitHolla Dashboard.\033[39m\n"
-    #     printf "Please finalize the exchange setup at bitHolla Dashboard (https://dash.bitholla.com), and try agian.\n\n"
+        printf "\n\033[91mError: Your exchange doesn't seems like fully configurated at bitHolla Dashboard.\033[39m\n"
+        printf "Please finalize the exchange setup at bitHolla Dashboard (https://dash.bitholla.com), and try agian.\n\n"
 
-    #     exit 1;
+        exit 1;
 
-    # fi
+    fi
 
     hollaex_pull_and_apply_exchange_data;
 
