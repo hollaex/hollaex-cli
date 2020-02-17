@@ -41,6 +41,21 @@ steps:
       from_secret: docker_username
     DOCKER_PASSWORD:
       from_secret: docker_password
+  when:
+    branch: master
+
+- name: docker_build_testnet
+  image: plugins/docker
+  settings:
+    dockerfile: docker/Dockerfile.testnet
+    repo: bitholla/hollaex-cli
+  environment:
+    DOCKER_USERNAME:
+      from_secret: docker_username
+    DOCKER_PASSWORD:
+      from_secret: docker_password
+  when:
+    branch: testnet
 
 - name: notify_job_done
   image: bitholla/devops-tools:drone_slack-8a15f61
