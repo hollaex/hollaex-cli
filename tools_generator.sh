@@ -349,7 +349,7 @@ services:
       context: ${HOLLAEX_CODEBASE_PATH}
       dockerfile: ${HOLLAEX_CODEBASE_PATH}/tools/Dockerfile.pm2
     env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-dev.env.local
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
     entrypoint:
       - pm2-runtime
       - start
@@ -1884,7 +1884,7 @@ function remove_coin_exec() {
 
       IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
-      # Overriding container prefix for develop server
+      # # Overriding container prefix for develop server
       if [[ "$IS_DEVELOP" ]]; then
         
         CONTAINER_PREFIX=
@@ -5166,3 +5166,98 @@ function remove_existing_pairs_configs_from_settings() {
     
 }
 
+function apply_pairs_config_to_settings_file() {
+
+  # Applying pair (pairs) configs to settings file.
+  BITHOLLA_USER_EXCHANGE_PAIRS_COUNT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS" | jq '.| length ')
+  BITHOLLA_USER_EXCHANGE_PAIRS_COUNT=$(($BITHOLLA_USER_EXCHANGE_PAIRS_COUNT-1))
+
+  for ((i=0;i<=BITHOLLA_USER_EXCHANGE_PAIRS_COUNT;i++)); do
+
+      export PAIR_BASE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].BASE_ASSET")
+      export PAIR_2=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].PRICED_ASSET")
+      export TAKER_FEES_PARSED=\'$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].TAKER_FEE" | tr -d '\n')\'
+      export MAKER_FEES_PARSED=\'$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].MAKER_FEE" | tr -d '\n')\'
+      export MIN_SIZE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].MINIMUM_TRADABLE_AMOUNT")
+      export MAX_SIZE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].MAXIMUM_TRADABLE_AMOUNT")
+      export MIN_PRICE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].MINIMUM_TRADABLE_PRICE")
+      export MAX_PRICE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].MAXIMUM_TRADABLE_PRICE")
+      export INCREMENT_SIZE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].INCREMENT_AMOUNT")
+      export INCREMENT_PRICE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].INCREMENT_PRICE")
+
+      if [[ "$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].PAIR_ACTIVATE")" == "Y" ]]; then
+
+          export PAIR_ACTIVE_BOOL=true
+      
+      else 
+
+          export PAIR_ACTIVE_BOOL=false
+      
+      fi 
+
+      export PAIR_ACTIVE=${PAIR_ACTIVE_BOOL}
+      export PAIR_NAME=$(echo "${PAIR_BASE}-${PAIR_2}") 
+
+      export PAIR_PREFIX="$(echo $PAIR_BASE | tr a-z A-Z)_$(echo $PAIR_2 | tr a-z A-Z)"
+
+      remove_existing_pairs_configs_from_settings;
+
+      save_pairs_configs;
+
+  done;
+
+}
+
+function apply_coins_config_to_settings_file() {
+
+  # Applying coin (asset) configs to settings file.
+
+  BITHOLLA_USER_EXCHANGE_ASSETS_COUNT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS" | jq '.| length ')
+  BITHOLLA_USER_EXCHANGE_ASSETS_COUNT=$(($BITHOLLA_USER_EXCHANGE_ASSETS_COUNT-1))
+
+  for ((i=0;i<=BITHOLLA_USER_EXCHANGE_ASSETS_COUNT;i++)); do
+
+    export COIN_SYMBOL=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_SYMBOL") 
+    export COIN_FULLNAME=\'$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_NAME")\'
+
+    export COIN_ALLOW_DEPOSIT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_ALLOW_DEPOSITS")
+
+    if [[ "$COIN_ALLOW_DEPOSIT" == "Y" ]]; then
+        export COIN_ALLOW_DEPOSIT="true"
+    elif [[ "$COIN_ALLOW_DEPOSIT" == "N" ]]; then
+        export COIN_ALLOW_DEPOSIT="false"
+    fi
+
+    export COIN_ALLOW_WITHDRAWAL=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_ALLOW_WITHDRAWAL")
+    
+    if [[ "$COIN_ALLOW_WITHDRAWAL" == "Y" ]]; then
+        export COIN_ALLOW_WITHDRAWAL="true"
+    elif [[ "$COIN_ALLOW_WITHDRAWAL" == "N" ]]; then
+        export COIN_ALLOW_WITHDRAWAL="false"
+    fi
+
+    export COIN_WITHDRAWAL_FEE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_WITHDRAWAL_FEE")
+    export COIN_MIN=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_MINIMUM_WITHDRAWAL")
+    export COIN_MAX=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_MAXIMUM_WITHDRAWAL")
+    export COIN_INCREMENT_UNIT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_INCREMENT_AMOUNT")
+    export COIN_DEPOSIT_LIMITS_PARSED=\'$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].deposit" | tr -d '\n')\'
+    export COIN_WITHDRAWAL_LIMITS_PARSED=\'$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].deposit" | tr -d '\n')\'
+
+    export COIN_ACTIVE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_ACTIVATE")
+
+    if [[ "$COIN_ACTIVE" == "Y" ]]; then
+        export COIN_ACTIVE="true"
+    elif [[ "$COIN_ACTIVE" == "N" ]]; then
+        export COIN_ACTIVE="false"
+    fi
+
+    export COIN_PREFIX=$(echo ${COIN_SYMBOL} | tr a-z A-Z)
+
+    remove_existing_coin_configs_from_settings;
+
+    save_coin_configs;
+
+  done;
+
+
+}

@@ -19,6 +19,17 @@ steps:
     - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION,$PACKAGE_VERSION-amd64" > .tags 
     - echo "Current Docker tag is :" && cat .tags
     - echo "dockerTag:$(cat .tags)" > .dockerTag.yml
+  when:
+    branch: master
+  
+- name: docker_tagging_testnet
+  image: alpine
+  commands:
+  - export TZ=UTC-9 && export TIMESTAMP="$(date +%y%m%d%H%M)" && export PACKAGE_VERSION="$(grep version package.json | cut -c 15- | rev | cut -c 3- | rev)" && echo " $PACKAGE_VERSION-${DRONE_BRANCH}-$TIMESTAMP" > .tags
+  - echo "Current Docker tag is :" && cat .tags
+  - echo "dockerTag:$(cat .tags)" > .dockerTag.yml
+  when:
+    branch: testnet
 
 - name: docker_build
   image: plugins/docker
@@ -57,6 +68,7 @@ steps:
 trigger:
   branch: 
     - master
+    - testnet
   event:
     - push
 
