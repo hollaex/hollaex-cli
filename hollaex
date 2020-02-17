@@ -522,9 +522,9 @@ elif [[ "$1" == "setup" ]]; then
 
         if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
 
-            printf "\n\nWe recommend you to \033[1mquit the CLI setup process\033[0m, and finalize your exchange configuration \033[1mthrough bitHolla Dashboard\033[0m first.\n"
-            echo "You could also do an exchange configuration through the CLI too (Not recommended)."
-            printf "Select \033[1m'Y' to quit the CLI\033[0m, \033[1m'N' to proceed to a CLI exchange wizard\033[0m.\n" 
+            printf "\nWe recommend you to setup your exchange on \033[1mbitHolla dashboard (dash.bitholla.com)\033[0m before you proceed.\n"
+            printf "Select \033[1m'Y'\033[0m to \033[1mquit the CLI\033[0m in order to first setup your exchange on the dashboard,\n" 
+            printf "Select \033[1m'N'\033[0m to proceed \033[1mmanual\033[0m CLI exchange setup wizard.\n" 
             echo "Do you want to quit the CLI setup? (Y/n)"
             read answer
 
@@ -535,7 +535,8 @@ elif [[ "$1" == "setup" ]]; then
             
             else 
 
-                echo "Go to bitHolla Dashboard (https://dash.bitholla.com) and finalize your exchange configuration."
+                printf "\n\nPlease visit \033[1mdash.bitholla.com\033[0m and setup your exchange there first.\n"
+                printf "Once your exchange is configured on the dashboard, please start the procedure by using \033[1m'hollaex setup'\033[0m.\n\n"
                 exit 1;
             
             fi
