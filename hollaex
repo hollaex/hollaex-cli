@@ -1347,10 +1347,11 @@ elif [[ "$1" == "login" ]]; then
 
     function hollaex_login_select_exchange() {
 
+        printf "Please pick the \033[1mexchange number\033[0m you want to bind.\n\n"
 
         for ((i=0;i<=BITHOLLA_USER_EXCHANGE_COUNT;i++)); do 
 
-        echo "Exchange number : $((i+1))";
+        printf "Exchange number : \033[1m$((i+1))\033[0m\n";
 
         echo "Name:" $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].name");
         echo "Activation Code:" $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].activation_code");
@@ -1364,7 +1365,7 @@ elif [[ "$1" == "login" ]]; then
 
         done;
 
-        echo "Please pick up the exchange number you want to bind."
+        printf "Input the exchange number: "
         read answer
 
         while true;
