@@ -50,6 +50,9 @@ function local_database_init() {
       echo "Running database triggers"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/runTriggers.js
 
+      echo "Running checkConstants"
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/checkConstants.js
+
       echo "Running InfluxDB initialization"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/initializeInflux.js
 
@@ -59,18 +62,18 @@ function local_database_init() {
     elif [[ "$1" == 'dev' ]]; then
 
       echo "Running sequelize db:migrate"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server_1 sequelize db:migrate
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:migrate
 
       echo "Running database triggers"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server_1 node tools/dbs/runTriggers.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/runTriggers.js
 
       echo "Running sequelize db:seed:all"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server_1 sequelize db:seed:all
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:seed:all
 
       echo "Running InfluxDB migrations"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server_1 node tools/dbs/createInflux.js
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server_1 node tools/dbs/migrateInflux.js
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server_1 node tools/dbs/initializeInflux.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/createInflux.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/migrateInflux.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/initializeInflux.js
 
     fi
 }
@@ -173,7 +176,7 @@ function check_kubernetes_dependencies() {
 
     else
 
-         printf "\033[91mhollaex-cli failed to detect kubectl or helm installed on this machine. Please install it before running hollaex-cli.\033[39m\n"
+         printf "\033[91mHollaEx CLI failed to detect kubectl or helm installed on this machine. Please install it before running HollaEx CLI.\033[39m\n"
          exit 1;
 
     fi
@@ -240,6 +243,9 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
     ip_hash;
     server ${ENVIRONMENT_EXCHANGE_NAME}-server-stream:10080;
   }
+  upstream plugins-controller {
+    server ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:10011;
+  }
 EOL
 
   fi
@@ -258,6 +264,9 @@ if [[ "$IS_DEVELOP" ]]; then
   upstream socket {
     ip_hash;
     server ${ENVIRONMENT_EXCHANGE_NAME}-server:10080;
+  }
+  upstream plugins-controller {
+    server ${ENVIRONMENT_EXCHANGE_NAME}-server:10011;
   }
 EOL
 
@@ -278,11 +287,11 @@ EOL
 }
 
 function apply_nginx_user_defined_values(){
-          #sed -i.bak "s/$ENVIRONMENT_DOCKER_IMAGE_VERSION/$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    #sed -i.bak "s/$ENVIRONMENT_DOCKER_IMAGE_VERSION/$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
-      local SERVER_DOMAIN=$(echo $HOLLAEX_CONFIGMAP_API_HOST | cut -f3 -d "/")
-      sed -i.bak "s/server_name.*\#Server.*/server_name $SERVER_DOMAIN; \#Server domain/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
-      rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
+    local SERVER_DOMAIN=$(echo $HOLLAEX_CONFIGMAP_API_HOST | cut -f3 -d "/")
+    sed -i.bak "s/server_name.*\#Server.*/server_name $SERVER_DOMAIN; \#Server domain/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
+    rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
 
     if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then 
       CLIENT_DOMAIN=$(echo $HOLLAEX_CONFIGMAP_DOMAIN | cut -f3 -d "/")
@@ -291,102 +300,10 @@ function apply_nginx_user_defined_values(){
     fi
 }
 
-function generate_nginx_config_for_plugin() {
-
-  if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf" ]]; then
-
-    rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf
-    touch $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf
-  
-  fi
-  
-  IFS=',' read -ra PLUGINS <<< "$ENVIRONMENT_CUSTOM_PLUGINS_NAME"    #Convert string to array
-
-  for i in "${PLUGINS[@]}"; do
-    PLUGINS_UPSTREAM_NAME=$(echo $i | cut -f1 -d ",")
-
-    CUSTOM_ENDPOINT=$(set -o posix ; set | grep "ENVIRONMENT_CUSTOM_ENDPOINT_$(echo $PLUGINS_UPSTREAM_NAME | tr a-z A-Z)" | cut -f2 -d"=")
-    CUSTOM_ENDPOINT_PORT=$(set -o posix ; set | grep "ENVIRONMENT_CUSTOM_ENDPOINT_PORT_$(echo $PLUGINS_UPSTREAM_NAME | tr a-z A-Z)" | cut -f2 -d"=")
-    CUSTOM_URL=$(set -o posix ; set | grep "ENVIRONMENT_CUSTOM_URL_$(echo $PLUGINS_UPSTREAM_NAME | tr a-z A-Z)" | cut -f2 -d"=")
-    CUSTOM_IS_WEBSOCKET=$(set -o posix ; set | grep "ENVIRONMENT_CUSTOM_IS_WEBSOCKET_$(echo $PLUGINS_UPSTREAM_NAME | tr a-z A-Z)" | cut -f2 -d"=")
-
-    if [[ "$USE_KUBERNETES" ]]; then
-
-      function websocket_upgrade() {
-        if  [[ "$CUSTOM_IS_WEBSOCKET" == "true" ]]; then
-          echo "nginx.org/websocket-services: '${CUSTOM_ENDPOINT}'"
-        fi
-      }
-
-cat >> $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml <<EOL
----
-
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-${PLUGINS_UPSTREAM_NAME}
-  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
-  annotations:
-    kubernetes.io/ingress.class: "nginx"
-    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
-    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
-    nginx.ingress.kubernetes.io/proxy-body-size: "2m"
-    $(websocket_upgrade;)
-spec:
-  rules:
-  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
-    http:
-      paths:
-      - path: ${CUSTOM_URL}
-        backend:
-          serviceName: ${CUSTOM_ENDPOINT}
-          servicePort: ${CUSTOM_ENDPOINT_PORT}
-          
-tls:
-  - secretName: ${ENVIRONMENT_EXCHANGE_NAME}-tls-cert
-    hosts:
-    - $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
-EOL
-
-    fi
-
-    if [[ ! "$USE_KUBERNETES" ]]; then
-
-      function websocket_upgrade() {
-        if  [[ "$CUSTOM_IS_WEBSOCKET" == "true" ]]; then
-          echo "proxy_http_version  1.1;
-          proxy_set_header    Upgrade \$http_upgrade; 
-          proxy_set_header    Connection \"upgrade\";"
-        fi
-      }
-      
-# Generate local nginx conf
-cat >> $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
-
-upstream $PLUGINS_UPSTREAM_NAME {
-  server ${CUSTOM_ENDPOINT}:${CUSTOM_ENDPOINT_PORT};
-}
-EOL
-
-cat >> $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf <<EOL
-location ${CUSTOM_URL} {
-  $(websocket_upgrade;)
-  proxy_pass      http://$PLUGINS_UPSTREAM_NAME;
-}
-
-EOL
-  
-  fi
-
-  done
-
-}
-
 function generate_local_docker_compose_for_dev() {
 
-echo $HOLLAEX_CODEBASE_PATH
 # Generate docker-compose
-cat > $HOLLAEX_CODEBASE_PATH/.${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml <<EOL
 version: '3'
 services:
   ${ENVIRONMENT_EXCHANGE_NAME}-redis:
@@ -432,10 +349,10 @@ services:
   ${ENVIRONMENT_EXCHANGE_NAME}-server:
     image: ${ENVIRONMENT_EXCHANGE_NAME}-server-pm2
     build:
-      context: .
+      context: ${HOLLAEX_CODEBASE_PATH}
       dockerfile: ${HOLLAEX_CODEBASE_PATH}/tools/Dockerfile.pm2
     env_file:
-      - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
     entrypoint:
       - pm2-runtime
       - start
@@ -443,10 +360,11 @@ services:
       - --env
       - development
     volumes:
+      - ${HOLLAEX_KIT_PATH}/plugins:/app/plugins
       - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
       - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
       - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
-      - ${HOLLAEX_CODEBASE_PATH}/mail:/app/mail
+      - ${HOLLAEX_KIT_PATH}/mail:/app/mail
       - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
       - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
       - ${HOLLAEX_CODEBASE_PATH}/app.js:/app/app.js
@@ -467,10 +385,10 @@ services:
   ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
     image: nginx:1.15.8-alpine
     volumes:
-      - ${TEMPLATE_GENERATE_PATH}/nginx:/etc/nginx
+      - ${TEMPLATE_GENERATE_PATH}/local/nginx:/etc/nginx
       - ${TEMPLATE_GENERATE_PATH}/local/nginx/conf.d:/etc/nginx/conf.d
-      - ${TEMPLATE_GENERATE_PATH}/local/logs/nginx:/var/log
-      - ${TEMPLATE_GENERATE_PATH}/nginx/static/:/usr/share/nginx/html
+      - ${TEMPLATE_GENERATE_PATH}/local/logs/nginx:/var/log/nginx
+      - ${TEMPLATE_GENERATE_PATH}/local/nginx/static/:/usr/share/nginx/html
     ports:
       - 80:80
     environment:
@@ -560,6 +478,25 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" == "true" ]]; then
 EOL
 
 fi 
+
+  # Generate docker-compose
+  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
+    image: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
+    restart: always
+    ports:
+      - 10011:10011
+    entrypoint:
+      - node
+    command:
+      - plugins/index.js
+    env_file:
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+EOL
+
 
 #LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE=$ENVIRONMENT_EXCHANGE_RUN_MODE
 
@@ -827,6 +764,31 @@ spec:
 
   $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
 
+    
+---
+
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-plugins-controller
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
+    nginx.ingress.kubernetes.io/proxy-body-size: "2m"
+spec:
+  rules:
+  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+    http:
+      paths:
+      - path: /plugins
+        backend:
+          serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller
+          servicePort: 10011
+    
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
+
 ---
 apiVersion: extensions/v1beta1
 kind: Ingress
@@ -850,6 +812,7 @@ spec:
           servicePort: 10080
   
   $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
+
 EOL
 
 }
@@ -903,22 +866,22 @@ for j in ${CONFIG_FILE_PATH[@]}; do
 
     SECRET_CONFIG_FILE_PATH=$j
 
-    if [[ ! -z "$HOLLAEX_SECRET_SECRET" ]] ; then
+    # if [[ ! -z "$HOLLAEX_SECRET_SECRET" ]] ; then
   
-      echo "Pre-generated secrets are detected on your secret file!"
-      printf "\033[93mIf you are trying to migrate your existing Exchange on new machine, DO NOT OVERRIDE IT.\033[39m\n"
-      echo "Are you sure you want to override them? (y/N)"
+    #   echo "Pre-generated secrets are detected on your secret file!"
+    #   printf "\033[93mIf you are trying to migrate your existing Exchange on new machine, DO NOT OVERRIDE IT.\033[39m\n"
+    #   echo "Are you sure you want to override them? (y/N)"
 
-      read answer
+    #   read answer
 
-      if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+    #   if [[ "$answer" = "${answer#[Yy]}" ]] ;then
 
-        echo "Skipping..."
-        return 0
+    #     echo "Skipping..."
+    #     return 0
 
-      fi
+    #   fi
 
-    fi  
+    # fi  
 
         echo "Generating random secrets..."
 
@@ -1057,7 +1020,7 @@ function check_empty_values_on_settings() {
 
           if [[ "$k" == "${GENERATE_VALUES_FILTER}" ]] ; then
 
-              echo -n "\"$k\" is a value should be automatically generated by hollaex-cli."
+              echo -n "\"$k\" is a value should be automatically generated by HollaEx CLI."
               printf "\n"
 
           fi
@@ -1471,29 +1434,12 @@ function save_add_coin_input_at_settings() {
   # REMOVE STORED VALUES AT CONFIGMAP FOR COIN 
   if [[ ! "$VALUE_IMPORTED_FROM_CONFIGMAP" ]]; then 
   
-    if command grep -q "HOLLAEX_CONFIGMAP_$(echo $COIN_SYMBOL | tr a-z A-Z)_COIN" $CONFIGMAP_FILE_PATH > /dev/null ; then
-
-      grep -v "HOLLAEX_CONFIGMAP_$(echo $COIN_SYMBOL | tr a-z A-Z)_COIN" $CONFIGMAP_FILE_PATH > temp && mv temp $CONFIGMAP_FILE_PATH
-
-    fi
+    remove_existing_coin_configs_from_settings;
 
   fi
 
-  cat >> $CONFIGMAP_FILE_PATH << EOL
+  save_coin_configs;
 
-ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_SYMBOL=$COIN_SYMBOL
-ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_FULLNAME=$COIN_FULLNAME
-ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_ALLOW_DEPOSIT=$COIN_ALLOW_DEPOSIT
-ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_ALLOW_WITHDRAWAL=$COIN_ALLOW_WITHDRAWAL
-ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_WITHDRAWAL_FEE=$COIN_MIN
-ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_MIN=$COIN_MIN
-ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_MAX=$COIN_MIN
-ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_INCREMENT_UNIT=$COIN_INCREMENT_UNIT
-ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_DEPOSIT_LIMITS=$COIN_DEPOSIT_LIMITS_PARSED
-ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_WITHDRAWAL_LIMITS=$COIN_WITHDRAWAL_LIMITS_PARSED
-ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_ACTIVE=$COIN_ACTIVE
-
-EOL
 }
 
 function export_add_coin_configuration_env() {
@@ -1780,6 +1726,9 @@ EOL
 
 function remove_coin_input() {
 
+  printf "\nCurrent coins available: \033[1m$HOLLAEX_CONFIGMAP_CURRENCIES\033[0m"
+  printf "\n\033[93mWarning: There always should be at least 2 coins remain.\033[39m\n\n"
+
   echo "***************************************************************"
   echo "[1/1] Coin Symbol: "
   printf "\n"
@@ -1938,7 +1887,7 @@ function remove_coin_exec() {
 
       IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
-      # Overriding container prefix for develop server
+      # # Overriding container prefix for develop server
       if [[ "$IS_DEVELOP" ]]; then
         
         CONTAINER_PREFIX=
@@ -2289,32 +2238,14 @@ function save_add_pair_input_at_settings() {
    # REMOVE STORED VALUES AT CONFIGMAP FOR COIN 
   if [[ ! "$VALUE_IMPORTED_FROM_CONFIGMAP" ]]; then 
   
-    if command grep -q "HOLLAEX_CONFIGMAP_$(echo $PAIR_BASE | tr a-z A-Z)_$(echo $PAIR_2 | tr a-z A-Z)" $CONFIGMAP_FILE_PATH > /dev/null ; then
-
-      grep -v "HOLLAEX_CONFIGMAP_$(echo $PAIR_BASE | tr a-z A-Z)_$(echo $PAIR_2 | tr a-z A-Z)" $CONFIGMAP_FILE_PATH > temp && mv temp $CONFIGMAP_FILE_PATH
-
-    fi
+    remove_existing_pairs_configs_from_settings;
 
   fi
 
-  cat >> $CONFIGMAP_FILE_PATH << EOL
-
-ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_PAIR_NAME=$PAIR_NAME
-ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_PAIR_BASE=$PAIR_BASE
-ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_PAIR_2=$PAIR_2
-ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_TAKER_FEES=$TAKER_FEES_PARSED
-ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_MAKER_FEES=$MAKER_FEES_PARSED
-ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_MIN_SIZE=$MIN_SIZE
-ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_MAX_SIZE=$MAX_SIZE
-ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_MIN_PRICE=$MIN_PRICE
-ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_MAX_PRICE=$MAX_PRICE
-ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_INCREMENT_SIZE=$INCREMENT_SIZE
-ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_INCREMENT_PRICE=$INCREMENT_PRICE
-ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_PAIR_ACTIVE=$PAIR_ACTIVE
-
-EOL
+  save_pairs_configs;
 
 }
+
 
 function export_add_pair_configuration_env() {
 
@@ -2623,6 +2554,9 @@ EOL
 
 function remove_pair_input() {
 
+  printf "\nCurrent trading pair(s) available: \033[1m$HOLLAEX_CONFIGMAP_PAIRS\033[0m"
+  printf "\n\033[93mWarning: There always should be at least 1 trading pair remain.\033[39m\n\n"
+
   echo "***************************************************************"
   echo "[1/1] Pair name to remove: "
   read answer
@@ -2885,7 +2819,7 @@ REACT_APP_NETWORK=${HOLLAEX_CONFIGMAP_NETWORK}
 
 REACT_APP_EXCHANGE_NAME=${ENVIRONMENT_EXCHANGE_NAME}
 
-REACT_APP_CAPTCHA_SITE_KEY=${ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}
+REACT_APP_CAPTCHA_SITE_KEY=${HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY:-$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}
 
 REACT_APP_DEFAULT_LANGUAGE=${ENVIRONMENT_WEB_DEFAULT_LANGUAGE}
 REACT_APP_DEFAULT_COUNTRY=${ENVIRONMENT_WEB_DEFAULT_COUNTRY}
@@ -2893,7 +2827,7 @@ REACT_APP_DEFAULT_COUNTRY=${ENVIRONMENT_WEB_DEFAULT_COUNTRY}
 REACT_APP_LOGO_PATH=${HOLLAEX_CONFIGMAP_LOGO_PATH}
 REACT_APP_LOGO_BLACK_PATH=${HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH}
 
-REACT_APP_EXCHANGE_NAME=${HOLLAEX_CONFIGMAP_API_NAME}
+REACT_APP_EXCHANGE_NAME='${HOLLAEX_CONFIGMAP_API_NAME}'
 
 EOL
 }
@@ -2931,7 +2865,7 @@ data:
 
   REACT_APP_NETWORK: ${HOLLAEX_CONFIGMAP_NETWORK}
 
-  REACT_APP_CAPTCHA_SITE_KEY: ${ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}
+  REACT_APP_CAPTCHA_SITE_KEY: ${HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY:-$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}
 
   REACT_APP_DEFAULT_LANGUAGE: ${ENVIRONMENT_WEB_DEFAULT_LANGUAGE}
   REACT_APP_DEFAULT_COUNTRY: ${ENVIRONMENT_WEB_DEFAULT_COUNTRY}
@@ -3104,14 +3038,20 @@ EOF
 
   # WEB CAPTCHA SITE KEY
   echo "***************************************************************"
-  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Exchange Web Google reCaptcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
+  echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Exchange Web Google reCaptcha Sitekey: (${HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY:-$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY})"
   printf "\033[2m- Enter your Web Google reCpathca site key. \033[22m\n"
   read answer
+  
+  if [[ ! "$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY" ]]; then
 
-  local ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}"
+    export HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY
+
+  fi 
+
+  local HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY_OVERRIDE="${answer:-$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY}"
   
   printf "\n"
-  echo "${answer:-$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY} ✔"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY} ✔"
   printf "\n"
 
   local QUESTION_NUMBER=$((QUESTION_NUMBER + 1))
@@ -3745,7 +3685,7 @@ Exchange URL: $ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN
 Light Logo Path: $ORIGINAL_CHARACTER_FOR_LOGO_PATH
 Dark Logo Path: $ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH
 
-Web Captcha Sitekey: $ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE
+Web Captcha Sitekey: $HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY_OVERRIDE
 Server Captcha Secretkey: $HOLLAEX_SECRET_ADMIN_PASSWORD_MASKED
 
 Default Country: $ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE
@@ -3812,7 +3752,7 @@ EOF
 
     sed -i.bak "s/ESCAPED_HOLLAEX_CONFIGMAP_LOGO_PATH=.*/ESCAPED_HOLLAEX_CONFIGMAP_LOGO_PATH=$HOLLAEX_CONFIGMAP_LOGO_PATH_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/ESCAPED_HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH=.*/ESCAPED_HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH=$HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    sed -i.bak "s/ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY/ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY=$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY/HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY=$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE=.*/HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE=$HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/HOLLAEX_CONFIGMAP_VALID_LANGUAGES=$HOLLAEX_CONFIGMAP_VALID_LANGUAGES/HOLLAEX_CONFIGMAP_VALID_LANGUAGES=$HOLLAEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE/" $CONFIGMAP_FILE_PATH
@@ -3889,7 +3829,7 @@ EOF
   export HOLLAEX_CONFIGMAP_LOGO_PATH="$HOLLAEX_CONFIGMAP_LOGO_PATH_OVERRIDE"
   export HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH="$HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH_OVERRIDE"
 
-  export ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE
+  export HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY=$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY_OVERRIDE
   export HOLLAEX_SECRET_CAPTCHA_SECRET_KEY=$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE
 
   export ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE
@@ -4001,14 +3941,20 @@ EOF
 
   # WEB CAPTCHA SITE KEY
   echo "***************************************************************"
-  echo "[3/5] Exchange Web Google reCaptcha Sitekey: ($ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
+  echo "[3/5] Exchange Web Google reCaptcha Sitekey: ($HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY:-$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY)"
   printf "\n"
   read answer
 
-  local ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE="${answer:-$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY}"
+  if [[ ! "$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY" ]]; then
+
+    export HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY
+
+  fi
+
+  local HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY_OVERRIDE="${answer:-$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY}"
 
   printf "\n"
-  echo "${answer:-$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY} ✔"
+  echo "${answer:-$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY} ✔"
   printf "\n"
 
   # Web default country
@@ -4042,7 +3988,7 @@ Exchange URL: $ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN
 
 Exchange Server API URL: $ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST
 
-Web Captcha Sitekey: $ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE
+Web Captcha Sitekey: $HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY_OVERRIDE
 
 Default Country: $ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE
 
@@ -4070,7 +4016,7 @@ EOF
     CONFIGMAP_FILE_PATH=$i
     sed -i.bak "s/HOLLAEX_CONFIGMAP_DOMAIN=.*/HOLLAEX_CONFIGMAP_DOMAIN=$EXCHANGE_WEB_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/HOLLAEX_CONFIGMAP_API_HOST=.*/HOLLAEX_CONFIGMAP_API_HOST=$EXCHANGE_SERVER_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    sed -i.bak "s/ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY/ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY=$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY/HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY=$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE/" $CONFIGMAP_FILE_PATH
     sed -i.bak "s/ENVIRONMENT_WEB_DEFAULT_LANGUAGE=$ENVIRONMENT_WEB_DEFAULT_LANGUAGE/ENVIRONMENT_WEB_DEFAULT_LANGUAGE=$ENVIRONMENT_WEB_DEFAULT_LANGUAGE_OVERRIDE/" $CONFIGMAP_FILE_PATH
     rm $CONFIGMAP_FILE_PATH.bak
@@ -4082,7 +4028,7 @@ EOF
 
   export HOLLAEX_CONFIGMAP_API_HOST=$ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST
 
-  export ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$ENVIRONMENT_WEB_CAPTCHA_SITE_KEY_OVERRIDE
+  export HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY=$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY_OVERRIDE
   
   export ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE
 
@@ -4349,40 +4295,40 @@ EOF
 
 function kubernetes_set_backend_image_target() {
 
-            # $1 DOCKER REGISTRY
-            # $2 DOCKER TAG
-            # $3 NODEPORT ENABLE
-            # $4 NODEPORT PORT NUMBER
+    # $1 DOCKER REGISTRY
+    # $2 DOCKER TAG
+    # $3 NODEPORT ENABLE
+    # $4 NODEPORT PORT NUMBER
 
-            # $1 is_influxdb
-            # $2 image.repo
-            # $3 image.tag
+    # $1 is_influxdb
+    # $2 image.repo
+    # $3 image.tag
 
-            if [[ "$1" == "is_influxdb" ]]; then
-                
-                if [[ "$2" ]] && [[ "$3" ]]; then
+    if [[ "$1" == "is_influxdb" ]]; then
+        
+        if [[ "$2" ]] && [[ "$3" ]]; then
 
-                echo "--set image.repo=$2 --set image.tag=$3"
+        echo "--set image.repo=$2 --set image.tag=$3"
 
-                fi
+        fi
 
-            else
-            
-                if [[ "$1" ]] && [[ "$2" ]]; then
-                    echo "--set imageRegistry=$1 --set dockerTag=$2"
-                fi
+    else
+    
+        if [[ "$1" ]] && [[ "$2" ]]; then
+            echo "--set imageRegistry=$1 --set dockerTag=$2"
+        fi
 
-            fi
+    fi
 
-        }
+}
 
-        function set_nodeport_access() {
+function set_nodeport_access() {
 
-            if [[ "$1" == true ]] && [[ "$2" ]]; then
-                echo "--set NodePort.enable='true' --set NodePort.port=$4"
-            fi
+    if [[ "$1" == true ]] && [[ "$2" ]]; then
+        echo "--set NodePort.enable='true' --set NodePort.port=$4"
+    fi
 
-        }
+}
 
 function hollaex_setup_finalization() { 
 
@@ -4424,9 +4370,9 @@ function hollaex_setup_finalization() {
 
   # if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
 
-      echo "Finishing the setup process..."
-      echo "Shutting down the exchange"
-      echo "To start the exchange, Please use 'hollaex start$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' command"
+      printf "\033[93m\nFinishing the setup process...\033[39m\n"
+      printf "\033[93mShutting down the exchange...\033[39m\n"
+      printf "\033[93mTo start the exchange, Please use 'hollaex start$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' command\033[39m\n\n"
       if [[ "$USE_KUBERNETES" ]]; then
           hollaex stop --kube --skip
       elif [[ ! "$USE_KUBERNETES" ]]; then
@@ -4494,21 +4440,21 @@ function build_user_hollaex_core() {
       
       else 
         
-        echo "Do you want to also push it at your Docker Registry? (Y/n)"
+        echo "Do you want to also push it at your Docker Registry? (y/N)"
         read pushAnswer
-
-          if [[ ! "$pushAnswer" = "${pushAnswer#[Nn]}" ]] ;then
+          
+        if [[ "$pushAnswer" = "${pushAnswer#[Yy]}" ]] ;then
 
             echo "Skipping..."
             echo "Your image name: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION."
             echo "You can later tag and push it by using 'docker tag' and 'docker push' command manually."
-          
-          else
+        
+        else 
 
-            push_user_hollaex_core;
-          
-          fi
-
+          push_user_hollaex_core;
+      
+        fi
+      
       fi
 
   else 
@@ -5014,5 +4960,309 @@ function check_docker_compose_dependencies() {
       exit 1;
 
   fi
+
+}
+
+function hollaex_pull_and_apply_exchange_data() {
+
+  local HOLLAEX_CONFIGMAP_API_NAME_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].name";)
+
+  #LOGO PATH ESCAPING
+  local ORIGINAL_CHARACTER_FOR_DOMAIN=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.EXCHANGE_CLIENT_URL";)
+  local HOLLAEX_CONFIGMAP_DOMAIN_OVERRIDE="${ORIGINAL_CHARACTER_FOR_DOMAIN//\//\\/}"
+
+  #LOGO PATH ESCAPING
+  local ORIGINAL_CHARACTER_FOR_LOGO_PATH=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.LOGO_IMAGE_LIGHT";)
+  local HOLLAEX_CONFIGMAP_LOGO_PATH_OVERRIDE="${ORIGINAL_CHARACTER_FOR_LOGO_PATH//\//\\/}"
+
+  #LOGO BLACK PATH ESCAPING
+  local ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.LOGO_IMAGE_DARK";)
+  local HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH_OVERRIDE="${ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH//\//\\/}"
+
+  #CAPTCHA SITEKEY
+  local ORIGINAL_HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY="$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY";)"
+  local HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY_OVERRIDE="${ORIGINAL_HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY//\//\\/}"
+
+  local ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.DEFAULT_COUNTRY";)
+
+  local ORIGINAL_CHARACTER_FOR_TIMEZONE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.TIME_ZONE";)
+  local HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE_OVERRIDE="${ORIGINAL_CHARACTER_FOR_TIMEZONE/\//\\/}"
+
+  local HOLLAEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.LANGUAGE";)
+  local HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.LANGUAGE";)
+
+  #Converting wrong language definition to correct format.
+  if [[ "$HOLLAEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE" == "English" ]]; then
+
+    local HOLLAEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE="en"
+    local HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE="en"
+
+  fi
+
+  local HOLLAEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.DEFAULT_COLOR";)
+  
+  #CURRENCIES CONVERTING TO ARRAY AND EXPORT
+  local CURRENCIES_ARRAY_COUNT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS" | jq '.| length ')
+  local CURRENCIES_ARRAY_COUNT=$(($CURRENCIES_ARRAY_COUNT-1))
+
+  for ((i=0;i<=CURRENCIES_ARRAY_COUNT;i++)); do 
+
+      currencies_array+=( "$(echo "$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_SYMBOL")" )" )
+
+  done
+
+  local HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE=$(IFS=','; echo "${currencies_array[*]}")
+  unset currencies_array
+
+  #PAIRS CONVERTING TO ARRAY AND EXPORT
+  local PAIRS_ARRAY_COUNT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS" | jq '.| length ')
+  local PAIRS_ARRAY_COUNT=$(($PAIRS_ARRAY_COUNT-1))
+
+  for ((i=0;i<=PAIRS_ARRAY_COUNT;i++)); do 
+
+      pairs_array+=( "$(echo "$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].BASE_ASSET")-$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].PRICED_ASSET")")" )
+  
+  done;
+
+  local HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE=$(IFS=','; echo "${pairs_array[*]}")
+  unset pairs_array
+  
+  local ORIGINAL_CHARACTER_FOR_API_HOST=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.EXCHANGE_SERVER_URL";)
+  local HOLLAEX_CONFIGMAP_API_HOST_OVERRIDE="${ORIGINAL_CHARACTER_FOR_API_HOST//\//\\/}"
+
+  local HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ACCOUNT_TIERS";)
+
+  local HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ADMIN_EMAIL";)
+  local HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.RECEIVING_EMAIL";)
+  local HOLLAEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.DISTRIBUTION_EMAIL";)
+
+  local HOLLAEX_CONFIGMAP_SMTP_SERVER_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.AUTOMATED_EMAIL_SERVER";)
+  local HOLLAEX_CONFIGMAP_SMTP_PORT_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.AUTOMATED_EMAIL_PORT";)
+  local HOLLAEX_CONFIGMAP_SMTP_USER_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.AUTOMATED_EMAIL_USER";)
+  
+  local HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET_OVERRIDE=$(echo "$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.STORAGE_TYPE";):$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.STORAGE_REGION";)")
+
+  local ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(curl -s https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/core-version | jq -r '.version')"
+
+  # Secrets
+  local HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ADMIN_PASSWORD";)
+
+  #CAPTCHA SECRETKEY
+  local ORIGINAL_HOLLAEX_SECRET_CAPTCHA_SECRET_KEY="$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.HOLLAEX_SECRET_CAPTCHA_SECRET_KEY";)"
+  local HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE="${ORIGINAL_HOLLAEX_SECRET_CAPTCHA_SECRET_KEY//\//\\/}"
+
+  ## SMTP Password escaping
+  local ORIGINAL_CHARACTER_FOR_SMTP_PASSWORD=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.AUTOAMTED_EMAIL_PASSWORD";)
+  local PARSE_CHARACTER_FOR_SMTP_PASSWORD=${ORIGINAL_CHARACTER_FOR_SMTP_PASSWORD//\//\\\/}
+  local HOLLAEX_SECRET_SMTP_PASSWORD_OVERRIDE="$PARSE_CHARACTER_FOR_SMTP_PASSWORD"
+
+  local HOLLAEX_SECRET_S3_ACCESSKEYID_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.STORAGE_KEY";)
+  local HOLLAEX_SECRET_S3_SECRETACCESSKEY_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.STORAGE_SECRET";)
+  local HOLLAEX_SECRET_S3_REGION_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.STORAGE_REGION";)
+
+  # CONFIGMAP
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=.*/HOLLAEX_CONFIGMAP_API_NAME=$HOLLAEX_CONFIGMAP_API_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
+
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_DOMAIN=.*/HOLLAEX_CONFIGMAP_DOMAIN=$HOLLAEX_CONFIGMAP_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
+
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_LOGO_PATH=.*/HOLLAEX_CONFIGMAP_LOGO_PATH=$HOLLAEX_CONFIGMAP_LOGO_PATH_OVERRIDE/" $CONFIGMAP_FILE_PATH
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH=.*/HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH=$HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH_OVERRIDE/" $CONFIGMAP_FILE_PATH
+
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY=$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY/HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY=$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY_OVERRIDE/" $CONFIGMAP_FILE_PATH
+
+  sed -i.bak "s/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE/" $CONFIGMAP_FILE_PATH
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE=.*/HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE=$HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE_OVERRIDE/" $CONFIGMAP_FILE_PATH
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_VALID_LANGUAGES=$HOLLAEX_CONFIGMAP_VALID_LANGUAGES/HOLLAEX_CONFIGMAP_VALID_LANGUAGES=$HOLLAEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE=$HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE/HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE=$HOLLAEX_CONFIGMAP_NEW_USER_DEFAULT_LANGUAGE_OVERRIDE/" $CONFIGMAP_FILE_PATH
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_DEFAULT_THEME=$HOLLAEX_CONFIGMAP_DEFAULT_THEME/HOLLAEX_CONFIGMAP_DEFAULT_THEME=$HOLLAEX_CONFIGMAP_DEFAULT_THEME_OVERRIDE/" $CONFIGMAP_FILE_PATH
+
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_CURRENCIES=$HOLLAEX_CONFIGMAP_CURRENCIES/HOLLAEX_CONFIGMAP_CURRENCIES=$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_PAIRS=.*/HOLLAEX_CONFIGMAP_PAIRS='$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE'/" $CONFIGMAP_FILE_PATH
+
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_API_HOST=.*/HOLLAEX_CONFIGMAP_API_HOST=$HOLLAEX_CONFIGMAP_API_HOST_OVERRIDE/" $CONFIGMAP_FILE_PATH
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER=$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER/HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER=$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER_OVERRIDE/" $CONFIGMAP_FILE_PATH
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_ADMIN_EMAIL=$HOLLAEX_CONFIGMAP_ADMIN_EMAIL/HOLLAEX_CONFIGMAP_ADMIN_EMAIL=$HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_SUPPORT_EMAIL=$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL/HOLLAEX_CONFIGMAP_SUPPORT_EMAIL=$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_SENDER_EMAIL=$HOLLAEX_CONFIGMAP_SENDER_EMAIL/HOLLAEX_CONFIGMAP_SENDER_EMAIL=$HOLLAEX_CONFIGMAP_SENDER_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
+
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET=$HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET/HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET=$HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET_OVERRIDE/" $CONFIGMAP_FILE_PATH
+
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_SMTP_SERVER=.*/HOLLAEX_CONFIGMAP_SMTP_SERVER=$HOLLAEX_CONFIGMAP_SMTP_SERVER_OVERRIDE/" $CONFIGMAP_FILE_PATH
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_SMTP_PORT=.*/HOLLAEX_CONFIGMAP_SMTP_PORT=$HOLLAEX_CONFIGMAP_SMTP_PORT_OVERRIDE/" $CONFIGMAP_FILE_PATH
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_SMTP_USER=.*/HOLLAEX_CONFIGMAP_SMTP_USER=$HOLLAEX_CONFIGMAP_SMTP_USER_OVERRIDE/" $CONFIGMAP_FILE_PATH
+
+  sed -i.bak "s/ENVIRONMENT_DOCKER_IMAGE_VERSION=.*/ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
+
+  # SECRET 
+  sed -i.bak "s/HOLLAEX_SECRET_ADMIN_PASSWORD=.*/HOLLAEX_SECRET_ADMIN_PASSWORD=$HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE/" $SECRET_FILE_PATH
+
+  sed -i.bak "s/HOLLAEX_SECRET_CAPTCHA_SECRET_KEY=$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY/HOLLAEX_SECRET_CAPTCHA_SECRET_KEY=$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE/" $SECRET_FILE_PATH
+
+  sed -i.bak "s/HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID/HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE/" $SECRET_FILE_PATH
+  sed -i.bak "s/HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=.*/HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE/" $SECRET_FILE_PATH
+
+  sed -i.bak "s/HOLLAEX_SECRET_S3_READ_ACCESSKEYID=$HOLLAEX_SECRET_S3_READ_ACCESSKEYID/HOLLAEX_SECRET_S3_READ_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE/" $SECRET_FILE_PATH
+  sed -i.bak "s/HOLLAEX_SECRET_S3_READ_SECRETACCESSKEY=.*/HOLLAEX_SECRET_S3_READ_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE/" $SECRET_FILE_PATH
+
+  sed -i.bak "s/HOLLAEX_SECRET_SMTP_PASSWORD=.*/HOLLAEX_SECRET_SMTP_PASSWORD=$HOLLAEX_SECRET_SMTP_PASSWORD_OVERRIDE/" $SECRET_FILE_PATH
+  
+  rm $CONFIGMAP_FILE_PATH.bak
+  rm $SECRET_FILE_PATH.bak
+
+}
+
+function save_coin_configs() {
+
+  cat >> $CONFIGMAP_FILE_PATH << EOL
+
+ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_SYMBOL=$COIN_SYMBOL
+ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_FULLNAME=$COIN_FULLNAME
+ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_ALLOW_DEPOSIT=$COIN_ALLOW_DEPOSIT
+ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_ALLOW_WITHDRAWAL=$COIN_ALLOW_WITHDRAWAL
+ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_WITHDRAWAL_FEE=$COIN_WITHDRAWAL_FEE
+ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_MIN=$COIN_MIN
+ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_MAX=$COIN_MAX
+ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_INCREMENT_UNIT=$COIN_INCREMENT_UNIT
+ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_DEPOSIT_LIMITS=$COIN_DEPOSIT_LIMITS_PARSED
+ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_WITHDRAWAL_LIMITS=$COIN_WITHDRAWAL_LIMITS_PARSED
+ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN_ACTIVE=$COIN_ACTIVE
+
+EOL
+}
+
+function save_pairs_configs() {
+
+  cat >> $CONFIGMAP_FILE_PATH << EOL
+
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_PAIR_NAME=$PAIR_NAME
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_PAIR_BASE=$PAIR_BASE
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_PAIR_2=$PAIR_2
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_TAKER_FEES=$TAKER_FEES_PARSED
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_MAKER_FEES=$MAKER_FEES_PARSED
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_MIN_SIZE=$MIN_SIZE
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_MAX_SIZE=$MAX_SIZE
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_MIN_PRICE=$MIN_PRICE
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_MAX_PRICE=$MAX_PRICE
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_INCREMENT_SIZE=$INCREMENT_SIZE
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_INCREMENT_PRICE=$INCREMENT_PRICE
+ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}_PAIR_ACTIVE=$PAIR_ACTIVE
+
+EOL
+
+}
+
+function remove_existing_coin_configs_from_settings() {
+
+  if command grep -q "ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN" $CONFIGMAP_FILE_PATH > /dev/null ; then
+
+    grep -v "ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN" $CONFIGMAP_FILE_PATH > temp && mv temp $CONFIGMAP_FILE_PATH
+
+  fi
+
+}
+
+function remove_existing_pairs_configs_from_settings() {
+
+   if command grep -q "ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}" $CONFIGMAP_FILE_PATH > /dev/null ; then
+
+      grep -v "ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}" $CONFIGMAP_FILE_PATH > temp && mv temp $CONFIGMAP_FILE_PATH
+
+    fi
+    
+}
+
+function apply_pairs_config_to_settings_file() {
+
+  # Applying pair (pairs) configs to settings file.
+  BITHOLLA_USER_EXCHANGE_PAIRS_COUNT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS" | jq '.| length ')
+  BITHOLLA_USER_EXCHANGE_PAIRS_COUNT=$(($BITHOLLA_USER_EXCHANGE_PAIRS_COUNT-1))
+
+  for ((i=0;i<=BITHOLLA_USER_EXCHANGE_PAIRS_COUNT;i++)); do
+
+      export PAIR_BASE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].BASE_ASSET")
+      export PAIR_2=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].PRICED_ASSET")
+      export TAKER_FEES_PARSED=\'$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].TAKER_FEE" | tr -d '\n')\'
+      export MAKER_FEES_PARSED=\'$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].MAKER_FEE" | tr -d '\n')\'
+      export MIN_SIZE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].MINIMUM_TRADABLE_AMOUNT")
+      export MAX_SIZE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].MAXIMUM_TRADABLE_AMOUNT")
+      export MIN_PRICE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].MINIMUM_TRADABLE_PRICE")
+      export MAX_PRICE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].MAXIMUM_TRADABLE_PRICE")
+      export INCREMENT_SIZE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].INCREMENT_AMOUNT")
+      export INCREMENT_PRICE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].INCREMENT_PRICE")
+
+      if [[ "$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].PAIR_ACTIVATE")" == "Y" ]]; then
+
+          export PAIR_ACTIVE_BOOL=true
+      
+      else 
+
+          export PAIR_ACTIVE_BOOL=false
+      
+      fi 
+
+      export PAIR_ACTIVE=${PAIR_ACTIVE_BOOL}
+      export PAIR_NAME=$(echo "${PAIR_BASE}-${PAIR_2}") 
+
+      export PAIR_PREFIX="$(echo $PAIR_BASE | tr a-z A-Z)_$(echo $PAIR_2 | tr a-z A-Z)"
+
+      remove_existing_pairs_configs_from_settings;
+
+      save_pairs_configs;
+
+  done;
+
+}
+
+function apply_coins_config_to_settings_file() {
+
+  # Applying coin (asset) configs to settings file.
+
+  BITHOLLA_USER_EXCHANGE_ASSETS_COUNT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS" | jq '.| length ')
+  BITHOLLA_USER_EXCHANGE_ASSETS_COUNT=$(($BITHOLLA_USER_EXCHANGE_ASSETS_COUNT-1))
+
+  for ((i=0;i<=BITHOLLA_USER_EXCHANGE_ASSETS_COUNT;i++)); do
+
+    export COIN_SYMBOL=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_SYMBOL") 
+    export COIN_FULLNAME=\'$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_NAME")\'
+
+    export COIN_ALLOW_DEPOSIT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_ALLOW_DEPOSITS")
+
+    if [[ "$COIN_ALLOW_DEPOSIT" == "Y" ]]; then
+        export COIN_ALLOW_DEPOSIT="true"
+    elif [[ "$COIN_ALLOW_DEPOSIT" == "N" ]]; then
+        export COIN_ALLOW_DEPOSIT="false"
+    fi
+
+    export COIN_ALLOW_WITHDRAWAL=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_ALLOW_WITHDRAWAL")
+    
+    if [[ "$COIN_ALLOW_WITHDRAWAL" == "Y" ]]; then
+        export COIN_ALLOW_WITHDRAWAL="true"
+    elif [[ "$COIN_ALLOW_WITHDRAWAL" == "N" ]]; then
+        export COIN_ALLOW_WITHDRAWAL="false"
+    fi
+
+    export COIN_WITHDRAWAL_FEE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_WITHDRAWAL_FEE")
+    export COIN_MIN=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_MINIMUM_WITHDRAWAL")
+    export COIN_MAX=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_MAXIMUM_WITHDRAWAL")
+    export COIN_INCREMENT_UNIT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_INCREMENT_AMOUNT")
+    export COIN_DEPOSIT_LIMITS_PARSED=\'$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].deposit" | tr -d '\n')\'
+    export COIN_WITHDRAWAL_LIMITS_PARSED=\'$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].deposit" | tr -d '\n')\'
+
+    export COIN_ACTIVE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ASSETS[$i].ASSET_ACTIVATE")
+
+    if [[ "$COIN_ACTIVE" == "Y" ]]; then
+        export COIN_ACTIVE="true"
+    elif [[ "$COIN_ACTIVE" == "N" ]]; then
+        export COIN_ACTIVE="false"
+    fi
+
+    export COIN_PREFIX=$(echo ${COIN_SYMBOL} | tr a-z A-Z)
+
+    remove_existing_coin_configs_from_settings;
+
+    save_coin_configs;
+
+  done;
+
 
 }
