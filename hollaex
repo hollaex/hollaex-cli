@@ -1371,7 +1371,7 @@ elif [[ "$1" == "login" ]]; then
         while true;
             do if [[ ! "${answer}" =~ ^[0-9]+$ ]]; then 
                 printf "\033[91m\nError: The input always should be numberic.\033[39m\n"
-                echo "Please pick up the exchange number you want to bind."
+                echo "Please pick the exchange number you want to bind."
                 read answer
             else
                 break;
