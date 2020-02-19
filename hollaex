@@ -1371,7 +1371,7 @@ elif [[ "$1" == "login" ]]; then
         while true;
             do if [[ ! "${answer}" =~ ^[0-9]+$ ]]; then 
                 printf "\033[91m\nError: The input always should be numberic.\033[39m\n"
-                echo "Please pick up the exchange number you want to bind."
+                echo "Please pick the exchange number you want to bind."
                 read answer
             else
                 break;
@@ -1676,14 +1676,14 @@ elif [[ "$1" == "pull" ]]; then
     if [[ $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].is_completed") == false ]]; then
 
         BITHOLLA_USER_EXCHANGE_UPDATED_DATE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].updated_at" | cut -f1 -d "T" | tr -d '-')
-        BITHOLLA_DASH_1_3_RELEASE_DATE=20200218
+        BITHOLLA_DASH_1_3_RELEASE_DATE=20200219
 
         printf "\n\033[91mError: Your exchange doesn't seems like fully configurated at bitHolla Dashboard.\033[39m\n"
         printf "Please finalize the exchange setup at bitHolla Dashboard (https://dash.bitholla.com), and try agian.\n\n"
 
         if (($BITHOLLA_DASH_1_3_RELEASE_DATE > $BITHOLLA_USER_EXCHANGE_UPDATED_DATE)); then
 
-            printf "\033[1mFor the HollaEx users who updated the exchange before Feb 18th, 2020.\033[0m\n"
+            printf "\033[1mFor the HollaEx users who updated the exchange before Feb 19th, 2020.\033[0m\n"
             printf "You should \033[1mgo through the exchange setup once more\033[0m to update your exchange status.\n"
             printf "You don't need to update any vaules on the dashboard if it's not required.\n\n"
 
@@ -4892,7 +4892,7 @@ elif [[ "$1" == "logs" ]]; then
 
     function hollaex_log_target_whitelist() {
 
-        local whitelist=("api" "stream" "engine" "db" "redis" "influxdb")
+        local whitelist=("api" "stream" "engine" "db" "redis" "influxdb" "plugins-controller")
 
         if ! command printf '%s\n' ${whitelist[@]} | grep $HOLLAEX_LOGS_TARGET > /dev/null; then
         
