@@ -1678,7 +1678,7 @@ elif [[ "$1" == "pull" ]]; then
         BITHOLLA_USER_EXCHANGE_UPDATED_DATE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].updated_at" | cut -f1 -d "T" | tr -d '-')
         BITHOLLA_DASH_1_3_RELEASE_DATE=20200219
 
-        printf "\n\033[91mError: Your exchange doesn't seems like fully configurated at bitHolla Dashboard.\033[39m\n"
+        printf "\n\033[91mError: Your exchange is not fully configured at bitHolla Dashboard.\033[39m\n"
         printf "Please finalize the exchange setup at bitHolla Dashboard (https://dash.bitholla.com), and try agian.\n\n"
 
         if (($BITHOLLA_DASH_1_3_RELEASE_DATE > $BITHOLLA_USER_EXCHANGE_UPDATED_DATE)); then

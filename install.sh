@@ -42,10 +42,11 @@ sudo ln -s $HOME/.hollaex-cli/hollaex /usr/local/bin/hollaex
 
 if [[ -d $HOME/.hollaex-cli ]] && [[ -f /usr/local/bin/hollaex ]]; then
 
-    printf "\n\033[92mHollaEx CLI v$(cat $HOME/.hollaex-cli/version) has been successfully installed on your computer!\033[39m\n"
+    printf "\n\033[92mHollaEx CLI v$(cat $HOME/.hollaex-cli/version) has been successfully installed!\033[39m\n"
 
     if [[ "$REPLACE_EXISTING_TO_LATEST" == false ]]; then
-        echo "You can start setting up your own exchange using the command: 'hollaex setup'."
+        echo "Start configuring your exchange with the command: 'hollaex setup'."
+        echo "To see the full list of commands, use 'hollaex help'."
     fi  
 
 else 
