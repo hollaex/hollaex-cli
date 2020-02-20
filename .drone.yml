@@ -66,11 +66,6 @@ steps:
   when:
     status: [ success, failure ]
 
-- name: partymaker_version_tagging
-  image: alpine
-  commands: 
-    - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION" > .tags
-
 - name: notify_to_releases
   image: bitholla/devops-tools:drone_partymaker-0.1.4
   channel: deployment
