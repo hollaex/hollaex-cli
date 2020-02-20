@@ -125,15 +125,15 @@ function kubernetes_database_init() {
                 -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
                 $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
 
-      while ! $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == True > /dev/null 2>&1;
+      while ! [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]] ;
           do echo "Waiting for the database job gets done..."
           sleep 10;
       done;
 
-      echo "Successfully ran database jobs!"
+      echo "Successfully ran the database jobs!"
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
 
-      echo "Removing created Kubernetes Job for running database jobs..."
+      echo "Removing the Kubernetes Job for running database jobs..."
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
 
     else 
@@ -144,6 +144,14 @@ function kubernetes_database_init() {
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
       
       helm del --purge $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
+
+      # Only tries to attempt apply ingress rules from Kubernetes if it doesn't exists.
+      if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+      
+          echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
+          kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+      fi
 
       exit 1;
 
@@ -186,6 +194,20 @@ function check_kubernetes_dependencies() {
  
 function load_config_variables() {
 
+  function base64_line_break_per_os() {
+
+    if [[ "$OSTYPE" == *"darwin"* ]]; then
+
+      base64 -b 0
+    
+    else 
+
+      base64 -w 0
+
+    fi
+
+  }
+
   HOLLAEX_CONFIGMAP_VARIABLES=$(set -o posix ; set | grep "HOLLAEX_CONFIGMAP" | cut -c19-)
   HOLLAEX_SECRET_VARIABLES=$(set -o posix ; set | grep "HOLLAEX_SECRET" | cut -c16-)
 
@@ -201,7 +223,7 @@ function load_config_variables() {
 
   HOLLAEX_SECRET_VARIABLES_BASE64=$(for value in ${HOLLAEX_SECRET_VARIABLES} 
   do   
-      printf "${value//=$(cut -d "=" -f 2 <<< "$value")/=\'$(cut -d "=" -f 2 <<< "$value" | tr -d '\n' | base64)\'} ";
+      printf "${value//=$(cut -d "=" -f 2 <<< "$value")/=\'$(cut -d "=" -f 2 <<< "$value" | tr -d '\n' | base64_line_break_per_os)\'} ";
   
   done)
   HOLLAEX_SECRET_VARIABLES_YAML=$(for value in ${HOLLAEX_SECRET_VARIABLES_BASE64} 
