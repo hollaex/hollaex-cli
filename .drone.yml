@@ -21,7 +21,15 @@ steps:
     - echo "dockerTag:$(cat .tags)" > .dockerTag.yml
   when:
     branch: master
-  
+
+- name: docker_tag_for_release_master
+  image: alpine
+  commands:
+  - export PACKAGE_VERSION="$(grep version package.json | cut -c 15- | rev | cut -c 3- | rev)" && echo "$PACKAGE_VERSION" > .tags_release
+  - echo "Current Release tag is :" && cat .tags_release
+  when:
+    branch: master
+
 - name: docker_tagging_testnet
   image: alpine
   commands:
@@ -56,6 +64,17 @@ steps:
       from_secret: docker_password
   when:
     branch: testnet
+
+- name: create_github_release_test
+  image: ubuntu:19.04
+  environment:
+    GITHUB_TOKEN:
+      from_secret: github_oauth2_token_for_releases
+  commands:
+    - apt-get update && apt-get install -y hub git
+    - hub release create -m "HollaEx CLI v$(cat .tags_release) Release" -t ${DRONE_BRANCH} $(cat .tags_release)
+  when:
+    branch: master
 
 - name: notify_job_done
   image: bitholla/devops-tools:drone_slack-8a15f61
