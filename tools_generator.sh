@@ -5288,3 +5288,22 @@ function apply_coins_config_to_settings_file() {
 
 
 }
+
+function check_docker_compose_is_installed() {
+
+  # Checking docker-compose is installed on this machine.
+  if command docker-compose version > /dev/null 2>&1; then
+      
+      echo "*********************************************"
+      echo "docker-compose detected"
+      echo "version: $(docker-compose version)"
+      echo "*********************************************"
+
+  else
+
+      echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
+      exit 1;
+
+  fi
+  
+}
