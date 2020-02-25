@@ -4570,11 +4570,11 @@ function build_user_hollaex_web() {
       
       else 
         
-        echo "Do you want to also push it at your Docker Registry? (Y/n)"
+        echo "Do you want to also push it at your Docker Registry? (y/N)"
 
         read answer
 
-          if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+          if [[ "$answer" = "${answer#[Yy]}" ]] ;then
 
             echo "Skipping..."
             echo "Your current image name: $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION."
@@ -4664,9 +4664,33 @@ function hollaex_ascii_web_server_is_up() {
 .@@@888888888888888888888888888888888888888888888888888888888888888888880.
 1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
 
-                  Web Client for your exchange is ready!
-                  Try to reach $HOLLAEX_CONFIGMAP_DOMAIN 
-                  $(if [[ ! "$USE_KUBERNETES" ]]; then echo "or http://localhost:8080!"; fi)
+              Web Client for your exchange is ready!
+              Try to reach $HOLLAEX_CONFIGMAP_DOMAIN 
+              $(if [[ ! "$USE_KUBERNETES" ]]; then echo "or http://localhost:8080!"; fi)
+
+EOF
+
+}
+
+function hollaex_ascii_web_server_has_been_setup() {
+
+      /bin/cat << EOF
+
+1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
+.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
+.0@G                                                                  L@8,
+.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
+.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
+.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
+.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
+.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
+.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
+.0@G
+.@@@888888888888888888888888888888888888888888888888888888888888888888880.
+1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
+
+        Web Server for your exchange has been setup and prepared.
+        Please run 'hollaex web --start $(if [[ "$USE_KUBERNETES" ]]; then echo "--kube"; fi)' to bring the web server up!
 
 EOF
 

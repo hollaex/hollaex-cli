@@ -3215,7 +3215,11 @@ elif [[ "$1" == "web" ]]; then
                         -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
                         -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web; then
 
-                hollaex_ascii_web_server_is_up;
+
+                echo "Scaling down the web server after the initialization..."
+                hollaex web --stop --kube --skip
+
+                hollaex_ascii_web_server_has_been_setup;
             
             else 
 
@@ -3279,8 +3283,11 @@ elif [[ "$1" == "web" ]]; then
                     echo "Reloading Nginx..."
                     docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
                     
-                    hollaex_ascii_web_server_is_up;
-                
+                    echo "Stopping the web server after the initialization..."
+                    hollaex web --stop --skip
+
+                    hollaex_ascii_web_server_has_been_setup;
+            
                 else
 
                     printf "\033[93mFailed to reload Nginx. Please make sure to start the exchange API server first.\033[39m\n"
