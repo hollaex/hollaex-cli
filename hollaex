@@ -58,13 +58,13 @@ Options:
 
     terminate: Terminate the existing exchange. THIS COMMAND WILL COMPLETELY REMOVE YOUR EXCHANGE.
       
-    web: Run web client for the exchange.
-        --setup, Setup the web client for the first launch.
-        --start, Start the web client which already been configured.
-        --stop, Stop the web client.
-        --restart, Restart the web client.
-        --build, Rebuild the web client docker image.
-        --terminate, Terminate the web client. THIS COMMAND WILL COMPLETELY REMOVE YOUR WEB CLIENT.
+    web: Run web server for the exchange.
+        --setup, Setup the web server for the first launch.
+        --start, Start the web server 
+        --stop, Stop the web server.
+        --restart, Restart the web server while applying new changes (If it's available).
+        --build, Build the web server docker image. This command would not affect the existing web server before restart.
+        --terminate, Terminate the web server. THIS COMMAND WILL COMPLETELY REMOVE YOUR WEB CLIENT.
 
     toolbox: Toolbox for advanced features which could be helpful for your exchange operations.
         --backup, Run the full backup with 'pg_dumpall' for exchange's PostgreSQL database.
@@ -1874,6 +1874,8 @@ elif [[ "$1" == "start" ]]; then
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=$ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS --namespace $ENVIRONMENT_EXCHANGE_NAME
 
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+            
+            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-plugins-controller --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
             helm_dynamic_trading_paris scaleup;
 
@@ -2121,6 +2123,8 @@ elif [[ "$1" == "stop" ]]; then
         kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
         kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-plugins-controller --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
         helm_dynamic_trading_paris scaledown;
 
@@ -2738,13 +2742,6 @@ elif [[ "$1" == "upgrade" ]]; then
         
         helm_dynamic_trading_paris run;
 
-        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
-
-            echo "Running $HOLLAEX_CONFIGMAP_API_NAME web client container"
-            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-web --namespace $ENVIRONMENT_EXCHANGE_NAME --recreate-pods --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION" --set stable.replicaCount="1" --set autoScaling.hpa.enable="false" --set envName="$ENVIRONMENT_EXCHANGE_NAME-web-env" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web
-
-        fi
-        
         # Running database job for Kubernetes
         kubernetes_database_init upgrade;
 
@@ -3068,7 +3065,7 @@ elif [[ "$1" == "web" ]]; then
                 ;;
             --kube)
                 USE_KUBERNETES=true
-                echo "HollaEx CLI will use your Kubernetes cluster as a target."
+                echo "Setting target to Kubernetes..."
                 shift; continue
                 ;;
             --skip)
@@ -3078,32 +3075,26 @@ elif [[ "$1" == "web" ]]; then
                 ;;
             --setup)
                 WEB_CLIENT_SETUP=true
-                echo "Setup the web client."
                 shift; continue
                 ;;
             --start)
                 WEB_CLIENT_START=true
-                echo "Start the web client."
                 shift; continue
                 ;;
             --stop)
                 WEB_CLIENT_STOP=true
-                echo "Stop the web client."
                 shift; continue
                 ;;
             --restart)
                 WEB_CLIENT_RESTART=true
-                echo "Restart the web client."
                 shift; continue
                 ;;
             --build)
                 WEB_CLIENT_REBUILD=true
-                echo "Rebuild the web client."
                 shift; continue
                 ;;
             --terminate)
                 WEB_CLIENT_TERMINATE=true
-                echo "Terminate the web client."
                 shift; continue
                 ;;
             --*) 
@@ -3154,12 +3145,168 @@ elif [[ "$1" == "web" ]]; then
     # hollaex web --setup
     if [[ "$WEB_CLIENT_SETUP" ]]; then
 
-        basic_settings_for_web_client_input;
-
         build_user_hollaex_web;
 
-        echo "Values are successfully set!"
-        echo "Use 'hollaex web --start' to start the Web Server."
+        if [[ "$USE_KUBERNETES" ]]; then
+
+            #Checking Kubernetes dependencies
+            check_kubernetes_dependencies;
+
+            echo "*********************************************"
+            #Verify remote Kubernetes cluster is correct.
+            echo "Verifying current KUBECONFIG on the machine"
+            kubectl get nodes
+            echo "*********************************************"
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "Are you sure you want to setup the web server on this cluster? (Y/n)"
+
+                read answer
+
+                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+                    echo "Exiting..."
+                    exit 0;
+                fi
+
+            fi
+            
+            # Web server installation status checking.
+            if command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null 2>&1; then
+
+                printf "\033[91m\nError: You already installed the web server on your Kuberentes cluster!\033[39m\n"
+                echo "To start it, Please run 'hollaex web --start --kube' command instead."
+
+                exit 1;
+            
+            fi
+
+            #Creating kubernetes_config directory for generating config for Kubernetes.
+            if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
+                mkdir $TEMPLATE_GENERATE_PATH/kubernetes;
+                mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
+            fi
+
+            echo "Generating web ingress rules for Kubernetes"
+            generate_kubernetes_ingress_for_web;
+
+            echo "Applying web ingress rules for Kubernetes"
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
+
+            
+            # Create docker registry secret on Kubernetes.
+            if ! command kubectl get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+
+                create_kubernetes_docker_registry_secret;
+            
+            fi
+
+            # FOR GENERATING NODESELECTOR VALUES
+            generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hollaex
+
+            echo "Running the web server on Kubernetes..."
+            if command helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-web \
+                        --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                        --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY" \
+                        --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION" \
+                        --set stable.replicaCount="1" \
+                        --set autoScaling.hpa.enable="false" \
+                        --set envName="$ENVIRONMENT_EXCHANGE_NAME-web-env" \
+                        -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                        -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web; then
+
+
+                echo "Scaling down the web server after the initialization..."
+                hollaex web --stop --kube --skip
+
+                hollaex_ascii_web_server_has_been_setup;
+            
+            else 
+
+                printf "\n\033[91mFailed to setup the web server on the Kubernetes!\033[39m\n"
+                echo "Please review the logs and try again."
+
+                helm del --purge $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null;
+
+                exit 1;
+
+            fi
+
+            exit 0;
+        
+        elif [[ ! "$USE_KUBERNETES" ]]; then
+
+            # Checking docker-compose is installed on this machine.
+            check_docker_compose_is_installed;
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "Are you sure you want to setup the web server on this machine? (Y/n)"
+
+                read answer
+
+                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+                    echo "Exiting..."
+                    exit 0;
+                fi
+
+            fi
+
+            #Generating nginx conf.d folder
+            if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
+                mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
+            fi
+
+            echo "Generating web docker-compose file"
+            generate_local_docker_compose_for_web
+
+            echo "Generating web .env file"
+            generate_hollaex_web_local_env
+
+            if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
+
+                echo "Generating web Nginx configuration file"
+                generate_hollaex_web_local_nginx_conf
+
+            fi
+
+            echo "Generating web Nginx upstream file"
+            generate_nginx_upstream_for_web
+
+            echo "Updating main Nginx.conf based on user settings..."
+            apply_nginx_user_defined_values
+
+            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client up -d; then
+
+                if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " " > /dev/null 2>&1; then 
+
+                    echo "Reloading Nginx..."
+                    docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
+                    
+                    echo "Stopping the web server after the initialization..."
+                    hollaex web --stop --skip
+
+                    hollaex_ascii_web_server_has_been_setup;
+            
+                else
+
+                    printf "\033[93mFailed to reload Nginx. Please make sure to start the exchange API server first.\033[39m\n"
+                    echo "The web server could be still reachable through 'http://localhost:8080',"
+                    echo "But the allocated domain for the web would not function correctly."
+
+                fi
+
+            else 
+
+                printf "\n\033[91mError: Failed to restart the web server.\033[39m\n"
+                echo "Please review the logs and try again."
+                exit 1;
+            
+            fi
+
+            exit 0;
+
+        fi
 
         exit 0;
 
@@ -3167,10 +3314,268 @@ elif [[ "$1" == "web" ]]; then
 
     if [[ "$WEB_CLIENT_START" ]]; then
 
+        if [[ "$USE_KUBERNETES" ]]; then
+
+            #Checking Kubernetes dependencies
+            check_kubernetes_dependencies;
+
+            echo "*********************************************"
+            #Verify remote Kubernetes cluster is correct.
+            echo "Verifying current KUBECONFIG on the machine"
+            kubectl get nodes
+            echo "*********************************************"
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "Are you sure you want to start (scale up) the web server on this cluster? (Y/n)"
+
+                read answer
+
+                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+                    echo "Exiting..."
+                    exit 0;
+                fi
+
+            fi
+            
+            # Web server installation status checking.
+            if ! command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null 2>&1; then
+
+                printf "\033[91mFailed to detect the web server installed on your Kubernetes cluster.\033[39m\n"
+                echo "If you haven't launched the web server yet, Please run 'hollaex web --setup --kube' to set it up first."
+
+                exit 1;
+            
+           fi
+
+            echo "Generating web ingress rules for Kubernetes"
+            generate_kubernetes_ingress_for_web;
+
+            echo "Applying web ingress rules for Kubernetes"
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
+
+
+            if ! command kubectl get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+
+                create_kubernetes_docker_registry_secret;
+            
+            fi
+
+            echo "Starting (Scaling up) the web server on Kubernetes..."
+            if command kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-web --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 ; then
+
+                hollaex_ascii_web_server_is_up;
+            
+            else 
+
+                printf "\033[91mFailed to start the web on your Kubernetes cluster!033[39m\n"
+                echo "Please review the logs and try again."
+
+                exit 1;
+
+            fi
+        
+
+        elif [[ ! "$USE_KUBERNETES" ]]; then
+
+            if ! command docker images | grep $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY > /dev/null && command docker images | grep $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION > /dev/null; then
+
+                echo "Error: Can't detect built web docker image on this machine!"
+                echo "If this is your first time launching the web server, please run 'hollaex web --setup' instead."
+                echo "You can also build the image manually by using 'hollaex web --build' command."
+
+                exit 1;
+              
+            fi
+
+            # Checking docker-compose is installed on this machine.
+            check_docker_compose_is_installed;
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "Are you sure you want to start the web client on this machine? (Y/n)"
+
+                read answer
+
+                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+                    echo "Exiting..."
+                    exit 0;
+                fi
+
+            fi
+
+            if ! command docker ps -a | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null 2>&1; then
+
+                printf "\033[91m\nError: Failed to detect stopped web server on this machine.\033[39m\n"
+                echo "If you haven't setup the web server yet, Please run 'hollaex web --setup' first."
+
+                exit 1;
+
+            fi
+
+            #Generating nginx conf.d folder
+            if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
+                mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
+            fi
+
+            echo "Generating web docker-compose file"
+            generate_local_docker_compose_for_web
+
+            if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
+
+                echo "Generating web Nginx configuration file"
+                generate_hollaex_web_local_nginx_conf
+
+            fi
+
+            echo "Updating main Nginx.conf based on user settings..."
+            apply_nginx_user_defined_values
+
+            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client start; then
+
+                if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " " > /dev/null 2>&1; then 
+
+                    echo "Reloading Nginx..."
+                    docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
+                    
+                    hollaex_ascii_web_server_is_up;
+                
+                else
+
+                    printf "\033[93mFailed to reload Nginx. Please make sure to start the exchange API server first.\033[39m\n"
+                    echo "The web server could be still reachable through 'http://localhost:8080',"
+                    echo "But the allocated domain for the web would not function correctly."
+                
+                fi
+
+            else 
+
+                printf "\n\033[91mError: Failed to restart the web server.\033[39m\n"
+                echo "Please review your settings and try again."
+                exit 1;
+            
+            fi
+
+            exit 0;
+
+        fi
+    fi
+
+    if [[ "$WEB_CLIENT_STOP" ]]; then
+
+        if [[ "$USE_KUBERNETES" ]]; then
+
+        #Checking Kubernetes dependencies
+        check_kubernetes_dependencies;
+
+        echo "*********************************************"
+        #Verify remote Kubernetes cluster is correct.
+        echo "Verifying current KUBECONFIG on the machine"
+        kubectl get nodes
+        echo "*********************************************"
+
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+            echo "Are you sure you want to stop (scale down) the web server on this cluster? (Y/n)"
+
+            read answer
+
+            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+                echo "Exiting..."
+                exit 0;
+            fi
+
+        fi
+
+        # Web server installation status checking.
+        echo "Checking the web installation status on your Kubernetes..."
+        if ! command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null 2>&1; then
+
+            printf "\033[91mFailed to detect the web server installed on your Kubernetes cluster.\033[39m\n"
+            echo "If you haven't launched the web server yet, Please run 'hollaex web --setup --kube' to set it up first."
+
+            exit 1;
+        
+        fi
+
+        echo "Removing web ingress rules from the Kubernetes"
+        kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
+
+        echo "Stopping (Scaling down) the web server..."
+        if command kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-web --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME; then
+
+            printf "\n\033[92mSuccessfully stopped the web server.\033[39m\n"
+            echo "To bring it up, Please run 'hollaex web --start --kube' command".
+        
+        else 
+
+            printf "\033[91m\nError: Failed to stop the web server on the Kubernetes.\033[39m\n"
+            echo "Please review the logs and try again."
+
+            exit 1;
+        
+        fi
+    
+        elif [[ ! "$USE_KUBERNETES" ]]; then
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "Are you sure you want to stop the web client on this machine? (y/N)"
+
+                read answer
+
+                if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                    echo "Exiting..."
+                    exit 0;
+                fi
+
+            fi
+
+            echo "Generating web docker-compose file"
+            generate_local_docker_compose_for_web
+
+            echo "Cleaning up the web Nginx configuration..."
+            cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
+            cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-web.conf
+
+            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client stop; then
+
+                if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " " > /dev/null 2>&1; then 
+
+                    echo "Reloading Nginx..."
+                    docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
+
+                    printf "\n\033[92mSuccessfully stopped the web server.\033[39m\n"
+                    echo "To bring it up, Please run 'hollaex web --start' command".
+                
+                else
+
+                    printf "\033[93mFailed to reload Nginx. This could be happened if you didn't run the exchange API server.\033[39m\n"
+                
+                fi
+
+            else 
+
+                printf "\n\033[91mError: Failed to stop the web server.\033[39m\n"
+                echo "Please review your settings and try again."
+                exit 1;
+            
+            fi
+
+        fi
+
+        exit 0;
+        
+    fi
+
+    if [[ "$WEB_CLIENT_RESTART" ]]; then
+
         if command docker images | grep $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY > /dev/null && command docker images | grep $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION > /dev/null; then
 
-            echo "Pre-built image for web server has been detected on your system."
-            echo "Do you want to proceed with this pre-built image? (Y/n)"
+            printf "\nPre-built image for web server has been detected on your system.\n"
+            echo "You should build the image again if you made code changes for web."
+            echo "Plase input 'Y' to skip the build, 'N' to build the image again."
+            echo "Do you want to proceed with the pre-built image? (Y/n)"
             read answer 
 
             if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
@@ -3203,238 +3608,6 @@ elif [[ "$1" == "web" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to start web server for the exchange on this cluster? (Y/n)"
-
-                read answer
-
-                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-                    echo "Exiting..."
-                    exit 0;
-                fi
-
-            fi
-
-            echo "Generating web ingress rules for Kubernetes."
-            generate_kubernetes_ingress_for_web;
-
-            echo "Applying ingress rules for web on the namespace."
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
-
-            if command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-web; then
-
-                echo "Starting web server..."
-                kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-web --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
-            
-            else 
-
-                if ! command kubectl get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
-
-                    create_kubernetes_docker_registry_secret;
-                
-                fi
-
-                echo "Running $HOLLAEX_CONFIGMAP_API_NAME web server."
-                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-web \
-                            --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                            --recreate-pods \
-                            --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY" \
-                            --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION" \
-                            --set stable.replicaCount="1" \
-                            --set autoScaling.hpa.enable="false" \
-                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-web-env" \
-                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
-                            -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web
-
-            hollaex_ascii_web_server_is_up;
-        
-        fi
-
-
-        elif [[ ! "$USE_KUBERNETES" ]]; then
-
-            # Checking docker-compose is installed on this machine.
-            if command docker-compose version > /dev/null 2>&1; then
-                
-                echo "*********************************************"
-                echo "docker-compose detected"
-                echo "version: $(docker-compose version)"
-                echo "*********************************************"
-
-            else
-
-                echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
-                exit 1;
-
-            fi
-
-            if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-                echo "Are you sure you want to start web client for the exchange on this machine? (Y/n)"
-
-                read answer
-
-                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-                    echo "Exiting..."
-                    exit 0;
-                fi
-
-            fi
-
-            #Generating nginx conf.d folder
-            if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
-                mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
-            fi
-
-            echo "Generating docker-compose file for Web Client"
-            generate_local_docker_compose_for_web
-
-            echo "Generating .env for Web Client"
-            generate_hollaex_web_local_env
-
-            if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
-
-                echo "Generating Nginx conf for Web Client"
-                generate_hollaex_web_local_nginx_conf
-
-            fi
-
-            echo "Generating Nginx Upstream for Web Client"
-            generate_nginx_upstream_for_web
-
-            echo "Updating nginx conf file based on user settings"
-            apply_nginx_user_defined_values
-
-            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client up -d; then
-
-                if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " " > /dev/null 2>&1; then 
-
-                    echo "Reloading Nginx..."
-                    docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
-                    
-                    hollaex_ascii_web_server_is_up;
-                
-                else
-
-                    printf "\033[91mFailed to reload Nginx. Did you start the exchange server?\033[39m\n"
-                
-                fi
-
-            else 
-
-                echo "HollaEx CLI failed to start the web client. Please review your settings and try again."
-                exit 1;
-            
-            fi
-
-            exit 0;
-
-        fi
-    fi
-
-    if [[ "$WEB_CLIENT_STOP" ]]; then
-
-        if [[ "$USE_KUBERNETES" ]]; then
-
-        #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
-
-        echo "*********************************************"
-        #Verify remote Kubernetes cluster is correct.
-        echo "Verifying current KUBECONFIG on the machine"
-        kubectl get nodes
-        echo "*********************************************"
-
-        if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-            echo "Are you sure you want to stop web server for the exchange on this cluster? (Y/n)"
-
-            read answer
-
-            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-                echo "Exiting..."
-                exit 0;
-            fi
-
-        fi
-
-        echo "Removing ingress rules for web on the namespace."
-        kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
-
-        echo "Stopping web server..."
-        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-web --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-        echo "Successfully stopped web client."
-        echo "To bring it up, Use 'hollaex web --start --kube' command".
-    
-        elif [[ ! "$USE_KUBERNETES" ]]; then
-
-            if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-                echo "Are you sure you want to stop web client for the exchange on this machine? (y/N)"
-
-                read answer
-
-                if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                    echo "Exiting..."
-                    exit 0;
-                fi
-
-            fi
-
-            echo "Generating docker-compose file for Web Client"
-            generate_local_docker_compose_for_web
-
-            echo "Cleaning up Nginx Conf for Web"
-            cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
-            cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-web.conf
-
-            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client stop; then
-
-                if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " " > /dev/null 2>&1; then 
-
-                    echo "Reloading Nginx..."
-                    docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
-
-                    echo "Web is down!"
-                    echo "Web container has been successfully stopped".
-                
-                else
-
-                    printf "\033[91mFailed to reload Nginx. Did you start the exchange server?\033[39m\n"
-                
-                fi
-
-                echo "Successfully stopped web client."
-                echo "To bring it up, Use 'hollaex web --start' command".
-
-            else 
-
-                echo "HollaEx CLI failed to stop the web client. Please review your settings and try again."
-                exit 1;
-            
-            fi
-
-        fi
-
-        exit 0;
-        
-    fi
-
-    if [[ "$WEB_CLIENT_RESTART" ]]; then
-
-        if [[ "$USE_KUBERNETES" ]]; then
-
-            #Checking Kubernetes dependencies
-            check_kubernetes_dependencies;
-
-            echo "*********************************************"
-            #Verify remote Kubernetes cluster is correct.
-            echo "Verifying current KUBECONFIG on the machine"
-            kubectl get nodes
-            echo "*********************************************"
-
-            if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
                 echo "Are you sure you want to restart web client for the exchange on this cluster? (Y/n)"
 
                 read answer
@@ -3446,34 +3619,42 @@ elif [[ "$1" == "web" ]]; then
 
             fi
 
-            echo "Generating web ingress rules for Kubernetes."
+            echo "Generating web ingress rules for Kubernetes"
             generate_kubernetes_ingress_for_web;
 
-            echo "Applying ingress rules for web on the namespace."
+            echo "Applying web ingress rules for Kubernetes"
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
 
-            echo "Restarting web server..."
-            kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l app=$ENVIRONMENT_EXCHANGE_NAME-web
+            echo "Restarting the $HOLLAEX_CONFIGMAP_API_NAME web server."
+            if command helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-web \
+                        --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                        --recreate-pods \
+                        --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY" \
+                        --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION" \
+                        --set stable.replicaCount="1" \
+                        --set autoScaling.hpa.enable="false" \
+                        --set envName="$ENVIRONMENT_EXCHANGE_NAME-web-env" \
+                        -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                        -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web; then
 
-            echo "Web server has been restarted!"
-            echo "Web server will be reachable at $HOLLAEX_CONFIGMAP_DOMAIN very soon".
+                # Scaling up the web in case of it gets already scaled down.
+                kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-web --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-        elif [[ ! "$USE_KUBERNETES" ]]; then
+                echo -e "\n\033[92mSuccessfully restarted the web server on the Kubernetes!\033[39m\n"
 
-            # Checking docker-compose is installed on this machine.
-            if command docker-compose version > /dev/null 2>&1; then
+                hollaex_ascii_web_server_is_up;
+               
+            else 
 
-                echo "*********************************************"
-                echo "docker-compose detected"
-                echo "version: $(docker-compose version)"
-                echo "*********************************************"
-
-            else
-
-                echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
+                printf "\033[91mFailed to restart the web server.\033[39m\n"
+                echo "Please review the logs and try agian."
                 exit 1;
 
             fi
+
+        elif [[ ! "$USE_KUBERNETES" ]]; then
+
+            check_docker_compose_is_installed;
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
@@ -3488,20 +3669,20 @@ elif [[ "$1" == "web" ]]; then
 
             fi
 
-            echo "Generating docker-compose file for Web Client"
+            echo "Generating web docker-compose file"
             generate_local_docker_compose_for_web
 
-            echo "Generating .env for Web Client"
+            echo "Generating web .env file"
             generate_hollaex_web_local_env
 
             if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
 
-                echo "Generating Nginx conf for Web Client"
+                echo "Generating web Nginx configuration file"
                 generate_hollaex_web_local_nginx_conf
 
             fi
 
-            echo "Updating nginx conf file based on user settings"
+            echo "Updating main Nginx.conf based on user settings..."
             apply_nginx_user_defined_values
 
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client stop; then
@@ -3513,18 +3694,18 @@ elif [[ "$1" == "web" ]]; then
                     echo "Reloading Nginx..."
                     docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
 
-                    echo "Web is up!"
-                    echo "Web is now reachable both from $HOLLAEX_CONFIGMAP_DOMAIN and localhost:8080".
+                    hollaex_ascii_web_server_is_up;
                 
                 else
 
-                    printf "\033[91mFailed to reload Nginx. Did you start the exchange server?\033[39m\n"
-                
+                    printf "\033[93mFailed to reload Nginx. Please make sure to start the exchange API server first.\033[39m\n"
+
                 fi
 
             else 
 
-                echo "HollaEx CLI failed to restart the web client. Please review your settings and try again."
+                printf "\n\033[91mError: Failed to restart the web server.\033[39m\n"
+                echo "Please review your settings and try again."
                 exit 1;
             
             fi
@@ -3557,7 +3738,7 @@ elif [[ "$1" == "web" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to terminate web client for the exchange on this cluster? (y/N)"
+                echo "Are you sure you want to terminate the web server on this cluster? (y/N)"
 
                 read answer
 
@@ -3568,40 +3749,33 @@ elif [[ "$1" == "web" ]]; then
 
             fi
 
-            echo "Terminating the web server on Kubernetes..."
-
-            echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
+            echo "Removing web ingress rule on the cluster"
             kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
 
-            echo "Removing web server..."
-            helm del --purge $ENVIRONMENT_EXCHANGE_NAME-web
+            echo "Removing the web server..."
+            if command helm del --purge $ENVIRONMENT_EXCHANGE_NAME-web; then
 
-            echo "Web is down!"
-            echo "Web server has been successfully removed."
+                printf "\n\033[92mWeb server has been successfully terminated.\033[39m\n"
+                echo "Please run 'hollaex web --setup --kube' if you want to set it up again."
+            
+            else 
+
+                printf "\033[91mFailed to terminate the web server from the Kubernetes.\033[39m\n"
+                echo "Please review the logs and try agian."
+                exit 1;
+
+            fi
 
             exit 0;
                 
 
         elif [[ ! "$USE_KUBERNETES" ]]; then
 
-            # Checking docker-compose is installed on this machine.
-            if command docker-compose version > /dev/null 2>&1; then
-                
-                echo "*********************************************"
-                echo "docker-compose detected"
-                echo "version: $(docker-compose version)"
-                echo "*********************************************"
-
-            else
-
-                echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
-                exit 1;
-
-            fi
+            check_docker_compose_is_installed;
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to terminate web client for the exchange on this machine? (y/N)"
+                echo "Are you sure you want to terminate the web client on this machine? (y/N)"
                 echo "This can't be undo."
 
                 read answer
@@ -3617,27 +3791,28 @@ elif [[ "$1" == "web" ]]; then
 
                 if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " " > /dev/null 2>&1; then 
 
-                    echo "Cleaning up Nginx Conf for Web"
+                    echo "Cleaning up web Nginx configuration"
                     cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
                     cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-web.conf
 
                     echo "Reloading Nginx..."
                     docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
 
-                    echo "Web is down!"
-                    echo "Web container has been successfully removed."
+                    printf "\n\033[92mSuccessfully terinated the web server!\033[39m\n"
+                    echo "Please run 'hollaex web --setup' if you want to set it up again."
                 
                 else
 
-                    printf "\033[91mFailed to reload Nginx. Did you start the exchange server?\033[39m\n"
+                    printf "\033[93mFailed to reload Nginx. Please make sure to start the exchange API server first.\033[39m\n"
+
+                    printf "\n\033[92mThe web server has been successfully terminated.\033[39m\n"
+                    echo "Please run 'hollaex web --setup' to set it up again."
                 
                 fi
 
-                echo "Web has been successfully terminated."
-
             else 
 
-                echo "HollaEx CLI failed to terminate the web client. Please review your settings and try again."
+                printf "\033[91mHollaEx CLI failed to terminate the web server. Please review your settings and try again.\033[39m\n"
                 exit 1;
             
             fi
@@ -4475,12 +4650,12 @@ elif [[ "$1" == "toolbox" ]]; then
         
         if [[ "$USE_KUBERNETES" ]]; then 
 
-            # check_kubernetes_dependencies;
+            check_kubernetes_dependencies;
         
-            # echo "*********************************************"
-            # echo "Verifying current KUBECONFIG on the machine"
-            # kubectl get nodes
-            # echo "*********************************************"
+            echo "*********************************************"
+            echo "Verifying current KUBECONFIG on the machine"
+            kubectl get nodes
+            echo "*********************************************"
 
             echo "Are you sure that you want to update your activation code for the exchange on this Kubernets cluster? (y/N)"
             read answer 
