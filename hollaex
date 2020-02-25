@@ -3278,16 +3278,11 @@ elif [[ "$1" == "web" ]]; then
 
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client up -d; then
 
-                if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " " > /dev/null 2>&1; then 
-
-                    echo "Reloading Nginx..."
-                    docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
-                    
-                    echo "Stopping the web server after the initialization..."
-                    hollaex web --stop --skip
-
-                    hollaex_ascii_web_server_has_been_setup;
-            
+                echo "Reloading Nginx..."
+                if command docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload; then
+                
+                    printf "\n\033[92mSuccessfully reloaded the Nginx\033[39m\n"
+        
                 else
 
                     printf "\033[93mFailed to reload Nginx. Please make sure to start the exchange API server first.\033[39m\n"
@@ -3295,6 +3290,10 @@ elif [[ "$1" == "web" ]]; then
                     echo "But the allocated domain for the web would not function correctly."
 
                 fi
+
+                hollaex web --stop --skip
+
+                hollaex_ascii_web_server_has_been_setup;
 
             else 
 
@@ -3433,20 +3432,20 @@ elif [[ "$1" == "web" ]]; then
 
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client start; then
 
-                if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " " > /dev/null 2>&1; then 
-
-                    echo "Reloading Nginx..."
-                    docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
-                    
-                    hollaex_ascii_web_server_is_up;
+                echo "Reloading Nginx..."
+                if command docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload; then
                 
+                    printf "\n\033[92mSuccessfully reloaded the Nginx\033[39m\n"
+        
                 else
 
                     printf "\033[93mFailed to reload Nginx. Please make sure to start the exchange API server first.\033[39m\n"
                     echo "The web server could be still reachable through 'http://localhost:8080',"
                     echo "But the allocated domain for the web would not function correctly."
-                
+
                 fi
+
+                hollaex_ascii_web_server_is_up;
 
             else 
 
@@ -3540,19 +3539,19 @@ elif [[ "$1" == "web" ]]; then
 
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client stop; then
 
-                if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " " > /dev/null 2>&1; then 
-
-                    echo "Reloading Nginx..."
-                    docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
-
-                    printf "\n\033[92mSuccessfully stopped the web server.\033[39m\n"
-                    echo "To bring it up, Please run 'hollaex web --start' command".
+                echo "Reloading Nginx..."
+                if command docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload; then
                 
+                    printf "\n\033[92mSuccessfully reloaded the Nginx\033[39m\n"
+        
                 else
 
-                    printf "\033[93mFailed to reload Nginx. This could be happened if you didn't run the exchange API server.\033[39m\n"
-                
+                    printf "\033[93mFailed to reload Nginx. Please make sure to start the exchange API server first.\033[39m\n"
+
                 fi
+
+                printf "\n\033[92mSuccessfully stopped the web server.\033[39m\n"
+                echo "To bring it up, Please run 'hollaex web --start' command".
 
             else 
 
@@ -3689,18 +3688,20 @@ elif [[ "$1" == "web" ]]; then
                 
                 docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client up -d
 
-                if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " " > /dev/null 2>&1; then 
-
-                    echo "Reloading Nginx..."
-                    docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
-
-                    hollaex_ascii_web_server_is_up;
+                echo "Reloading Nginx..."
+                if command docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload; then
                 
+                    printf "\n\033[92mSuccessfully reloaded the Nginx\033[39m\n"
+        
                 else
 
                     printf "\033[93mFailed to reload Nginx. Please make sure to start the exchange API server first.\033[39m\n"
+                    echo "The web server could be still reachable through 'http://localhost:8080',"
+                    echo "But the allocated domain for the web would not function correctly."
 
                 fi
+
+                hollaex_ascii_web_server_is_up;
 
             else 
 
@@ -3789,26 +3790,19 @@ elif [[ "$1" == "web" ]]; then
 
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client down --remove-orphans; then
 
-                if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " " > /dev/null 2>&1; then 
-
-                    echo "Cleaning up web Nginx configuration"
-                    cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
-                    cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-web.conf
-
-                    echo "Reloading Nginx..."
-                    docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
-
-                    printf "\n\033[92mSuccessfully terinated the web server!\033[39m\n"
-                    echo "Please run 'hollaex web --setup' if you want to set it up again."
+                echo "Reloading Nginx..."
+                if command docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload; then
                 
+                    printf "\n\033[92mSuccessfully reloaded the Nginx\033[39m\n"
+        
                 else
 
                     printf "\033[93mFailed to reload Nginx. Please make sure to start the exchange API server first.\033[39m\n"
 
-                    printf "\n\033[92mThe web server has been successfully terminated.\033[39m\n"
-                    echo "Please run 'hollaex web --setup' to set it up again."
-                
                 fi
+
+                printf "\n\033[92mThe web server has been successfully terminated.\033[39m\n"
+                echo "Please run 'hollaex web --setup' to set it up again."
 
             else 
 
