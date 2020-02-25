@@ -58,13 +58,13 @@ Options:
 
     terminate: Terminate the existing exchange. THIS COMMAND WILL COMPLETELY REMOVE YOUR EXCHANGE.
       
-    web: Run web client for the exchange.
-        --setup, Setup the web client for the first launch.
-        --start, Start the web client which already been configured.
-        --stop, Stop the web client.
-        --restart, Restart the web client.
-        --build, Rebuild the web client docker image.
-        --terminate, Terminate the web client. THIS COMMAND WILL COMPLETELY REMOVE YOUR WEB CLIENT.
+    web: Run web server for the exchange.
+        --setup, Setup the web server for the first launch.
+        --start, Start the web server 
+        --stop, Stop the web server.
+        --restart, Restart the web server while applying new changes (If it's available).
+        --build, Build the web server docker image. This command would not affect the existing web server before restart.
+        --terminate, Terminate the web server. THIS COMMAND WILL COMPLETELY REMOVE YOUR WEB CLIENT.
 
     toolbox: Toolbox for advanced features which could be helpful for your exchange operations.
         --backup, Run the full backup with 'pg_dumpall' for exchange's PostgreSQL database.
@@ -3172,7 +3172,7 @@ elif [[ "$1" == "web" ]]; then
             fi
             
             # Web server installation status checking.
-            if command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-web; then
+            if command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null 2>&1; then
 
                 printf "\033[91m\nError: You already installed the web server on your Kuberentes cluster!\033[39m\n"
                 echo "To start it, Please run 'hollaex web --start --kube' command instead."
@@ -3307,31 +3307,6 @@ elif [[ "$1" == "web" ]]; then
 
     if [[ "$WEB_CLIENT_START" ]]; then
 
-        if command docker images | grep $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY > /dev/null && command docker images | grep $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION > /dev/null; then
-
-            printf "\nPre-built image for web server has been detected on your system.\n"
-            echo "You should build the image again if you made code changes for web."
-            echo "Plase input 'Y' to skip the build, 'N' to build the image again."
-            echo "Do you want to proceed with the pre-built image? (Y/n)"
-            read answer 
-
-            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-
-                build_user_hollaex_web;
-            
-            else 
-
-                echo "Proceeding..."
-            
-            fi
-        
-        else 
-
-            echo "Building the web server image..."
-            build_user_hollaex_web;
-
-        fi
-
         if [[ "$USE_KUBERNETES" ]]; then
 
             #Checking Kubernetes dependencies
@@ -3357,7 +3332,6 @@ elif [[ "$1" == "web" ]]; then
             fi
             
             # Web server installation status checking.
-            echo "Checking the web installation status on your Kubernetes..."
             if ! command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null 2>&1; then
 
                 printf "\033[91mFailed to detect the web server installed on your Kubernetes cluster.\033[39m\n"
@@ -3396,6 +3370,16 @@ elif [[ "$1" == "web" ]]; then
         
 
         elif [[ ! "$USE_KUBERNETES" ]]; then
+
+            if ! command docker images | grep $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY > /dev/null && command docker images | grep $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION > /dev/null; then
+
+                echo "Error: Can't detect built web docker image on this machine!"
+                echo "If this is your first time launching the web server, please run 'hollaex web --setup' instead."
+                echo "You can also build the image manually by using 'hollaex web --build' command."
+
+                exit 1;
+              
+            fi
 
             # Checking docker-compose is installed on this machine.
             check_docker_compose_is_installed;

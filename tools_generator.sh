@@ -4496,6 +4496,7 @@ function push_user_hollaex_core() {
   if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
     echo "Please type in your new image name. ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION)"
+    echo "Press enter to proceed with the previous name."
     read tag
   
   else 
@@ -4604,6 +4605,7 @@ function build_user_hollaex_web() {
 function push_user_hollaex_web() {
 
   echo "Please type in your new image name. ($ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION)"
+  echo "Press enter to proceed with the previous name."
   read answer
 
   export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE=$(echo ${answer:-$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION} | cut -f1 -d ":")
