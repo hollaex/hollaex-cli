@@ -3555,8 +3555,6 @@ elif [[ "$1" == "web" ]]; then
             cp -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf
 
             cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
-            cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-web.conf
-
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client stop; then
 
                 echo "Reloading Nginx..."
