@@ -3810,7 +3810,7 @@ elif [[ "$1" == "web" ]]; then
             cp -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf
 
             cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
-            
+
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client down --remove-orphans; then
 
                 echo "Reloading Nginx..."
@@ -4571,6 +4571,28 @@ elif [[ "$1" == "toolbox" ]]; then
             
             echo "SSL cert has been successfully set."
             echo "All Let's encrypt related files can be found at ./templates/local/letsencrypt."
+
+            echo "Updating domanin configurations to use HTTPS at user settings file..."
+
+            ESCAPED_HOLLAEX_CONFIGMAP_API_NAME=${HOLLAEX_CONFIGMAP_API_NAME//\//\\/}
+            ESCAPED_HOLLAEX_CONFIGMAP_DOMAIN=${HOLLAEX_CONFIGMAP_DOMAIN//\//\\/}
+
+            UPDATED_HOLLAEX_CONFIGMAP_API_NAME=${ESCAPED_HOLLAEX_CONFIGMAP_API_NAME//http/https/}
+            UPDATED_HOLLAEX_CONFIGMAP_DOMAIN=${ESCAPED_HOLLAEX_CONFIGMAP_DOMAIN//http/https/}
+
+            sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=.*/HOLLAEX_CONFIGMAP_API_NAME=$UPDATED_HOLLAEX_CONFIGMAP_API_NAME/" $CONFIGMAP_FILE_PATH
+            sed -i.bak "s/HOLLAEX_CONFIGMAP_DOMAIN=.*/HOLLAEX_CONFIGMAP_DOMAIN=$UPDATED_HOLLAEX_CONFIGMAP_DOMAIN/" $CONFIGMAP_FILE_PATH
+            rm $CONFIGMAP_FILE_PATH.bak
+
+            if command docker ps -a | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null ; then
+
+                echo "Info: You should rebuild and restart your web server to apply SSL configuraion on the web."
+                echo "The web server would malfunction if the server doesn't get rebuild"
+                echo "Please run 'hollaex web --restart' to rebuild the image and apply."
+
+                exit 0;
+
+            fi
 
         else 
 
