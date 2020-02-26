@@ -2108,47 +2108,47 @@ function add_pair_input() {
   MAKER_FEES=$(join_array_to_json $(print_maker_fees_array_side_by_side))
 
   echo "***************************************************************"
-  echo "[4/10] Minimum Amount: (0.001)"
+  echo "[4/10] Minimum Amount: (0.00001)"
   printf "\033[2m- Minimum $PAIR_BASE amount that can be traded for this pair. \033[22m\n"
   read answer
   
-  MIN_SIZE=${answer:-0.001}
+  MIN_SIZE=${answer:-0.00001}
 
   printf "\n"
-  echo "${answer:-0.001} ✔"
+  echo "${answer:-0.00001} ✔"
   printf "\n"
 
   echo "***************************************************************"
-  echo "[5/10] Maximum Amount: (20000000)"
+  echo "[5/10] Maximum Amount: (10000000)"
   printf "\033[2m- Maximum $PAIR_BASE amount that can be traded for this pair. \033[22m\n"
   read answer
 
-  MAX_SIZE=${answer:-20000000}
+  MAX_SIZE=${answer:-10000000}
 
   printf "\n"
-  echo "${answer:-20000000} ✔"
+  echo "${answer:-10000000} ✔"
   printf "\n"
 
   echo "***************************************************************"
-  echo "[6/10] Minimum Price: (0.0001)"
+  echo "[6/10] Minimum Price: (0.000001)"
   printf "\033[2m- Minimum $PAIR_2 quoated trading price that can be traded for this pair. \033[22m\n"
   read answer
 
-  MIN_PRICE=${answer:-0.0001}
+  MIN_PRICE=${answer:-0.000001}
 
   printf "\n"
-  echo "${answer:-0.0001} ✔"
+  echo "${answer:-0.000001} ✔"
   printf "\n"
 
   echo "***************************************************************"
-  echo "[7/10] Maximum Price: (10)"
+  echo "[7/10] Maximum Price: (1000000)"
   printf "\033[2m- Maximum $PAIR_2 quoated trading price that can be traded for this pair. \033[22m\n"
   read answer
 
-  MAX_PRICE=${answer:-10}
+  MAX_PRICE=${answer:-1000000}
 
   printf "\n"
-  echo "${answer:-10} ✔"
+  echo "${answer:-1000000} ✔"
   printf "\n"
 
   echo "***************************************************************"
@@ -2163,14 +2163,14 @@ function add_pair_input() {
   printf "\n"
 
   echo "***************************************************************"
-  echo "[9/10] Increment Price: (1)"
+  echo "[9/10] Increment Price: (0.001)"
   printf "\033[2m- The price $PAIR_2 increment allowed to be adjusted up and down. \033[22m\n"
   read answer
 
-  INCREMENT_PRICE=${answer:-1}
+  INCREMENT_PRICE=${answer:-0.001}
 
   printf "\n"
-  echo "${answer:-1} ✔"
+  echo "${answer:-0.001} ✔"
   printf "\n"
 
   echo "***************************************************************"
