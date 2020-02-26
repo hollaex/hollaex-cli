@@ -3806,6 +3806,11 @@ elif [[ "$1" == "web" ]]; then
 
             fi
 
+            echo "Cleaning up the web Nginx configuration..."
+            cp -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf
+
+            cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
+            
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client down --remove-orphans; then
 
                 echo "Reloading Nginx..."
