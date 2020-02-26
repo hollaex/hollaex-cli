@@ -4574,6 +4574,12 @@ elif [[ "$1" == "toolbox" ]]; then
 
             echo "Updating domanin configurations to use HTTPS at user settings file..."
 
+            for i in ${CONFIG_FILE_PATH[@]}; do
+                if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+                    CONFIGMAP_FILE_PATH=$i
+                fi
+            done
+
             ESCAPED_HOLLAEX_CONFIGMAP_API_NAME=${HOLLAEX_CONFIGMAP_API_NAME//\//\\/}
             ESCAPED_HOLLAEX_CONFIGMAP_DOMAIN=${HOLLAEX_CONFIGMAP_DOMAIN//\//\\/}
 
