@@ -4574,20 +4574,20 @@ elif [[ "$1" == "toolbox" ]]; then
 
             echo "Updating domanin configurations to use HTTPS at user settings file..."
 
+
+            UPDATED_HOLLAEX_CONFIGMAP_API_HOST=${HOLLAEX_CONFIGMAP_API_HOST//http:/https:}
+            UPDATED_HOLLAEX_CONFIGMAP_DOMAIN=${HOLLAEX_CONFIGMAP_DOMAIN//http:/https:}
+
+            ESCAPED_HOLLAEX_CONFIGMAP_API_HOST=${UPDATED_HOLLAEX_CONFIGMAP_API_HOST//\//\\/}
+            ESCAPED_HOLLAEX_CONFIGMAP_DOMAIN=${UPDATED_HOLLAEX_CONFIGMAP_DOMAIN//\//\\/}
+
             for i in ${CONFIG_FILE_PATH[@]}; do
                 if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
                     CONFIGMAP_FILE_PATH=$i
 
-                    UPDATED_HOLLAEX_CONFIGMAP_API_NAME=${HOLLAEX_CONFIGMAP_API_NAME//http/https}
-                    UPDATED_HOLLAEX_CONFIGMAP_DOMAIN=${HOLLAEX_CONFIGMAP_DOMAIN//http/https}
-
-                    ESCAPED_HOLLAEX_CONFIGMAP_API_NAME=${UPDATED_HOLLAEX_CONFIGMAP_API_NAME//\//\\/}
-                    ESCAPED_HOLLAEX_CONFIGMAP_DOMAIN=${UPDATED_HOLLAEX_CONFIGMAP_DOMAIN//\//\\/}
-
-                    sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=.*/HOLLAEX_CONFIGMAP_API_NAME=$ESCAPED_HOLLAEX_CONFIGMAP_API_NAME/" $CONFIGMAP_FILE_PATH
+                    sed -i.bak "s/HOLLAEX_CONFIGMAP_API_HOST=.*/HOLLAEX_CONFIGMAP_API_HOST=$ESCAPED_HOLLAEX_CONFIGMAP_API_HOST/" $CONFIGMAP_FILE_PATH
                     sed -i.bak "s/HOLLAEX_CONFIGMAP_DOMAIN=.*/HOLLAEX_CONFIGMAP_DOMAIN=$ESCAPED_HOLLAEX_CONFIGMAP_DOMAIN/" $CONFIGMAP_FILE_PATH
                     rm $CONFIGMAP_FILE_PATH.bak
-
                 fi
             done
 
