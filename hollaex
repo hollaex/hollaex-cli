@@ -3263,10 +3263,19 @@ elif [[ "$1" == "web" ]]; then
             echo "Generating web .env file"
             generate_hollaex_web_local_env
 
-            if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
+            if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]] || [[ ! -s "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
 
-                echo "Generating web Nginx configuration file"
-                generate_hollaex_web_local_nginx_conf
+                if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]]; then
+
+                    echo "Restoring old web Nginx configuration file"
+                    cp -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
+
+                else 
+
+                    echo "Generating web Nginx configuration file"
+                    generate_hollaex_web_local_nginx_conf
+                
+                fi
 
             fi
 
@@ -3420,10 +3429,19 @@ elif [[ "$1" == "web" ]]; then
             echo "Generating web docker-compose file"
             generate_local_docker_compose_for_web
 
-            if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
+            if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]] || [[ ! -s "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
 
-                echo "Generating web Nginx configuration file"
-                generate_hollaex_web_local_nginx_conf
+                if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]]; then
+
+                    echo "Restoring old web Nginx configuration file"
+                    cp -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
+
+                else 
+
+                    echo "Generating web Nginx configuration file"
+                    generate_hollaex_web_local_nginx_conf
+                
+                fi
 
             fi
 
@@ -3534,6 +3552,8 @@ elif [[ "$1" == "web" ]]; then
             generate_local_docker_compose_for_web
 
             echo "Cleaning up the web Nginx configuration..."
+            cp -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf
+
             cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
             cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-web.conf
 
