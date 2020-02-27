@@ -5146,11 +5146,9 @@ elif [[ "$1" == "logs" ]]; then
     
     fi
 
-    if [[ -d  "$HOLLAEX_LOGS_EXPORT_PATH" ]]; then
+    if [[ -d "$HOLLAEX_LOGS_EXPORT_PATH" ]]; then
 
-        printf "\n\033[91mError: Export path should be a file, not a directory.\033[39m\n"
-
-        exit;
+        export HOLLAEX_LOGS_EXPORT_PATH="${HOLLAEX_LOGS_EXPORT_PATH}/hollaex-logs-$(date +%s).log"
 
     fi
 
