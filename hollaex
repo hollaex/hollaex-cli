@@ -722,7 +722,7 @@ elif [[ "$1" == "setup" ]]; then
         if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
             echo "*********************************************"
-            printf "\033[91mAlert: HollaEx CLI detected that $HOLLAEX_CONFIGMAP_API_NAME exchange exists on your remote Kubernetes environment.\033[39m\n"
+            printf "\033[91mError: HollaEx CLI detected that the exchange exists on your remote Kubernetes environment.\033[39m\n"
             printf "\033[91mExchange setup can't be done for multiple times.\033[39m\n\n"
             printf "\033[91mIf you want to just update settings values, Please run 'hollaex setup --reconfigure' instead.\033[39m\n"
             echo "Exiting..."
@@ -895,7 +895,7 @@ elif [[ "$1" == "setup" ]]; then
         if command docker ps | grep local_$ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
             echo "*********************************************"
-            printf "\033[91mAlert: HollaEx CLI detected that $HOLLAEX_CONFIGMAP_API_NAME exchange exists on your machine.\033[39m\n"
+            printf "\033[91mError: HollaEx CLI detected that the exchange exists on your machine.\033[39m\n"
             printf "\033[91mExchange setup can't be done for multiple times.\033[39m\n\n"
             printf "\033[91mIf you want to just update settings values, Please run 'hollaex setup --reconfigure' instead.\033[39m\n\n"
             echo "Exiting..."
@@ -5057,10 +5057,25 @@ elif [[ "$1" == "logs" ]]; then
                 echo "Displaying Logs from $1..."
                 shift; continue
                 ;;
+            # --lines and --line does same thing.
+            --lines)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_LOGS_TARGET_LINE=$1
+                shift; continue
+                ;;
             --line)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 HOLLAEX_LOGS_TARGET_LINE=$1
+                shift; continue
+                ;;
+           --export)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                echo "Exporting the result as a file."
+                HOLLAEX_LOGS_EXPORT=true
+                HOLLAEX_LOGS_EXPORT_PATH=$1
                 shift; continue
                 ;;
             --kube)
@@ -5131,12 +5146,32 @@ elif [[ "$1" == "logs" ]]; then
     
     fi
 
+    if [[ -d  "$HOLLAEX_LOGS_EXPORT_PATH" ]]; then
+
+        printf "\n\033[91mError: Export path should be a file, not a directory.\033[39m\n"
+
+        exit;
+
+    fi
+
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
         check_kubernetes_dependencies;
 
         function show_kubernetes_logs_simple() {
+
+            hollaex version
+
+            # Printing general system information
+            echo "Client System OS Type: $OSTYPE"
+            echo "Client System Shell Type: $SHELL"
+            echo "Client System Shell Version: $(${SHELL} --version)"
+
+            printf "\nKubernetes Version: $(kubectl version)\n\n"
+            echo "Helm Version: $(helm version)"
+
+            printf "\n#########################################################################\n"
 
             if [[ "$HOLLAEX_LOGS_TARGET" ]]; then
 
@@ -5168,16 +5203,32 @@ elif [[ "$1" == "logs" ]]; then
         
         }
 
-        show_kubernetes_logs_simple;
+        if [[ "$HOLLAEX_LOGS_EXPORT" == true ]]; then
+
+            show_kubernetes_logs_simple &> "${HOLLAEX_LOGS_EXPORT_PATH}"
+
+        else 
+
+            show_kubernetes_logs_simple
+        
+        fi
+
 
         printf "\n"
-        echo "Displayed last ${HOLLAEX_LOGS_TARGET_LINE:-10} lines of logs from pod(s)."
+        echo "Displayed (Saved) last ${HOLLAEX_LOGS_TARGET_LINE:-10} lines of logs from pod(s)."
 
         if [[ ! "$HOLLAEX_LOGS_TARGET" ]]; then
             
             echo "To see logs from specific pod(s), Please run 'hollaex logs --kube --target <NAME_OF_COMPONENT> --lines <LINES_OF_LOGS>'."
-            echo "For example, 'hollaex logs --kube --targer api --lines 20'."
+            echo "For example, 'hollaex logs --kube --target api --lines 20'."
         
+        fi
+
+        if [[ "$HOLLAEX_LOGS_EXPORT" == true ]]; then
+
+            printf "\nYou can find the exported logs file at ${HOLLAEX_LOGS_EXPORT_PATH}.\n"
+            exit 0;
+
         fi
 
     fi
@@ -5191,6 +5242,15 @@ elif [[ "$1" == "logs" ]]; then
         else 
 
             function show_docker_logs_simple() {
+
+                hollaex version
+
+                # Printing general system information
+                echo "System OS Type: $OSTYPE"
+                echo "System Shell Type: $SHELL"
+                echo "System Shell Version: $(${SHELL} --version)"
+
+                printf "\n#########################################################################\n"
 
                 if [[ "$HOLLAEX_LOGS_TARGET" ]]; then
 
@@ -5223,16 +5283,31 @@ elif [[ "$1" == "logs" ]]; then
             
             }
 
-            show_docker_logs_simple;
+            if [[ "$HOLLAEX_LOGS_EXPORT" == true ]]; then
+
+                show_docker_logs_simple &> "${HOLLAEX_LOGS_EXPORT_PATH}"
+
+            else 
+
+                show_docker_logs_simple
+            
+            fi
 
             printf "\n"
-            echo "Displayed last ${HOLLAEX_LOGS_TARGET_LINE:-10} lines of logs from container(s)."
+            echo "Displayed (Exported) last ${HOLLAEX_LOGS_TARGET_LINE:-10} lines of logs from container(s)."
 
             if [[ ! "$HOLLAEX_LOGS_TARGET" ]]; then
 
                 echo "To see logs from specific container(s), Please run 'hollaex logs --target <NAME_OF_COMPONENT> --lines <LINES_OF_LOGS>'."
                 echo "For example, 'hollaex logs --target api --lines 20'."
             
+            fi
+
+            if [[ "$HOLLAEX_LOGS_EXPORT" == true ]]; then
+
+                printf "\nYou can find the exported logs file at ${HOLLAEX_LOGS_EXPORT_PATH}.\n"
+                exit 0;
+
             fi
 
         fi
