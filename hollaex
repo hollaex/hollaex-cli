@@ -2992,7 +2992,7 @@ elif [[ "$1" == "terminate" ]]; then
         helm del --purge $ENVIRONMENT_EXCHANGE_NAME-influxdb
 
         #Remove web server together if it exists on same namespace.
-        if command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-web; then
+        if command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null ; then
             
             helm del --purge $ENVIRONMENT_EXCHANGE_NAME-web
 

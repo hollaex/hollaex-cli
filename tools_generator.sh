@@ -340,7 +340,7 @@ services:
       - REDIS_PASSWORD=${HOLLAEX_SECRET_REDIS_PASSWORD}
     command : ["sh", "-c", "redis-server --requirepass \$\${REDIS_PASSWORD}"]
   ${ENVIRONMENT_EXCHANGE_NAME}-db:
-    image: postgres:10.9
+    image: postgres:10.9-alpine
     ports:
       - 5432:5432
     environment:
@@ -460,7 +460,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-db:
-    image: ${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY:-postgres}:${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION:-10.9}
+    image: ${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY:-postgres}:${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION:-10.9-alpine}
     restart: always
     ports:
       - 5432:5432
