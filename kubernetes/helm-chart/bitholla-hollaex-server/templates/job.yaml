@@ -47,6 +47,11 @@ spec:
         args:
           - node tools/dbs/setExchange.js;
 
+{{- else if eq .Values.job.mode "set_config" }}
+
+        args:
+          - node tools/dbs/setConfig.js;
+
 {{- else if eq .Values.job.mode "hollaex_upgrade" }}
 
         args:

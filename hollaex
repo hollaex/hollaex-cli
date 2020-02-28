@@ -722,7 +722,7 @@ elif [[ "$1" == "setup" ]]; then
         if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
             echo "*********************************************"
-            printf "\033[91mAlert: HollaEx CLI detected that $HOLLAEX_CONFIGMAP_API_NAME exchange exists on your remote Kubernetes environment.\033[39m\n"
+            printf "\033[91mError: HollaEx CLI detected that the exchange exists on your remote Kubernetes environment.\033[39m\n"
             printf "\033[91mExchange setup can't be done for multiple times.\033[39m\n\n"
             printf "\033[91mIf you want to just update settings values, Please run 'hollaex setup --reconfigure' instead.\033[39m\n"
             echo "Exiting..."
@@ -892,10 +892,10 @@ elif [[ "$1" == "setup" ]]; then
 
         fi
 
-        if command docker ps | grep local_$ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+        if command docker ps -a | grep local_$ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
             echo "*********************************************"
-            printf "\033[91mAlert: HollaEx CLI detected that $HOLLAEX_CONFIGMAP_API_NAME exchange exists on your machine.\033[39m\n"
+            printf "\033[91mError: HollaEx CLI detected that the exchange exists on your machine.\033[39m\n"
             printf "\033[91mExchange setup can't be done for multiple times.\033[39m\n\n"
             printf "\033[91mIf you want to just update settings values, Please run 'hollaex setup --reconfigure' instead.\033[39m\n\n"
             echo "Exiting..."
@@ -1290,7 +1290,7 @@ elif [[ "$1" == "login" ]]; then
         else 
 
             printf "\033[92mSuccessfully authenticated on bitHolla Server.\033[39m\n"
-            echo "Info: Your authentication will be only available for 24 hours."
+            # echo "Info: Your authentication will be only available for 24 hours."
 
             echo $BITHOLLA_ACCOUNT_TOKEN > $HOLLAEX_CLI_INIT_PATH/.token
 
@@ -1339,6 +1339,16 @@ elif [[ "$1" == "login" ]]; then
        | jq '.')
     
     BITHOLLA_USER_EXCHANGE_COUNT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r '.count')
+    
+    # Exit with error if user doesn't have any exchange on the account.
+    if [[ "$BITHOLLA_USER_EXCHANGE_COUNT" == "0" ]]; then
+
+        printf "\n\033[91mError: You don't have any exchange on your account.\033[39m\n"
+        echo "Please go to the bitHolla Dashboard (dash.bitholla.com), and do an exchange configuration first."
+        
+        exit 1;
+
+    fi
 
     # Subtracting 1 from total count due to the array starts from 0, not from 1.
     BITHOLLA_USER_EXCHANGE_COUNT=$((BITHOLLA_USER_EXCHANGE_COUNT-1))
@@ -1476,7 +1486,7 @@ elif [[ "$1" == "logout" ]]; then
 
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
-
+    
     if [[ ! "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then
 
         printf "\033[91mFailed to read pre-bound Activation code.\033[39m\n"
@@ -1494,6 +1504,13 @@ elif [[ "$1" == "logout" ]]; then
     if [[ "$answer" = "${answer#[Yy]}" ]]; then
         echo "Exiting..."
         exit 0;
+    fi
+
+    # Removing the login token
+    if [[ -f "$HOLLAEX_CLI_INIT_PATH/.token" ]]; then
+
+        rm $HOLLAEX_CLI_INIT_PATH/.token
+    
     fi
 
     if command sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=.*/HOLLAEX_CONFIGMAP_API_NAME=/" $CONFIGMAP_FILE_PATH; then
@@ -2112,7 +2129,7 @@ elif [[ "$1" == "stop" ]]; then
         fi
 
         # Only tries to attempt remove ingress rules from Kubernetes if it exists.
-        if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+        if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
         
             echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
             kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
@@ -2339,6 +2356,9 @@ elif [[ "$1" == "restart" ]]; then
         echo "Restarting all exchange containers on cluster"
         kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
 
+        echo "Flushing Redis..."
+        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/flushRedis.js
+
         echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
@@ -2430,6 +2450,10 @@ elif [[ "$1" == "restart" ]]; then
         # echo "Restarting containers to apply new changes..."
         # docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
         # docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+
+        echo "Flushing Redis..."
+        IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+        docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/flushRedis.js
         
         if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop; then
 
@@ -2745,6 +2769,9 @@ elif [[ "$1" == "upgrade" ]]; then
         # Running database job for Kubernetes
         kubernetes_database_init upgrade;
 
+        echo "Flushing Redis..."
+        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/flushRedis.js
+
         echo "Restarting all containers to apply latest database changes..."
         kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
 
@@ -2862,6 +2889,10 @@ elif [[ "$1" == "upgrade" ]]; then
 
             RUN_WITH_VERIFY=false
             local_database_init upgrade;
+
+            echo "Flushing Redis..."
+            IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/flushRedis.js
 
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart; then
 
@@ -2992,7 +3023,7 @@ elif [[ "$1" == "terminate" ]]; then
         helm del --purge $ENVIRONMENT_EXCHANGE_NAME-influxdb
 
         #Remove web server together if it exists on same namespace.
-        if command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-web; then
+        if command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null ; then
             
             helm del --purge $ENVIRONMENT_EXCHANGE_NAME-web
 
@@ -3265,12 +3296,14 @@ elif [[ "$1" == "web" ]]; then
 
             if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]] || [[ ! -s "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
 
-                if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]]; then
+                if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]] || [[ -s "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]]; then
 
                     echo "Restoring old web Nginx configuration file"
                     cp -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
 
-                else 
+                    rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf
+
+                else
 
                     echo "Generating web Nginx configuration file"
                     generate_hollaex_web_local_nginx_conf
@@ -3431,12 +3464,14 @@ elif [[ "$1" == "web" ]]; then
 
             if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]] || [[ ! -s "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
 
-                if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]]; then
+                if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]] || [[ -s "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]]; then
 
                     echo "Restoring old web Nginx configuration file"
                     cp -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
 
-                else 
+                    rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf
+
+                else
 
                     echo "Generating web Nginx configuration file"
                     generate_hollaex_web_local_nginx_conf
@@ -3955,6 +3990,12 @@ elif [[ "$1" == "toolbox" ]]; then
                 SET_ACTIVATION_CODE=true
                 TOOLBOX_ENABLE=true
                 echo "HollaEx CLI will update your activation code for the exchange."
+                shift; continue
+                ;;
+            --set_config)
+                SET_CONFIG=true
+                TOOLBOX_ENABLE=true
+                echo "Override database-stored cosntants with local configmap-stored values."
                 shift; continue
                 ;;
              --connect_database)
@@ -4739,6 +4780,52 @@ elif [[ "$1" == "toolbox" ]]; then
 
         fi
 
+    elif [[ "$SET_CONFIG" ]]; then
+
+        function toolbox_set_config_confirm_message() {
+
+            echo "Warning: This command is not recommended for most of users in most of use cases."
+            echo "This command would completely override your database to update values with local settings."
+            echo "Are you sure you want to update database-stored constatns with your local configmap values? (y/N)"
+            read answer
+
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                echo "Exiting..."
+                exit 0;
+            fi
+
+        }
+
+        if [[ "$USE_KUBERNETES" ]]; then 
+
+            toolbox_set_config_confirm_message;
+
+            echo "Generating Kubernetes Configmap."
+            generate_kubernetes_configmap;
+
+            echo "Generating Kubernetes Secret."
+            generate_kubernetes_secret;
+
+             echo "Applying configmap on the namespace."
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+            
+            echo "Applying secret on the namespace."
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+
+            set_config_exec;
+            
+
+        elif [[ ! "$USE_KUBERNETES" ]]; then 
+        
+            check_docker_compose_dependencies; 
+
+            toolbox_set_config_confirm_message;
+
+            set_config_exec;
+
+        fi
+
+
     elif [[ "$CONNECT_DATABASE" ]]; then
 
         if ! command psql --version > /dev/null 2>&1; then
@@ -5057,10 +5144,25 @@ elif [[ "$1" == "logs" ]]; then
                 echo "Displaying Logs from $1..."
                 shift; continue
                 ;;
+            # --lines and --line does same thing.
+            --lines)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_LOGS_TARGET_LINE=$1
+                shift; continue
+                ;;
             --line)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 HOLLAEX_LOGS_TARGET_LINE=$1
+                shift; continue
+                ;;
+           --export)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                echo "Exporting the result as a file."
+                HOLLAEX_LOGS_EXPORT=true
+                HOLLAEX_LOGS_EXPORT_PATH=$1
                 shift; continue
                 ;;
             --kube)
@@ -5131,12 +5233,30 @@ elif [[ "$1" == "logs" ]]; then
     
     fi
 
+    if [[ -d "$HOLLAEX_LOGS_EXPORT_PATH" ]]; then
+
+        export HOLLAEX_LOGS_EXPORT_PATH="${HOLLAEX_LOGS_EXPORT_PATH}/hollaex-logs-$(date +%s).log"
+
+    fi
+
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
         check_kubernetes_dependencies;
 
         function show_kubernetes_logs_simple() {
+
+            hollaex version
+
+            # Printing general system information
+            echo "Client System OS Type: $OSTYPE"
+            echo "Client System Shell Type: $SHELL"
+            echo "Client System Shell Version: $(${SHELL} --version)"
+
+            printf "\nKubernetes Version: $(kubectl version)\n\n"
+            echo "Helm Version: $(helm version)"
+
+            printf "\n#########################################################################\n"
 
             if [[ "$HOLLAEX_LOGS_TARGET" ]]; then
 
@@ -5168,16 +5288,32 @@ elif [[ "$1" == "logs" ]]; then
         
         }
 
-        show_kubernetes_logs_simple;
+        if [[ "$HOLLAEX_LOGS_EXPORT" == true ]]; then
+
+            show_kubernetes_logs_simple &> "${HOLLAEX_LOGS_EXPORT_PATH}"
+
+        else 
+
+            show_kubernetes_logs_simple
+        
+        fi
+
 
         printf "\n"
-        echo "Displayed last ${HOLLAEX_LOGS_TARGET_LINE:-10} lines of logs from pod(s)."
+        echo "Displayed (Saved) last ${HOLLAEX_LOGS_TARGET_LINE:-10} lines of logs from pod(s)."
 
         if [[ ! "$HOLLAEX_LOGS_TARGET" ]]; then
             
             echo "To see logs from specific pod(s), Please run 'hollaex logs --kube --target <NAME_OF_COMPONENT> --lines <LINES_OF_LOGS>'."
-            echo "For example, 'hollaex logs --kube --targer api --lines 20'."
+            echo "For example, 'hollaex logs --kube --target api --lines 20'."
         
+        fi
+
+        if [[ "$HOLLAEX_LOGS_EXPORT" == true ]]; then
+
+            printf "\nYou can find the exported logs file at ${HOLLAEX_LOGS_EXPORT_PATH}.\n"
+            exit 0;
+
         fi
 
     fi
@@ -5191,6 +5327,15 @@ elif [[ "$1" == "logs" ]]; then
         else 
 
             function show_docker_logs_simple() {
+
+                hollaex version
+
+                # Printing general system information
+                echo "System OS Type: $OSTYPE"
+                echo "System Shell Type: $SHELL"
+                echo "System Shell Version: $(${SHELL} --version)"
+
+                printf "\n#########################################################################\n"
 
                 if [[ "$HOLLAEX_LOGS_TARGET" ]]; then
 
@@ -5223,16 +5368,31 @@ elif [[ "$1" == "logs" ]]; then
             
             }
 
-            show_docker_logs_simple;
+            if [[ "$HOLLAEX_LOGS_EXPORT" == true ]]; then
+
+                show_docker_logs_simple &> "${HOLLAEX_LOGS_EXPORT_PATH}"
+
+            else 
+
+                show_docker_logs_simple
+            
+            fi
 
             printf "\n"
-            echo "Displayed last ${HOLLAEX_LOGS_TARGET_LINE:-10} lines of logs from container(s)."
+            echo "Displayed (Exported) last ${HOLLAEX_LOGS_TARGET_LINE:-10} lines of logs from container(s)."
 
             if [[ ! "$HOLLAEX_LOGS_TARGET" ]]; then
 
                 echo "To see logs from specific container(s), Please run 'hollaex logs --target <NAME_OF_COMPONENT> --lines <LINES_OF_LOGS>'."
                 echo "For example, 'hollaex logs --target api --lines 20'."
             
+            fi
+
+            if [[ "$HOLLAEX_LOGS_EXPORT" == true ]]; then
+
+                printf "\nYou can find the exported logs file at ${HOLLAEX_LOGS_EXPORT_PATH}.\n"
+                exit 0;
+
             fi
 
         fi
