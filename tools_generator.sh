@@ -4462,6 +4462,8 @@ function build_user_hollaex_core() {
       
       else 
         
+        printf "\n\nYou can rename (tag) and push the built image to your Docker Registry. (Optional)\n"
+        echo "Note that this is an optional job, so could be skipped."
         echo "Do you want to also push it at your Docker Registry? (y/N)"
         read pushAnswer
           
@@ -4665,9 +4667,8 @@ function hollaex_ascii_web_server_is_up() {
 1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
 
               Web Client for your exchange is ready!
-              Try to reach $HOLLAEX_CONFIGMAP_DOMAIN 
-              $(if [[ ! "$USE_KUBERNETES" ]]; then echo "or http://localhost:8080!"; fi)
-
+              Try to reach $(if [[ ! "$HOLLAEX_CONFIGMAP_DOMAIN" == *"example.com" ]]; then echo "$HOLLAEX_CONFIGMAP_DOMAIN"; fi) $(if [[ ! "$HOLLAEX_CONFIGMAP_DOMAIN" == *"example.com" ]] && [[ ! "$USE_KUBERNETES" ]]; then echo "or"; fi) $(if [[ ! "$USE_KUBERNETES" ]]; then echo "localhost:8080"; fi)
+      
 EOF
 
 }
@@ -4987,6 +4988,94 @@ EOL
 
     echo "Setting up the exchange with provided activation code"
     docker exec --env "ACTIVATION_CODE=${HOLLAEX_SECRET_ACTIVATION_CODE}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/setExchange.js
+          
+  fi
+
+}
+
+function set_config_exec() {
+
+  if [[ "$USE_KUBERNETES" ]]; then 
+
+    # Generate Kubernetes Configmap
+    cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/set_config.yaml <<EOL
+job:
+  enable: true
+  mode: set_config
+EOL
+
+    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-set-config \
+                            --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                            --set job.enable="true" \
+                            --set job.mode="set_config" \
+                            --set DEPLOYMENT_MODE="api" \
+                            --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                            --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                            --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                            -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/set_config.yaml \
+                            $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+
+      echo "Kubernetes Job has been created for setting up the config."
+
+      echo "Waiting until Job get completely run..."
+      sleep 30;
+
+    else 
+
+      printf "\033[91mFailed to create Kubernetes Job for setting up the config, Please confirm the logs and try again.\033[39m\n"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-config
+
+    fi
+
+    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-set-config --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+
+      echo "Your database constants has been successfully updated!"
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-config
+
+      echo "Removing created Kubernetes Job for setting up the config..."
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-config
+
+      echo "Successfully updated database constants with your local configmap values."
+      echo "Make sure to run 'hollaex restart --kube' to fully apply it."
+
+    else 
+
+      printf "\033[91mFailed to update the database constants! Please try again.\033[39m\n"
+      
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-config
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-config
+
+      exit 1;
+
+    fi
+
+
+  elif [[ ! "$USE_KUBERNETES" ]]; then
+
+    IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+          
+    # Overriding container prefix for develop server
+    if [[ "$IS_DEVELOP" ]]; then
+      
+      CONTAINER_PREFIX=
+
+    fi
+
+    echo "Updating constants..."
+    if command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/setConfig.js; then
+
+        echo "Successfully updated database constants with your local configmap values."
+        echo "Make sure to run 'hollaex restart' to fully apply it."
+
+    else 
+
+        echo "Error: Failed to update database constants with your local configmap values."
+        echo "Please check the logs and try again."
+
+    fi
           
   fi
 
