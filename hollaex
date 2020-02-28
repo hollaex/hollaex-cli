@@ -4798,13 +4798,6 @@ elif [[ "$1" == "toolbox" ]]; then
 
         if [[ "$USE_KUBERNETES" ]]; then 
 
-            check_kubernetes_dependencies;
-        
-            echo "*********************************************"
-            echo "Verifying current KUBECONFIG on the machine"
-            kubectl get nodes
-            echo "*********************************************"
-
             toolbox_set_config_confirm_message;
 
             echo "Generating Kubernetes Configmap."
