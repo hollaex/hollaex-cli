@@ -3082,7 +3082,7 @@ elif [[ "$1" == "terminate" ]]; then
         echo "$HOLLAEX_CONFIGMAP_API_NAME ($HOLLAEX_CONFIGMAP_API_HOST) has been successfully terminated."
         echo "If there's an issue, please review the logs and try it again."
         echo "To setup the exchange again from a scratch, please run 'hollaex setup'"
-        echo "Bye!"
+        printf "\nBye!\n\n"
 
         exit 0;
 
