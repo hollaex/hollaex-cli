@@ -724,7 +724,6 @@ elif [[ "$1" == "setup" ]]; then
             echo "*********************************************"
             printf "\033[91mError: HollaEx CLI detected that the exchange exists on your remote Kubernetes environment.\033[39m\n"
             printf "\033[91mExchange setup can't be done for multiple times.\033[39m\n\n"
-            printf "\033[91mIf you want to just update settings values, Please run 'hollaex setup --reconfigure' instead.\033[39m\n"
             echo "Exiting..."
             echo "*********************************************"
             exit 1;
@@ -917,18 +916,18 @@ elif [[ "$1" == "setup" ]]; then
         fi
         
 
-        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+        # if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to run $HOLLAEX_CONFIGMAP_API_NAME on your machine? (Y/n)"
+        #     echo "Are you sure you want to run $HOLLAEX_CONFIGMAP_API_NAME on your machine? (Y/n)"
 
-            read answer
+        #     read answer
 
-            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-                echo "Exiting..."
-                exit 0;
-            fi
+        #     if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+        #         echo "Exiting..."
+        #         exit 0;
+        #     fi
 
-        fi
+        # fi
 
         # #Generating random values for passwords and update config file to contain it;
         update_random_values_to_config;
@@ -1309,12 +1308,16 @@ elif [[ "$1" == "login" ]]; then
         echo "Validating the existing access token..."
         BITHOLLA_ACCOUNT_TOKEN=$(cat $HOLLAEX_CLI_INIT_PATH/.token)
 
+        BITHOLLA_USER_TOKEN_EXPIRY_CHECK=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
+            --request GET \
+            https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange)
+
         BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
             --request GET \
             https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange \
             | jq '.')
 
-        if [[ ! "$BITHOLLA_USER_EXCHANGE_LIST" ]] || [[ "$BITHOLLA_USER_EXCHANGE_LIST" == *"Token is expired"* ]]; then
+        if [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" ]] || [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" == "200" ]]; then
 
             printf "\033[91mError: Your access token has been expired!\033[39m\n"
             printf "Please login again with your bitHolla account to issue a new access token.\n\n"
@@ -1627,13 +1630,14 @@ elif [[ "$1" == "pull" ]]; then
 
         printf "\033[91mFailed to read pre-bound Activation code.\033[39m\n"
         echo "'hollaex pull' works only after you successfully logged in."
+        echo "Please run 'hollaex login' to sign in first."
         exit 1;
     
     fi
 
     if [[ "$RUN_WITH_VERIFY" == true ]]; then 
 
-        printf "\nCurrent bound Exchange name: \033[92m$HOLLAEX_CONFIGMAP_API_NAME\033[39m\n\n"
+        printf "\nCurrent bound activation code: \033[92m$HOLLAEX_SECRET_ACTIVATION_CODE\033[39m\n\n"
         echo "This command will override the current Exchange settings at '/settings' folder of your HollaEx Kit."
         echo "Are you sure you want to pull the exchange settings from bitHolla Dashboard? (y/N)"
         read answer
@@ -1657,12 +1661,16 @@ elif [[ "$1" == "pull" ]]; then
 
     fi
 
+    BITHOLLA_USER_TOKEN_EXPIRY_CHECK=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
+            --request GET \
+            https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange)
+
     BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
         --request GET \
         https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange \
        | jq '.')
 
-    if [[ ! "$BITHOLLA_USER_EXCHANGE_LIST" ]] || [[ "$BITHOLLA_USER_EXCHANGE_LIST" == *"Token is expired"* ]]; then
+    if [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" ]] || [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" == "200" ]]; then
 
         printf "\033[91mFailed to pull the exchange data from bitHolla.\033[39m\n\n"
         printf "\033[91mError: Your access token has been expired!\033[39m\n"
@@ -1840,19 +1848,19 @@ elif [[ "$1" == "start" ]]; then
         kubectl get nodes
         echo "*********************************************"
 
-        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+        # if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
 
-            echo "Are you sure you want to start (scale up) $HOLLAEX_CONFIGMAP_API_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) on this cluster? (Y/n)"
+        #     echo "Are you sure you want to start (scale up) $HOLLAEX_CONFIGMAP_API_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) on this cluster? (Y/n)"
 
-            read answer
+        #     read answer
 
-            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-                echo "Exiting..."
-                exit 0;
-            fi
+        #     if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+        #         echo "Exiting..."
+        #         exit 0;
+        #     fi
 
-        fi
+        # fi
 
         #Generating and updating settings
 
@@ -1975,18 +1983,18 @@ elif [[ "$1" == "start" ]]; then
 
         fi
 
-        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+        # if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to start $HOLLAEX_CONFIGMAP_API_NAME on your machine? (Y/n)"
+        #     echo "Are you sure you want to start $HOLLAEX_CONFIGMAP_API_NAME on your machine? (Y/n)"
 
-            read answer
+        #     read answer
 
-            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-                echo "Exiting..."
-                exit 0;
-            fi
+        #     if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+        #         echo "Exiting..."
+        #         exit 0;
+        #     fi
 
-        fi
+        # fi
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
@@ -3076,7 +3084,10 @@ elif [[ "$1" == "terminate" ]]; then
             docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client down 
         fi
 
-        echo "$HOLLAEX_CONFIGMAP_API_NAME ($HOLLAEX_CONFIGMAP_API_HOST) has been successfully terminated. If there's an issue, please review the logs and try it again."
+        echo "$HOLLAEX_CONFIGMAP_API_NAME ($HOLLAEX_CONFIGMAP_API_HOST) has been successfully terminated."
+        echo "If there's an issue, please review the logs and try it again."
+        echo "To setup the exchange again from a scratch, please run 'hollaex setup'"
+        printf "\nBye!\n\n"
 
         exit 0;
 
@@ -3270,18 +3281,18 @@ elif [[ "$1" == "web" ]]; then
             # Checking docker-compose is installed on this machine.
             check_docker_compose_is_installed;
 
-            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+            # if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to setup the web server on this machine? (Y/n)"
+            #     echo "Are you sure you want to setup the web server on this machine? (Y/n)"
 
-                read answer
+            #     read answer
 
-                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-                    echo "Exiting..."
-                    exit 0;
-                fi
+            #     if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+            #         echo "Exiting..."
+            #         exit 0;
+            #     fi
 
-            fi
+            # fi
 
             #Generating nginx conf.d folder
             if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
@@ -3296,7 +3307,7 @@ elif [[ "$1" == "web" ]]; then
 
             if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]] || [[ ! -s "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
 
-                if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]] || [[ -s "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]]; then
+                if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]] && [[ -s "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]]; then
 
                     echo "Restoring old web Nginx configuration file"
                     cp -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
@@ -3366,18 +3377,18 @@ elif [[ "$1" == "web" ]]; then
             kubectl get nodes
             echo "*********************************************"
 
-            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+            # if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to start (scale up) the web server on this cluster? (Y/n)"
+            #     echo "Are you sure you want to start (scale up) the web server on this cluster? (Y/n)"
 
-                read answer
+            #     read answer
 
-                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-                    echo "Exiting..."
-                    exit 0;
-                fi
+            #     if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+            #         echo "Exiting..."
+            #         exit 0;
+            #     fi
 
-            fi
+            # fi
             
             # Web server installation status checking.
             if ! command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null 2>&1; then
@@ -3432,18 +3443,18 @@ elif [[ "$1" == "web" ]]; then
             # Checking docker-compose is installed on this machine.
             check_docker_compose_is_installed;
 
-            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+            # if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to start the web client on this machine? (Y/n)"
+            #     echo "Are you sure you want to start the web client on this machine? (Y/n)"
 
-                read answer
+            #     read answer
 
-                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-                    echo "Exiting..."
-                    exit 0;
-                fi
+            #     if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+            #         echo "Exiting..."
+            #         exit 0;
+            #     fi
 
-            fi
+            # fi
 
             if ! command docker ps -a | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null 2>&1; then
 
@@ -3464,7 +3475,7 @@ elif [[ "$1" == "web" ]]; then
 
             if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]] || [[ ! -s "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
 
-                if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]] || [[ -s "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]]; then
+                if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]] && [[ -s "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]]; then
 
                     echo "Restoring old web Nginx configuration file"
                     cp -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
@@ -3588,8 +3599,8 @@ elif [[ "$1" == "web" ]]; then
 
             echo "Cleaning up the web Nginx configuration..."
             cp -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf
+            rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
 
-            cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client stop; then
 
                 echo "Reloading Nginx..."
@@ -3843,8 +3854,7 @@ elif [[ "$1" == "web" ]]; then
 
             echo "Cleaning up the web Nginx configuration..."
             cp -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf
-
-            cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
+            rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
 
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client down --remove-orphans; then
 
