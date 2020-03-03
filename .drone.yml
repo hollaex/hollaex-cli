@@ -22,14 +22,6 @@ steps:
   when:
     branch: master
 
-- name: docker_tag_for_release_master
-  image: alpine
-  commands:
-  -  export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION" > .tags_release
-  - echo "Current Release tag is :" && cat .tags_release
-  when:
-    branch: master
-
 - name: docker_tagging_testnet
   image: alpine
   commands:
@@ -65,6 +57,14 @@ steps:
   when:
     branch: testnet
 
+- name: docker_tag_for_release_master
+  image: alpine
+  commands:
+  -  export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION" > .tags
+  - echo "Current Release tag is :" && cat .tags
+  when:
+    branch: master
+
 - name: create_github_release
   image: ubuntu:19.04
   environment:
@@ -72,7 +72,7 @@ steps:
       from_secret: github_oauth2_token_for_releases
   commands:
     - apt-get update && apt-get install -y hub git
-    - hub release create -m "HollaEx CLI v$(cat .tags_release) Release" -t ${DRONE_BRANCH} $(cat .tags_release)
+    - hub release create -m "HollaEx CLI v$(cat .tags) Release" -t ${DRONE_BRANCH} $(cat .tags)
   when:
     branch: master
 
