@@ -1630,13 +1630,14 @@ elif [[ "$1" == "pull" ]]; then
 
         printf "\033[91mFailed to read pre-bound Activation code.\033[39m\n"
         echo "'hollaex pull' works only after you successfully logged in."
+        echo "Please run 'hollaex login' to sign in first."
         exit 1;
     
     fi
 
     if [[ "$RUN_WITH_VERIFY" == true ]]; then 
 
-        printf "\nCurrent bound Exchange name: \033[92m$HOLLAEX_CONFIGMAP_API_NAME\033[39m\n\n"
+        printf "\nCurrent bound activation code: \033[92m$HOLLAEX_SECRET_ACTIVATION_CODE\033[39m\n\n"
         echo "This command will override the current Exchange settings at '/settings' folder of your HollaEx Kit."
         echo "Are you sure you want to pull the exchange settings from bitHolla Dashboard? (y/N)"
         read answer
@@ -1660,12 +1661,16 @@ elif [[ "$1" == "pull" ]]; then
 
     fi
 
+    BITHOLLA_USER_TOKEN_EXPIRY_CHECK=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
+            --request GET \
+            https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange)
+
     BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
         --request GET \
         https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange \
        | jq '.')
 
-    if [[ ! "$BITHOLLA_USER_EXCHANGE_LIST" ]] || [[ "$BITHOLLA_USER_EXCHANGE_LIST" == *"Token is expired"* ]]; then
+    if [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" ]] || [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" == "200" ]]; then
 
         printf "\033[91mFailed to pull the exchange data from bitHolla.\033[39m\n\n"
         printf "\033[91mError: Your access token has been expired!\033[39m\n"
@@ -3595,7 +3600,7 @@ elif [[ "$1" == "web" ]]; then
             echo "Cleaning up the web Nginx configuration..."
             cp -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf
             rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
-            
+
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client stop; then
 
                 echo "Reloading Nginx..."
