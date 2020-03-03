@@ -724,7 +724,6 @@ elif [[ "$1" == "setup" ]]; then
             echo "*********************************************"
             printf "\033[91mError: HollaEx CLI detected that the exchange exists on your remote Kubernetes environment.\033[39m\n"
             printf "\033[91mExchange setup can't be done for multiple times.\033[39m\n\n"
-            printf "\033[91mIf you want to just update settings values, Please run 'hollaex setup --reconfigure' instead.\033[39m\n"
             echo "Exiting..."
             echo "*********************************************"
             exit 1;
@@ -917,18 +916,18 @@ elif [[ "$1" == "setup" ]]; then
         fi
         
 
-        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+        # if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to run $HOLLAEX_CONFIGMAP_API_NAME on your machine? (Y/n)"
+        #     echo "Are you sure you want to run $HOLLAEX_CONFIGMAP_API_NAME on your machine? (Y/n)"
 
-            read answer
+        #     read answer
 
-            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-                echo "Exiting..."
-                exit 0;
-            fi
+        #     if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+        #         echo "Exiting..."
+        #         exit 0;
+        #     fi
 
-        fi
+        # fi
 
         # #Generating random values for passwords and update config file to contain it;
         update_random_values_to_config;
@@ -3080,7 +3079,10 @@ elif [[ "$1" == "terminate" ]]; then
             docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client down 
         fi
 
-        echo "$HOLLAEX_CONFIGMAP_API_NAME ($HOLLAEX_CONFIGMAP_API_HOST) has been successfully terminated. If there's an issue, please review the logs and try it again."
+        echo "$HOLLAEX_CONFIGMAP_API_NAME ($HOLLAEX_CONFIGMAP_API_HOST) has been successfully terminated."
+        echo "If there's an issue, please review the logs and try it again."
+        echo "To setup the exchange again from a scratch, please run 'hollaex setup'"
+        echo "Bye!"
 
         exit 0;
 
@@ -3274,18 +3276,18 @@ elif [[ "$1" == "web" ]]; then
             # Checking docker-compose is installed on this machine.
             check_docker_compose_is_installed;
 
-            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+            # if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to setup the web server on this machine? (Y/n)"
+            #     echo "Are you sure you want to setup the web server on this machine? (Y/n)"
 
-                read answer
+            #     read answer
 
-                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-                    echo "Exiting..."
-                    exit 0;
-                fi
+            #     if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+            #         echo "Exiting..."
+            #         exit 0;
+            #     fi
 
-            fi
+            # fi
 
             #Generating nginx conf.d folder
             if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
