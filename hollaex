@@ -1309,12 +1309,16 @@ elif [[ "$1" == "login" ]]; then
         echo "Validating the existing access token..."
         BITHOLLA_ACCOUNT_TOKEN=$(cat $HOLLAEX_CLI_INIT_PATH/.token)
 
+        BITHOLLA_USER_TOKEN_EXPIRY_CHECK=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
+            --request GET \
+            https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange)
+
         BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
             --request GET \
             https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange \
             | jq '.')
 
-        if [[ ! "$BITHOLLA_USER_EXCHANGE_LIST" ]] || [[ "$BITHOLLA_USER_EXCHANGE_LIST" == *"Token is expired"* ]]; then
+        if [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" ]] || [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" == "200" ]]; then
 
             printf "\033[91mError: Your access token has been expired!\033[39m\n"
             printf "Please login again with your bitHolla account to issue a new access token.\n\n"
@@ -1840,19 +1844,19 @@ elif [[ "$1" == "start" ]]; then
         kubectl get nodes
         echo "*********************************************"
 
-        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+        # if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
 
-            echo "Are you sure you want to start (scale up) $HOLLAEX_CONFIGMAP_API_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) on this cluster? (Y/n)"
+        #     echo "Are you sure you want to start (scale up) $HOLLAEX_CONFIGMAP_API_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) on this cluster? (Y/n)"
 
-            read answer
+        #     read answer
 
-            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-                echo "Exiting..."
-                exit 0;
-            fi
+        #     if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+        #         echo "Exiting..."
+        #         exit 0;
+        #     fi
 
-        fi
+        # fi
 
         #Generating and updating settings
 
@@ -1975,18 +1979,18 @@ elif [[ "$1" == "start" ]]; then
 
         fi
 
-        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+        # if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to start $HOLLAEX_CONFIGMAP_API_NAME on your machine? (Y/n)"
+        #     echo "Are you sure you want to start $HOLLAEX_CONFIGMAP_API_NAME on your machine? (Y/n)"
 
-            read answer
+        #     read answer
 
-            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-                echo "Exiting..."
-                exit 0;
-            fi
+        #     if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+        #         echo "Exiting..."
+        #         exit 0;
+        #     fi
 
-        fi
+        # fi
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
@@ -3366,18 +3370,18 @@ elif [[ "$1" == "web" ]]; then
             kubectl get nodes
             echo "*********************************************"
 
-            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+            # if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to start (scale up) the web server on this cluster? (Y/n)"
+            #     echo "Are you sure you want to start (scale up) the web server on this cluster? (Y/n)"
 
-                read answer
+            #     read answer
 
-                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-                    echo "Exiting..."
-                    exit 0;
-                fi
+            #     if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+            #         echo "Exiting..."
+            #         exit 0;
+            #     fi
 
-            fi
+            # fi
             
             # Web server installation status checking.
             if ! command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null 2>&1; then
@@ -3432,18 +3436,18 @@ elif [[ "$1" == "web" ]]; then
             # Checking docker-compose is installed on this machine.
             check_docker_compose_is_installed;
 
-            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+            # if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to start the web client on this machine? (Y/n)"
+            #     echo "Are you sure you want to start the web client on this machine? (Y/n)"
 
-                read answer
+            #     read answer
 
-                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-                    echo "Exiting..."
-                    exit 0;
-                fi
+            #     if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+            #         echo "Exiting..."
+            #         exit 0;
+            #     fi
 
-            fi
+            # fi
 
             if ! command docker ps -a | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null 2>&1; then
 
@@ -3844,7 +3848,7 @@ elif [[ "$1" == "web" ]]; then
             echo "Cleaning up the web Nginx configuration..."
             cp -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf
 
-            cat /dev/null > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
+            rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
 
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client down --remove-orphans; then
 
