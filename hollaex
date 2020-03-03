@@ -77,6 +77,7 @@ Options:
         --issue_ssl, Issue SSL certificate on local Nginx by using Let's Encrypt.
         --renew_ssl, Renew SSL certificate on local Nginx by using Let's Encrypt.
         --update_registry_secret, Update existing docker registry secret for Kubernetes.
+        --set_config, Update constants configured on the exchange database.
         --set_activation_code, Set or update activation code for the exchange.
         --connect_database, Direct connection to PostgreSQL Database via postgresql-client.
         --connect_redis, Direct connection to Redis via redis-client.
