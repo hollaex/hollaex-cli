@@ -46,6 +46,8 @@ Options:
 
     start: Start the exchange which already been configured by 'hollaex setup' command.
 
+    prod: Bring up the exchange as production. Including public domain setup and SSL configuraiton.
+
     restart: Restart the existing exchange.
     
     stop: Stop the exchagne which already been running.
@@ -2037,6 +2039,281 @@ elif [[ "$1" == "start" ]]; then
         exit 0;
 
     fi
+
+elif [[ "$1" == "prod" ]]; then
+
+    while true; do
+        [[ $# -eq 0 ]] && break
+        case $1 in
+            --path)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_CLI_INIT_PATH=$1
+                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
+                shift; continue
+                ;;
+            --kube)
+                USE_KUBERNETES=true
+                echo "HollaEx CLI will use your Kubernetes cluster as a target."
+                shift; continue
+                ;;
+            --skip)
+                RUN_WITH_VERIFY=false
+                echo "Skipping the command confirmation."
+                shift; continue
+                ;;
+            --*) 
+                err_msg "Invalid option: $1"
+                print_usage;
+                exit 1;
+                ;;
+        esac
+        shift
+    done
+
+    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        CONFIG_FILE_PATH=$(pwd)/settings/*
+        TEMPLATE_GENERATE_PATH=$(pwd)/templates
+        INIT_PATH_CHECK=$(pwd)/.hollaex
+
+    fi
+
+    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        
+    fi
+
+
+    #Quit if necessary flags are missing
+    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
+
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
+        print_usage;
+        exit 1;
+
+    fi
+
+    # for i in ${CONFIG_FILE_PATH[@]}; do
+    #     source $i
+    # done;
+    
+    # source $SCRIPTPATH/tools_generator.sh
+    # load_config_variables;
+
+    if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+
+        echo "Are you sure you want to enable the production mode for your exchange? (Y/n)"
+
+        read answer
+
+        if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+            echo "Exiting..."
+            exit 0;
+        fi
+
+    fi
+
+    function hollaex_prod_domain_questions() {
+
+        # Web Domain
+        echo "***************************************************************"
+        echo "[1/2] Exchange Web URL"
+        printf "\033[2m- Enter the full URL of your exchange website, Including 'http' or 'https'.\033[22m\n"
+        read answer
+        
+        while true;
+            do if [[ ! "$answer" == *"http"* ]]; then
+                printf "\nValue should be a full URL including 'http' or 'https'.\n"
+                echo  "Exchange URL: "
+                read answer
+                local INPUT_HOLLAEX_CONFIGMAP_DOMAIN="${answer}"
+            else
+                break;
+            fi
+        done
+
+        export INPUT_HOLLAEX_CONFIGMAP_DOMAIN="${answer}"
+        local PARSED_INPUT_HOLLAEX_CONFIGMAP_DOMAIN=${INPUT_HOLLAEX_CONFIGMAP_DOMAIN//\//\\/}
+
+        # API Domain
+        echo "***************************************************************"
+        echo "[2/2] Exchange Server API URL"
+        printf "\033[2m- Enter the full URL of your exchange API server, Including 'http' or 'https'.\033[22m\n"
+        read answer
+
+        while true;
+            do if [[ ! "$answer" == *"http"* ]]; then
+                printf "\nValue should be a full URL including 'http' or 'https'.\n"
+                echo  "Exchange API URL: "
+                read answer
+                local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
+            else
+                break;
+            fi
+        done
+
+        export INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
+        local PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST//\//\\/}
+
+        echo "Your Exchange Web URL: $INPUT_HOLLAEX_CONFIGMAP_DOMAIN"
+        echo "Your Exchange API URL: $INPUT_HOLLAEX_CONFIGMAP_API_HOST"
+        echo "Do you want to continue? (Y/n)"
+        read answer
+
+        if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+    
+            hollaex_prod_domain_questions;
+
+        else 
+
+            echo "Updating user settings file based on the provided values..."
+
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                # Update exchange name
+                if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+                    CONFIGMAP_FILE_PATH=$i
+                    sed -i.bak "s/HOLLAEX_CONFIGMAP_DOMAIN=.*/HOLLAEX_CONFIGMAP_DOMAIN=$PARSED_INPUT_HOLLAEX_CONFIGMAP_DOMAIN/" $CONFIGMAP_FILE_PATH
+                    sed -i.bak "s/HOLLAEX_CONFIGMAP_API_HOST=.*/HOLLAEX_CONFIGMAP_API_HOST=$PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST/" $CONFIGMAP_FILE_PATH
+                    rm $CONFIGMAP_FILE_PATH.bak
+                fi
+                
+            done
+        
+        fi
+
+    }
+
+    # Asking for domains questions for production.
+    hollaex_prod_domain_questions;
+
+    #Checking the domains are reachable
+    function hollaex_prod_check_domains_reachability() {
+
+        local NSLOOKUP_PARSED_HOLLAEX_CONFIGMAP_DOMAIN=$(echo $INPUT_HOLLAEX_CONFIGMAP_DOMAIN | cut -f3 -d "/")
+        if command nslookup $NSLOOKUP_PARSED_HOLLAEX_CONFIGMAP_DOMAIN; then
+
+            echo "Successfully resolved the exchange web URL ($NSLOOKUP_PARSED_HOLLAEX_CONFIGMAP_DOMAIN)."
+            HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY=true
+
+        else 
+
+            HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY=false
+        
+        fi
+
+        local NSLOOKUP_PARSED_HOLLAEX_CONFIGMAP_API_HOST=$(echo $INPUT_HOLLAEX_CONFIGMAP_API_HOST | cut -f3 -d "/")
+        if command nslookup $NSLOOKUP_PARSED_HOLLAEX_CONFIGMAP_API_HOST; then
+
+            echo "Successfully resolved the exchange API URL ($NSLOOKUP_PARSED_HOLLAEX_CONFIGMAP_API_HOST)."
+            HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=true
+
+        else
+
+            HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=false
+        
+        fi
+    }
+
+    hollaex_prod_check_domains_reachability;
+
+    if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] || [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+
+        # Announcing the domain configuration how-to.
+        SYSTEM_PUBLIC_IP=$(curl ifconfig.me)
+
+        if [[ ! "$SYSTEM_PUBLIC_IP" ]]; then
+            echo "Error: Failed to get the system public IP automatically."
+            echo "Please check it by yourself."
+            SYSTEM_PUBLIC_IP="YOUR_PUBLIC_IP"
+        fi
+
+        echo "Your Public IP: $SYSTEM_PUBLIC_IP."
+
+        if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]]; then
+
+            echo "DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_DOMAIN."
+            echo "Please set an A RECORD for $INPUT_HOLLAEX_CONFIGMAP_DOMAIN to point $SYSTEM_PUBLIC_IP."
+            read -p "Press enter once you configured the DNS."
+        fi
+
+        if [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+
+            echo "DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_API_HOST."
+            echo "Please set an A RECORD for $INPUT_HOLLAEX_CONFIGMAP_API_HOST to point $SYSTEM_PUBLIC_IP."
+            read -p "Press enter once you configured the DNS."
+
+        fi
+
+        echo "Checking the DNS reachability..."
+        hollaex_prod_check_domains_reachability;
+
+        if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] || [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+
+            echo "Your domain URLs are still not reachable."
+            echo "It could take few minutes ~ few hours to the DNS gets fully configured and functioning."
+            echo "Please run the commands below to check DNS reachability manually later."
+            echo "-> nslookup $INPUT_HOLLAEX_CONFIGMAP_DOMAIN"
+            echo "-> nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST"
+
+        fi
+
+    fi
+
+    echo "Do you want to issue SSL cert for your exchange? (Y/n)"
+    echo "If you are going to use an external load balancer with SSL, Please type 'N'."
+    echo "If your DNS settings are not fully applied yet, Please type 'N' for now, and run 'hollaex toolbox --issue_ssl' manually later."
+
+    read answer 
+
+    if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+    
+        echo "Your exchange has been configured to become a production status."
+        echo "Please run 'hollaex restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' & 'hollaex web --restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to apply the changes you made"
+        echo "For the web, You should build a new image while on the restart."
+
+        exit 0;
+
+    else 
+
+        if [[ "$USE_KUBERNETES" ]]; then
+
+            echo "HollaEx CLI natively supports issuing SSL cert through 'cert-manager' and Let's encrypt."
+            echo "Please make sure to install latest 'cert-manager' on your Kubernetes cluster."
+            echo "Official document is available for installation. (cert-manager.io/docs/installation/kubernetes)"
+
+            echo "The 'cert-manager' requires an issuer name to reach SSL ACME service."
+            echo "Please provide your cert-manager issuer name."
+            read answer
+
+            echo "Updating the issuer name on user's settings file."
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                # Update exchange name
+                if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+                CONFIGMAP_FILE_PATH=$i
+                sed -i.bak "s/ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER=.*/ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER=$answer/" $CONFIGMAP_FILE_PATH
+                rm $CONFIGMAP_FILE_PATH.bak
+                fi
+                
+            done
+
+        elif [[ ! "$USE_KUBERNETES" ]]; then
+
+            echo "HollaEx CLI natively supports issuing SSL cert through 'certbot' and Let's encrypt."
+            echo "Running 'certbot' now..."
+            hollaex toolbox --issue_ssl --skip
+
+        fi
+
+    fi
+
 
 elif [[ "$1" == "stop" ]]; then
 

@@ -2967,7 +2967,7 @@ EOF
   # Web Domain
   echo "***************************************************************"
   echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Exchange URL: ($HOLLAEX_CONFIGMAP_DOMAIN)"
-  printf "\033[2m- Enter the full URL of your exchange website. No need to type 'http' or 'https'.\033[22m\n"
+  printf "\033[2m- Keep it as 'example.com' for local test exchange.\033[22m\n"
   read answer
 
   local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN="${answer:-$HOLLAEX_CONFIGMAP_DOMAIN}"
@@ -3214,7 +3214,7 @@ EOF
   # API Domain
   echo "***************************************************************"
   echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Exchange Server API URL: ($HOLLAEX_CONFIGMAP_API_HOST)"
-  printf "\033[2m- Enter the full URL of your exchange API server including 'http' or 'https'. Keep it as 'http://localhost' for local test exchange.\033[22m\n"
+  printf "\033[2m- Keep it as 'http://localhost' for local test exchange.\033[22m\n"
   read answer
 
   local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST="${answer:-$HOLLAEX_CONFIGMAP_API_HOST}"
