@@ -2334,11 +2334,11 @@ elif [[ "$1" == "prod" ]]; then
 
         echo "Updating domains on settings files to use 'https' as a prefix..."
 
-        export INPUT_HOLLAEX_CONFIGMAP_DOMAIN_WITH_HTTPS="https://${INPUT_HOLLAEX_CONFIGMAP_DOMAIN}"
-        local PARSED_INPUT_HOLLAEX_CONFIGMAP_DOMAIN=${INPUT_HOLLAEX_CONFIGMAP_DOMAIN_WITH_HTTPS//\//\\/}
+        INPUT_HOLLAEX_CONFIGMAP_DOMAIN_WITH_HTTPS="https://${INPUT_HOLLAEX_CONFIGMAP_DOMAIN}"
+        PARSED_INPUT_HOLLAEX_CONFIGMAP_DOMAIN=${INPUT_HOLLAEX_CONFIGMAP_DOMAIN_WITH_HTTPS//\//\\/}
 
-        export INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTPS="https://${INPUT_HOLLAEX_CONFIGMAP_API_HOST}"
-        local PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTPS//\//\\/}
+        INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTPS="https://${INPUT_HOLLAEX_CONFIGMAP_API_HOST}"
+        PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTPS//\//\\/}
 
         for i in ${CONFIG_FILE_PATH[@]}; do
 
@@ -4964,7 +4964,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if command docker ps -a | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null ; then
 
-                printf "\n\033[93mWarning: You should rebuild and restart your web server to apply SSL configuraion on the web.\033[39m\n"
+                printf "\n\033[93mWarning: You should rebuild and restart your web server to apply SSL configuraion on the web.\033[39m\n\n"
                 echo "The web server would malfunction if the server doesn't get rebuild"
                 echo "Please run 'hollaex web --restart' to rebuild the image and apply."
 
