@@ -2107,8 +2107,12 @@ elif [[ "$1" == "prod" ]]; then
 
     if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
+        
+        printf "\nPreparing the exchange for production\n\n"
 
-        echo "Are you sure you want to enable the production mode for your exchange? (Y/n)"
+        echo -e "This command would bring up your exchange to \033[1mproduction\033[0m."
+        echo -e "You should have an owned domain to apply for the exchange before proceeding. (Required)"
+        echo -e "\033[1mDo you want to continue? (Y/n)\033[0m"
 
         read answer
 
@@ -2124,13 +2128,13 @@ elif [[ "$1" == "prod" ]]; then
         # Web Domain
         echo "***************************************************************"
         echo "[1/2] Exchange Web URL"
-        printf "\033[2m- Enter the full URL of your exchange website, Including 'http' or 'https'.\033[22m\n"
+        printf "\033[2m- Enter the full URL of your exchange website, without 'http' or 'https'.\033[22m\n"
         read answer
         
         while true;
-            do if [[ ! "$answer" == *"http"* ]]; then
-                printf "\nValue should be a full URL including 'http' or 'https'.\n"
-                echo  "Exchange URL: "
+            do if [[ "$answer" == *"http"* ]]; then
+                printf "\nValue should be an URL without 'http' or 'https'.\n"
+                echo  "Exchange Web URL: "
                 read answer
                 local INPUT_HOLLAEX_CONFIGMAP_DOMAIN="${answer}"
             else
@@ -2139,17 +2143,18 @@ elif [[ "$1" == "prod" ]]; then
         done
 
         export INPUT_HOLLAEX_CONFIGMAP_DOMAIN="${answer}"
-        local PARSED_INPUT_HOLLAEX_CONFIGMAP_DOMAIN=${INPUT_HOLLAEX_CONFIGMAP_DOMAIN//\//\\/}
+        export INPUT_HOLLAEX_CONFIGMAP_DOMAIN_WITH_HTTP="http://${answer}"
+        local PARSED_INPUT_HOLLAEX_CONFIGMAP_DOMAIN=${INPUT_HOLLAEX_CONFIGMAP_DOMAIN_WITH_HTTP//\//\\/}
 
         # API Domain
         echo "***************************************************************"
         echo "[2/2] Exchange Server API URL"
-        printf "\033[2m- Enter the full URL of your exchange API server, Including 'http' or 'https'.\033[22m\n"
+        printf "\033[2m- Enter the full URL of your exchange API server, without 'http' or 'https'.\033[22m\n"
         read answer
 
         while true;
-            do if [[ ! "$answer" == *"http"* ]]; then
-                printf "\nValue should be a full URL including 'http' or 'https'.\n"
+            do if [[ "$answer" == *"http"* ]]; then
+                printf "\nValue should be an URL without 'http' or 'https'.\n"
                 echo  "Exchange API URL: "
                 read answer
                 local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
@@ -2159,10 +2164,11 @@ elif [[ "$1" == "prod" ]]; then
         done
 
         export INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
-        local PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST//\//\\/}
+        local INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP="http://${answer}"
+        local PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP//\//\\/}
 
-        echo "Your Exchange Web URL: $INPUT_HOLLAEX_CONFIGMAP_DOMAIN"
-        echo "Your Exchange API URL: $INPUT_HOLLAEX_CONFIGMAP_API_HOST"
+        printf "\n\nYour Exchange Web URL: \033[92m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN\033[39m"
+        printf "\nYour Exchange API URL: \033[92m$INPUT_HOLLAEX_CONFIGMAP_API_HOST\033[39m\n"
         echo "Do you want to continue? (Y/n)"
         read answer
 
@@ -2196,10 +2202,9 @@ elif [[ "$1" == "prod" ]]; then
     #Checking the domains are reachable
     function hollaex_prod_check_domains_reachability() {
 
-        local NSLOOKUP_PARSED_HOLLAEX_CONFIGMAP_DOMAIN=$(echo $INPUT_HOLLAEX_CONFIGMAP_DOMAIN | cut -f3 -d "/")
-        if command nslookup $NSLOOKUP_PARSED_HOLLAEX_CONFIGMAP_DOMAIN; then
+        if command nslookup $INPUT_HOLLAEX_CONFIGMAP_DOMAIN; then
 
-            echo "Successfully resolved the exchange web URL ($NSLOOKUP_PARSED_HOLLAEX_CONFIGMAP_DOMAIN)."
+            printf "\n\n\033[92mSuccessfully resolved the exchange web URL ($INPUT_HOLLAEX_CONFIGMAP_DOMAIN).\033[39m\n"
             HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY=true
 
         else 
@@ -2208,10 +2213,9 @@ elif [[ "$1" == "prod" ]]; then
         
         fi
 
-        local NSLOOKUP_PARSED_HOLLAEX_CONFIGMAP_API_HOST=$(echo $INPUT_HOLLAEX_CONFIGMAP_API_HOST | cut -f3 -d "/")
-        if command nslookup $NSLOOKUP_PARSED_HOLLAEX_CONFIGMAP_API_HOST; then
+        if command nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST; then
 
-            echo "Successfully resolved the exchange API URL ($NSLOOKUP_PARSED_HOLLAEX_CONFIGMAP_API_HOST)."
+            printf "\n\n\033[92mSuccessfully resolved the exchange API URL ($INPUT_HOLLAEX_CONFIGMAP_API_HOSTs).\033[39m\n"
             HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=true
 
         else
@@ -2229,17 +2233,18 @@ elif [[ "$1" == "prod" ]]; then
         SYSTEM_PUBLIC_IP=$(curl ifconfig.me)
 
         if [[ ! "$SYSTEM_PUBLIC_IP" ]]; then
-            echo "Error: Failed to get the system public IP automatically."
-            echo "Please check it by yourself."
-            SYSTEM_PUBLIC_IP="YOUR_PUBLIC_IP"
+            printf "\n\033[91mError: Failed to get the system public IP automatically.\033[39m\n"
+            echo "You should check it by yourself."
+            SYSTEM_PUBLIC_IP="<YOUR_PUBLIC_IP>"
         fi
 
-        echo "Your Public IP: $SYSTEM_PUBLIC_IP."
+        printf "\n\nYour Public IP: $SYSTEM_PUBLIC_IP.\n"
 
         if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]]; then
 
             echo "DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_DOMAIN."
-            echo "Please set an A RECORD for $INPUT_HOLLAEX_CONFIGMAP_DOMAIN to point $SYSTEM_PUBLIC_IP."
+            echo "Please set an A RECORD for $INPUT_HOLLAEX_CONFIGMAP_DOMAIN to point $SYSTEM_PUBLIC_IP."            echo "It is recommended to set the TTL shorter to apply DNS rule faster."
+            echo "It is recommended to set the TTL shorter to apply DNS rule faster."
             read -p "Press enter once you configured the DNS."
         fi
 
@@ -2247,6 +2252,7 @@ elif [[ "$1" == "prod" ]]; then
 
             echo "DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_API_HOST."
             echo "Please set an A RECORD for $INPUT_HOLLAEX_CONFIGMAP_API_HOST to point $SYSTEM_PUBLIC_IP."
+            echo "It is recommended to set the TTL shorter to apply DNS rule faster."
             read -p "Press enter once you configured the DNS."
 
         fi
@@ -2256,11 +2262,12 @@ elif [[ "$1" == "prod" ]]; then
 
         if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] || [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
 
-            echo "Your domain URLs are still not reachable."
+            printf "\n\033[93mWarning: Your domain URLs are still not reachable.\033[39m\n"
             echo "It could take few minutes ~ few hours to the DNS gets fully configured and functioning."
             echo "Please run the commands below to check DNS reachability manually later."
             echo "-> nslookup $INPUT_HOLLAEX_CONFIGMAP_DOMAIN"
             echo "-> nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST"
+            printf "\n\n"
 
         fi
 
