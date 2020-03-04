@@ -2342,6 +2342,13 @@ elif [[ "$1" == "prod" ]]; then
 
                     hollaex toolbox --issue_ssl --skip;
                 
+                else 
+
+                    printf "\033[91mFailed to issue SSL certificate by using Certbot. Please confirm your settings and try again.\033[39m\n"
+                    exit 1;
+
+                fi
+
             done;
 
             
