@@ -2215,7 +2215,7 @@ elif [[ "$1" == "prod" ]]; then
 
         if command nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST; then
 
-            printf "\n\n\033[92mSuccessfully resolved the exchange API URL ($INPUT_HOLLAEX_CONFIGMAP_API_HOSTs).\033[39m\n"
+            printf "\n\n\033[92mSuccessfully resolved the exchange API URL ($INPUT_HOLLAEX_CONFIGMAP_API_HOST).\033[39m\n"
             HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=true
 
         else
@@ -2264,28 +2264,28 @@ elif [[ "$1" == "prod" ]]; then
 
             printf "\n\033[93mWarning: Your domain URLs are still not reachable.\033[39m\n"
             echo "It could take few minutes ~ few hours to the DNS gets fully configured and functioning."
-            echo "Please run the commands below to check DNS reachability manually later."
+            echo "Please run the 'hollaex prod' command again once the DNS gets fully set."
+            echo "You can check the DNS status manually with commands belows."
             echo "-> nslookup $INPUT_HOLLAEX_CONFIGMAP_DOMAIN"
             echo "-> nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST"
             printf "\n\n"
 
+            exit 1;
+
         fi
 
     fi
-
+    
+    printf "\n\n"
     echo "Do you want to issue SSL cert for your exchange? (Y/n)"
     echo "If you are going to use an external load balancer with SSL, Please type 'N'."
-    echo "If your DNS settings are not fully applied yet, Please type 'N' for now, and run 'hollaex toolbox --issue_ssl' manually later."
-
+    
     read answer 
 
     if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
     
-        echo "Your exchange has been configured to become a production status."
-        echo "Please run 'hollaex restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' & 'hollaex web --restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to apply the changes you made"
-        echo "For the web, You should build a new image while on the restart."
-
-        exit 0;
+        echo "Skipping to issue SSL cert..."
+        echo "You could also issue the cert later by running 'hollaex toolbox --issue_ssl' command."
 
     else 
 
@@ -2321,6 +2321,9 @@ elif [[ "$1" == "prod" ]]; then
 
     fi
 
+    hollaex_ascii_exchange_has_been_ready_for_prod;
+
+    exit 0;
 
 elif [[ "$1" == "stop" ]]; then
 
