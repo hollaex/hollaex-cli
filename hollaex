@@ -2329,6 +2329,7 @@ elif [[ "$1" == "prod" ]]; then
 
             echo "HollaEx CLI natively supports issuing SSL cert through 'certbot' and Let's encrypt."
             echo "Running 'certbot' now..."
+            printf "\n"
             while true;
                 do if command hollaex toolbox --issue_ssl --skip; then
 
