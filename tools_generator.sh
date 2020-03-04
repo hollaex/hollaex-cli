@@ -4262,7 +4262,7 @@ EOF
 
 }
 
-function hollaex_ascii_exchange_has_been_ready_for_prod() {
+function hollaex_prod_complete() {
 
   /bin/cat << EOF
 
@@ -4280,14 +4280,14 @@ function hollaex_ascii_exchange_has_been_ready_for_prod() {
 1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
 
               Your Exchange has been setup for production!
-    Please run 'hollaex restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' & 'hollaex web --restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)'
-    to apply the changes you made.
 
-    For the web, You should rebuild the Docker image to apply the changes.
+        Please run 'hollaex restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' and 'hollaex web --restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)'
+        to apply the changes you made.
 
-    Have fun <3!
+        For the web, You should rebuild the Docker image to apply the changes.
 
-                 
+        Have fun <3!
+
 EOF
 
 }
