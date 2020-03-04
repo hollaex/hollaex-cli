@@ -2294,6 +2294,8 @@ elif [[ "$1" == "prod" ]]; then
     
     read answer 
 
+    printf "\n"
+
     if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
     
         echo "Skipping to issue SSL cert..."
@@ -2338,9 +2340,11 @@ elif [[ "$1" == "prod" ]]; then
                         echo "Skipping..."
                         break;
 
-                    fi
+                    else 
 
-                    hollaex toolbox --issue_ssl --skip;
+                        hollaex toolbox --issue_ssl --skip;
+
+                    fi
                 
                 else 
 
