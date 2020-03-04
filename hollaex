@@ -2327,9 +2327,24 @@ elif [[ "$1" == "prod" ]]; then
 
             echo "HollaEx CLI natively supports issuing SSL cert through 'certbot' and Let's encrypt."
             echo "Running 'certbot' now..."
-            hollaex toolbox --issue_ssl --skip
-            
+            while true;
+                do if command hollaex toolbox --issue_ssl --skip; then
 
+                    echo "Do you want to issue more SSL cert for different domain? (Y/n)"
+                    read answer
+
+                    if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+
+                        echo "Skipping..."
+                        break;
+
+                    fi
+
+                    hollaex toolbox --issue_ssl --skip;
+                
+            done;
+
+            
         fi
 
         echo "Updating domains on settings files to use 'https' as a prefix..."
@@ -4967,7 +4982,7 @@ elif [[ "$1" == "toolbox" ]]; then
                 printf "\n\033[93mWarning: You should rebuild and restart your web server to apply SSL configuraion on the web.\033[39m\n\n"
                 echo "The web server would malfunction if the server doesn't get rebuild"
                 echo "Please run 'hollaex web --restart' to rebuild the image and apply."
-
+                printf "\n"
                 exit 0;
 
             fi
