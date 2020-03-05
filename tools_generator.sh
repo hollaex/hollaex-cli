@@ -4474,7 +4474,7 @@ function hollaex_setup_finalization() {
 function build_user_hollaex_core() {
 
   # Preparing HollaEx Core image with custom mail configurations
-  echo "Building the user HollaEx Core image with user mail folder & plugins setup."
+  echo "Building the user HollaEx Core image with user custom Kit setups."
 
   if command docker build -t $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION -f $HOLLAEX_CLI_INIT_PATH/Dockerfile $HOLLAEX_CLI_INIT_PATH; then
 

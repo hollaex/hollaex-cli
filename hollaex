@@ -2127,7 +2127,7 @@ elif [[ "$1" == "prod" ]]; then
 
         # Web Domain
         echo "***************************************************************"
-        echo "[1/2] Exchange Web URL"
+        echo "Exchange Web URL"
         printf "\033[2m- Enter the full URL of your exchange website, without 'http' or 'https'.\033[22m\n"
         read answer
         
@@ -2151,33 +2151,54 @@ elif [[ "$1" == "prod" ]]; then
         export INPUT_HOLLAEX_CONFIGMAP_DOMAIN_WITH_HTTP="http://${answer}"
         local PARSED_INPUT_HOLLAEX_CONFIGMAP_DOMAIN=${INPUT_HOLLAEX_CONFIGMAP_DOMAIN_WITH_HTTP//\//\\/}
 
-        # API Domain
-        echo "***************************************************************"
-        echo "[2/2] Exchange Server API URL"
-        printf "\033[2m- Enter the full URL of your exchange API server, without 'http' or 'https'.\033[22m\n"
+        printf "\n"
+        echo "${INPUT_HOLLAEX_CONFIGMAP_DOMAIN} ✔"
+        printf "\n"
+
+        #Automatically mark the API url as api.<MY_DOMAIN>
+        export INPUT_HOLLAEX_CONFIGMAP_API_HOST="api.${INPUT_HOLLAEX_CONFIGMAP_DOMAIN}"
+
+        printf "Since you selected the Exchange Web domain as: \033[1m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN,\033[0m\n"
+        printf "Your Exchange Server \033[1mAPI domain\033[0m would be: \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST\033[0m.\n"
+        printf "Type \033[1m'Y'\033[0m to continute as it is, or \033[1m'N'\033[0m to customize it. (Y/n)\n"
         read answer
 
-        while true;
-            do if [[ "$answer" == *"http"* ]]; then
-                printf "\nValue should be an URL without 'http' or 'https'.\n"
-                echo  "Exchange API URL: "
-                read answer
-                local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
-            elif [[ -z "$answer" ]]; then
-                printf "\nThe value should not be empty!\n\n"
-                echo  "Exchange API URL: "
-                read answer
-                local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
-            else
-                break;
-            fi
-        done
+        if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+        
+            # API Domain
+            echo "***************************************************************"
+            echo "Exchange Server API URL"
+            printf "\033[2m- Enter the full URL of your exchange API server, without 'http' or 'https'.\033[22m\n"
+            read answer
 
-        export INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
+            while true;
+                do if [[ "$answer" == *"http"* ]]; then
+                    printf "\nValue should be an URL without 'http' or 'https'.\n"
+                    echo  "Exchange API URL: "
+                    read answer
+                    local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
+                elif [[ -z "$answer" ]]; then
+                    printf "\nThe value should not be empty!\n\n"
+                    echo  "Exchange API URL: "
+                    read answer
+                    local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
+                else
+                    break;
+                fi
+            done
+
+            export INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
+
+            printf "\n"
+            echo "${INPUT_HOLLAEX_CONFIGMAP_API_HOST} ✔"
+            printf "\n"
+
+        fi 
+
         local INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP="http://${answer}"
         local PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP//\//\\/}
 
-        printf "\n\nYour Exchange Web URL: \033[92m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN\033[39m"
+        printf "\nYour Exchange Web URL: \033[92m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN\033[39m"
         printf "\nYour Exchange API URL: \033[92m$INPUT_HOLLAEX_CONFIGMAP_API_HOST\033[39m\n"
         echo "Do you want to continue? (Y/n)"
         read answer
@@ -2299,7 +2320,7 @@ elif [[ "$1" == "prod" ]]; then
     if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
     
         echo "Skipping to issue SSL cert..."
-        echo "You could also issue the cert later by running 'hollaex toolbox --issue_ssl' command."
+        printf "\n\n\033[93mInfo: You could also issue SSL cert later by running 'hollaex toolbox --issue_ssl' command.\033[39m\n"
 
     else 
 
