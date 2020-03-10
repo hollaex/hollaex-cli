@@ -3049,8 +3049,9 @@ elif [[ "$1" == "upgrade" ]]; then
     load_config_variables;
 
     echo "Checking the version compatibility between the latest HollaEx CLI and your local Kit..."
-    curl https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version_range > $SCRIPTPATH/.master_version_range
+    curl -s https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version_range > $SCRIPTPATH/.master_version_range 
     source .master_version_range
+    rm .master_version_range
 
     # Check Kit version compatibility range.
     check_version_compatibility_range;
