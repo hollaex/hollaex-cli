@@ -5456,9 +5456,8 @@ function check_docker_compose_is_installed() {
 }
 
 
-function check_version_compatibility_range() {
+function check_kit_version_compatibility_range() {
 
-  # CURRENT_HOLLAEX_CORE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION
   CURRENT_HOLLAEX_KIT_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/version)
 
   if [[ "$CURRENT_HOLLAEX_KIT_VERSION" < "$HOLLAEX_KIT_MINIMUM_COMPATIBLE" ]] || [[ "$CURRENT_HOLLAEX_KIT_VERSION" > "$HOLLAEX_KIT_MAXIMUM_COMPATIBLE" ]]; then
@@ -5468,6 +5467,24 @@ function check_version_compatibility_range() {
     printf "Supported HollaEx Kit version range: \033[1m$HOLLAEX_KIT_MINIMUM_COMPATIBLE ~ $HOLLAEX_KIT_MAXIMUM_COMPATIBLE.\033[0m\n"
 
     printf "\nTo see how to upgrade your Kit to latest, Please \033[1mcheck our official upgrade docs (docs.bitholla.com/hollaex-kit/upgrade)\033[0m.\n\n"
+
+    exit 1;
+
+  fi
+
+}
+
+function check_core_version_compatibility_range() {
+
+  CURRENT_HOLLAEX_CORE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION
+
+  if [[ "$CURRENT_HOLLAEX_CORE_VERSION" < "$HOLLAEX_CORE_MINIMUM_COMPATIBLE" ]] || [[ "$CURRENT_HOLLAEX_CORE_VERSION" > "$HOLLAEX_CORE_MAXIMUM_COMPATIBLE" ]]; then
+
+    printf "\n\033[91mError: The HollaEx Core version that you are trying to run is not compatible with the installed CLI.\033[39m\n"
+    printf "Your HollaEx Core version: \033[1m$CURRENT_HOLLAEX_CORE_VERSION\033[0m\n"
+    printf "Supported HollaEx Core version range: \033[1m$HOLLAEX_CORE_MINIMUM_COMPATIBLE ~ $HOLLAEX_CORE_MAXIMUM_COMPATIBLE.\033[0m\n"
+
+    printf "\nPlease try it again after setting up the correct ranged version of Core.\033[0m.\n\n"
 
     exit 1;
 
