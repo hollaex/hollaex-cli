@@ -3049,9 +3049,19 @@ elif [[ "$1" == "upgrade" ]]; then
     load_config_variables;
 
     echo "Checking the version compatibility between the latest HollaEx CLI and your local Kit..."
-    curl -s https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version_range > $SCRIPTPATH/.master_version_range 
-    source .master_version_range
-    rm .master_version_range
+    if command curl -s https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version_range > $SCRIPTPATH/.master_version_range; then 
+
+        source .master_version_range
+        rm .master_version_range
+
+    else 
+
+        printf "\n\033[91mError: Failed to read latest version compatibility range from the server.\033[39m"
+        echo "Please check your internet connectivity and try it again."
+        
+        exit 1;
+
+    fi
 
     # Check Kit version compatibility range.
     check_version_compatibility_range;
@@ -4435,6 +4445,8 @@ elif [[ "$1" == "toolbox" ]]; then
                 shift; continue
                 ;;
             --install_cli)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 INSTALL_CLI_ENABLE=true
                 INSTALL_CLI_TARGET=$1
                 TOOLBOX_ENABLE=true
