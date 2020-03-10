@@ -3049,7 +3049,7 @@ elif [[ "$1" == "upgrade" ]]; then
     load_config_variables;
 
     echo "Checking the version compatibility between the latest HollaEx CLI and your local Kit..."
-    if command curl -s -ㄹ https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version_range > $SCRIPTPATH/.master_version_range; then 
+    if command curl -s -f https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version_range > $SCRIPTPATH/.master_version_range; then 
 
         source .master_version_range
         rm .master_version_range
