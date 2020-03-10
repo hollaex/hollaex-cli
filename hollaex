@@ -14,6 +14,8 @@ DOCKER_COMPOSE_NAME_PREFIX='local'
 
 ENVIRONMENT_BRIDGE_TARGET_SERVER='api.bitholla.com'
 
+source $SCRIPTPATH/version_range
+
 err_msg() { echo "$@" ;} >&2
 err_msg_a() { err_msg "-a option argument required" ;}
 err_msg_l() { err_msg "--long option argument required" ;}
@@ -574,6 +576,9 @@ elif [[ "$1" == "setup" ]]; then
         fi
 
     done
+
+    # Check Kit version compatibility range.
+    check_version_compatibility_range;
     
     # hollaex setup --reconfigure
     if [[ "$RECONFIGURE_BASIC_SETTINGS" ]]; then
@@ -2108,11 +2113,11 @@ elif [[ "$1" == "prod" ]]; then
     if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
         
-        printf "\nPreparing the exchange for production\n\n"
+        printf "\nPreparing the exchange for production deployment\n\n"
 
-        echo -e "This command would bring up your exchange to \033[1mproduction\033[0m."
-        echo -e "You should have an owned domain to apply for the exchange before proceeding. (Required)"
-        echo -e "\033[1mDo you want to continue? (Y/n)\033[0m"
+        echo -e "This command is going to apply \033[1mproduction domain\033[0m to your exchange."
+        echo -e "Before you proceed make sure you have your own exchange domain. (Required)"
+        echo -e "\033[1mAre you ready to proceed? (Y/n)\033[0m"
 
         read answer
 
@@ -2127,19 +2132,19 @@ elif [[ "$1" == "prod" ]]; then
 
         # Web Domain
         echo "***************************************************************"
-        echo "Exchange Web URL"
-        printf "\033[2m- Enter the full URL of your exchange website, without 'http' or 'https'.\033[22m\n"
+        echo "Exchange Web Domain"
+        printf "\033[2m- Enter the full domain of your exchange website, without 'http' or 'https'.\033[22m\n"
         read answer
         
         while true;
             do if [[ "$answer" == *"http"* ]]; then
                 printf "\nValue should be an URL without 'http' or 'https'.\n\n"
-                echo  "Exchange Web URL: "
+                echo  "Exchange Web Domain: "
                 read answer
                 local INPUT_HOLLAEX_CONFIGMAP_DOMAIN="${answer}"
             elif [[ -z "$answer" ]]; then
                 printf "\nThe value should not be empty!\n"
-                echo  "Exchange Web URL: "
+                echo  "Exchange Web Domain: "
                 read answer
                 local INPUT_HOLLAEX_CONFIGMAP_DOMAIN="${answer}"
             else
@@ -2160,26 +2165,26 @@ elif [[ "$1" == "prod" ]]; then
 
         printf "Since you selected the Exchange Web domain as: \033[1m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN,\033[0m\n"
         printf "Your Exchange Server \033[1mAPI domain\033[0m would be: \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST\033[0m.\n"
-        printf "Type \033[1m'Y'\033[0m to continute as it is, or \033[1m'N'\033[0m to customize it. (Y/n)\n"
+        printf "Type \033[1m'Y'\033[0m to continute, or \033[1m'N'\033[0m to modify the Exchange Server API domain. (Y/n)\n"
         read answer
 
         if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
         
             # API Domain
             echo "***************************************************************"
-            echo "Exchange Server API URL"
-            printf "\033[2m- Enter the full URL of your exchange API server, without 'http' or 'https'.\033[22m\n"
+            echo "Exchange Server API Domain"
+            printf "\033[2m- Enter the full domain of your exchange API server, without 'http' or 'https'.\033[22m\n"
             read answer
 
             while true;
                 do if [[ "$answer" == *"http"* ]]; then
                     printf "\nValue should be an URL without 'http' or 'https'.\n"
-                    echo  "Exchange API URL: "
+                    echo  "Exchange API Domain: "
                     read answer
                     local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
                 elif [[ -z "$answer" ]]; then
                     printf "\nThe value should not be empty!\n\n"
-                    echo  "Exchange API URL: "
+                    echo  "Exchange API Domain: "
                     read answer
                     local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
                 else
@@ -2198,9 +2203,9 @@ elif [[ "$1" == "prod" ]]; then
         local INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP="http://${answer}"
         local PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP//\//\\/}
 
-        printf "\nYour Exchange Web URL: \033[92m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN\033[39m"
-        printf "\nYour Exchange API URL: \033[92m$INPUT_HOLLAEX_CONFIGMAP_API_HOST\033[39m\n"
-        echo "Do you want to continue? (Y/n)"
+        printf "\nYour Exchange Web Domain: \033[92m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN\033[39m"
+        printf "\nYour Exchange API Domain: \033[92m$INPUT_HOLLAEX_CONFIGMAP_API_HOST\033[39m\n"
+        echo "Type 'Y' to proceed (Y/n)"
         read answer
 
         if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
@@ -2233,8 +2238,7 @@ elif [[ "$1" == "prod" ]]; then
     #Checking the domains are reachable
     function hollaex_prod_check_domains_reachability() {
         
-        printf "\n"
-        if command nslookup $INPUT_HOLLAEX_CONFIGMAP_DOMAIN; then
+        if command nslookup $INPUT_HOLLAEX_CONFIGMAP_DOMAIN > /dev/null; then
 
             printf "\n\033[92mSuccessfully resolved the exchange web URL ($INPUT_HOLLAEX_CONFIGMAP_DOMAIN).\033[39m\n"
             HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY=true
@@ -2245,8 +2249,7 @@ elif [[ "$1" == "prod" ]]; then
         
         fi
 
-        printf "\n"
-        if command nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST; then
+        if command nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST > /dev/null; then
 
             printf "\n\033[92mSuccessfully resolved the exchange API URL ($INPUT_HOLLAEX_CONFIGMAP_API_HOST).\033[39m\n"
             HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=true
@@ -2256,60 +2259,91 @@ elif [[ "$1" == "prod" ]]; then
             HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=false
         
         fi
+
+        if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] || [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+
+            # Announcing the domain configuration how-to.
+            SYSTEM_PUBLIC_IP=$(curl -s ifconfig.me)
+
+            if [[ ! "$SYSTEM_PUBLIC_IP" ]]; then
+                printf "\n\033[91mError: Failed to get the system public IP automatically.\033[39m\n"
+                echo "You should check it by yourself."
+                SYSTEM_PUBLIC_IP="<YOUR_PUBLIC_IP>"
+            fi
+
+            printf "\n\nYour Public IP: $SYSTEM_PUBLIC_IP.\n\n"
+
+            if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]]; then
+
+                printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_DOMAIN.\033[39m\n"
+                printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN to point $SYSTEM_PUBLIC_IP\033[0m.\n"
+                printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
+                read -p "Press enter once you configured the DNS."
+            fi
+
+            if [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+
+                printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_API_HOST.\033[39m\n"
+                printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST to point $SYSTEM_PUBLIC_IP\033[0m.\n"
+                printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
+                read -p "Press enter once you configured the DNS."
+
+            fi
+
+            printf "\n\033[93mChecking the DNS reachability...\033[39m\n"
+            echo "Info: You could always quit the DNS checking loop with 'Crtl + C'."
+            hollaex_prod_check_domains_reachability;
+
+        fi
     }
 
     hollaex_prod_check_domains_reachability;
 
-    if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] || [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+    # if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] || [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
 
-        # Announcing the domain configuration how-to.
-        SYSTEM_PUBLIC_IP=$(curl -s ifconfig.me)
+    #     # Announcing the domain configuration how-to.
+    #     SYSTEM_PUBLIC_IP=$(curl -s ifconfig.me)
 
-        if [[ ! "$SYSTEM_PUBLIC_IP" ]]; then
-            printf "\n\033[91mError: Failed to get the system public IP automatically.\033[39m\n"
-            echo "You should check it by yourself."
-            SYSTEM_PUBLIC_IP="<YOUR_PUBLIC_IP>"
-        fi
+    #     if [[ ! "$SYSTEM_PUBLIC_IP" ]]; then
+    #         printf "\n\033[91mError: Failed to get the system public IP automatically.\033[39m\n"
+    #         echo "You should check it by yourself."
+    #         SYSTEM_PUBLIC_IP="<YOUR_PUBLIC_IP>"
+    #     fi
 
-        printf "\n\nYour Public IP: $SYSTEM_PUBLIC_IP.\n\n"
+    #     printf "\n\nYour Public IP: $SYSTEM_PUBLIC_IP.\n\n"
 
-        if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]]; then
+    #     if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]]; then
 
-            printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_DOMAIN.\033[39m\n"
-            printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN to point $SYSTEM_PUBLIC_IP\033[0m.\n"
-            printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
-            read -p "Press enter once you configured the DNS."
-        fi
+    #         printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_DOMAIN.\033[39m\n"
+    #         printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN to point $SYSTEM_PUBLIC_IP\033[0m.\n"
+    #         printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
+    #         read -p "Press enter once you configured the DNS."
+    #     fi
 
-        if [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+    #     if [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
 
-            printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_API_HOST.\033[39m\n"
-            printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST to point $SYSTEM_PUBLIC_IP\033[0m.\n"
-            printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
-            read -p "Press enter once you configured the DNS."
+    #         printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_API_HOST.\033[39m\n"
+    #         printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST to point $SYSTEM_PUBLIC_IP\033[0m.\n"
+    #         printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
+    #         read -p "Press enter once you configured the DNS."
 
-        fi
+    #     fi
 
-        printf "\n\033[93mChecking the DNS reachability...\033[39m\n"
-        hollaex_prod_check_domains_reachability;
+    #     printf "\n\033[93mChecking the DNS reachability...\033[39m\n"
+    #     hollaex_prod_check_domains_reachability;
 
-        if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] || [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+    #     if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] || [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
 
-            printf "\n\033[93mWarning: Your domain URLs are still not reachable.\033[39m\n\n"
-            printf "It could take \033[1mfew minutes ~ few hours to the DNS gets fully configured\033[0m and functioning.\n"
-            printf "Please run \033[1m'hollaex prod'\033[0m command again once the DNS gets fully set.\n"
-            printf "\nYou can check the DNS status manually with commands belows.\n"
-            echo -e "-> \033[1m'nslookup $INPUT_HOLLAEX_CONFIGMAP_DOMAIN'\033[0m"
-            echo -e "-> \033[1m'nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST'\033[0m"
-            printf "\n"
+    #         printf "\n\033[93mWarning: Your domain URLs are still not reachable.\033[39m\n\n"
+    #         printf "It could take \033[1mfew minutes ~ few hours to the DNS gets fully configured\033[0m and functioning.\n"
+    #         printf "Checking the DNS status again...\n"
+    #         hollaex_prod_check_domains_reachability;
 
-            exit 1;
+    #     fi
 
-        fi
-
-    fi
+    # fi
     
-    printf "\n\n"
+    printf "\n"
     echo "Do you want to issue SSL cert for your exchange? (Y/n)"
     echo "If you are going to use an external load balancer with SSL, Please type 'N'."
     
@@ -2958,7 +2992,7 @@ elif [[ "$1" == "upgrade" ]]; then
             --version)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=${1:-$ENVIRONMENT_DOCKER_IMAGE_VERSION}
+                ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=${1:-$HOLLAEX_CORE_MAXIMUM_COMPATIBLE}
                 echo "Target HollaEx Core release version : v $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE."
                 shift; continue
                 ;;
@@ -3014,14 +3048,21 @@ elif [[ "$1" == "upgrade" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
-    # Override target docker image version if user passed it manually with flag.
-    if [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
+    echo "Checking the version compatibility between the latest HollaEx CLI and your local Kit..."
+    curl https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version_range > $SCRIPTPATH/.master_version_range
+    source .master_version_range
+
+    # Check Kit version compatibility range.
+    check_version_compatibility_range;
+
+    # Update HollaEx CLI to latest if there is newer release available.
+    update_hollaex_cli_to_latest;
+
+    # Override target docker image version if user passed it manually with flag / version range available at each CLI releases.     
+    override_docker_image_version;
+    export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
         
-        override_docker_image_version;
-        export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
-        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
-        
-    fi
 
     # Override target docker registry if user passed it manually with flag.
     if [[ "$ENVIRONMENT_USER_REGISTRY_OVERRIDE" ]]; then
@@ -3029,9 +3070,6 @@ elif [[ "$1" == "upgrade" ]]; then
         override_user_docker_registry;
         
     fi
-
-    # Update HollaEx CLI to latest if there is newer release available.
-    update_hollaex_cli_to_latest;
 
     if [[ ! "$NO_IMAGE_BUILD" ]]; then
 
@@ -4395,6 +4433,12 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "HollaEx CLI will open a direct connection to your PostgreSQL database via influx-client."
                 shift; continue
                 ;;
+            --install_cli)
+                INSTALL_CLI_ENABLE=true
+                INSTALL_CLI_TARGET=$1
+                TOOLBOX_ENABLE=true
+                shift; continue
+                ;;
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
@@ -5020,6 +5064,10 @@ elif [[ "$1" == "toolbox" ]]; then
 
             fi
 
+            printf "\n\nNote: The SSL certificate issued by Let's Encrypt requires a \033[1mrenewal in every 3 months.\033[0m\n"
+            printf "Please make sure to run '\033[1mhollaex toolbox --renew_ssl\033[0m' to renew your SSL certificate before it gets expired.\n"
+            printf "\n\nIt is recommended to \033[1msetup a Cronjob\033[0m to automate the renewal process."
+
         else 
 
             printf "\033[91mFailed to issue SSL certificate by using Certbot. Please confirm your settings and try again.\033[39m\n"
@@ -5404,7 +5452,28 @@ elif [[ "$1" == "toolbox" ]]; then
             fi
 
         fi
+    
+    elif [[ "$INSTALL_CLI_ENABLE" ]]; then
 
+        if [[ ! "$INSTALL_CLI_TARGET" ]]; then
+
+            echo "Error: You must specify version of the CLI to downgrade."
+            echo "eg. 'hollaex toolbox --install_cli 1.8.5'."
+
+            exit 1;
+
+        fi
+
+        echo "Are you sure you want to install HollaEx CLI v$INSTALL_CLI_TARGET? (y/N)"
+        read answer
+
+        if [[ "$answer" = "${answer#[Yy]}" ]]; then
+            echo "Exiting..."
+            exit 0;
+        fi
+ 
+        bash $SCRIPTPATH/install.sh $INSTALL_CLI_TARGET
+        
     fi
 
 
@@ -5653,7 +5722,7 @@ elif [[ "$1" == "logs" ]]; then
 
                     if [[ $(kubectl logs $i --namespace $ENVIRONMENT_EXCHANGE_NAME --tail 10) ]]; then
 
-                            kubectl logs $i --namespace $ENVIRONMENT_EXCHANGE_NAME --tail ${HOLLAEX_LOGS_TARGET_LINE:-10}
+                            kubectl logs $i --namespace $ENVIRONMENT_EXCHANGE_NAME --tail ${HOLLAEX_LOGS_TARGET_LINE:-100}
 
                     else 
 
@@ -5679,7 +5748,7 @@ elif [[ "$1" == "logs" ]]; then
 
 
         printf "\n"
-        echo "Displayed (Saved) last ${HOLLAEX_LOGS_TARGET_LINE:-10} lines of logs from pod(s)."
+        echo "Displayed (Saved) last ${HOLLAEX_LOGS_TARGET_LINE:-100} lines of logs from pod(s)."
 
         if [[ ! "$HOLLAEX_LOGS_TARGET" ]]; then
             
@@ -5733,7 +5802,7 @@ elif [[ "$1" == "logs" ]]; then
 
                     if [[ $(docker logs $i --tail 10) ]]; then
 
-                            docker logs $i --tail ${HOLLAEX_LOGS_TARGET_LINE:-10}
+                            docker logs $i --tail ${HOLLAEX_LOGS_TARGET_LINE:-100}
 
                     else 
 
@@ -5758,7 +5827,7 @@ elif [[ "$1" == "logs" ]]; then
             fi
 
             printf "\n"
-            echo "Displayed (Exported) last ${HOLLAEX_LOGS_TARGET_LINE:-10} lines of logs from container(s)."
+            echo "Displayed (Exported) last ${HOLLAEX_LOGS_TARGET_LINE:-100} lines of logs from container(s)."
 
             if [[ ! "$HOLLAEX_LOGS_TARGET" ]]; then
 

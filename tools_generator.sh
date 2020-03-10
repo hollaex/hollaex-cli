@@ -4885,6 +4885,7 @@ function update_hollaex_cli_to_latest() {
       printf "\033[93m\nNewer version of HollaEx CLI has been detected.\033[39m\n"
       printf "\nLatest version of HollaEx CLI : \033[92m$LATEST_HOLLAEX_CLI_VERSION\033[39m"
       printf "\nCurrent installed version of HollaEx CLI : \033[93m$(cat $SCRIPTPATH/version)\033[39m\n\n"
+     
       echo "Upgrading HollaEx CLI to latest..."
       curl -L https://raw.githubusercontent.com/bitholla/hollaex-cli/master/install.sh | bash;
       printf "\nPlease run 'hollaex upgrade' again to proceed upgrading your exchange.\n"
@@ -5209,7 +5210,8 @@ function hollaex_pull_and_apply_exchange_data() {
   
   local HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET_OVERRIDE=$(echo "$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.STORAGE_TYPE";):$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.STORAGE_REGION";)")
 
-  local ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(curl -s https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/core-version | jq -r '.version')"
+  # Set the default HollaEx Core version as the maximum compatible version of the current release of LI.
+  local ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$HOLLAEX_CORE_MAXIMUM_COMPATIBLE"
 
   # Secrets
   local HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ADMIN_PASSWORD";)
@@ -5451,4 +5453,24 @@ function check_docker_compose_is_installed() {
 
   fi
   
+}
+
+
+function check_version_compatibility_range() {
+
+  # CURRENT_HOLLAEX_CORE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION
+  CURRENT_HOLLAEX_KIT_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/version)
+
+  if [[ "$CURRENT_HOLLAEX_KIT_VERSION" < "$HOLLAEX_KIT_MINIMUM_COMPATIBLE" ]] || [[ "$CURRENT_HOLLAEX_KIT_VERSION" > "$HOLLAEX_KIT_MAXIMUM_COMPATIBLE" ]]; then
+
+    printf "\n\033[91mError: The HollaEx Kit version that you are trying to run is not compatible with the installed CLI.\033[39m\n"
+    printf "Your HollaEx Kit version: \033[1m$CURRENT_HOLLAEX_KIT_VERSION\033[0m\n"
+    printf "Supported HollaEx Kit version range: \033[1m$HOLLAEX_KIT_MINIMUM_COMPATIBLE ~ $HOLLAEX_KIT_MAXIMUM_COMPATIBLE.\033[0m\n"
+
+    printf "\nTo see how to upgrade your Kit to latest, Please \033[1mcheck our official upgrade docs (docs.bitholla.com/hollaex-kit/upgrade)\033[0m.\n\n"
+
+    exit 1;
+
+  fi
+
 }
