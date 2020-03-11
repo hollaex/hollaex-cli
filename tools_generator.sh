@@ -1110,21 +1110,32 @@ function override_docker_image_version() {
 
 }
 
+function override_user_docker_tag() {
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+
+    if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+      CONFIGMAP_FILE_PATH=$i
+      sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$HOLLAEX_CORE_USER_APPLY_TAG/" $CONFIGMAP_FILE_PATH
+    fi
+    
+  done
+
+  rm $CONFIGMAP_FILE_PATH.bak
+
+}
+
 function override_user_docker_registry() {
 
   for i in ${CONFIG_FILE_PATH[@]}; do
 
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$(echo ${answer:-$ENVIRONMENT_USER_REGISTRY_OVERRIDE} | cut -f1 -d ":")
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$(echo ${answer:-$ENVIRONMENT_USER_REGISTRY_OVERRIDE} | cut -f2 -d ":")
-
-    local ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_PARSED=${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY//\//\\\/}
+    local ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_PARSED=${ENVIRONMENT_USER_REGISTRY_OVERRIDE//\//\\\/}
 
     if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
       CONFIGMAP_FILE_PATH=$i
-      sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_PARSED/" $CONFIGMAP_FILE_PATH
-      sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION/" $CONFIGMAP_FILE_PATH
+      sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_PARSED/" $CONFIGMAP_FILE_PATH 
+      
     fi
-    
   done
 
   rm $CONFIGMAP_FILE_PATH.bak
@@ -4502,10 +4513,13 @@ function build_user_hollaex_core() {
             echo "Skipping..."
             echo "Your image name: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION."
             echo "You can later tag and push it by using 'docker tag' and 'docker push' command manually."
-        
+
+            export USER_HOLLAEX_CORE_PUSHED=false
+
         else 
 
           push_user_hollaex_core;
+          export USER_HOLLAEX_CORE_PUSHED=true
       
         fi
       
@@ -5467,7 +5481,22 @@ function check_version_compatibility_range() {
     printf "Your HollaEx Kit version: \033[1m$CURRENT_HOLLAEX_KIT_VERSION\033[0m\n"
     printf "Supported HollaEx Kit version range: \033[1m$HOLLAEX_KIT_MINIMUM_COMPATIBLE ~ $HOLLAEX_KIT_MAXIMUM_COMPATIBLE.\033[0m\n"
 
-    printf "\nTo see how to upgrade your Kit to latest, Please \033[1mcheck our official upgrade docs (docs.bitholla.com/hollaex-kit/upgrade)\033[0m.\n\n"
+    if [[ "$CURRENT_HOLLAEX_KIT_VERSION" > "$HOLLAEX_KIT_MAXIMUM_COMPATIBLE" ]]; then
+
+      printf "\nYour Kit version is \033[1mhigher than the maximum compatible version\033[0m of your CLI.\n"
+      printf "You can \033[1mreinstall the HollaEx CLI\033[0m to higher version.\n\n"
+      printf "To reinstall the HollaEx CLI to a compatible version, Please run '\033[1mhollaex toolbox --install_cli <VERSION_NUMBER>\033[0m.\n"
+
+    elif [[ "$CURRENT_HOLLAEX_KIT_VERSION" < "$HOLLAEX_KIT_MINIMUM_COMPATIBLE" ]]; then
+
+      printf "\nYour Kit version is \033[1mlower than the minimum compatible version\033[0m of your CLI.\n"
+      printf "\nYou can either \033[1mreinstall the HollaEx CLI, or upgrade your HollaEx Kit\033[0m.\n\n"
+      printf "To reinstall the HollaEx CLI to a compatible version, Please run '\033[1mhollaex toolbox --install_cli <VERSION_NUMBER>\033[0m.\n"
+      printf "To see how to upgrade your HollaEx Kit, Please \033[1mcheck our official upgrade docs (docs.bitholla.com/hollaex-kit/upgrade)\033[0m.\n"
+
+    fi
+
+    printf "\nYou can see the version compatibility range of between CLI and Kit at our \033[1mofficial docs (docs.bitholla.com/hollaex-kit/upgrade/version-compatibility)\033[0m.\n\n"
 
     exit 1;
 

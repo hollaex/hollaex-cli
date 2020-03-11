@@ -47,10 +47,12 @@ Options:
     pull: Pull my Exchange configurations from bitHolla Dashboard to local.
 
     start: Start the exchange which already been configured by 'hollaex setup' command.
+        --tag, Tag name of the new image to apply.
 
     prod: Bring up the exchange as production. Including public domain setup and SSL configuraiton.
 
     restart: Restart the existing exchange.
+        --tag, Tag name of the new image to apply.
     
     stop: Stop the exchagne which already been running.
 
@@ -86,6 +88,7 @@ Options:
         --connect_database, Direct connection to PostgreSQL Database via postgresql-client.
         --connect_redis, Direct connection to Redis via redis-client.
         --connect_influxdb, Direct connection to InfluxDB via influx-client.
+        --install_cli, Install specific version of HollaEx CLI.
         
     status: Show the exchange server status.
 
@@ -1764,6 +1767,12 @@ elif [[ "$1" == "start" ]]; then
                 echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
+            --tag)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_CORE_USER_APPLY_TAG=$1
+                shift; continue
+                ;;
             --mode)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
@@ -1827,7 +1836,18 @@ elif [[ "$1" == "start" ]]; then
     done;
     
     source $SCRIPTPATH/tools_generator.sh
+
+     # Override user HollaEx Core tag if the flag is available.
+    if [[ "$HOLLAEX_CORE_USER_APPLY_TAG" ]]; then
+        
+        override_user_docker_tag;
+
+    fi
+
     load_config_variables;
+
+    # Check Kit version compatibility range.
+    check_version_compatibility_range;
 
     #Regenerate random secrets
     update_random_values_to_config;
@@ -2513,6 +2533,9 @@ elif [[ "$1" == "stop" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
+    # Check Kit version compatibility range.
+    check_version_compatibility_range;
+
     #check_empty_values_on_settings
 
     if [[ "$USE_KUBERNETES" ]]; then
@@ -2627,6 +2650,12 @@ elif [[ "$1" == "restart" ]]; then
                 echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
+             --tag)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_CORE_USER_APPLY_TAG=$1
+                shift; continue
+                ;;
             --kube)
                 USE_KUBERNETES=true
                 echo "HollaEx CLI will use your Kubernetes cluster as a target."
@@ -2677,7 +2706,18 @@ elif [[ "$1" == "restart" ]]; then
     done;
     
     source $SCRIPTPATH/tools_generator.sh
+
+    # Override user HollaEx Core tag if the flag is available.
+    if [[ "$HOLLAEX_CORE_USER_APPLY_TAG" ]]; then
+        
+        override_user_docker_tag;
+
+    fi
+    
     load_config_variables;
+
+    # Check Kit version compatibility range.
+    check_version_compatibility_range;
 
     #Regenerate random secrets
     update_random_values_to_config;
@@ -2963,6 +3003,18 @@ elif [[ "$1" == "build" ]]; then
     load_config_variables;
 
     build_user_hollaex_core;
+
+    if [[ "$USER_HOLLAEX_CORE_PUSHED" ]]; then 
+
+        export ENVIRONMENT_USER_REGISTRY_OVERRIDE=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY
+        export HOLLAEX_CORE_USER_APPLY_TAG=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
+        override_user_docker_registry;
+        override_user_docker_tag;
+
+    fi
+
+    printf "\n\nYou can simply restart the server by running '\033[1mhollaex restart\033[0m' to apply it.\n"
+    printf "Notice: The image name should be same as the previous one in this case.\n"
 
 
 elif [[ "$1" == "upgrade" ]]; then
@@ -3405,6 +3457,9 @@ elif [[ "$1" == "terminate" ]]; then
 
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
+
+    # Check Kit version compatibility range.
+    check_version_compatibility_range;
 
     if [[ "$USE_KUBERNETES" ]]; then
 
