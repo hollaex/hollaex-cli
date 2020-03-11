@@ -581,7 +581,7 @@ elif [[ "$1" == "setup" ]]; then
     done
 
     # Check Kit version compatibility range.
-    check_version_compatibility_range;
+    check_kit_version_compatibility_range;
     
     # hollaex setup --reconfigure
     if [[ "$RECONFIGURE_BASIC_SETTINGS" ]]; then
@@ -3044,7 +3044,7 @@ elif [[ "$1" == "upgrade" ]]; then
             --version)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=${1:-$HOLLAEX_CORE_MAXIMUM_COMPATIBLE}
+                ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$1
                 echo "Target HollaEx Core release version : v $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE."
                 shift; continue
                 ;;
@@ -3101,10 +3101,16 @@ elif [[ "$1" == "upgrade" ]]; then
     load_config_variables;
 
     echo "Checking the version compatibility between the latest HollaEx CLI and your local Kit..."
-    if command curl -s -f https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version_range > $SCRIPTPATH/.master_version_range; then 
+    if command curl -s -f https://raw.githubusercontent.com/bitholla/hollaex-cli/1.9.0/version_range > $SCRIPTPATH/.master_version_range; then 
 
         source $SCRIPTPATH/.master_version_range
         rm $SCRIPTPATH/.master_version_range
+
+        if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
+
+            export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$HOLLAEX_CORE_MAXIMUM_COMPATIBLE
+
+        fi
 
     else 
 
@@ -3116,7 +3122,19 @@ elif [[ "$1" == "upgrade" ]]; then
     fi
 
     # Check Kit version compatibility range.
-    check_version_compatibility_range;
+    check_kit_version_compatibility_range;
+
+    if [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
+
+        export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+
+    else 
+
+        export ENVIRONMENT_DOCKER_IMAGE_VERSION=$HOLLAEX_CORE_MAXIMUM_COMPATIBLE
+    
+    fi
+
+    check_core_version_compatibility_range;
 
     # Update HollaEx CLI to latest if there is newer release available.
     update_hollaex_cli_to_latest;
