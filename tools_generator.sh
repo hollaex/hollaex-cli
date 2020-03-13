@@ -1134,7 +1134,7 @@ function override_user_docker_registry() {
     if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
       CONFIGMAP_FILE_PATH=$i
       sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_PARSED/" $CONFIGMAP_FILE_PATH 
-      
+
     fi
   done
 
@@ -5505,7 +5505,7 @@ function check_kit_version_compatibility_range() {
 
 function check_core_version_compatibility_range() {
 
-  CURRENT_HOLLAEX_CORE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION
+  CURRENT_HOLLAEX_CORE_VERSION=$(echo $ENVIRONMENT_DOCKER_IMAGE_VERSION | cut -f1 -d "-")
 
   if [[ "$CURRENT_HOLLAEX_CORE_VERSION" < "$HOLLAEX_CORE_MINIMUM_COMPATIBLE" ]] || [[ "$CURRENT_HOLLAEX_CORE_VERSION" > "$HOLLAEX_CORE_MAXIMUM_COMPATIBLE" ]]; then
 

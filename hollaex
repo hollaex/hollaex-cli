@@ -1847,7 +1847,7 @@ elif [[ "$1" == "start" ]]; then
     load_config_variables;
 
     # Check Kit version compatibility range.
-    check_version_compatibility_range;
+    check_kit_version_compatibility_range;
 
     #Regenerate random secrets
     update_random_values_to_config;
@@ -2534,7 +2534,7 @@ elif [[ "$1" == "stop" ]]; then
     load_config_variables;
 
     # Check Kit version compatibility range.
-    check_version_compatibility_range;
+    check_kit_version_compatibility_range;
 
     #check_empty_values_on_settings
 
@@ -2717,7 +2717,7 @@ elif [[ "$1" == "restart" ]]; then
     load_config_variables;
 
     # Check Kit version compatibility range.
-    check_version_compatibility_range;
+    check_kit_version_compatibility_range;
 
     #Regenerate random secrets
     update_random_values_to_config;
@@ -3001,6 +3001,13 @@ elif [[ "$1" == "build" ]]; then
     
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
+
+    if [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
+
+        override_docker_image_version;
+
+    fi
+
 
     build_user_hollaex_core;
 
@@ -3477,7 +3484,7 @@ elif [[ "$1" == "terminate" ]]; then
     load_config_variables;
 
     # Check Kit version compatibility range.
-    check_version_compatibility_range;
+    check_kit_version_compatibility_range;
 
     if [[ "$USE_KUBERNETES" ]]; then
 
@@ -4765,14 +4772,14 @@ elif [[ "$1" == "toolbox" ]]; then
             export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
             export PGHOST=localhost
 
-            pg_dumpall > $HOLLAEX_CLI_INIT_PATH/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-$(date +%y%m%d%H%M).dump
+            pg_dumpall > "${HOLLAEX_CLI_INIT_PATH}"/backups/hollaex-db-"$(date +%y%m%d%H%M)".dump
             
             unset PGUSER
             unset PGPASSWORD
             unset PGDATABASE
             unset PGHOST
 
-            echo "Dump data is saved as $HOLLAEX_CLI_INIT_PATH/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-$(date +%y%m%d%H%M).dump"
+            echo "Dump data is saved as "${HOLLAEX_CLI_INIT_PATH}"/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-$(date +%y%m%d%H%M).dump"
 
             echo "Killing the opened proxy tunnel..."
             kill $(ps -ef | grep "kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME" | awk '{print $2}' | head -n 1)
