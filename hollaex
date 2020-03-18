@@ -2182,6 +2182,8 @@ elif [[ "$1" == "prod" ]]; then
 
         #Automatically mark the API url as api.<MY_DOMAIN>
         export INPUT_HOLLAEX_CONFIGMAP_API_HOST="api.${INPUT_HOLLAEX_CONFIGMAP_DOMAIN}"
+        local INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP="http://${INPUT_HOLLAEX_CONFIGMAP_API_HOST}"
+        local PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP//\//\\/}
 
         printf "Since you selected the Exchange Web domain as: \033[1m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN,\033[0m\n"
         printf "Your Exchange Server \033[1mAPI domain\033[0m would be: \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST\033[0m.\n"
@@ -4532,6 +4534,11 @@ elif [[ "$1" == "toolbox" ]]; then
                 TOOLBOX_ENABLE=true
                 shift; continue
                 ;;
+            --influxdb_migration)
+                INFLUXDB_MIGRATION=true
+                TOOLBOX_ENABLE=true
+                shift; continue
+                ;;
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
@@ -5566,6 +5573,59 @@ elif [[ "$1" == "toolbox" ]]; then
         fi
  
         bash $SCRIPTPATH/install.sh $INSTALL_CLI_TARGET
+
+    elif [[ "$INFLUXDB_MIGRATION" ]]; then
+    
+        if [[ "$USE_KUBERNETES" ]]; then 
+
+            check_kubernetes_dependencies;
+
+            if ! command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+
+                echo "*********************************************"
+                printf "\033[91mError: HollaEx CLI failed to detect the exchange on your machine.\033[39m\n"
+                printf "\033[91mThis command could only works after the exchange get setup.\033[39m\n\n"
+                echo "Exiting..."
+                echo "*********************************************"
+                exit 1;
+
+            fi
+
+            echo "Running InfluxDB migrations"
+            kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/createInflux.js
+            kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/migrateInflux.js
+            kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
+        
+            echo "Restarting the exchange..."
+            kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+
+
+        elif [[ ! "$USE_KUBERNETES" ]]; then
+
+            check_docker_compose_dependencies;
+
+            if ! command docker ps -a | grep local_$ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+
+                echo "*********************************************"
+                printf "\033[91mError: HollaEx CLI failed to detect the exchange on your machine.\033[39m\n"
+                printf "\033[91mThis command could only works after the exchange get setup.\033[39m\n\n"
+                echo "Exiting..."
+                echo "*********************************************"
+                exit 1;
+
+            fi
+
+            IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+
+            echo "Running InfluxDB migrations"
+            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/createInflux.js
+            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/migrateInflux.js
+            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/initializeInflux.js
+
+            echo "Restarting containers to apply database changes."
+            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        fi
         
     fi
 

@@ -873,7 +873,7 @@ EOL
 
 function generate_random_values() {
 
-  python3 -c "import os; print os.urandom(16).encode('hex')"
+  python3 -c "import os; import codecs; print(codecs.encode(os.urandom(16), 'hex').decode())"
 
 }
 
