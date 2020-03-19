@@ -57,6 +57,7 @@ Options:
     stop: Stop the exchagne which already been running.
 
     build: Build the Docker image for running HollaEx Kit, includes user custom configurations.
+        --version, Specify base HollaEx Core version for build.
     
     upgrade: Upgrade the exchange to new version.
         --version, Version number of HollaEx Core to upgrade.
@@ -89,6 +90,7 @@ Options:
         --connect_redis, Direct connection to Redis via redis-client.
         --connect_influxdb, Direct connection to InfluxDB via influx-client.
         --install_cli, Install specific version of HollaEx CLI.
+        --influxdb_migration, Migrate InfluxDB data to a new InfluxDB.
         
     status: Show the exchange server status.
 
@@ -553,12 +555,47 @@ elif [[ "$1" == "setup" ]]; then
 
     fi
 
+    # if [[ "$USE_KUBERNETES" ]]; then 
+
+    #     if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+
+    #         echo "*********************************************"
+    #         printf "\033[91mError: HollaEx CLI detected that the exchange exists on your remote Kubernetes environment.\033[39m\n"
+    #         printf "\033[91mExchange setup can't be done for multiple times.\033[39m\n\n"
+    #         echo "Exiting..."
+    #         echo "*********************************************"
+    #         exit 1;
+
+    #     fi
+
+    # elif [[ ! "$USE_KUBERNETES" ]]; then 
+
+    #     if command docker ps -a | grep local_$ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+
+    #         echo "*********************************************"
+    #         printf "\033[91mError: HollaEx CLI detected that the exchange exists on your machine.\033[39m\n"
+    #         printf "\033[91mExchange setup can't be done for multiple times.\033[39m\n\n"
+    #         printf "\033[91mIf you want to just update settings values, Please run 'hollaex setup --reconfigure' instead.\033[39m\n\n"
+    #         echo "Exiting..."
+    #         echo "*********************************************"
+    #         exit 1;
+
+    #     fi
+
+    # fis
+
+    source $SCRIPTPATH/tools_generator.sh
+
+     #Generating random values for passwords and update config file to contain it;
+    update_random_values_to_config;
+
+    echo $ACTIVATION_CODE
+
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
     done;
-    
-    source $SCRIPTPATH/tools_generator.sh
-    load_config_variables;
+
+    echo $ACTIVATION_CODE
 
     for i in ${CONFIG_FILE_PATH[@]}; do
 
@@ -582,6 +619,13 @@ elif [[ "$1" == "setup" ]]; then
 
     # Check Kit version compatibility range.
     check_kit_version_compatibility_range;
+
+    # Randomly generates backend passwords
+    if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_INFLUX_PASSWORD" ]]; then
+    
+        generate_backend_passwords;
+
+    fi
     
     # hollaex setup --reconfigure
     if [[ "$RECONFIGURE_BASIC_SETTINGS" ]]; then
@@ -611,7 +655,7 @@ elif [[ "$1" == "setup" ]]; then
         exit 0;
 
     fi
-    
+
     # PRESET env for user initial setup config value selection
     CONTINUE_WITH_PRECONFIGURED_VALUES=false 
 
@@ -629,14 +673,6 @@ elif [[ "$1" == "setup" ]]; then
         else 
 
             export CONTINUE_WITH_PRECONFIGURED_VALUES=true
-
-            # Exporting settings values
-            for i in ${CONFIG_FILE_PATH[@]}; do
-            source $i
-            done;
-
-            source $SCRIPTPATH/tools_generator.sh
-            load_config_variables;
 
         fi
 
@@ -687,16 +723,8 @@ elif [[ "$1" == "setup" ]]; then
             fi
 
         fi
-
-        for i in ${CONFIG_FILE_PATH[@]}; do
-        source $i
-        done;
-
-        source $SCRIPTPATH/tools_generator.sh
-        load_config_variables;
-
+    
     fi
-
     
     export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_DOCKER_IMAGE_VERSION
 
@@ -706,10 +734,23 @@ elif [[ "$1" == "setup" ]]; then
     
     build_user_hollaex_core;
 
+    load_config_variables;
+
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
         check_kubernetes_dependencies;
+
+        if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+
+            echo "*********************************************"
+            printf "\033[91mError: HollaEx CLI detected that the exchange exists on your remote Kubernetes environment.\033[39m\n"
+            printf "\033[91mExchange setup can't be done for multiple times.\033[39m\n\n"
+            echo "Exiting..."
+            echo "*********************************************"
+            exit 1;
+
+        fi
 
         # launch_basic_settings_input;
 
@@ -730,17 +771,6 @@ elif [[ "$1" == "setup" ]]; then
         kubectl get nodes
         echo "*********************************************"
 
-        if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
-
-            echo "*********************************************"
-            printf "\033[91mError: HollaEx CLI detected that the exchange exists on your remote Kubernetes environment.\033[39m\n"
-            printf "\033[91mExchange setup can't be done for multiple times.\033[39m\n\n"
-            echo "Exiting..."
-            echo "*********************************************"
-            exit 1;
-
-        fi
-
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
             echo "Are you sure you want to launch $HOLLAEX_CONFIGMAP_API_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) on this cluster? (Y/n)"
@@ -753,10 +783,6 @@ elif [[ "$1" == "setup" ]]; then
             fi
 
         fi
-
-        #Generating random values for passwords and update config file to contain it;
-        update_random_values_to_config;
-
 
         if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
 
@@ -939,9 +965,6 @@ elif [[ "$1" == "setup" ]]; then
         #     fi
 
         # fi
-
-        # #Generating random values for passwords and update config file to contain it;
-        update_random_values_to_config;
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
@@ -1844,14 +1867,13 @@ elif [[ "$1" == "start" ]]; then
 
     fi
 
+    #Regenerate random secrets
+    update_random_values_to_config;
+
     load_config_variables;
 
     # Check Kit version compatibility range.
     check_kit_version_compatibility_range;
-
-    #Regenerate random secrets
-    update_random_values_to_config;
-
 
     if [[ "$USE_KUBERNETES" ]]; then
 
@@ -3054,7 +3076,7 @@ elif [[ "$1" == "upgrade" ]]; then
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$1
-                echo "Target HollaEx Core release version : v $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE."
+                echo "Target HollaEx Core release version : v$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE."
                 shift; continue
                 ;;
              --no_image_build)
@@ -3107,10 +3129,14 @@ elif [[ "$1" == "upgrade" ]]; then
     done;
     
     source $SCRIPTPATH/tools_generator.sh
+
+    #Regenerate random secrets
+    update_random_values_to_config;
+
     load_config_variables;
 
     echo "Checking the version compatibility between the latest HollaEx CLI and your local Kit..."
-    if command curl -s -f https://raw.githubusercontent.com/bitholla/hollaex-cli/1.9.0/version_range > $SCRIPTPATH/.master_version_range; then 
+    if command curl -s -f https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version_range > $SCRIPTPATH/.master_version_range; then 
 
         source $SCRIPTPATH/.master_version_range
         rm $SCRIPTPATH/.master_version_range
@@ -3133,16 +3159,6 @@ elif [[ "$1" == "upgrade" ]]; then
     # Check Kit version compatibility range.
     check_kit_version_compatibility_range;
 
-    if [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
-
-        export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
-
-    else 
-
-        export ENVIRONMENT_DOCKER_IMAGE_VERSION=$HOLLAEX_CORE_MAXIMUM_COMPATIBLE
-    
-    fi
-
     check_core_version_compatibility_range;
 
     # Update HollaEx CLI to latest if there is newer release available.
@@ -3151,7 +3167,7 @@ elif [[ "$1" == "upgrade" ]]; then
     # Override target docker image version if user passed it manually with flag / version range available at each CLI releases.     
     override_docker_image_version;
     export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION
         
 
     # Override target docker registry if user passed it manually with flag.
@@ -3167,9 +3183,6 @@ elif [[ "$1" == "upgrade" ]]; then
         build_user_hollaex_core;
     
     fi
-
-    #Regenerate random secrets
-    update_random_values_to_config;
 
     if [[ "$USE_KUBERNETES" ]]; then
 

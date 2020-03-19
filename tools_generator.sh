@@ -938,10 +938,10 @@ EOL
         unset HOLLAEX_CONFIGMAP_VARIABLES_YAML
 
         for i in ${CONFIG_FILE_PATH[@]}; do
-            source $i
-      done;
+              source $i
+        done;
 
-        load_config_variables;
+      #   load_config_variables;
     
     
     
@@ -5518,5 +5518,31 @@ function check_core_version_compatibility_range() {
     exit 1;
 
   fi
+
+}
+
+function generate_backend_passwords() {
+
+  echo "Generating random passwords for backends..."
+
+  export HOLLAEX_SECRET_REDIS_PASSWORD=$(generate_random_values)
+  export HOLLAEX_SECRET_DB_PASSWORD=$(generate_random_values)
+  export HOLLAEX_SECRET_INFLUX_PASSWORD=$(generate_random_values)
+
+  if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE" $i > /dev/null ; then
+
+    SECRET_FILE_PATH=$i
+
+    sed -i.bak "s/HOLLAEX_SECRET_REDIS_PASSWORD=.*/HOLLAEX_SECRET_REDIS_PASSWORD=$HOLLAEX_SECRET_REDIS_PASSWORD/" $SECRET_FILE_PATH
+    sed -i.bak "s/HOLLAEX_SECRET_PUBSUB_PASSWORD=.*/HOLLAEX_SECRET_PUBSUB_PASSWORD=$HOLLAEX_SECRET_REDIS_PASSWORD/" $SECRET_FILE_PATH
+
+    sed -i.bak "s/HOLLAEX_SECRET_DB_PASSWORD=.*/HOLLAEX_SECRET_DB_PASSWORD=$HOLLAEX_SECRET_DB_PASSWORD/" $SECRET_FILE_PATH
+
+    sed -i.bak "s/HOLLAEX_SECRET_INFLUX_PASSWORD=.*/HOLLAEX_SECRET_INFLUX_PASSWORD=$HOLLAEX_SECRET_INFLUX_PASSWORD/" $SECRET_FILE_PATH
+
+    rm $SECRET_FILE_PATH.bak
+    
+  fi
+
 
 }
