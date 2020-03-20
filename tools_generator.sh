@@ -4230,21 +4230,24 @@ function hollaex_ascii_exchange_is_up() {
 
   /bin/cat << EOF
 
-1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
-.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
-.0@G                                                                  L@8,
-.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
-.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
-.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
-.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
-.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
-.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
-.0@G
-.@@@888888888888888888888888888888888888888888888888888888888888888888880.
-1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
 
-                        Your Exchange is up!
-                Try to reach ${HOLLAEX_CONFIGMAP_API_HOST}/v1/health
+                                              ,t:
+                                            ,L@@@f.
+                                          ,L@@@8f:
+                                        ,L@@@@f,
+                                      ,L@@@8f,
+                                    ,L@@@8f,
+                  :i              ,L@@@8f,
+                .L@@Gi          ,L@@@8f,
+                .10@@@Gi      ,L@@@8f,
+                  iG@@@Gi  ,L@@@8f,
+                    iG@@@GL@@@8f,
+                      iG@@@@8f,
+                        iG8f,
+                          ,
+
+                    Your Exchange is up!
+            Try to reach ${HOLLAEX_CONFIGMAP_API_HOST}/v1/health
 
 EOF
 
@@ -4254,20 +4257,22 @@ function hollaex_ascii_exchange_has_been_setup() {
 
   /bin/cat << EOF
 
-1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
-.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
-.0@G                                                                  L@8,
-.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
-.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
-.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
-.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
-.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
-.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
-.0@G
-.@@@888888888888888888888888888888888888888888888888888888888888888888880.
-1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
+                                            ,t:
+                                          ,L@@@f.
+                                        ,L@@@8f:
+                                      ,L@@@@f,
+                                    ,L@@@8f,
+                                  ,L@@@8f,
+                :i              ,L@@@8f,
+              .L@@Gi          ,L@@@8f,
+              .10@@@Gi      ,L@@@8f,
+                iG@@@Gi  ,L@@@8f,
+                  iG@@@GL@@@8f,
+                    iG@@@@8f,
+                      iG8f,
+                        ,
 
-                     Your Exchange has been setup!
+                  Your Exchange has been setup!
                  
 EOF
 
@@ -4277,27 +4282,36 @@ function hollaex_prod_complete() {
 
   /bin/cat << EOF
 
-1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
-.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
-.0@G                                                                  L@8,
-.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
-.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
-.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
-.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
-.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
-.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
-.0@G
-.@@@888888888888888888888888888888888888888888888888888888888888888888880.
-1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
+                            ......
+                      .;1LG088@@880GL1;.
+                  ,tC8@@@@@@@@@@@@@@@@8Ct,
+                ;C@@@@GtL@@@8;;8@@@Lf0@@@@C;
+              ,C@@@0t: ,8@@8:  :8@@0, :t8@@@L,
+              i@@@0i   .8@@8,    :8@@0    18@@8;
+            1@@@8t;;iiL@@@C;iiii;C@@@fii;;t@@@@i
+            :@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,
+            C@@@LfffffG@@@GffffffffG@@@CfffffL@@@L
+          .8@@G      f@@@;        ;@@@t      0@@0.
+          ,@@@L .  . L@@@: .    . ;@@@L .  . C@@@,
+          .8@@G      f@@@:        ;@@@t      G@@8.
+            C@@@LfffffG@@@GffffffffG@@@CfffffL@@@L
+            :@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,
+            1@@@81;;iiL@@@L;iiii;C@@@Lii;;t8@@@i
+              i@@@0i   .8@@8,    ,8@@0    10@@8i
+              :C@@@0t, ,8@@8:  :8@@8, :t0@@@C,
+                iC@@@@GtL@@@8:;8@@@LtG@@@@C;
+                  :tG@@@@@@@@@@@@@@@@@@Gt,
+                      ,itLG088@@880GLt;.
+                            ..,,..
 
-              Your Exchange has been setup for production!
+          Your Exchange has been setup for production!
 
-        Please run 'hollaex restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' and 'hollaex web --restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)'
-        to apply the changes you made.
+    Please run 'hollaex restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' and 'hollaex web --restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)'
+    to apply the changes you made.
 
-        For the web, You should rebuild the Docker image to apply the changes.
+    For the web, You should rebuild the Docker image to apply the changes.
 
-        Have fun <3!
+    Have fun <3!
 
 EOF
 
@@ -4307,21 +4321,60 @@ function hollaex_ascii_exchange_has_been_stopped() {
 
   /bin/cat << EOF
 
-1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
-.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
-.0@G                                                                  L@8,
-.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
-.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
-.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
-.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
-.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
-.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
-.0@G
-.@@@888888888888888888888888888888888888888888888888888888888888888888880.
-1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
+                            ,,,,
+                            8@@8
+                            8@@8
+                  10C;       8@@8      .;C0i
+                :G@@@G,      8@@8      ,G@@@G,
+              ;@@@8i        8@@8        i8@@8;
+              :@@@0,         8@@8         :8@@8,
+              G@@@:          8@@8          ;@@@C
+            ,@@@C           0@@0           G@@@,
+            ;@@@f           @@@@           L@@@:
+            ,@@@C           1111           G@@8.
+              C@@@:                        ;@@@C
+              :@@@0,                      :8@@8,
+              ;@@@8i                    i8@@8;
+                :G@@@Ci.              .iG@@@G:
+                  10@@@0Li:.      .:iL0@@@01
+                  .iC8@@@@@00GG08@@@@@8L;
+                      .;tLG8@@@@@@8GLt;.
+                          ..,,,...
 
-                    Your Exchange has been stopped
-               Run 'hollaex start$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to start the exchange.
+                Your Exchange has been stopped
+            Run 'hollaex start$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to start the exchange.
+                 
+
+EOF
+
+}
+
+function hollaex_ascii_exchange_has_been_terminated() {
+
+  /bin/cat << EOF
+
+                .           .,,,,.
+              100t.    ,1LG8@@@@@@0Cfi,
+            .t8@@8t.  ,L@@@8GGG08@@@@8Ci
+              .10@@8t.  ,;,      ,;f0@@@G;
+                .;C@@@0t.            .i0@@@1
+            ,1C8@@@@@@@@0t.            .G@@@i
+          ,L@@@@0CLffff0@@0t.           .8@@8i:,
+        1@@@8t:       .10@@0t.          L@@@@@@0L;
+        ;@@@G,           .10@@8t.        :tttfC8@@@G:
+        0@@8,              .10@@0t.            .18@@8:
+        @@@0                 .10@@0t.            :@@@G
+        G@@@:                  .10@@0t.           0@@@
+        :@@@0:                   .10@@8t.        i@@@C
+        ;8@@@L;.                   10@@8t.    :C@@@0.
+          .f8@@@@0GGGGGGGGGGGGGGGGGCCG@@@@8t.  ,L@@f.
+            .ifG8@@@@@@@@@@@@@@@@@@@@@@@@@@@0t.  ,,
+                .,,,,,,,,,,,,,,,,,,,,:::::10@@8t.
+                                          .10Gi
+                                            .  .
+
+                Your Exchange has been terminated.
+    Run 'hollaex setup$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to setup the exchange from a scratch.
                  
 
 EOF
@@ -4697,21 +4750,23 @@ function hollaex_ascii_web_server_is_up() {
 
       /bin/cat << EOF
 
-1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
-.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
-.0@G                                                                  L@8,
-.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
-.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
-.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
-.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
-.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
-.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
-.0@G
-.@@@888888888888888888888888888888888888888888888888888888888888888888880.
-1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
+                                              ,t:
+                                            ,L@@@f.
+                                          ,L@@@8f:
+                                        ,L@@@@f,
+                                      ,L@@@8f,
+                                    ,L@@@8f,
+                  :i              ,L@@@8f,
+                .L@@Gi          ,L@@@8f,
+                .10@@@Gi      ,L@@@8f,
+                  iG@@@Gi  ,L@@@8f,
+                    iG@@@GL@@@8f,
+                      iG@@@@8f,
+                        iG8f,
+                          ,
 
-              Web Client for your exchange is ready!
-              Try to reach $(if [[ ! "$HOLLAEX_CONFIGMAP_DOMAIN" == *"example.com" ]]; then echo "$HOLLAEX_CONFIGMAP_DOMAIN"; fi) $(if [[ ! "$HOLLAEX_CONFIGMAP_DOMAIN" == *"example.com" ]] && [[ ! "$USE_KUBERNETES" ]]; then echo "or"; fi) $(if [[ ! "$USE_KUBERNETES" ]]; then echo "localhost:8080"; fi)
+          Web Client for your exchange is ready!
+          Try to reach $(if [[ ! "$HOLLAEX_CONFIGMAP_DOMAIN" == *"example.com" ]]; then echo "$HOLLAEX_CONFIGMAP_DOMAIN"; fi) $(if [[ ! "$HOLLAEX_CONFIGMAP_DOMAIN" == *"example.com" ]] && [[ ! "$USE_KUBERNETES" ]]; then echo "or"; fi) $(if [[ ! "$USE_KUBERNETES" ]]; then echo "localhost:8080"; fi)
       
 EOF
 
@@ -4721,21 +4776,23 @@ function hollaex_ascii_web_server_has_been_setup() {
 
       /bin/cat << EOF
 
-1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
-.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
-.0@G                                                                  L@8,
-.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
-.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
-.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
-.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
-.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
-.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
-.0@G
-.@@@888888888888888888888888888888888888888888888888888888888888888888880.
-1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
+                                            ,t:
+                                          ,L@@@f.
+                                        ,L@@@8f:
+                                      ,L@@@@f,
+                                    ,L@@@8f,
+                                  ,L@@@8f,
+                :i              ,L@@@8f,
+              .L@@Gi          ,L@@@8f,
+              .10@@@Gi      ,L@@@8f,
+                iG@@@Gi  ,L@@@8f,
+                  iG@@@GL@@@8f,
+                    iG@@@@8f,
+                      iG8f,
+                        ,
 
-        Web Server for your exchange has been setup and prepared.
-        Please run 'hollaex web --start $(if [[ "$USE_KUBERNETES" ]]; then echo "--kube"; fi)' to bring the web server up!
+      Web Server for your exchange has been setup and prepared.
+      Please run 'hollaex web --start $(if [[ "$USE_KUBERNETES" ]]; then echo "--kube"; fi)' to bring the web server up!
 
 EOF
 

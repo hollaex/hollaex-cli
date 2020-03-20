@@ -3553,7 +3553,11 @@ elif [[ "$1" == "terminate" ]]; then
         echo "Removing $HOLLAEX_CONFIGMAP_API_NAME namespace."
         kubectl delete ns $ENVIRONMENT_EXCHANGE_NAME
 
-        echo "$HOLLAEX_CONFIGMAP_API_NAME ($HOLLAEX_CONFIGMAP_API_HOST) has been successfully terminated. If there's an issue, please review the logs and try it again."
+        hollaex_ascii_exchange_has_been_terminated;
+
+        echo "$HOLLAEX_CONFIGMAP_API_NAME ($HOLLAEX_CONFIGMAP_API_HOST) has been successfully terminated."
+        echo "If there's an issue, please review the logs and try it again."
+        printf "\nBye!\n\n"
 
         exit 0;
 
@@ -3597,9 +3601,10 @@ elif [[ "$1" == "terminate" ]]; then
             docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client down 
         fi
 
+        hollaex_ascii_exchange_has_been_terminated;
+
         echo "$HOLLAEX_CONFIGMAP_API_NAME ($HOLLAEX_CONFIGMAP_API_HOST) has been successfully terminated."
         echo "If there's an issue, please review the logs and try it again."
-        echo "To setup the exchange again from a scratch, please run 'hollaex setup'"
         printf "\nBye!\n\n"
 
         exit 0;
@@ -6020,18 +6025,23 @@ elif [[ "$1" == "version" ]]; then
      
     /bin/cat << EOF
 
-1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
-.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
-.0@G                                                                  L@8,
-.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
-.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
-.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
-.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
-.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
-.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
-.0@G
-.@@@888888888888888888888888888888888888888888888888888888888888888888880.
-1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
+                        ..,,,..
+         ,ifGi      .:tLG8@@@@@@0Cfi,
+      .iC@@@@1    :f0@@@@@0GGG08@@@@@Ci.
+     10@@@0f;.  ,L@@@@C1:.     .,;f0@@@0i
+   .C@@@G;     i8@@8t,              iG@@@L
+  .G@@@t      i@@@0:                  f@@@C
+  t@@@t      ,8@@8,                    f@@@1
+ .8@@0       1@@@1                     .8@@0
+ ,@@@G       f@@@;                      G@@8.
+ .8@@0       1@@@1                     .8@@0
+  f@@@t      ,8@@8.                    f@@@t
+  .G@@@t      i@@@0,                  t@@@G
+   .C@@@C;     i@@@8t,              ;G@@@C.
+     18@@@Gt;.  ,C@@@8Li,.      ,;f0@@@0i
+      .1G@@@@1    :f8@@@@80GGGG8@@@@@Gi.
+         ,ifGi      .;tC08@@@@@@8Cfi,
+                         .,,,,,.
 
 HollaEx CLI : v$(cat $SCRIPTPATH/version), Made with <3 by bitHolla Inc.
 
