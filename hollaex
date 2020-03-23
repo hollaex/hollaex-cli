@@ -555,47 +555,14 @@ elif [[ "$1" == "setup" ]]; then
 
     fi
 
-    # if [[ "$USE_KUBERNETES" ]]; then 
-
-    #     if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
-
-    #         echo "*********************************************"
-    #         printf "\033[91mError: HollaEx CLI detected that the exchange exists on your remote Kubernetes environment.\033[39m\n"
-    #         printf "\033[91mExchange setup can't be done for multiple times.\033[39m\n\n"
-    #         echo "Exiting..."
-    #         echo "*********************************************"
-    #         exit 1;
-
-    #     fi
-
-    # elif [[ ! "$USE_KUBERNETES" ]]; then 
-
-    #     if command docker ps -a | grep local_$ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
-
-    #         echo "*********************************************"
-    #         printf "\033[91mError: HollaEx CLI detected that the exchange exists on your machine.\033[39m\n"
-    #         printf "\033[91mExchange setup can't be done for multiple times.\033[39m\n\n"
-    #         printf "\033[91mIf you want to just update settings values, Please run 'hollaex setup --reconfigure' instead.\033[39m\n\n"
-    #         echo "Exiting..."
-    #         echo "*********************************************"
-    #         exit 1;
-
-    #     fi
-
-    # fis
-
     source $SCRIPTPATH/tools_generator.sh
 
      #Generating random values for passwords and update config file to contain it;
     update_random_values_to_config;
 
-    echo $ACTIVATION_CODE
-
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
     done;
-
-    echo $ACTIVATION_CODE
 
     for i in ${CONFIG_FILE_PATH[@]}; do
 
@@ -725,16 +692,16 @@ elif [[ "$1" == "setup" ]]; then
         fi
     
     fi
-    
+
+    load_config_variables;
+
     export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_DOCKER_IMAGE_VERSION
 
     override_docker_image_version;
     export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
-    
-    build_user_hollaex_core;
 
-    load_config_variables;
+    build_user_hollaex_core;
 
     if [[ "$USE_KUBERNETES" ]]; then
 
