@@ -4231,23 +4231,23 @@ function hollaex_ascii_exchange_is_up() {
   /bin/cat << EOF
 
 
-                                              ,t:
-                                            ,L@@@f.
-                                          ,L@@@8f:
-                                        ,L@@@@f,
-                                      ,L@@@8f,
-                                    ,L@@@8f,
-                  :i              ,L@@@8f,
-                .L@@Gi          ,L@@@8f,
-                .10@@@Gi      ,L@@@8f,
-                  iG@@@Gi  ,L@@@8f,
-                    iG@@@GL@@@8f,
-                      iG@@@@8f,
-                        iG8f,
-                          ,
+                                      ,t:
+                                    ,L@@@f.
+                                  ,L@@@8f:
+                                ,L@@@@f,
+                              ,L@@@8f,
+                            ,L@@@8f,
+          :i              ,L@@@8f,
+        .L@@Gi          ,L@@@8f,
+        .10@@@Gi      ,L@@@8f,
+          iG@@@Gi  ,L@@@8f,
+            iG@@@GL@@@8f,
+              iG@@@@8f,
+                iG8f,
+                  ,
 
-                    Your Exchange is up!
-            Try to reach ${HOLLAEX_CONFIGMAP_API_HOST}/v1/health
+            Your Exchange is up!
+    Try to reach ${HOLLAEX_CONFIGMAP_API_HOST}/v1/health
 
 EOF
 
@@ -4257,22 +4257,22 @@ function hollaex_ascii_exchange_has_been_setup() {
 
   /bin/cat << EOF
 
-                                            ,t:
-                                          ,L@@@f.
-                                        ,L@@@8f:
-                                      ,L@@@@f,
-                                    ,L@@@8f,
-                                  ,L@@@8f,
-                :i              ,L@@@8f,
-              .L@@Gi          ,L@@@8f,
-              .10@@@Gi      ,L@@@8f,
-                iG@@@Gi  ,L@@@8f,
-                  iG@@@GL@@@8f,
-                    iG@@@@8f,
-                      iG8f,
-                        ,
+                                  ,t:
+                                ,L@@@f.
+                              ,L@@@8f:
+                            ,L@@@@f,
+                          ,L@@@8f,
+                        ,L@@@8f,
+      :i              ,L@@@8f,
+    .L@@Gi          ,L@@@8f,
+    .10@@@Gi      ,L@@@8f,
+      iG@@@Gi  ,L@@@8f,
+        iG@@@GL@@@8f,
+          iG@@@@8f,
+            iG8f,
+              ,
 
-                  Your Exchange has been setup!
+      Your Exchange has been setup!
                  
 EOF
 
@@ -4282,29 +4282,29 @@ function hollaex_prod_complete() {
 
   /bin/cat << EOF
 
-                            ......
-                      .;1LG088@@880GL1;.
-                  ,tC8@@@@@@@@@@@@@@@@8Ct,
-                ;C@@@@GtL@@@8;;8@@@Lf0@@@@C;
-              ,C@@@0t: ,8@@8:  :8@@0, :t8@@@L,
-              i@@@0i   .8@@8,    :8@@0    18@@8;
-            1@@@8t;;iiL@@@C;iiii;C@@@fii;;t@@@@i
-            :@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,
-            C@@@LfffffG@@@GffffffffG@@@CfffffL@@@L
-          .8@@G      f@@@;        ;@@@t      0@@0.
-          ,@@@L .  . L@@@: .    . ;@@@L .  . C@@@,
-          .8@@G      f@@@:        ;@@@t      G@@8.
-            C@@@LfffffG@@@GffffffffG@@@CfffffL@@@L
-            :@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,
-            1@@@81;;iiL@@@L;iiii;C@@@Lii;;t8@@@i
-              i@@@0i   .8@@8,    ,8@@0    10@@8i
-              :C@@@0t, ,8@@8:  :8@@8, :t0@@@C,
-                iC@@@@GtL@@@8:;8@@@LtG@@@@C;
-                  :tG@@@@@@@@@@@@@@@@@@Gt,
-                      ,itLG088@@880GLt;.
-                            ..,,..
+                      ......
+                .;1LG088@@880GL1;.
+            ,tC8@@@@@@@@@@@@@@@@8Ct,
+          ;C@@@@GtL@@@8;;8@@@Lf0@@@@C;
+        ,C@@@0t: ,8@@8:  :8@@0, :t8@@@L,
+        i@@@0i   .8@@8,    :8@@0    18@@8;
+      1@@@8t;;iiL@@@C;iiii;C@@@fii;;t@@@@i
+      :@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,
+      C@@@LfffffG@@@GffffffffG@@@CfffffL@@@L
+    .8@@G      f@@@;        ;@@@t      0@@0.
+    ,@@@L .  . L@@@: .    . ;@@@L .  . C@@@,
+    .8@@G      f@@@:        ;@@@t      G@@8.
+      C@@@LfffffG@@@GffffffffG@@@CfffffL@@@L
+      :@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,
+      1@@@81;;iiL@@@L;iiii;C@@@Lii;;t8@@@i
+        i@@@0i   .8@@8,    ,8@@0    10@@8i
+        :C@@@0t, ,8@@8:  :8@@8, :t0@@@C,
+          iC@@@@GtL@@@8:;8@@@LtG@@@@C;
+            :tG@@@@@@@@@@@@@@@@@@Gt,
+                ,itLG088@@880GLt;.
+                      ..,,..
 
-          Your Exchange has been setup for production!
+    Your Exchange has been setup for production!
 
     Please run 'hollaex restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' and 'hollaex web --restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)'
     to apply the changes you made.
@@ -4321,29 +4321,29 @@ function hollaex_ascii_exchange_has_been_stopped() {
 
   /bin/cat << EOF
 
-                            ,,,,
-                            8@@8
-                            8@@8
-                  10C;       8@@8      .;C0i
-                :G@@@G,      8@@8      ,G@@@G,
-              ;@@@8i        8@@8        i8@@8;
-              :@@@0,         8@@8         :8@@8,
-              G@@@:          8@@8          ;@@@C
-            ,@@@C           0@@0           G@@@,
-            ;@@@f           @@@@           L@@@:
-            ,@@@C           1111           G@@8.
-              C@@@:                        ;@@@C
-              :@@@0,                      :8@@8,
-              ;@@@8i                    i8@@8;
-                :G@@@Ci.              .iG@@@G:
-                  10@@@0Li:.      .:iL0@@@01
-                  .iC8@@@@@00GG08@@@@@8L;
-                      .;tLG8@@@@@@8GLt;.
-                          ..,,,...
+                    ,,,,
+                    8@@8
+                    8@@8
+          10C;       8@@8      .;C0i
+        :G@@@G,      8@@8      ,G@@@G,
+      ;@@@8i        8@@8        i8@@8;
+      :@@@0,         8@@8         :8@@8,
+      G@@@:          8@@8          ;@@@C
+    ,@@@C           0@@0           G@@@,
+    ;@@@f           @@@@           L@@@:
+    ,@@@C           1111           G@@8.
+      C@@@:                        ;@@@C
+      :@@@0,                      :8@@8,
+      ;@@@8i                    i8@@8;
+        :G@@@Ci.              .iG@@@G:
+          10@@@0Li:.      .:iL0@@@01
+          .iC8@@@@@00GG08@@@@@8L;
+              .;tLG8@@@@@@8GLt;.
+                  ..,,,...
 
-                Your Exchange has been stopped
-            Run 'hollaex start$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to start the exchange.
-                 
+        Your Exchange has been stopped
+    Run 'hollaex start$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to start the exchange.
+          
 
 EOF
 
@@ -4353,25 +4353,25 @@ function hollaex_ascii_exchange_has_been_terminated() {
 
   /bin/cat << EOF
 
-                .           .,,,,.
-              100t.    ,1LG8@@@@@@0Cfi,
-            .t8@@8t.  ,L@@@8GGG08@@@@8Ci
-              .10@@8t.  ,;,      ,;f0@@@G;
-                .;C@@@0t.            .i0@@@1
-            ,1C8@@@@@@@@0t.            .G@@@i
-          ,L@@@@0CLffff0@@0t.           .8@@8i:,
-        1@@@8t:       .10@@0t.          L@@@@@@0L;
-        ;@@@G,           .10@@8t.        :tttfC8@@@G:
-        0@@8,              .10@@0t.            .18@@8:
-        @@@0                 .10@@0t.            :@@@G
-        G@@@:                  .10@@0t.           0@@@
-        :@@@0:                   .10@@8t.        i@@@C
-        ;8@@@L;.                   10@@8t.    :C@@@0.
-          .f8@@@@0GGGGGGGGGGGGGGGGGCCG@@@@8t.  ,L@@f.
-            .ifG8@@@@@@@@@@@@@@@@@@@@@@@@@@@0t.  ,,
-                .,,,,,,,,,,,,,,,,,,,,:::::10@@8t.
-                                          .10Gi
-                                            .  .
+            .           .,,,,.
+          100t.    ,1LG8@@@@@@0Cfi,
+        .t8@@8t.  ,L@@@8GGG08@@@@8Ci
+          .10@@8t.  ,;,      ,;f0@@@G;
+            .;C@@@0t.            .i0@@@1
+        ,1C8@@@@@@@@0t.            .G@@@i
+      ,L@@@@0CLffff0@@0t.           .8@@8i:,
+    1@@@8t:       .10@@0t.          L@@@@@@0L;
+    ;@@@G,           .10@@8t.        :tttfC8@@@G:
+    0@@8,              .10@@0t.            .18@@8:
+    @@@0                 .10@@0t.            :@@@G
+    G@@@:                  .10@@0t.           0@@@
+    :@@@0:                   .10@@8t.        i@@@C
+    ;8@@@L;.                   10@@8t.    :C@@@0.
+      .f8@@@@0GGGGGGGGGGGGGGGGGCCG@@@@8t.  ,L@@f.
+        .ifG8@@@@@@@@@@@@@@@@@@@@@@@@@@@0t.  ,,
+            .,,,,,,,,,,,,,,,,,,,,:::::10@@8t.
+                                      .10Gi
+                                        .  .
 
                 Your Exchange has been terminated.
     Run 'hollaex setup$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to setup the exchange from a scratch.
@@ -4384,27 +4384,27 @@ EOF
 function hollaex_ascii_exchange_has_been_upgraded() {
  /bin/cat << EOF
 
-                 .,:::,.
-              ,1L08@@@@@@@80Li,
-           .10@@0fi:,..,:;1L0@@G1.
-         .t@@Gi.  ,1tL:      .10@81
-        :0@G;     1@@@8:.   .;  i8@G,
-       :@@f      ;C@@@@@8GfC8@8i .C@8,
-      .8@L  fLftG@@@8GG0@@@@@@0i   G@0.
-      t@8, i@@@@@@0i.   .1G0GC     ,GG:
-      C@G  .;f8@@@:        .i;;;, ,;;;;  :;;;:
-      C@G     t@@@;       : t@@@8;.C@@@G.:8@@@f
-      1@@,    ;@@@81,. .:f@C.i8@@@i t@@@0, C@@@C.
-      .0@C  .f@@@@@@@808@@@@1 :0@@@t 1@@@@; f@@@0,
-       ,8@C. i0@0ftC0@@@@@t,   ,8@@@t 1@@@@; L@@@8.
-        ,G@8i  ,     ,8@@@:   ,G@@@L ;0@@@1 t@@@8;
-          10@8t,      :ti;.  :0@@@t i@@@8; f@@@G,
-            iC@@8Cf1;;::;i: 1@@@@i L@@@0:,0@@@C.
-              .;tC08@@@@@f..1111: ,1111. ;111i
-                    .....
+              .,:::,.
+          ,1L08@@@@@@@80Li,
+        .10@@0fi:,..,:;1L0@@G1.
+      .t@@Gi.  ,1tL:      .10@81
+    :0@G;     1@@@8:.   .;  i8@G,
+    :@@f      ;C@@@@@8GfC8@8i .C@8,
+  .8@L  fLftG@@@8GG0@@@@@@0i   G@0.
+  t@8, i@@@@@@0i.   .1G0GC     ,GG:
+  C@G  .;f8@@@:        .i;;;, ,;;;;  :;;;:
+  C@G     t@@@;       : t@@@8;.C@@@G.:8@@@f
+  1@@,    ;@@@81,. .:f@C.i8@@@i t@@@0, C@@@C.
+  .0@C  .f@@@@@@@808@@@@1 :0@@@t 1@@@@; f@@@0,
+    ,8@C. i0@0ftC0@@@@@t,   ,8@@@t 1@@@@; L@@@8.
+    ,G@8i  ,     ,8@@@:   ,G@@@L ;0@@@1 t@@@8;
+      10@8t,      :ti;.  :0@@@t i@@@8; f@@@G,
+        iC@@8Cf1;;::;i: 1@@@@i L@@@0:,0@@@C.
+          .;tC08@@@@@f..1111: ,1111. ;111i
+                .....
 
-        Exchange has been successfully upgraded!
-        Try to reach $HOLLAEX_CONFIGMAP_API_HOST
+    Exchange has been successfully upgraded!
+    Try to reach $HOLLAEX_CONFIGMAP_API_HOST
 
 EOF
 }
@@ -4750,24 +4750,24 @@ function hollaex_ascii_web_server_is_up() {
 
       /bin/cat << EOF
 
-                                              ,t:
-                                            ,L@@@f.
-                                          ,L@@@8f:
-                                        ,L@@@@f,
-                                      ,L@@@8f,
-                                    ,L@@@8f,
-                  :i              ,L@@@8f,
-                .L@@Gi          ,L@@@8f,
-                .10@@@Gi      ,L@@@8f,
-                  iG@@@Gi  ,L@@@8f,
-                    iG@@@GL@@@8f,
-                      iG@@@@8f,
-                        iG8f,
-                          ,
+                                      ,t:
+                                    ,L@@@f.
+                                  ,L@@@8f:
+                                ,L@@@@f,
+                              ,L@@@8f,
+                            ,L@@@8f,
+          :i              ,L@@@8f,
+        .L@@Gi          ,L@@@8f,
+        .10@@@Gi      ,L@@@8f,
+          iG@@@Gi  ,L@@@8f,
+            iG@@@GL@@@8f,
+              iG@@@@8f,
+                iG8f,
+                  ,
 
-          Web Client for your exchange is ready!
-          Try to reach $(if [[ ! "$HOLLAEX_CONFIGMAP_DOMAIN" == *"example.com" ]]; then echo "$HOLLAEX_CONFIGMAP_DOMAIN"; fi) $(if [[ ! "$HOLLAEX_CONFIGMAP_DOMAIN" == *"example.com" ]] && [[ ! "$USE_KUBERNETES" ]]; then echo "or"; fi) $(if [[ ! "$USE_KUBERNETES" ]]; then echo "localhost:8080"; fi)
-      
+  Web Client for your exchange is ready!
+  Try to reach $(if [[ ! "$HOLLAEX_CONFIGMAP_DOMAIN" == *"example.com" ]]; then echo "$HOLLAEX_CONFIGMAP_DOMAIN"; fi) $(if [[ ! "$HOLLAEX_CONFIGMAP_DOMAIN" == *"example.com" ]] && [[ ! "$USE_KUBERNETES" ]]; then echo "or"; fi) $(if [[ ! "$USE_KUBERNETES" ]]; then echo "localhost:8080"; fi)
+
 EOF
 
 }
@@ -4776,23 +4776,23 @@ function hollaex_ascii_web_server_has_been_setup() {
 
       /bin/cat << EOF
 
-                                            ,t:
-                                          ,L@@@f.
-                                        ,L@@@8f:
-                                      ,L@@@@f,
-                                    ,L@@@8f,
-                                  ,L@@@8f,
-                :i              ,L@@@8f,
-              .L@@Gi          ,L@@@8f,
-              .10@@@Gi      ,L@@@8f,
-                iG@@@Gi  ,L@@@8f,
-                  iG@@@GL@@@8f,
-                    iG@@@@8f,
-                      iG8f,
-                        ,
+                                        ,t:
+                                      ,L@@@f.
+                                    ,L@@@8f:
+                                  ,L@@@@f,
+                                ,L@@@8f,
+                              ,L@@@8f,
+            :i              ,L@@@8f,
+          .L@@Gi          ,L@@@8f,
+          .10@@@Gi      ,L@@@8f,
+            iG@@@Gi  ,L@@@8f,
+              iG@@@GL@@@8f,
+                iG@@@@8f,
+                  iG8f,
+                    ,
 
-      Web Server for your exchange has been setup and prepared.
-      Please run 'hollaex web --start $(if [[ "$USE_KUBERNETES" ]]; then echo "--kube"; fi)' to bring the web server up!
+  Web Server for your exchange has been setup and prepared.
+  Please run 'hollaex web --start $(if [[ "$USE_KUBERNETES" ]]; then echo "--kube"; fi)' to bring the web server up!
 
 EOF
 
@@ -5207,20 +5207,12 @@ function hollaex_pull_and_apply_exchange_data() {
   local HOLLAEX_CONFIGMAP_API_NAME_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].name";)
 
   #LOGO PATH ESCAPING
-  local ORIGINAL_CHARACTER_FOR_DOMAIN=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.EXCHANGE_CLIENT_URL";)
-  local HOLLAEX_CONFIGMAP_DOMAIN_OVERRIDE="${ORIGINAL_CHARACTER_FOR_DOMAIN//\//\\/}"
-
-  #LOGO PATH ESCAPING
   local ORIGINAL_CHARACTER_FOR_LOGO_PATH=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.LOGO_IMAGE_LIGHT";)
   local HOLLAEX_CONFIGMAP_LOGO_PATH_OVERRIDE="${ORIGINAL_CHARACTER_FOR_LOGO_PATH//\//\\/}"
 
   #LOGO BLACK PATH ESCAPING
   local ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.LOGO_IMAGE_DARK";)
   local HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH_OVERRIDE="${ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH//\//\\/}"
-
-  #CAPTCHA SITEKEY
-  local ORIGINAL_HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY="$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY";)"
-  local HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY_OVERRIDE="${ORIGINAL_HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY//\//\\/}"
 
   local ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.DEFAULT_COUNTRY";)
 
@@ -5265,9 +5257,6 @@ function hollaex_pull_and_apply_exchange_data() {
 
   local HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE=$(IFS=','; echo "${pairs_array[*]}")
   unset pairs_array
-  
-  local ORIGINAL_CHARACTER_FOR_API_HOST=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.EXCHANGE_SERVER_URL";)
-  local HOLLAEX_CONFIGMAP_API_HOST_OVERRIDE="${ORIGINAL_CHARACTER_FOR_API_HOST//\//\\/}"
 
   local HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ACCOUNT_TIERS";)
 
@@ -5281,15 +5270,11 @@ function hollaex_pull_and_apply_exchange_data() {
   
   local HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET_OVERRIDE=$(echo "$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.STORAGE_TYPE";):$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.STORAGE_REGION";)")
 
-  # Set the default HollaEx Core version as the maximum compatible version of the current release of LI.
+  # Set the default HollaEx Core version as the maximum compatible version of the current release of CLI.
   local ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$HOLLAEX_CORE_MAXIMUM_COMPATIBLE"
 
   # Secrets
   local HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ADMIN_PASSWORD";)
-
-  #CAPTCHA SECRETKEY
-  local ORIGINAL_HOLLAEX_SECRET_CAPTCHA_SECRET_KEY="$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.HOLLAEX_SECRET_CAPTCHA_SECRET_KEY";)"
-  local HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE="${ORIGINAL_HOLLAEX_SECRET_CAPTCHA_SECRET_KEY//\//\\/}"
 
   ## SMTP Password escaping
   local ORIGINAL_CHARACTER_FOR_SMTP_PASSWORD=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.AUTOAMTED_EMAIL_PASSWORD";)
@@ -5303,13 +5288,9 @@ function hollaex_pull_and_apply_exchange_data() {
   # CONFIGMAP
   sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=.*/HOLLAEX_CONFIGMAP_API_NAME=$HOLLAEX_CONFIGMAP_API_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
-  sed -i.bak "s/HOLLAEX_CONFIGMAP_DOMAIN=.*/HOLLAEX_CONFIGMAP_DOMAIN=$HOLLAEX_CONFIGMAP_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
-
   sed -i.bak "s/HOLLAEX_CONFIGMAP_LOGO_PATH=.*/HOLLAEX_CONFIGMAP_LOGO_PATH=$HOLLAEX_CONFIGMAP_LOGO_PATH_OVERRIDE/" $CONFIGMAP_FILE_PATH
   sed -i.bak "s/HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH=.*/HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH=$HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH_OVERRIDE/" $CONFIGMAP_FILE_PATH
-
-  sed -i.bak "s/HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY=$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY/HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY=$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY_OVERRIDE/" $CONFIGMAP_FILE_PATH
-
+  
   sed -i.bak "s/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE/" $CONFIGMAP_FILE_PATH
   sed -i.bak "s/HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE=.*/HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE=$HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE_OVERRIDE/" $CONFIGMAP_FILE_PATH
   sed -i.bak "s/HOLLAEX_CONFIGMAP_VALID_LANGUAGES=$HOLLAEX_CONFIGMAP_VALID_LANGUAGES/HOLLAEX_CONFIGMAP_VALID_LANGUAGES=$HOLLAEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE/" $CONFIGMAP_FILE_PATH
@@ -5319,7 +5300,6 @@ function hollaex_pull_and_apply_exchange_data() {
   sed -i.bak "s/HOLLAEX_CONFIGMAP_CURRENCIES=$HOLLAEX_CONFIGMAP_CURRENCIES/HOLLAEX_CONFIGMAP_CURRENCIES=$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
   sed -i.bak "s/HOLLAEX_CONFIGMAP_PAIRS=.*/HOLLAEX_CONFIGMAP_PAIRS='$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE'/" $CONFIGMAP_FILE_PATH
 
-  sed -i.bak "s/HOLLAEX_CONFIGMAP_API_HOST=.*/HOLLAEX_CONFIGMAP_API_HOST=$HOLLAEX_CONFIGMAP_API_HOST_OVERRIDE/" $CONFIGMAP_FILE_PATH
   sed -i.bak "s/HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER=$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER/HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER=$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER_OVERRIDE/" $CONFIGMAP_FILE_PATH
   sed -i.bak "s/HOLLAEX_CONFIGMAP_ADMIN_EMAIL=$HOLLAEX_CONFIGMAP_ADMIN_EMAIL/HOLLAEX_CONFIGMAP_ADMIN_EMAIL=$HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
   sed -i.bak "s/HOLLAEX_CONFIGMAP_SUPPORT_EMAIL=$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL/HOLLAEX_CONFIGMAP_SUPPORT_EMAIL=$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
@@ -5335,8 +5315,6 @@ function hollaex_pull_and_apply_exchange_data() {
 
   # SECRET 
   sed -i.bak "s/HOLLAEX_SECRET_ADMIN_PASSWORD=.*/HOLLAEX_SECRET_ADMIN_PASSWORD=$HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE/" $SECRET_FILE_PATH
-
-  sed -i.bak "s/HOLLAEX_SECRET_CAPTCHA_SECRET_KEY=$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY/HOLLAEX_SECRET_CAPTCHA_SECRET_KEY=$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE/" $SECRET_FILE_PATH
 
   sed -i.bak "s/HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID/HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE/" $SECRET_FILE_PATH
   sed -i.bak "s/HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=.*/HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE/" $SECRET_FILE_PATH
