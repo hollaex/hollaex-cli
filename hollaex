@@ -5154,13 +5154,14 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "The web server would malfunction if the server doesn't get rebuild"
                 echo "Please run 'hollaex web --restart' to rebuild the image and apply."
                 printf "\n"
-                exit 0;
 
             fi
 
             printf "\n\nNote: The SSL certificate issued by Let's Encrypt requires a \033[1mrenewal in every 3 months.\033[0m\n"
             printf "Please make sure to run '\033[1mhollaex toolbox --renew_ssl\033[0m' to renew your SSL certificate before it gets expired.\n"
             printf "\nIt is recommended to \033[1msetup a Cronjob\033[0m to automate the renewal process.\n"
+
+            exit 0;
 
         else 
 
