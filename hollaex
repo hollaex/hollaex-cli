@@ -2705,8 +2705,6 @@ elif [[ "$1" == "restart" ]]; then
         override_user_docker_tag;
 
     fi
-    
-    load_config_variables;
 
     # Check Kit version compatibility range.
     check_kit_version_compatibility_range;
@@ -2750,6 +2748,8 @@ elif [[ "$1" == "restart" ]]; then
             fi
 
         fi
+
+        load_config_variables;
 
         if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
 
@@ -2867,6 +2867,7 @@ elif [[ "$1" == "restart" ]]; then
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
             echo "Generating env file for docker"
+            load_config_variables;
             generate_local_env;
 
         fi
