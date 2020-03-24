@@ -134,18 +134,11 @@ if [[ "$1" == "dev" ]]; then
     while true; do
         [[ $# -eq 0 ]] && break
         case $1 in
-            --codebase)
+            --path)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                HOLLAEX_CODEBASE_PATH=$1
-                echo "HollaEx Core Codebase Path : $HOLLAEX_CODEBASE_PATH."
-                shift; continue
-                ;;
-            --kit-path)
-                shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                HOLLAEX_KIT_PATH=$1
-                echo "HollaEx Kit Path : $HOLLAEX_KIT_PATH."
+                HOLLAEX_CLI_INIT_PATH=$1
+                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
             --command)
@@ -157,35 +150,29 @@ if [[ "$1" == "dev" ]]; then
                 ;;
             --setup)
                 shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                LOCAL_COMMAND="up --build"
-                echo "Your docker-compose command : $LOCAL_COMMAND."
+                HOLLAEX_DEV_SETUP=true
                 shift; continue
                 ;;
             --start)
                 shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 LOCAL_COMMAND="start"
                 echo "Your docker-compose command : $LOCAL_COMMAND."
                 shift; continue
                 ;;
             --stop)
                 shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 LOCAL_COMMAND="stop"
                 echo "Your docker-compose command : $LOCAL_COMMAND."
                 shift; continue
                 ;;
             --restart)
                 shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 LOCAL_COMMAND="restart"
                 echo "Your docker-compose command : $LOCAL_COMMAND."
                 shift; continue
                 ;;
             --terminate)
                 shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 LOCAL_COMMAND="down"
                 echo "Your docker-compose command : $LOCAL_COMMAND."
                 shift; continue
@@ -193,11 +180,6 @@ if [[ "$1" == "dev" ]]; then
             --database_init)
                 LOCAL_DATABASE_INIT=true
                 echo 'Local database initialization enabled.'
-                shift; continue
-                ;;
-            --generate_passwords)
-                GENERATE_PASSWORDS=true
-                echo "Enable generating random password values. Make sure that you already removed existing values on config file."
                 shift; continue
                 ;;
             --test)
@@ -241,22 +223,23 @@ if [[ "$1" == "dev" ]]; then
 
     IS_DEVELOP=true
 
-    if [[ ! "$HOLLAEX_KIT_PATH" ]]; then
+    HOLLAEX_CODEBASE_PATH=$(pwd)/server
 
-        echo "Error: HollaEx Kit path has not been defined."
-        echo "Please use '--kit-path' flag to specify your Kit path."
-        exit 1;
+    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        CONFIG_FILE_PATH=$(pwd)/settings/*
+        TEMPLATE_GENERATE_PATH=$(pwd)/templates
+        INIT_PATH_CHECK=$(pwd)/.hollaex
 
     fi
 
-    CONFIG_FILE_PATH=$HOLLAEX_KIT_PATH/settings/*
-    TEMPLATE_GENERATE_PATH=$HOLLAEX_KIT_PATH/templates
-    INIT_PATH_CHECK=$HOLLAEX_KIT_PATH/.hollaex
+    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
 
-    if [[ ! "$HOLLAEX_CODEBASE_PATH" ]]; then
-
-        HOLLAEX_CODEBASE_PATH=$(pwd)
-
+        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        
     fi
 
     for i in ${CONFIG_FILE_PATH[@]}; do
@@ -332,13 +315,18 @@ if [[ "$1" == "dev" ]]; then
     
 
         #Quit if necessary flags are missing
-        if [[ ! "$LOCAL_COMMAND" ]] && [[ ! "$LOCAL_DATABASE_INIT" ]]; then
-            echo "*********************************************"
-            echo "Make sure to specify --command flag for dev commands"
-            echo "*********************************************"
-            print_usage;
-            exit 1;
 
+        if [[ ! "$HOLLAEX_DEV_SETUP" ]]; then
+
+            if [[ ! "$LOCAL_COMMAND" ]] && [[ ! "$LOCAL_DATABASE_INIT" ]]; then
+                echo "*********************************************"
+                echo "Make sure to specify --command flag for dev commands"
+                echo "*********************************************"
+                print_usage;
+                exit 1;
+
+            fi
+        
         fi
 
         # Running database jobs for local db.
@@ -347,19 +335,6 @@ if [[ "$1" == "dev" ]]; then
             local_database_init dev;
 
             exit 0;
-
-        fi
-
-        if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-            echo "Are you sure you want to run $HOLLAEX_CONFIGMAP_API_NAME on your machine? (Y/n)"
-
-            read answer
-
-            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-                echo "Exiting..."
-                exit 0;
-            fi
 
         fi
 
@@ -383,7 +358,24 @@ if [[ "$1" == "dev" ]]; then
 
         generate_nginx_upstream;
 
-        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml $LOCAL_COMMAND
+        if [[ "$HOLLAEX_DEV_SETUP" ]]; then
+
+            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml up -d --build  
+
+            echo "Installing npm packages for /plugins"
+            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 bash -c '
+                cd /app/plugins && \
+                npm install --loglevel=error && \
+                for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done'
+
+            hollaex dev --database_init
+            hollaex dev --restart
+        
+        else 
+    
+            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml $LOCAL_COMMAND
+
+        fi
 
         # Running database jobs for local db.
         if [[ "$LOCAL_DATABASE_INIT" == true ]]; then

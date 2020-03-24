@@ -3,21 +3,21 @@ SCRIPTPATH=$HOME/.hollaex-cli
 
 function local_database_init() {
 
-    if [[ "$RUN_WITH_VERIFY" == true ]]; then
+    # if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-        echo "Are you sure you want to run database init jobs for your local $ENVIRONMENT_EXCHANGE_NAME db? (y/N)"
+    #     echo "Are you sure you want to run database init jobs for your local $ENVIRONMENT_EXCHANGE_NAME db? (y/N)"
 
-        read answer
+    #     read answer
 
-      if [[ "$answer" = "${answer#[Yy]}" ]]; then
-        echo "Exiting..."
-        exit 0;
-      fi
+    #   if [[ "$answer" = "${answer#[Yy]}" ]]; then
+    #     echo "Exiting..."
+    #     exit 0;
+    #   fi
 
-    fi
+    # fi
 
     echo "Preparing to initialize exchange database..."
-    sleep 10;
+    sleep 5;
     
     if [[ "$1" == "start" ]]; then
 
@@ -374,7 +374,7 @@ services:
       context: ${HOLLAEX_CODEBASE_PATH}
       dockerfile: ${HOLLAEX_CODEBASE_PATH}/tools/Dockerfile.pm2
     env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+      - ${HOLLAEX_CLI_INIT_PATH}/templates/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
     entrypoint:
       - pm2-runtime
       - start
@@ -382,11 +382,13 @@ services:
       - --env
       - development
     volumes:
-      - ${HOLLAEX_KIT_PATH}/plugins:/app/plugins
+      - ${HOLLAEX_CODEBASE_PATH}/plugins:/app/plugins
+      - .:/app/plugins/node_modules
       - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
       - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
       - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
-      - ${HOLLAEX_KIT_PATH}/mail:/app/mail
+      - ${HOLLAEX_CODEBASE_PATH}/mail:/app/mail
+      - .:/app/mail/node_modules
       - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
       - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
       - ${HOLLAEX_CODEBASE_PATH}/app.js:/app/app.js
