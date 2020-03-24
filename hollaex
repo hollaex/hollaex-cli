@@ -693,8 +693,12 @@ elif [[ "$1" == "setup" ]]; then
     
     fi
 
-    load_config_variables;
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
 
+    load_config_variables;
+    
     export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_DOCKER_IMAGE_VERSION
 
     override_docker_image_version;
