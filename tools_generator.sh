@@ -59,21 +59,23 @@ function local_database_init() {
       echo "Setting up the exchange with provided activation code"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/setExchange.js
     
-    elif [[ "$1" == 'dev' ]]; then
+    # elif [[ "$1" == 'dev' ]]; then
 
-      echo "Running sequelize db:migrate"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:migrate
+    #   IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
-      echo "Running database triggers"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/runTriggers.js
+    #   echo "Running sequelize db:migrate"
+    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:migrate
 
-      echo "Running sequelize db:seed:all"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:seed:all
+    #   echo "Running database triggers"
+    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/runTriggers.js
 
-      echo "Running InfluxDB migrations"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/createInflux.js
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/migrateInflux.js
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/initializeInflux.js
+    #   echo "Running sequelize db:seed:all"
+    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:seed:all
+
+    #   echo "Running InfluxDB migrations"
+    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/createInflux.js
+    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/migrateInflux.js
+    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/initializeInflux.js
 
     fi
 }
@@ -275,24 +277,24 @@ EOL
 done
 
 
-#Upstream generator for dev environments
-if [[ "$IS_DEVELOP" ]]; then
+# #Upstream generator for dev environments
+# if [[ "$IS_DEVELOP" ]]; then
 
- # Generate local nginx conf
-  cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
-  upstream api {
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server:10010;
-  }
-  upstream socket {
-    ip_hash;
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server:10080;
-  }
-  upstream plugins-controller {
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server:10011;
-  }
-EOL
+#  # Generate local nginx conf
+#   cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
+#   upstream api {
+#     server ${ENVIRONMENT_EXCHANGE_NAME}-server:10010;
+#   }
+#   upstream socket {
+#     ip_hash;
+#     server ${ENVIRONMENT_EXCHANGE_NAME}-server:10080;
+#   }
+#   upstream plugins-controller {
+#     server ${ENVIRONMENT_EXCHANGE_NAME}-server:10011;
+#   }
+# EOL
 
-fi
+# fi
 
 }
 
@@ -375,23 +377,117 @@ services:
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
 
-  ${ENVIRONMENT_EXCHANGE_NAME}-server:
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-api:
     image: ${ENVIRONMENT_EXCHANGE_NAME}-server-dev
+    build:
+      context: ${HOLLAEX_CODEBASE_PATH}
+      dockerfile: ${HOLLAEX_CODEBASE_PATH}/tools/Dockerfile.pm2
     restart: always
     env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+      - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
     environment:
-      - DEPLOYMENT_MODE=api,plugins
+      - DEPLOYMENT_MODE=api
     entrypoint:
       - pm2-runtime
       - start
       - ecosystem.config.js
       - --env
       - development
+    volumes:
+      - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
+      - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
+      - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
+      - ${HOLLAEX_CODEBASE_PATH}/mail:/app/mail
+      - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
+      - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
+      - ${HOLLAEX_CODEBASE_PATH}/server.js:/app/server.js
+      - ${HOLLAEX_CODEBASE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
+      - ${HOLLAEX_CODEBASE_PATH}/constants.js:/app/constants.js
+      - ${HOLLAEX_CODEBASE_PATH}/messages.js:/app/messages.js
+      - ${HOLLAEX_CODEBASE_PATH}/logs:/app/logs
+      - ${HOLLAEX_CODEBASE_PATH}/test:/app/test
+      - ${HOLLAEX_CODEBASE_PATH}/tools:/app/tools
+      - ${HOLLAEX_CODEBASE_PATH}/utils:/app/utils
+      - ${HOLLAEX_CODEBASE_PATH}/init.js:/app/init.js
     ports:
       - 10010:10010
-      - 10080:10080
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+    depends_on:
+      - hollaex-influxdb
+      - hollaex-redis
+      - hollaex-db
+  
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
+    image: ${ENVIRONMENT_EXCHANGE_NAME}-server-dev
+    restart: always
+    env_file:
+      - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    environment:
+      - DEPLOYMENT_MODE=plugins
+    entrypoint:
+      - pm2-runtime
+      - start
+      - ecosystem.config.js
+      - --env
+      - development
+    volumes:
+      # - ${HOLLAEX_CODEBASE_PATH}/plugins:/app/plugins
+      - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
+      - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
+      - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
+      - ${HOLLAEX_CODEBASE_PATH}/mail:/app/mail
+      - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
+      - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
+      - ${HOLLAEX_CODEBASE_PATH}/server.js:/app/server.js
+      - ${HOLLAEX_CODEBASE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
+      - ${HOLLAEX_CODEBASE_PATH}/constants.js:/app/constants.js
+      - ${HOLLAEX_CODEBASE_PATH}/messages.js:/app/messages.js
+      - ${HOLLAEX_CODEBASE_PATH}/logs:/app/logs
+      - ${HOLLAEX_CODEBASE_PATH}/test:/app/test
+      - ${HOLLAEX_CODEBASE_PATH}/tools:/app/tools
+      - ${HOLLAEX_CODEBASE_PATH}/utils:/app/utils
+      - ${HOLLAEX_CODEBASE_PATH}/init.js:/app/init.js
+    ports:
       - 10011:10011
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+    depends_on:
+      - hollaex-influxdb
+      - hollaex-redis
+      - hollaex-db
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-stream:
+    image: ${ENVIRONMENT_EXCHANGE_NAME}-server-dev
+    restart: always
+    env_file:
+      - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    environment:
+      - DEPLOYMENT_MODE=stream
+    entrypoint:
+      - pm2-runtime
+      - start
+      - ecosystem.config.js
+      - --env
+      - development
+    volumes:
+      - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
+      - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
+      - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
+      - ${HOLLAEX_CODEBASE_PATH}/mail:/app/mail
+      - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
+      - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
+      - ${HOLLAEX_CODEBASE_PATH}/server.js:/app/server.js
+      - ${HOLLAEX_CODEBASE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
+      - ${HOLLAEX_CODEBASE_PATH}/constants.js:/app/constants.js
+      - ${HOLLAEX_CODEBASE_PATH}/messages.js:/app/messages.js
+      - ${HOLLAEX_CODEBASE_PATH}/logs:/app/logs
+      - ${HOLLAEX_CODEBASE_PATH}/test:/app/test
+      - ${HOLLAEX_CODEBASE_PATH}/tools:/app/tools
+      - ${HOLLAEX_CODEBASE_PATH}/utils:/app/utils
+      - ${HOLLAEX_CODEBASE_PATH}/init.js:/app/init.js
+    ports:
+      - 10080:10080
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
@@ -417,7 +513,7 @@ services:
       - -c 
       - ip -4 route list match 0/0 | awk '{print \$\$3 " host.access"}' >> /etc/hosts && nginx -g "daemon off;"
     depends_on:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-server
+      - ${ENVIRONMENT_EXCHANGE_NAME}-server-api
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
       
@@ -4509,61 +4605,19 @@ function hollaex_setup_finalization() {
       hollaex toolbox --add_trading_pair --is_hollaex_setup
 
   fi
+
+  if [[ ! "$HOLLAEX_DEV_SETUP" ]]; then
+
+    printf "\033[93m\nFinishing the setup process...\033[39m\n"
+    printf "\033[93mShutting down the exchange...\033[39m\n"
+    printf "\033[93mTo start the exchange, Please use 'hollaex start$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' command\033[39m\n\n"
+    if [[ "$USE_KUBERNETES" ]]; then
+        hollaex stop --kube --skip
+    elif [[ ! "$USE_KUBERNETES" ]]; then
+        hollaex stop --skip
+    fi
   
-
-  # echo "You can add more custom currencies or trading pairs manually if you want."
-  # echo "It doesn't matter you want to skip it for now. You can always add new currencies and trading pairs with 'hollaex toolbox' command."
-  # echo "Do you want to proceed? (Y/n)"
-  # read answer
-
-  # if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
-
-      printf "\033[93m\nFinishing the setup process...\033[39m\n"
-      printf "\033[93mShutting down the exchange...\033[39m\n"
-      printf "\033[93mTo start the exchange, Please use 'hollaex start$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' command\033[39m\n\n"
-      if [[ "$USE_KUBERNETES" ]]; then
-          hollaex stop --kube --skip
-      elif [[ ! "$USE_KUBERNETES" ]]; then
-          hollaex stop --skip
-      fi
-
-  # fi
-
-  # while true;
-  # do read -r -p "Do you want to add (setup) new currency? (y/N)" answer   
-  #     if [[ ! "$answer" = "${answer#[Yy]}" ]];
-  #     then
-  #         if [[ "$USE_KUBERNETES" ]]; then
-  #             hollaex toolbox --add_coin --kube
-          
-  #         elif [[ ! "$USE_KUBERNETES" ]]; then
-  #             hollaex toolbox --add_coin
-  #         fi
-  #     else
-  #         while true;
-  #             do read -r -p "Do you want to add (setup) new trading pair? (y/N)" answer   
-  #                 if [[ ! "$answer" = "${answer#[Yy]}" ]];
-  #                 then
-  #                     if [[ "$USE_KUBERNETES" ]]; then
-  #                         hollaex toolbox --add_trading_pair --kube
-  #                     elif [[ ! "$USE_KUBERNETES" ]]; then
-  #                         hollaex toolbox --add_trading_pair
-  #                     fi
-  #                 else   
-  #                     echo "Finishing the setup process..."
-  #                     echo "Shutting down the exchange"
-  #                     echo "To start the exchange, Please use 'hollaex start' command"
-  #                     if [[ "$USE_KUBERNETES" ]]; then
-  #                         hollaex stop --kube --skip
-  #                     elif [[ ! "$USE_KUBERNETES" ]]; then
-  #                         hollaex stop --skip
-  #                     fi
-  #                     exit 0;
-  #                 fi
-  #             done
-  #     fi
-
-  # done
+  fi
 
 }
 

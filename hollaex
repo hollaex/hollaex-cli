@@ -173,7 +173,7 @@ if [[ "$1" == "dev" ]]; then
                 ;;
             --terminate)
                 shift 
-                LOCAL_COMMAND="down"
+                LOCAL_COMMAND="down --remove-orphans"
                 echo "Your docker-compose command : $LOCAL_COMMAND."
                 shift; continue
                 ;;
@@ -329,18 +329,16 @@ if [[ "$1" == "dev" ]]; then
         # Running database jobs for local db.
         if [[ ! "$LOCAL_COMMAND" ]] && [[ "$LOCAL_DATABASE_INIT" == true ]]; then
         
-            local_database_init dev;
+            local_database_init start;
+
+            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
 
             exit 0;
 
         fi
 
-        if [[ "$GENERATE_PASSWORDS" == true ]]; then
-
-            #Generating random values for passwords and update config file to contain it;
-            update_random_values_to_config;
-
-        fi
+        #Generating random values for passwords and update config file to contain it;
+        update_random_values_to_config;
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
@@ -360,12 +358,17 @@ if [[ "$1" == "dev" ]]; then
             docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml up -d --build  
 
             echo "Installing npm packages for /plugins"
-            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 bash -c '
+            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller_1 bash -c '
                 cd /app/plugins && \
                 npm install --loglevel=error && \
                 for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done'
 
             hollaex dev --database_init
+            
+            hollaex dev --restart
+
+            hollaex_setup_finalization;
+
             hollaex dev --restart
         
         elif [[ "$HOLLAEX_DEV_RESTART" ]]; then
@@ -373,19 +376,23 @@ if [[ "$1" == "dev" ]]; then
             docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml stop
             docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml up -d --build
 
+            if [[ ! "$HOLLAEX_DEV_SETUP" ]]; then
+
+                echo "Installing npm packages for /plugins"
+                docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller_1 bash -c '
+                    cd /app/plugins && \
+                    npm install --loglevel=error && \
+                    for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done'
+
+            fi 
+
         else 
     
             docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml $LOCAL_COMMAND
 
         fi
 
-        # Running database jobs for local db.
-        if [[ "$LOCAL_DATABASE_INIT" == true ]]; then
-
-            local_database_init dev;
-
-        fi
-
+ 
         exit 0;
 
     fi
