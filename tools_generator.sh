@@ -328,19 +328,23 @@ function generate_local_docker_compose_for_dev() {
 cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml <<EOL
 version: '3'
 services:
+
   ${ENVIRONMENT_EXCHANGE_NAME}-redis:
-    image: redis:5.0.5-alpine
+    image: ${ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY:-redis}:${ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION:-5.0.5-alpine}
+    restart: always
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
-    networks:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-network
     ports:
       - 6379:6379
     environment:
       - REDIS_PASSWORD=${HOLLAEX_SECRET_REDIS_PASSWORD}
     command : ["sh", "-c", "redis-server --requirepass \$\${REDIS_PASSWORD}"]
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+
   ${ENVIRONMENT_EXCHANGE_NAME}-db:
-    image: postgres:10.9-alpine
+    image: ${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY:-postgres}:${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION:-10.9-alpine}
+    restart: always
     ports:
       - 5432:5432
     environment:
@@ -349,8 +353,10 @@ services:
       - POSTGRES_PASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
+
   ${ENVIRONMENT_EXCHANGE_NAME}-influxdb:
-    image: influxdb:1.7-alpine
+    image: ${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_REGISTRY:-influxdb}:${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION:-1.7-alpine}
+    restart: always
     ports:
       - 8086:8086
     environment:
@@ -368,59 +374,87 @@ services:
       - ${ENVIRONMENT_EXCHANGE_NAME}-redis
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
+
   ${ENVIRONMENT_EXCHANGE_NAME}-server:
-    image: ${ENVIRONMENT_EXCHANGE_NAME}-server-pm2
-    build:
-      context: ${HOLLAEX_CODEBASE_PATH}
-      dockerfile: ${HOLLAEX_CODEBASE_PATH}/tools/Dockerfile.pm2
+    image: ${ENVIRONMENT_EXCHANGE_NAME}-server-dev
+    restart: always
     env_file:
-      - ${HOLLAEX_CLI_INIT_PATH}/templates/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    environment:
+      - DEPLOYMENT_MODE=api,plugins
     entrypoint:
       - pm2-runtime
       - start
       - ecosystem.config.js
       - --env
       - development
-    volumes:
-      # - ${HOLLAEX_CODEBASE_PATH}/plugins:/app/plugins
-      - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
-      - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
-      - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
-      - ${HOLLAEX_CODEBASE_PATH}/mail:/app/mail
-      - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
-      - ${HOLLAEX_CODEBASE_PATH}/server.js:/app/server.js
-      - ${HOLLAEX_CODEBASE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
-      - ${HOLLAEX_CODEBASE_PATH}/constants.js:/app/constants.js
-      - ${HOLLAEX_CODEBASE_PATH}/messages.js:/app/messages.js
-      - ${HOLLAEX_CODEBASE_PATH}/logs:/app/logs
-      - ${HOLLAEX_CODEBASE_PATH}/tools:/app/tools
-      - ${HOLLAEX_CODEBASE_PATH}/utils:/app/utils
-      - ${HOLLAEX_CODEBASE_PATH}/init.js:/app/init.js
-    depends_on:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-db
-      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
-      - ${ENVIRONMENT_EXCHANGE_NAME}-influxdb
+    ports:
+      - 10010:10010
+      - 10080:10080
+      - 10011:10011
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
+    depends_on:
+      - hollaex-influxdb
+      - hollaex-redis
+      - hollaex-db
+
   ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
-    image: nginx:1.15.8-alpine
+    image: ${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_REGISTRY:-bitholla/nginx-with-certbot}:${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_VERSION:-1.15.8}
+    restart: always
     volumes:
-      - ${TEMPLATE_GENERATE_PATH}/local/nginx:/etc/nginx
-      - ${TEMPLATE_GENERATE_PATH}/local/nginx/conf.d:/etc/nginx/conf.d
-      - ${TEMPLATE_GENERATE_PATH}/local/logs/nginx:/var/log/nginx
-      - ${TEMPLATE_GENERATE_PATH}/local/nginx/static/:/usr/share/nginx/html
+      - ./nginx:/etc/nginx
+      - ./logs/nginx:/var/log/nginx
+      - ./nginx/static/:/usr/share/nginx/html
+      - ./letsencrypt:/etc/letsencrypt
     ports:
-      - 80:80
+      - ${ENVIRONMENT_LOCAL_NGINX_HTTP_PORT:-80}:80
+      - ${ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT:-443}:443
     environment:
       - NGINX_PORT=80
+    entrypoint: 
+      - /bin/sh
+      - -c 
+      - ip -4 route list match 0/0 | awk '{print \$\$3 " host.access"}' >> /etc/hosts && nginx -g "daemon off;"
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-server
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
+      
+EOL
 
+  IFS=',' read -ra PAIRS <<< "$HOLLAEX_CONFIGMAP_PAIRS"    #Convert string to array
+
+  for j in "${PAIRS[@]}"; do
+    TRADE_PARIS_DEPLOYMENT=$(echo $j | cut -f1 -d ",")
+
+  # Generate docker-compose
+  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml <<EOL
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-engine-$TRADE_PARIS_DEPLOYMENT:
+    image: ${ENVIRONMENT_EXCHANGE_NAME}-server-dev
+    restart: always
+    env_file:
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    environment:
+      - PAIR=${TRADE_PARIS_DEPLOYMENT}
+    entrypoint:
+      - /app/engine-binary
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+    depends_on:
+      - hollaex-redis
+      - hollaex-db
+      
+EOL
+
+  done
+
+# Generate docker-compose
+cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml <<EOL
 networks:
   ${ENVIRONMENT_EXCHANGE_NAME}-network:
-
+  
 EOL
 
 }
