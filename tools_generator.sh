@@ -383,12 +383,10 @@ services:
       - development
     volumes:
       - ${HOLLAEX_CODEBASE_PATH}/plugins:/app/plugins
-      - .:/app/plugins/node_modules
       - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
       - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
       - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
       - ${HOLLAEX_CODEBASE_PATH}/mail:/app/mail
-      - .:/app/mail/node_modules
       - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
       - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
       - ${HOLLAEX_CODEBASE_PATH}/app.js:/app/app.js
