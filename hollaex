@@ -14,6 +14,8 @@ DOCKER_COMPOSE_NAME_PREFIX='local'
 
 ENVIRONMENT_BRIDGE_TARGET_SERVER='api.bitholla.com'
 
+source $SCRIPTPATH/version_range
+
 err_msg() { echo "$@" ;} >&2
 err_msg_a() { err_msg "-a option argument required" ;}
 err_msg_l() { err_msg "--long option argument required" ;}
@@ -45,12 +47,17 @@ Options:
     pull: Pull my Exchange configurations from bitHolla Dashboard to local.
 
     start: Start the exchange which already been configured by 'hollaex setup' command.
+        --tag, Tag name of the new image to apply.
+
+    prod: Bring up the exchange as production. Including public domain setup and SSL configuraiton.
 
     restart: Restart the existing exchange.
+        --tag, Tag name of the new image to apply.
     
     stop: Stop the exchagne which already been running.
 
     build: Build the Docker image for running HollaEx Kit, includes user custom configurations.
+        --version, Specify base HollaEx Core version for build.
     
     upgrade: Upgrade the exchange to new version.
         --version, Version number of HollaEx Core to upgrade.
@@ -77,10 +84,13 @@ Options:
         --issue_ssl, Issue SSL certificate on local Nginx by using Let's Encrypt.
         --renew_ssl, Renew SSL certificate on local Nginx by using Let's Encrypt.
         --update_registry_secret, Update existing docker registry secret for Kubernetes.
+        --set_config, Update constants configured on the exchange database.
         --set_activation_code, Set or update activation code for the exchange.
         --connect_database, Direct connection to PostgreSQL Database via postgresql-client.
         --connect_redis, Direct connection to Redis via redis-client.
         --connect_influxdb, Direct connection to InfluxDB via influx-client.
+        --install_cli, Install specific version of HollaEx CLI.
+        --influxdb_migration, Migrate InfluxDB data to a new InfluxDB.
         
     status: Show the exchange server status.
 
@@ -124,70 +134,52 @@ if [[ "$1" == "dev" ]]; then
     while true; do
         [[ $# -eq 0 ]] && break
         case $1 in
-            --codebase)
+            --path)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                HOLLAEX_CODEBASE_PATH=$1
-                echo "HollaEx Core Codebase Path : $HOLLAEX_CODEBASE_PATH."
-                shift; continue
-                ;;
-            --kit-path)
-                shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                HOLLAEX_KIT_PATH=$1
-                echo "HollaEx Kit Path : $HOLLAEX_KIT_PATH."
+                HOLLAEX_CLI_INIT_PATH=$1
+                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
             --command)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_DEV_MANUAL_COMMAND=true
                 LOCAL_COMMAND=$1
                 echo "Your docker-compose command : $LOCAL_COMMAND."
                 shift; continue
                 ;;
             --setup)
                 shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                LOCAL_COMMAND="up --build"
-                echo "Your docker-compose command : $LOCAL_COMMAND."
+                HOLLAEX_DEV_SETUP=true
                 shift; continue
                 ;;
             --start)
                 shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 LOCAL_COMMAND="start"
                 echo "Your docker-compose command : $LOCAL_COMMAND."
                 shift; continue
                 ;;
             --stop)
                 shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 LOCAL_COMMAND="stop"
                 echo "Your docker-compose command : $LOCAL_COMMAND."
                 shift; continue
                 ;;
             --restart)
                 shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                LOCAL_COMMAND="restart"
-                echo "Your docker-compose command : $LOCAL_COMMAND."
+                HOLLAEX_DEV_RESTART=true
                 shift; continue
                 ;;
             --terminate)
                 shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                LOCAL_COMMAND="down"
+                LOCAL_COMMAND="down --remove-orphans"
                 echo "Your docker-compose command : $LOCAL_COMMAND."
                 shift; continue
                 ;;
             --database_init)
                 LOCAL_DATABASE_INIT=true
                 echo 'Local database initialization enabled.'
-                shift; continue
-                ;;
-            --generate_passwords)
-                GENERATE_PASSWORDS=true
-                echo "Enable generating random password values. Make sure that you already removed existing values on config file."
                 shift; continue
                 ;;
             --test)
@@ -231,22 +223,23 @@ if [[ "$1" == "dev" ]]; then
 
     IS_DEVELOP=true
 
-    if [[ ! "$HOLLAEX_KIT_PATH" ]]; then
+    HOLLAEX_CODEBASE_PATH=$(pwd)/server
 
-        echo "Error: HollaEx Kit path has not been defined."
-        echo "Please use '--kit-path' flag to specify your Kit path."
-        exit 1;
+    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        CONFIG_FILE_PATH=$(pwd)/settings/*
+        TEMPLATE_GENERATE_PATH=$(pwd)/templates
+        INIT_PATH_CHECK=$(pwd)/.hollaex
 
     fi
 
-    CONFIG_FILE_PATH=$HOLLAEX_KIT_PATH/settings/*
-    TEMPLATE_GENERATE_PATH=$HOLLAEX_KIT_PATH/templates
-    INIT_PATH_CHECK=$HOLLAEX_KIT_PATH/.hollaex
+    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
 
-    if [[ ! "$HOLLAEX_CODEBASE_PATH" ]]; then
-
-        HOLLAEX_CODEBASE_PATH=$(pwd)
-
+        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        
     fi
 
     for i in ${CONFIG_FILE_PATH[@]}; do
@@ -254,7 +247,6 @@ if [[ "$1" == "dev" ]]; then
     done;
     
     source $SCRIPTPATH/tools_generator.sh
-    load_config_variables;
 
     # ADD & REMOVE COINS AND PAIRS INTERATION FOR DEV
     if [[ "$LOCAL_ADD_COIN" ]]; then    
@@ -322,46 +314,46 @@ if [[ "$1" == "dev" ]]; then
     
 
         #Quit if necessary flags are missing
-        if [[ ! "$LOCAL_COMMAND" ]] && [[ ! "$LOCAL_DATABASE_INIT" ]]; then
+
+        if [[ "$HOLLAEX_DEV_MANUAL_COMMAND" ]] && [[ ! "$LOCAL_COMMAND" ]]; then
             echo "*********************************************"
             echo "Make sure to specify --command flag for dev commands"
             echo "*********************************************"
             print_usage;
             exit 1;
-
         fi
-
+        
+        
+        
         # Running database jobs for local db.
         if [[ ! "$LOCAL_COMMAND" ]] && [[ "$LOCAL_DATABASE_INIT" == true ]]; then
         
-            local_database_init dev;
+            local_database_init start;
+
+            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
 
             exit 0;
 
         fi
 
-        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+        if [[ "$HOLLAEX_DEV_SETUP" ]]; then
 
-            echo "Are you sure you want to run $HOLLAEX_CONFIGMAP_API_NAME on your machine? (Y/n)"
+            # Randomly generates backend passwords
+            if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_INFLUX_PASSWORD" ]]; then
+            
+                generate_backend_passwords;
 
-            read answer
-
-            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-                echo "Exiting..."
-                exit 0;
             fi
 
         fi
 
-        if [[ "$GENERATE_PASSWORDS" == true ]]; then
-
-            #Generating random values for passwords and update config file to contain it;
-            update_random_values_to_config;
-
-        fi
+        #Generating random values for passwords and update config file to contain it;
+        update_random_values_to_config;
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
+            load_config_variables;
+            
             generate_local_env;
 
         fi
@@ -373,15 +365,46 @@ if [[ "$1" == "dev" ]]; then
 
         generate_nginx_upstream;
 
-        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml $LOCAL_COMMAND
+        if [[ "$HOLLAEX_DEV_SETUP" ]]; then
 
-        # Running database jobs for local db.
-        if [[ "$LOCAL_DATABASE_INIT" == true ]]; then
+            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml up -d --build  
 
-            local_database_init dev;
+            echo "Installing npm packages for /plugins"
+            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller_1 bash -c '
+                cd /app/plugins && \
+                npm install --loglevel=error && \
+                for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done'
+
+            hollaex dev --database_init
+            
+            hollaex dev --restart
+
+            hollaex_setup_finalization;
+
+            hollaex dev --restart
+        
+        elif [[ "$HOLLAEX_DEV_RESTART" ]]; then
+
+            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml stop
+            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml up -d --build
+
+            if [[ ! "$HOLLAEX_DEV_SETUP" ]]; then
+
+                echo "Installing npm packages for /plugins"
+                docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller_1 bash -c '
+                    cd /app/plugins && \
+                    npm install --loglevel=error && \
+                    for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done'
+
+            fi 
+
+        else 
+    
+            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml $LOCAL_COMMAND
 
         fi
 
+ 
         exit 0;
 
     fi
@@ -545,12 +568,14 @@ elif [[ "$1" == "setup" ]]; then
 
     fi
 
+    source $SCRIPTPATH/tools_generator.sh
+
+     #Generating random values for passwords and update config file to contain it;
+    update_random_values_to_config;
+
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
     done;
-    
-    source $SCRIPTPATH/tools_generator.sh
-    load_config_variables;
 
     for i in ${CONFIG_FILE_PATH[@]}; do
 
@@ -571,6 +596,16 @@ elif [[ "$1" == "setup" ]]; then
         fi
 
     done
+
+    # Check Kit version compatibility range.
+    check_kit_version_compatibility_range;
+
+    # Randomly generates backend passwords
+    if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_INFLUX_PASSWORD" ]]; then
+    
+        generate_backend_passwords;
+
+    fi
     
     # hollaex setup --reconfigure
     if [[ "$RECONFIGURE_BASIC_SETTINGS" ]]; then
@@ -600,7 +635,7 @@ elif [[ "$1" == "setup" ]]; then
         exit 0;
 
     fi
-    
+
     # PRESET env for user initial setup config value selection
     CONTINUE_WITH_PRECONFIGURED_VALUES=false 
 
@@ -618,14 +653,6 @@ elif [[ "$1" == "setup" ]]; then
         else 
 
             export CONTINUE_WITH_PRECONFIGURED_VALUES=true
-
-            # Exporting settings values
-            for i in ${CONFIG_FILE_PATH[@]}; do
-            source $i
-            done;
-
-            source $SCRIPTPATH/tools_generator.sh
-            load_config_variables;
 
         fi
 
@@ -676,29 +703,38 @@ elif [[ "$1" == "setup" ]]; then
             fi
 
         fi
-
-        for i in ${CONFIG_FILE_PATH[@]}; do
-        source $i
-        done;
-
-        source $SCRIPTPATH/tools_generator.sh
-        load_config_variables;
-
+    
     fi
 
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
+
+    load_config_variables;
     
     export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_DOCKER_IMAGE_VERSION
 
     override_docker_image_version;
     export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
-    
+
     build_user_hollaex_core;
 
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
         check_kubernetes_dependencies;
+
+        if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+
+            echo "*********************************************"
+            printf "\033[91mError: HollaEx CLI detected that the exchange exists on your remote Kubernetes environment.\033[39m\n"
+            printf "\033[91mExchange setup can't be done for multiple times.\033[39m\n\n"
+            echo "Exiting..."
+            echo "*********************************************"
+            exit 1;
+
+        fi
 
         # launch_basic_settings_input;
 
@@ -719,17 +755,6 @@ elif [[ "$1" == "setup" ]]; then
         kubectl get nodes
         echo "*********************************************"
 
-        if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
-
-            echo "*********************************************"
-            printf "\033[91mError: HollaEx CLI detected that the exchange exists on your remote Kubernetes environment.\033[39m\n"
-            printf "\033[91mExchange setup can't be done for multiple times.\033[39m\n\n"
-            echo "Exiting..."
-            echo "*********************************************"
-            exit 1;
-
-        fi
-
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
             echo "Are you sure you want to launch $HOLLAEX_CONFIGMAP_API_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) on this cluster? (Y/n)"
@@ -742,10 +767,6 @@ elif [[ "$1" == "setup" ]]; then
             fi
 
         fi
-
-        #Generating random values for passwords and update config file to contain it;
-        update_random_values_to_config;
-
 
         if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
 
@@ -928,9 +949,6 @@ elif [[ "$1" == "setup" ]]; then
         #     fi
 
         # fi
-
-        # #Generating random values for passwords and update config file to contain it;
-        update_random_values_to_config;
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
@@ -1756,6 +1774,12 @@ elif [[ "$1" == "start" ]]; then
                 echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
+            --tag)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_CORE_USER_APPLY_TAG=$1
+                shift; continue
+                ;;
             --mode)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
@@ -1819,11 +1843,21 @@ elif [[ "$1" == "start" ]]; then
     done;
     
     source $SCRIPTPATH/tools_generator.sh
-    load_config_variables;
+
+     # Override user HollaEx Core tag if the flag is available.
+    if [[ "$HOLLAEX_CORE_USER_APPLY_TAG" ]]; then
+        
+        override_user_docker_tag;
+
+    fi
 
     #Regenerate random secrets
     update_random_values_to_config;
 
+    load_config_variables;
+
+    # Check Kit version compatibility range.
+    check_kit_version_compatibility_range;
 
     if [[ "$USE_KUBERNETES" ]]; then
 
@@ -2037,6 +2071,408 @@ elif [[ "$1" == "start" ]]; then
 
     fi
 
+elif [[ "$1" == "prod" ]]; then
+
+    while true; do
+        [[ $# -eq 0 ]] && break
+        case $1 in
+            --path)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_CLI_INIT_PATH=$1
+                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
+                shift; continue
+                ;;
+            --kube)
+                USE_KUBERNETES=true
+                echo "HollaEx CLI will use your Kubernetes cluster as a target."
+                shift; continue
+                ;;
+            --skip)
+                RUN_WITH_VERIFY=false
+                echo "Skipping the command confirmation."
+                shift; continue
+                ;;
+            --*) 
+                err_msg "Invalid option: $1"
+                print_usage;
+                exit 1;
+                ;;
+        esac
+        shift
+    done
+
+    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        CONFIG_FILE_PATH=$(pwd)/settings/*
+        TEMPLATE_GENERATE_PATH=$(pwd)/templates
+        INIT_PATH_CHECK=$(pwd)/.hollaex
+
+    fi
+
+    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        
+    fi
+
+
+    #Quit if necessary flags are missing
+    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
+
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
+        print_usage;
+        exit 1;
+
+    fi
+
+    # for i in ${CONFIG_FILE_PATH[@]}; do
+    #     source $i
+    # done;
+    
+    source $SCRIPTPATH/tools_generator.sh
+    # load_config_variables;
+
+    if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+        
+        printf "\nPreparing the exchange for production deployment\n\n"
+
+        echo -e "This command is going to apply \033[1mproduction domain\033[0m to your exchange."
+        echo -e "Before you proceed make sure you have your own exchange domain. (Required)"
+        echo -e "\033[1mAre you ready to proceed? (Y/n)\033[0m"
+
+        read answer
+
+        if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+            echo "Exiting..."
+            exit 0;
+        fi
+
+    fi
+
+    function hollaex_prod_domain_questions() {
+
+        # Web Domain
+        echo "***************************************************************"
+        echo "Exchange Web Domain"
+        printf "\033[2m- Enter the full domain of your exchange website, without 'http' or 'https'.\033[22m\n"
+        read answer
+        
+        while true;
+            do if [[ "$answer" == *"http"* ]]; then
+                printf "\nValue should be an URL without 'http' or 'https'.\n\n"
+                echo  "Exchange Web Domain: "
+                read answer
+                local INPUT_HOLLAEX_CONFIGMAP_DOMAIN="${answer}"
+            elif [[ -z "$answer" ]]; then
+                printf "\nThe value should not be empty!\n"
+                echo  "Exchange Web Domain: "
+                read answer
+                local INPUT_HOLLAEX_CONFIGMAP_DOMAIN="${answer}"
+            else
+                break;
+            fi
+        done
+
+        export INPUT_HOLLAEX_CONFIGMAP_DOMAIN="${answer}"
+        export INPUT_HOLLAEX_CONFIGMAP_DOMAIN_WITH_HTTP="http://${answer}"
+        local PARSED_INPUT_HOLLAEX_CONFIGMAP_DOMAIN=${INPUT_HOLLAEX_CONFIGMAP_DOMAIN_WITH_HTTP//\//\\/}
+
+        printf "\n"
+        echo "${INPUT_HOLLAEX_CONFIGMAP_DOMAIN} ✔"
+        printf "\n"
+
+        #Automatically mark the API url as api.<MY_DOMAIN>
+        export INPUT_HOLLAEX_CONFIGMAP_API_HOST="api.${INPUT_HOLLAEX_CONFIGMAP_DOMAIN}"
+        local INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP="http://${INPUT_HOLLAEX_CONFIGMAP_API_HOST}"
+        local PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP//\//\\/}
+
+        printf "Since you selected the Exchange Web domain as: \033[1m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN,\033[0m\n"
+        printf "Your Exchange Server \033[1mAPI domain\033[0m would be: \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST\033[0m.\n"
+        printf "Type \033[1m'Y'\033[0m to continute, or \033[1m'N'\033[0m to modify the Exchange Server API domain. (Y/n)\n"
+        read answer
+
+        if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+        
+            # API Domain
+            echo "***************************************************************"
+            echo "Exchange Server API Domain"
+            printf "\033[2m- Enter the full domain of your exchange API server, without 'http' or 'https'.\033[22m\n"
+            read answer
+
+            while true;
+                do if [[ "$answer" == *"http"* ]]; then
+                    printf "\nValue should be an URL without 'http' or 'https'.\n"
+                    echo  "Exchange API Domain: "
+                    read answer
+                    local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
+                elif [[ -z "$answer" ]]; then
+                    printf "\nThe value should not be empty!\n\n"
+                    echo  "Exchange API Domain: "
+                    read answer
+                    local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
+                else
+                    break;
+                fi
+            done
+
+            export INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
+
+            printf "\n"
+            echo "${INPUT_HOLLAEX_CONFIGMAP_API_HOST} ✔"
+            printf "\n"
+
+            local INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP="http://${answer}"
+            local PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP//\//\\/}
+
+        fi 
+
+        export HOLLAEX_CONFIGMAP_DOMAIN=$INPUT_HOLLAEX_CONFIGMAP_DOMAIN
+        export HOLLAEX_CONFIGMAP_API_HOST=$INPUT_HOLLAEX_CONFIGMAP_API_HOST
+
+        printf "\nYour Exchange Web Domain: \033[92m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN\033[39m"
+        printf "\nYour Exchange API Domain: \033[92m$INPUT_HOLLAEX_CONFIGMAP_API_HOST\033[39m\n"
+        echo "Type 'Y' to proceed (Y/n)"
+        read answer
+
+        if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+    
+            hollaex_prod_domain_questions;
+
+        else 
+
+            echo "Updating user settings file based on the provided values..."
+
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                # Update exchange name
+                if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+                    CONFIGMAP_FILE_PATH=$i
+                    sed -i.bak "s/HOLLAEX_CONFIGMAP_DOMAIN=.*/HOLLAEX_CONFIGMAP_DOMAIN=$PARSED_INPUT_HOLLAEX_CONFIGMAP_DOMAIN/" $CONFIGMAP_FILE_PATH
+                    sed -i.bak "s/HOLLAEX_CONFIGMAP_API_HOST=.*/HOLLAEX_CONFIGMAP_API_HOST=$PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST/" $CONFIGMAP_FILE_PATH
+                    rm $CONFIGMAP_FILE_PATH.bak
+                fi
+                
+            done
+        
+        fi
+
+    }
+
+    # Asking for domains questions for production.
+    hollaex_prod_domain_questions;
+
+    #Checking the domains are reachable
+    function hollaex_prod_check_domains_reachability() {
+        
+        if command nslookup $INPUT_HOLLAEX_CONFIGMAP_DOMAIN > /dev/null; then
+
+            printf "\n\033[92mSuccessfully resolved the exchange web URL ($INPUT_HOLLAEX_CONFIGMAP_DOMAIN).\033[39m\n"
+            HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY=true
+
+        else 
+
+            HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY=false
+        
+        fi
+
+        if command nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST > /dev/null; then
+
+            printf "\n\033[92mSuccessfully resolved the exchange API URL ($INPUT_HOLLAEX_CONFIGMAP_API_HOST).\033[39m\n"
+            HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=true
+
+        else
+
+            HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=false
+        
+        fi
+
+        if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] || [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+
+            # Announcing the domain configuration how-to.
+            SYSTEM_PUBLIC_IP=$(curl -s ifconfig.me)
+
+            if [[ ! "$SYSTEM_PUBLIC_IP" ]]; then
+                printf "\n\033[91mError: Failed to get the system public IP automatically.\033[39m\n"
+                echo "You should check it by yourself."
+                SYSTEM_PUBLIC_IP="<YOUR_PUBLIC_IP>"
+            fi
+
+            printf "\n\nYour Public IP: $SYSTEM_PUBLIC_IP.\n\n"
+
+            if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]]; then
+
+                printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_DOMAIN.\033[39m\n"
+                printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN to point $SYSTEM_PUBLIC_IP\033[0m.\n"
+                printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
+                read -p "Press enter once you configured the DNS."
+            fi
+
+            if [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+
+                printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_API_HOST.\033[39m\n"
+                printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST to point $SYSTEM_PUBLIC_IP\033[0m.\n"
+                printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
+                read -p "Press enter once you configured the DNS."
+
+            fi
+
+            printf "\n\033[93mChecking the DNS reachability...\033[39m\n"
+            echo "Info: You could always quit the DNS checking loop with 'Crtl + C'."
+            hollaex_prod_check_domains_reachability;
+
+        fi
+    }
+
+    hollaex_prod_check_domains_reachability;
+
+    # if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] || [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+
+    #     # Announcing the domain configuration how-to.
+    #     SYSTEM_PUBLIC_IP=$(curl -s ifconfig.me)
+
+    #     if [[ ! "$SYSTEM_PUBLIC_IP" ]]; then
+    #         printf "\n\033[91mError: Failed to get the system public IP automatically.\033[39m\n"
+    #         echo "You should check it by yourself."
+    #         SYSTEM_PUBLIC_IP="<YOUR_PUBLIC_IP>"
+    #     fi
+
+    #     printf "\n\nYour Public IP: $SYSTEM_PUBLIC_IP.\n\n"
+
+    #     if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]]; then
+
+    #         printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_DOMAIN.\033[39m\n"
+    #         printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN to point $SYSTEM_PUBLIC_IP\033[0m.\n"
+    #         printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
+    #         read -p "Press enter once you configured the DNS."
+    #     fi
+
+    #     if [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+
+    #         printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_API_HOST.\033[39m\n"
+    #         printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST to point $SYSTEM_PUBLIC_IP\033[0m.\n"
+    #         printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
+    #         read -p "Press enter once you configured the DNS."
+
+    #     fi
+
+    #     printf "\n\033[93mChecking the DNS reachability...\033[39m\n"
+    #     hollaex_prod_check_domains_reachability;
+
+    #     if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] || [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+
+    #         printf "\n\033[93mWarning: Your domain URLs are still not reachable.\033[39m\n\n"
+    #         printf "It could take \033[1mfew minutes ~ few hours to the DNS gets fully configured\033[0m and functioning.\n"
+    #         printf "Checking the DNS status again...\n"
+    #         hollaex_prod_check_domains_reachability;
+
+    #     fi
+
+    # fi
+
+    apply_nginx_user_defined_values;
+    
+    printf "\n"
+    echo "Do you want to issue SSL cert for your exchange? (Y/n)"
+    echo "If you are going to use an external load balancer with SSL, Please type 'N'."
+    
+    read answer 
+
+    printf "\n"
+
+    if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+    
+        echo "Skipping to issue SSL cert..."
+        printf "\n\n\033[93mInfo: You could also issue SSL cert later by running 'hollaex toolbox --issue_ssl' command.\033[39m\n"
+
+    else 
+
+        if [[ "$USE_KUBERNETES" ]]; then
+
+            echo "HollaEx CLI natively supports issuing SSL cert through 'cert-manager' and Let's encrypt."
+            echo "Please make sure to install latest 'cert-manager' on your Kubernetes cluster."
+            echo "Official document is available for installation. (cert-manager.io/docs/installation/kubernetes)"
+
+            echo "The 'cert-manager' requires an issuer name to reach SSL ACME service."
+            echo "Please provide your cert-manager issuer name."
+            read answer
+
+            echo "Updating the issuer name on user's settings file."
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                # Update exchange name
+                if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+                CONFIGMAP_FILE_PATH=$i
+                sed -i.bak "s/ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER=.*/ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER=$answer/" $CONFIGMAP_FILE_PATH
+                rm $CONFIGMAP_FILE_PATH.bak
+                fi
+                
+            done
+
+        elif [[ ! "$USE_KUBERNETES" ]]; then
+
+            echo "HollaEx CLI natively supports issuing SSL cert through 'certbot' and Let's encrypt."
+            echo "Running 'certbot' now..."
+            printf "\n"
+            while true;
+                do if command hollaex toolbox --issue_ssl --skip; then
+
+                    echo "Do you want to issue more SSL cert for different domain? (Y/n)"
+                    read answer
+
+                    if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+
+                        echo "Skipping..."
+                        break;
+
+                    else 
+
+                        hollaex toolbox --issue_ssl --skip;
+
+                    fi
+                
+                else 
+
+                    printf "\033[91mFailed to issue SSL certificate by using Certbot. Please confirm your settings and try again.\033[39m\n"
+                    exit 1;
+
+                fi
+
+            done;
+
+            
+        fi
+
+        echo "Updating domains on settings files to use 'https' as a prefix..."
+
+        INPUT_HOLLAEX_CONFIGMAP_DOMAIN_WITH_HTTPS="https://${INPUT_HOLLAEX_CONFIGMAP_DOMAIN}"
+        PARSED_INPUT_HOLLAEX_CONFIGMAP_DOMAIN=${INPUT_HOLLAEX_CONFIGMAP_DOMAIN_WITH_HTTPS//\//\\/}
+
+        INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTPS="https://${INPUT_HOLLAEX_CONFIGMAP_API_HOST}"
+        PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTPS//\//\\/}
+
+        for i in ${CONFIG_FILE_PATH[@]}; do
+
+            # Update exchange name
+            if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+                CONFIGMAP_FILE_PATH=$i
+                sed -i.bak "s/HOLLAEX_CONFIGMAP_DOMAIN=.*/HOLLAEX_CONFIGMAP_DOMAIN=$PARSED_INPUT_HOLLAEX_CONFIGMAP_DOMAIN/" $CONFIGMAP_FILE_PATH
+                sed -i.bak "s/HOLLAEX_CONFIGMAP_API_HOST=.*/HOLLAEX_CONFIGMAP_API_HOST=$PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST/" $CONFIGMAP_FILE_PATH
+                rm $CONFIGMAP_FILE_PATH.bak
+            fi
+            
+        done
+
+    fi
+
+    hollaex_prod_complete;
+
+    exit 0;
+
 elif [[ "$1" == "stop" ]]; then
 
     while true; do
@@ -2109,6 +2545,9 @@ elif [[ "$1" == "stop" ]]; then
     
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
+
+    # Check Kit version compatibility range.
+    check_kit_version_compatibility_range;
 
     #check_empty_values_on_settings
 
@@ -2224,6 +2663,12 @@ elif [[ "$1" == "restart" ]]; then
                 echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
+             --tag)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_CORE_USER_APPLY_TAG=$1
+                shift; continue
+                ;;
             --kube)
                 USE_KUBERNETES=true
                 echo "HollaEx CLI will use your Kubernetes cluster as a target."
@@ -2274,7 +2719,16 @@ elif [[ "$1" == "restart" ]]; then
     done;
     
     source $SCRIPTPATH/tools_generator.sh
-    load_config_variables;
+
+    # Override user HollaEx Core tag if the flag is available.
+    if [[ "$HOLLAEX_CORE_USER_APPLY_TAG" ]]; then
+        
+        override_user_docker_tag;
+
+    fi
+
+    # Check Kit version compatibility range.
+    check_kit_version_compatibility_range;
 
     #Regenerate random secrets
     update_random_values_to_config;
@@ -2315,6 +2769,8 @@ elif [[ "$1" == "restart" ]]; then
             fi
 
         fi
+
+        load_config_variables;
 
         if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
 
@@ -2432,6 +2888,7 @@ elif [[ "$1" == "restart" ]]; then
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
             echo "Generating env file for docker"
+            load_config_variables;
             generate_local_env;
 
         fi
@@ -2559,7 +3016,26 @@ elif [[ "$1" == "build" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
+    if [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
+
+        override_docker_image_version;
+
+    fi
+
+
     build_user_hollaex_core;
+
+    if [[ "$USER_HOLLAEX_CORE_PUSHED" ]]; then 
+
+        export ENVIRONMENT_USER_REGISTRY_OVERRIDE=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY
+        export HOLLAEX_CORE_USER_APPLY_TAG=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
+        override_user_docker_registry;
+        override_user_docker_tag;
+
+    fi
+
+    printf "\n\nYou can simply restart the server by running '\033[1mhollaex restart\033[0m' to apply it.\n"
+    printf "Notice: The image name should be same as the previous one in this case.\n"
 
 
 elif [[ "$1" == "upgrade" ]]; then
@@ -2589,8 +3065,8 @@ elif [[ "$1" == "upgrade" ]]; then
             --version)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=${1:-$ENVIRONMENT_DOCKER_IMAGE_VERSION}
-                echo "Target HollaEx Core release version : v $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE."
+                ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$1
+                echo "Target HollaEx Core release version : v$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE."
                 shift; continue
                 ;;
              --no_image_build)
@@ -2643,16 +3119,46 @@ elif [[ "$1" == "upgrade" ]]; then
     done;
     
     source $SCRIPTPATH/tools_generator.sh
+
+    #Regenerate random secrets
+    update_random_values_to_config;
+
     load_config_variables;
 
-    # Override target docker image version if user passed it manually with flag.
-    if [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
+    echo "Checking the version compatibility between the latest HollaEx CLI and your local Kit..."
+    if command curl -s -f https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version_range > $SCRIPTPATH/.master_version_range; then 
+
+        source $SCRIPTPATH/.master_version_range
+        rm $SCRIPTPATH/.master_version_range
+
+        if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
+
+            export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$HOLLAEX_CORE_MAXIMUM_COMPATIBLE
+
+        fi
+
+    else 
+
+        printf "\n\033[91mError: Failed to read latest version compatibility range from the server.\n\033[39m"
+        echo "Please check your internet connectivity and try it again."
         
-        override_docker_image_version;
-        export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
-        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
-        
+        exit 1;
+
     fi
+
+    # Check Kit version compatibility range.
+    check_kit_version_compatibility_range;
+
+    check_core_version_compatibility_range;
+
+    # Update HollaEx CLI to latest if there is newer release available.
+    update_hollaex_cli_to_latest;
+
+    # Override target docker image version if user passed it manually with flag / version range available at each CLI releases.     
+    override_docker_image_version;
+    export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION
+        
 
     # Override target docker registry if user passed it manually with flag.
     if [[ "$ENVIRONMENT_USER_REGISTRY_OVERRIDE" ]]; then
@@ -2661,18 +3167,12 @@ elif [[ "$1" == "upgrade" ]]; then
         
     fi
 
-    # Update HollaEx CLI to latest if there is newer release available.
-    update_hollaex_cli_to_latest;
-
     if [[ ! "$NO_IMAGE_BUILD" ]]; then
 
         # Building new HollaEx Core image based on passed (or specified) version.
         build_user_hollaex_core;
     
     fi
-
-    #Regenerate random secrets
-    update_random_values_to_config;
 
     if [[ "$USE_KUBERNETES" ]]; then
 
@@ -2988,6 +3488,9 @@ elif [[ "$1" == "terminate" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
+    # Check Kit version compatibility range.
+    check_kit_version_compatibility_range;
+
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
@@ -3040,7 +3543,11 @@ elif [[ "$1" == "terminate" ]]; then
         echo "Removing $HOLLAEX_CONFIGMAP_API_NAME namespace."
         kubectl delete ns $ENVIRONMENT_EXCHANGE_NAME
 
-        echo "$HOLLAEX_CONFIGMAP_API_NAME ($HOLLAEX_CONFIGMAP_API_HOST) has been successfully terminated. If there's an issue, please review the logs and try it again."
+        hollaex_ascii_exchange_has_been_terminated;
+
+        echo "$HOLLAEX_CONFIGMAP_API_NAME ($HOLLAEX_CONFIGMAP_API_HOST) has been successfully terminated."
+        echo "If there's an issue, please review the logs and try it again."
+        printf "\nBye!\n\n"
 
         exit 0;
 
@@ -3084,9 +3591,10 @@ elif [[ "$1" == "terminate" ]]; then
             docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client down 
         fi
 
+        hollaex_ascii_exchange_has_been_terminated;
+
         echo "$HOLLAEX_CONFIGMAP_API_NAME ($HOLLAEX_CONFIGMAP_API_HOST) has been successfully terminated."
         echo "If there's an issue, please review the logs and try it again."
-        echo "To setup the exchange again from a scratch, please run 'hollaex setup'"
         printf "\nBye!\n\n"
 
         exit 0;
@@ -4026,6 +4534,19 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "HollaEx CLI will open a direct connection to your PostgreSQL database via influx-client."
                 shift; continue
                 ;;
+            --install_cli)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                INSTALL_CLI_ENABLE=true
+                INSTALL_CLI_TARGET=$1
+                TOOLBOX_ENABLE=true
+                shift; continue
+                ;;
+            --influxdb_migration)
+                INFLUXDB_MIGRATION=true
+                TOOLBOX_ENABLE=true
+                shift; continue
+                ;;
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
@@ -4266,14 +4787,14 @@ elif [[ "$1" == "toolbox" ]]; then
             export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
             export PGHOST=localhost
 
-            pg_dumpall > $HOLLAEX_CLI_INIT_PATH/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-$(date +%y%m%d%H%M).dump
+            pg_dumpall > "${HOLLAEX_CLI_INIT_PATH}"/backups/hollaex-db-"$(date +%y%m%d%H%M)".dump
             
             unset PGUSER
             unset PGPASSWORD
             unset PGDATABASE
             unset PGHOST
 
-            echo "Dump data is saved as $HOLLAEX_CLI_INIT_PATH/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-$(date +%y%m%d%H%M).dump"
+            echo "Dump data is saved as "${HOLLAEX_CLI_INIT_PATH}"/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-$(date +%y%m%d%H%M).dump"
 
             echo "Killing the opened proxy tunnel..."
             kill $(ps -ef | grep "kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME" | awk '{print $2}' | head -n 1)
@@ -4643,13 +5164,18 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if command docker ps -a | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null ; then
 
-                printf "\n\033[93mWarning: You should rebuild and restart your web server to apply SSL configuraion on the web.\033[39m\n"
+                printf "\n\033[93mWarning: You should rebuild and restart your web server to apply SSL configuraion on the web.\033[39m\n\n"
                 echo "The web server would malfunction if the server doesn't get rebuild"
                 echo "Please run 'hollaex web --restart' to rebuild the image and apply."
-
-                exit 0;
+                printf "\n"
 
             fi
+
+            printf "\n\nNote: The SSL certificate issued by Let's Encrypt requires a \033[1mrenewal in every 3 months.\033[0m\n"
+            printf "Please make sure to run '\033[1mhollaex toolbox --renew_ssl\033[0m' to renew your SSL certificate before it gets expired.\n"
+            printf "\nIt is recommended to \033[1msetup a Cronjob\033[0m to automate the renewal process.\n"
+
+            exit 0;
 
         else 
 
@@ -5035,7 +5561,81 @@ elif [[ "$1" == "toolbox" ]]; then
             fi
 
         fi
+    
+    elif [[ "$INSTALL_CLI_ENABLE" ]]; then
 
+        if [[ ! "$INSTALL_CLI_TARGET" ]]; then
+
+            echo "Error: You must specify version of the CLI to downgrade."
+            echo "eg. 'hollaex toolbox --install_cli 1.8.5'."
+
+            exit 1;
+
+        fi
+
+        echo "Are you sure you want to install HollaEx CLI v$INSTALL_CLI_TARGET? (y/N)"
+        read answer
+
+        if [[ "$answer" = "${answer#[Yy]}" ]]; then
+            echo "Exiting..."
+            exit 0;
+        fi
+ 
+        bash $SCRIPTPATH/install.sh $INSTALL_CLI_TARGET
+
+    elif [[ "$INFLUXDB_MIGRATION" ]]; then
+    
+        if [[ "$USE_KUBERNETES" ]]; then 
+
+            check_kubernetes_dependencies;
+
+            if ! command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+
+                echo "*********************************************"
+                printf "\033[91mError: HollaEx CLI failed to detect the exchange on your machine.\033[39m\n"
+                printf "\033[91mThis command could only works after the exchange get setup.\033[39m\n\n"
+                echo "Exiting..."
+                echo "*********************************************"
+                exit 1;
+
+            fi
+
+            echo "Running InfluxDB migrations"
+            kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/createInflux.js
+            kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/migrateInflux.js
+            kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
+        
+            echo "Restarting the exchange..."
+            kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+
+
+        elif [[ ! "$USE_KUBERNETES" ]]; then
+
+            check_docker_compose_dependencies;
+
+            if ! command docker ps -a | grep local_$ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+
+                echo "*********************************************"
+                printf "\033[91mError: HollaEx CLI failed to detect the exchange on your machine.\033[39m\n"
+                printf "\033[91mThis command could only works after the exchange get setup.\033[39m\n\n"
+                echo "Exiting..."
+                echo "*********************************************"
+                exit 1;
+
+            fi
+
+            IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+
+            echo "Running InfluxDB migrations"
+            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/createInflux.js
+            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/migrateInflux.js
+            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/initializeInflux.js
+
+            echo "Restarting containers to apply database changes."
+            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+        fi
+        
     fi
 
 
@@ -5284,7 +5884,7 @@ elif [[ "$1" == "logs" ]]; then
 
                     if [[ $(kubectl logs $i --namespace $ENVIRONMENT_EXCHANGE_NAME --tail 10) ]]; then
 
-                            kubectl logs $i --namespace $ENVIRONMENT_EXCHANGE_NAME --tail ${HOLLAEX_LOGS_TARGET_LINE:-10}
+                            kubectl logs $i --namespace $ENVIRONMENT_EXCHANGE_NAME --tail ${HOLLAEX_LOGS_TARGET_LINE:-100}
 
                     else 
 
@@ -5310,7 +5910,7 @@ elif [[ "$1" == "logs" ]]; then
 
 
         printf "\n"
-        echo "Displayed (Saved) last ${HOLLAEX_LOGS_TARGET_LINE:-10} lines of logs from pod(s)."
+        echo "Displayed (Saved) last ${HOLLAEX_LOGS_TARGET_LINE:-100} lines of logs from pod(s)."
 
         if [[ ! "$HOLLAEX_LOGS_TARGET" ]]; then
             
@@ -5364,7 +5964,7 @@ elif [[ "$1" == "logs" ]]; then
 
                     if [[ $(docker logs $i --tail 10) ]]; then
 
-                            docker logs $i --tail ${HOLLAEX_LOGS_TARGET_LINE:-10}
+                            docker logs $i --tail ${HOLLAEX_LOGS_TARGET_LINE:-100}
 
                     else 
 
@@ -5389,7 +5989,7 @@ elif [[ "$1" == "logs" ]]; then
             fi
 
             printf "\n"
-            echo "Displayed (Exported) last ${HOLLAEX_LOGS_TARGET_LINE:-10} lines of logs from container(s)."
+            echo "Displayed (Exported) last ${HOLLAEX_LOGS_TARGET_LINE:-100} lines of logs from container(s)."
 
             if [[ ! "$HOLLAEX_LOGS_TARGET" ]]; then
 
@@ -5416,18 +6016,23 @@ elif [[ "$1" == "version" ]]; then
      
     /bin/cat << EOF
 
-1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
-.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
-.0@G                                                                  L@8,
-.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
-.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
-.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
-.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
-.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
-.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
-.0@G
-.@@@888888888888888888888888888888888888888888888888888888888888888888880.
-1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
+                        ..,,,..
+         ,ifGi      .:tLG8@@@@@@0Cfi,
+      .iC@@@@1    :f0@@@@@0GGG08@@@@@Ci.
+     10@@@0f;.  ,L@@@@C1:.     .,;f0@@@0i
+   .C@@@G;     i8@@8t,              iG@@@L
+  .G@@@t      i@@@0:                  f@@@C
+  t@@@t      ,8@@8,                    f@@@1
+ .8@@0       1@@@1                     .8@@0
+ ,@@@G       f@@@;                      G@@8.
+ .8@@0       1@@@1                     .8@@0
+  f@@@t      ,8@@8.                    f@@@t
+  .G@@@t      i@@@0,                  t@@@G
+   .C@@@C;     i@@@8t,              ;G@@@C.
+     18@@@Gt;.  ,C@@@8Li,.      ,;f0@@@0i
+      .1G@@@@1    :f8@@@@80GGGG8@@@@@Gi.
+         ,ifGi      .;tC08@@@@@@8Cfi,
+                         .,,,,,.
 
 HollaEx CLI : v$(cat $SCRIPTPATH/version), Made with <3 by bitHolla Inc.
 
