@@ -2,6 +2,9 @@
 
 REPLACE_EXISTING_TO_LATEST=false
 
+# Parameter support to specify version of the CLI to install.
+export HOLLAEX_INSTALLER_VERSION_TARGET=${1:-"master"}
+
 /bin/cat << EOF
 
 1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
@@ -30,11 +33,11 @@ if [[ "$REPLACE_EXISTING_TO_LATEST" == "true" ]]; then
     printf "\n\033[93mReplacing existing HollaEx CLI to latest...\033[39m\n\n"
     sudo rm -r $HOME/.hollaex-cli
     sudo rm /usr/local/bin/hollaex
-    git clone https://github.com/bitholla/hollaex-cli.git
-else       
-    echo "Cloning HollaEx CLI repo from git..."
-    git clone https://github.com/bitholla/hollaex-cli.git
-fi
+fi 
+
+echo "Cloning HollaEx CLI repo from git..."
+git clone https://github.com/bitholla/hollaex-cli.git -b $HOLLAEX_INSTALLER_VERSION_TARGET
+
 
 chmod +x $(pwd)/hollaex-cli
 sudo mv $(pwd)/hollaex-cli $HOME/.hollaex-cli

@@ -3,21 +3,21 @@ SCRIPTPATH=$HOME/.hollaex-cli
 
 function local_database_init() {
 
-    if [[ "$RUN_WITH_VERIFY" == true ]]; then
+    # if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-        echo "Are you sure you want to run database init jobs for your local $ENVIRONMENT_EXCHANGE_NAME db? (y/N)"
+    #     echo "Are you sure you want to run database init jobs for your local $ENVIRONMENT_EXCHANGE_NAME db? (y/N)"
 
-        read answer
+    #     read answer
 
-      if [[ "$answer" = "${answer#[Yy]}" ]]; then
-        echo "Exiting..."
-        exit 0;
-      fi
+    #   if [[ "$answer" = "${answer#[Yy]}" ]]; then
+    #     echo "Exiting..."
+    #     exit 0;
+    #   fi
 
-    fi
+    # fi
 
     echo "Preparing to initialize exchange database..."
-    sleep 10;
+    sleep 5;
     
     if [[ "$1" == "start" ]]; then
 
@@ -59,21 +59,23 @@ function local_database_init() {
       echo "Setting up the exchange with provided activation code"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/setExchange.js
     
-    elif [[ "$1" == 'dev' ]]; then
+    # elif [[ "$1" == 'dev' ]]; then
 
-      echo "Running sequelize db:migrate"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:migrate
+    #   IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
-      echo "Running database triggers"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/runTriggers.js
+    #   echo "Running sequelize db:migrate"
+    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:migrate
 
-      echo "Running sequelize db:seed:all"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:seed:all
+    #   echo "Running database triggers"
+    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/runTriggers.js
 
-      echo "Running InfluxDB migrations"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/createInflux.js
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/migrateInflux.js
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/initializeInflux.js
+    #   echo "Running sequelize db:seed:all"
+    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:seed:all
+
+    #   echo "Running InfluxDB migrations"
+    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/createInflux.js
+    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/migrateInflux.js
+    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/initializeInflux.js
 
     fi
 }
@@ -275,24 +277,24 @@ EOL
 done
 
 
-#Upstream generator for dev environments
-if [[ "$IS_DEVELOP" ]]; then
+# #Upstream generator for dev environments
+# if [[ "$IS_DEVELOP" ]]; then
 
- # Generate local nginx conf
-  cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
-  upstream api {
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server:10010;
-  }
-  upstream socket {
-    ip_hash;
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server:10080;
-  }
-  upstream plugins-controller {
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server:10011;
-  }
-EOL
+#  # Generate local nginx conf
+#   cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
+#   upstream api {
+#     server ${ENVIRONMENT_EXCHANGE_NAME}-server:10010;
+#   }
+#   upstream socket {
+#     ip_hash;
+#     server ${ENVIRONMENT_EXCHANGE_NAME}-server:10080;
+#   }
+#   upstream plugins-controller {
+#     server ${ENVIRONMENT_EXCHANGE_NAME}-server:10011;
+#   }
+# EOL
 
-fi
+# fi
 
 }
 
@@ -328,19 +330,23 @@ function generate_local_docker_compose_for_dev() {
 cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml <<EOL
 version: '3'
 services:
+
   ${ENVIRONMENT_EXCHANGE_NAME}-redis:
-    image: redis:5.0.5-alpine
+    image: ${ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY:-redis}:${ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION:-5.0.5-alpine}
+    restart: always
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
-    networks:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-network
     ports:
       - 6379:6379
     environment:
       - REDIS_PASSWORD=${HOLLAEX_SECRET_REDIS_PASSWORD}
     command : ["sh", "-c", "redis-server --requirepass \$\${REDIS_PASSWORD}"]
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+
   ${ENVIRONMENT_EXCHANGE_NAME}-db:
-    image: postgres:10.9-alpine
+    image: ${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY:-postgres}:${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION:-10.9-alpine}
+    restart: always
     ports:
       - 5432:5432
     environment:
@@ -349,8 +355,10 @@ services:
       - POSTGRES_PASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
+
   ${ENVIRONMENT_EXCHANGE_NAME}-influxdb:
-    image: influxdb:1.7-alpine
+    image: ${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_REGISTRY:-influxdb}:${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION:-1.7-alpine}
+    restart: always
     ports:
       - 8086:8086
     environment:
@@ -368,13 +376,17 @@ services:
       - ${ENVIRONMENT_EXCHANGE_NAME}-redis
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
-  ${ENVIRONMENT_EXCHANGE_NAME}-server:
-    image: ${ENVIRONMENT_EXCHANGE_NAME}-server-pm2
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-api:
+    image: ${ENVIRONMENT_EXCHANGE_NAME}-server-dev
     build:
       context: ${HOLLAEX_CODEBASE_PATH}
       dockerfile: ${HOLLAEX_CODEBASE_PATH}/tools/Dockerfile.pm2
+    restart: always
     env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+      - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    environment:
+      - DEPLOYMENT_MODE=api
     entrypoint:
       - pm2-runtime
       - start
@@ -382,14 +394,13 @@ services:
       - --env
       - development
     volumes:
-      - ${HOLLAEX_KIT_PATH}/plugins:/app/plugins
       - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
       - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
       - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
-      - ${HOLLAEX_KIT_PATH}/mail:/app/mail
+      - ${HOLLAEX_CODEBASE_PATH}/mail:/app/mail
       - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
       - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
-      - ${HOLLAEX_CODEBASE_PATH}/app.js:/app/app.js
+      - ${HOLLAEX_CODEBASE_PATH}/server.js:/app/server.js
       - ${HOLLAEX_CODEBASE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
       - ${HOLLAEX_CODEBASE_PATH}/constants.js:/app/constants.js
       - ${HOLLAEX_CODEBASE_PATH}/messages.js:/app/messages.js
@@ -398,31 +409,148 @@ services:
       - ${HOLLAEX_CODEBASE_PATH}/tools:/app/tools
       - ${HOLLAEX_CODEBASE_PATH}/utils:/app/utils
       - ${HOLLAEX_CODEBASE_PATH}/init.js:/app/init.js
-    depends_on:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-db
-      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
-      - ${ENVIRONMENT_EXCHANGE_NAME}-influxdb
+    ports:
+      - 10010:10010
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
-  ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
-    image: nginx:1.15.8-alpine
+    depends_on:
+      - hollaex-influxdb
+      - hollaex-redis
+      - hollaex-db
+  
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
+    image: ${ENVIRONMENT_EXCHANGE_NAME}-server-dev
+    restart: always
+    env_file:
+      - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    environment:
+      - DEPLOYMENT_MODE=plugins
+    entrypoint:
+      - pm2-runtime
+      - start
+      - ecosystem.config.js
+      - --env
+      - development
     volumes:
-      - ${TEMPLATE_GENERATE_PATH}/local/nginx:/etc/nginx
-      - ${TEMPLATE_GENERATE_PATH}/local/nginx/conf.d:/etc/nginx/conf.d
-      - ${TEMPLATE_GENERATE_PATH}/local/logs/nginx:/var/log/nginx
-      - ${TEMPLATE_GENERATE_PATH}/local/nginx/static/:/usr/share/nginx/html
+      # - ${HOLLAEX_CODEBASE_PATH}/plugins:/app/plugins
+      - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
+      - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
+      - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
+      - ${HOLLAEX_CODEBASE_PATH}/mail:/app/mail
+      - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
+      - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
+      - ${HOLLAEX_CODEBASE_PATH}/server.js:/app/server.js
+      - ${HOLLAEX_CODEBASE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
+      - ${HOLLAEX_CODEBASE_PATH}/constants.js:/app/constants.js
+      - ${HOLLAEX_CODEBASE_PATH}/messages.js:/app/messages.js
+      - ${HOLLAEX_CODEBASE_PATH}/logs:/app/logs
+      - ${HOLLAEX_CODEBASE_PATH}/test:/app/test
+      - ${HOLLAEX_CODEBASE_PATH}/tools:/app/tools
+      - ${HOLLAEX_CODEBASE_PATH}/utils:/app/utils
+      - ${HOLLAEX_CODEBASE_PATH}/init.js:/app/init.js
     ports:
-      - 80:80
+      - 10011:10011
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+    depends_on:
+      - hollaex-influxdb
+      - hollaex-redis
+      - hollaex-db
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-stream:
+    image: ${ENVIRONMENT_EXCHANGE_NAME}-server-dev
+    restart: always
+    env_file:
+      - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    environment:
+      - DEPLOYMENT_MODE=stream
+    entrypoint:
+      - pm2-runtime
+      - start
+      - ecosystem.config.js
+      - --env
+      - development
+    volumes:
+      - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
+      - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
+      - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
+      - ${HOLLAEX_CODEBASE_PATH}/mail:/app/mail
+      - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
+      - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
+      - ${HOLLAEX_CODEBASE_PATH}/server.js:/app/server.js
+      - ${HOLLAEX_CODEBASE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
+      - ${HOLLAEX_CODEBASE_PATH}/constants.js:/app/constants.js
+      - ${HOLLAEX_CODEBASE_PATH}/messages.js:/app/messages.js
+      - ${HOLLAEX_CODEBASE_PATH}/logs:/app/logs
+      - ${HOLLAEX_CODEBASE_PATH}/test:/app/test
+      - ${HOLLAEX_CODEBASE_PATH}/tools:/app/tools
+      - ${HOLLAEX_CODEBASE_PATH}/utils:/app/utils
+      - ${HOLLAEX_CODEBASE_PATH}/init.js:/app/init.js
+    ports:
+      - 10080:10080
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+    depends_on:
+      - hollaex-influxdb
+      - hollaex-redis
+      - hollaex-db
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
+    image: ${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_REGISTRY:-bitholla/nginx-with-certbot}:${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_VERSION:-1.15.8}
+    restart: always
+    volumes:
+      - ./nginx:/etc/nginx
+      - ./logs/nginx:/var/log/nginx
+      - ./nginx/static/:/usr/share/nginx/html
+      - ./letsencrypt:/etc/letsencrypt
+    ports:
+      - ${ENVIRONMENT_LOCAL_NGINX_HTTP_PORT:-80}:80
+      - ${ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT:-443}:443
     environment:
       - NGINX_PORT=80
+    entrypoint: 
+      - /bin/sh
+      - -c 
+      - ip -4 route list match 0/0 | awk '{print \$\$3 " host.access"}' >> /etc/hosts && nginx -g "daemon off;"
     depends_on:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-server
+      - ${ENVIRONMENT_EXCHANGE_NAME}-server-api
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
+      
+EOL
 
+  IFS=',' read -ra PAIRS <<< "$HOLLAEX_CONFIGMAP_PAIRS"    #Convert string to array
+
+  for j in "${PAIRS[@]}"; do
+    TRADE_PARIS_DEPLOYMENT=$(echo $j | cut -f1 -d ",")
+
+  # Generate docker-compose
+  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml <<EOL
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-engine-$TRADE_PARIS_DEPLOYMENT:
+    image: ${ENVIRONMENT_EXCHANGE_NAME}-server-dev
+    restart: always
+    env_file:
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    environment:
+      - PAIR=${TRADE_PARIS_DEPLOYMENT}
+    entrypoint:
+      - /app/engine-binary
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+    depends_on:
+      - hollaex-redis
+      - hollaex-db
+      
+EOL
+
+  done
+
+# Generate docker-compose
+cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml <<EOL
 networks:
   ${ENVIRONMENT_EXCHANGE_NAME}-network:
-
+  
 EOL
 
 }
@@ -873,7 +1001,7 @@ EOL
 
 function generate_random_values() {
 
-  python -c "import os; print os.urandom(16).encode('hex')"
+  python3 -c "import os; import codecs; print(codecs.encode(os.urandom(16), 'hex').decode())"
 
 }
 
@@ -938,10 +1066,10 @@ EOL
         unset HOLLAEX_CONFIGMAP_VARIABLES_YAML
 
         for i in ${CONFIG_FILE_PATH[@]}; do
-            source $i
-      done;
+              source $i
+        done;
 
-        load_config_variables;
+      #   load_config_variables;
     
     
     
@@ -1110,21 +1238,32 @@ function override_docker_image_version() {
 
 }
 
+function override_user_docker_tag() {
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+
+    if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+      CONFIGMAP_FILE_PATH=$i
+      sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$HOLLAEX_CORE_USER_APPLY_TAG/" $CONFIGMAP_FILE_PATH
+    fi
+    
+  done
+
+  rm $CONFIGMAP_FILE_PATH.bak
+
+}
+
 function override_user_docker_registry() {
 
   for i in ${CONFIG_FILE_PATH[@]}; do
 
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$(echo ${answer:-$ENVIRONMENT_USER_REGISTRY_OVERRIDE} | cut -f1 -d ":")
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$(echo ${answer:-$ENVIRONMENT_USER_REGISTRY_OVERRIDE} | cut -f2 -d ":")
-
-    local ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_PARSED=${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY//\//\\\/}
+    local ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_PARSED=${ENVIRONMENT_USER_REGISTRY_OVERRIDE//\//\\\/}
 
     if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
       CONFIGMAP_FILE_PATH=$i
-      sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_PARSED/" $CONFIGMAP_FILE_PATH
-      sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION/" $CONFIGMAP_FILE_PATH
+      sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_PARSED/" $CONFIGMAP_FILE_PATH 
+
     fi
-    
   done
 
   rm $CONFIGMAP_FILE_PATH.bak
@@ -2967,7 +3106,7 @@ EOF
   # Web Domain
   echo "***************************************************************"
   echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Exchange URL: ($HOLLAEX_CONFIGMAP_DOMAIN)"
-  printf "\033[2m- Enter the full URL of your exchange website. No need to type 'http' or 'https'.\033[22m\n"
+  printf "\033[2m- Keep it as 'example.com' for local test exchange.\033[22m\n"
   read answer
 
   local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_DOMAIN="${answer:-$HOLLAEX_CONFIGMAP_DOMAIN}"
@@ -3214,7 +3353,7 @@ EOF
   # API Domain
   echo "***************************************************************"
   echo "[$(echo $QUESTION_NUMBER)/$TOTAL_QUESTIONS] Exchange Server API URL: ($HOLLAEX_CONFIGMAP_API_HOST)"
-  printf "\033[2m- Enter the full URL of your exchange API server including 'http' or 'https'. Keep it as 'http://localhost' for local test exchange.\033[22m\n"
+  printf "\033[2m- Keep it as 'http://localhost' for local test exchange.\033[22m\n"
   read answer
 
   local ORIGINAL_CHARACTER_FOR_HOLLAEX_CONFIGMAP_API_HOST="${answer:-$HOLLAEX_CONFIGMAP_API_HOST}"
@@ -4219,21 +4358,24 @@ function hollaex_ascii_exchange_is_up() {
 
   /bin/cat << EOF
 
-1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
-.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
-.0@G                                                                  L@8,
-.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
-.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
-.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
-.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
-.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
-.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
-.0@G
-.@@@888888888888888888888888888888888888888888888888888888888888888888880.
-1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
 
-                        Your Exchange is up!
-                Try to reach ${HOLLAEX_CONFIGMAP_API_HOST}/v1/health
+                                      ,t:
+                                    ,L@@@f.
+                                  ,L@@@8f:
+                                ,L@@@@f,
+                              ,L@@@8f,
+                            ,L@@@8f,
+          :i              ,L@@@8f,
+        .L@@Gi          ,L@@@8f,
+        .10@@@Gi      ,L@@@8f,
+          iG@@@Gi  ,L@@@8f,
+            iG@@@GL@@@8f,
+              iG@@@@8f,
+                iG8f,
+                  ,
+
+            Your Exchange is up!
+    Try to reach ${HOLLAEX_CONFIGMAP_API_HOST}/v1/health
 
 EOF
 
@@ -4243,21 +4385,62 @@ function hollaex_ascii_exchange_has_been_setup() {
 
   /bin/cat << EOF
 
-1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
-.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
-.0@G                                                                  L@8,
-.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
-.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
-.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
-.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
-.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
-.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
-.0@G
-.@@@888888888888888888888888888888888888888888888888888888888888888888880.
-1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
+                                  ,t:
+                                ,L@@@f.
+                              ,L@@@8f:
+                            ,L@@@@f,
+                          ,L@@@8f,
+                        ,L@@@8f,
+      :i              ,L@@@8f,
+    .L@@Gi          ,L@@@8f,
+    .10@@@Gi      ,L@@@8f,
+      iG@@@Gi  ,L@@@8f,
+        iG@@@GL@@@8f,
+          iG@@@@8f,
+            iG8f,
+              ,
 
-                     Your Exchange has been setup!
+      Your Exchange has been setup!
                  
+EOF
+
+}
+
+function hollaex_prod_complete() {
+
+  /bin/cat << EOF
+
+                      ......
+                .;1LG088@@880GL1;.
+            ,tC8@@@@@@@@@@@@@@@@8Ct,
+          ;C@@@@GtL@@@8;;8@@@Lf0@@@@C;
+        ,C@@@0t: ,8@@8:  :8@@0, :t8@@@L,
+        i@@@0i   .8@@8,    :8@@0    18@@8;
+      1@@@8t;;iiL@@@C;iiii;C@@@fii;;t@@@@i
+      :@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,
+      C@@@LfffffG@@@GffffffffG@@@CfffffL@@@L
+    .8@@G      f@@@;        ;@@@t      0@@0.
+    ,@@@L .  . L@@@: .    . ;@@@L .  . C@@@,
+    .8@@G      f@@@:        ;@@@t      G@@8.
+      C@@@LfffffG@@@GffffffffG@@@CfffffL@@@L
+      :@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,
+      1@@@81;;iiL@@@L;iiii;C@@@Lii;;t8@@@i
+        i@@@0i   .8@@8,    ,8@@0    10@@8i
+        :C@@@0t, ,8@@8:  :8@@8, :t0@@@C,
+          iC@@@@GtL@@@8:;8@@@LtG@@@@C;
+            :tG@@@@@@@@@@@@@@@@@@Gt,
+                ,itLG088@@880GLt;.
+                      ..,,..
+
+    Your Exchange has been setup for production!
+
+    Please run 'hollaex restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' and 'hollaex web --restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)'
+    to apply the changes you made.
+
+    For the web, You should rebuild the Docker image to apply the changes.
+
+    Have fun <3!
+
 EOF
 
 }
@@ -4266,21 +4449,60 @@ function hollaex_ascii_exchange_has_been_stopped() {
 
   /bin/cat << EOF
 
-1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
-.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
-.0@G                                                                  L@8,
-.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
-.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
-.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
-.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
-.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
-.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
-.0@G
-.@@@888888888888888888888888888888888888888888888888888888888888888888880.
-1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
+                    ,,,,
+                    8@@8
+                    8@@8
+          10C;       8@@8      .;C0i
+        :G@@@G,      8@@8      ,G@@@G,
+      ;@@@8i        8@@8        i8@@8;
+      :@@@0,         8@@8         :8@@8,
+      G@@@:          8@@8          ;@@@C
+    ,@@@C           0@@0           G@@@,
+    ;@@@f           @@@@           L@@@:
+    ,@@@C           1111           G@@8.
+      C@@@:                        ;@@@C
+      :@@@0,                      :8@@8,
+      ;@@@8i                    i8@@8;
+        :G@@@Ci.              .iG@@@G:
+          10@@@0Li:.      .:iL0@@@01
+          .iC8@@@@@00GG08@@@@@8L;
+              .;tLG8@@@@@@8GLt;.
+                  ..,,,...
 
-                    Your Exchange has been stopped
-               Run 'hollaex start$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to start the exchange.
+        Your Exchange has been stopped
+    Run 'hollaex start$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to start the exchange.
+          
+
+EOF
+
+}
+
+function hollaex_ascii_exchange_has_been_terminated() {
+
+  /bin/cat << EOF
+
+            .           .,,,,.
+          100t.    ,1LG8@@@@@@0Cfi,
+        .t8@@8t.  ,L@@@8GGG08@@@@8Ci
+          .10@@8t.  ,;,      ,;f0@@@G;
+            .;C@@@0t.            .i0@@@1
+        ,1C8@@@@@@@@0t.            .G@@@i
+      ,L@@@@0CLffff0@@0t.           .8@@8i:,
+    1@@@8t:       .10@@0t.          L@@@@@@0L;
+    ;@@@G,           .10@@8t.        :tttfC8@@@G:
+    0@@8,              .10@@0t.            .18@@8:
+    @@@0                 .10@@0t.            :@@@G
+    G@@@:                  .10@@0t.           0@@@
+    :@@@0:                   .10@@8t.        i@@@C
+    ;8@@@L;.                   10@@8t.    :C@@@0.
+      .f8@@@@0GGGGGGGGGGGGGGGGGCCG@@@@8t.  ,L@@f.
+        .ifG8@@@@@@@@@@@@@@@@@@@@@@@@@@@0t.  ,,
+            .,,,,,,,,,,,,,,,,,,,,:::::10@@8t.
+                                      .10Gi
+                                        .  .
+
+                Your Exchange has been terminated.
+    Run 'hollaex setup$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to setup the exchange from a scratch.
                  
 
 EOF
@@ -4290,27 +4512,27 @@ EOF
 function hollaex_ascii_exchange_has_been_upgraded() {
  /bin/cat << EOF
 
-                 .,:::,.
-              ,1L08@@@@@@@80Li,
-           .10@@0fi:,..,:;1L0@@G1.
-         .t@@Gi.  ,1tL:      .10@81
-        :0@G;     1@@@8:.   .;  i8@G,
-       :@@f      ;C@@@@@8GfC8@8i .C@8,
-      .8@L  fLftG@@@8GG0@@@@@@0i   G@0.
-      t@8, i@@@@@@0i.   .1G0GC     ,GG:
-      C@G  .;f8@@@:        .i;;;, ,;;;;  :;;;:
-      C@G     t@@@;       : t@@@8;.C@@@G.:8@@@f
-      1@@,    ;@@@81,. .:f@C.i8@@@i t@@@0, C@@@C.
-      .0@C  .f@@@@@@@808@@@@1 :0@@@t 1@@@@; f@@@0,
-       ,8@C. i0@0ftC0@@@@@t,   ,8@@@t 1@@@@; L@@@8.
-        ,G@8i  ,     ,8@@@:   ,G@@@L ;0@@@1 t@@@8;
-          10@8t,      :ti;.  :0@@@t i@@@8; f@@@G,
-            iC@@8Cf1;;::;i: 1@@@@i L@@@0:,0@@@C.
-              .;tC08@@@@@f..1111: ,1111. ;111i
-                    .....
+              .,:::,.
+          ,1L08@@@@@@@80Li,
+        .10@@0fi:,..,:;1L0@@G1.
+      .t@@Gi.  ,1tL:      .10@81
+    :0@G;     1@@@8:.   .;  i8@G,
+    :@@f      ;C@@@@@8GfC8@8i .C@8,
+  .8@L  fLftG@@@8GG0@@@@@@0i   G@0.
+  t@8, i@@@@@@0i.   .1G0GC     ,GG:
+  C@G  .;f8@@@:        .i;;;, ,;;;;  :;;;:
+  C@G     t@@@;       : t@@@8;.C@@@G.:8@@@f
+  1@@,    ;@@@81,. .:f@C.i8@@@i t@@@0, C@@@C.
+  .0@C  .f@@@@@@@808@@@@1 :0@@@t 1@@@@; f@@@0,
+    ,8@C. i0@0ftC0@@@@@t,   ,8@@@t 1@@@@; L@@@8.
+    ,G@8i  ,     ,8@@@:   ,G@@@L ;0@@@1 t@@@8;
+      10@8t,      :ti;.  :0@@@t i@@@8; f@@@G,
+        iC@@8Cf1;;::;i: 1@@@@i L@@@0:,0@@@C.
+          .;tC08@@@@@f..1111: ,1111. ;111i
+                .....
 
-        Exchange has been successfully upgraded!
-        Try to reach $HOLLAEX_CONFIGMAP_API_HOST
+    Exchange has been successfully upgraded!
+    Try to reach $HOLLAEX_CONFIGMAP_API_HOST
 
 EOF
 }
@@ -4383,68 +4605,26 @@ function hollaex_setup_finalization() {
       hollaex toolbox --add_trading_pair --is_hollaex_setup
 
   fi
+
+  if [[ ! "$HOLLAEX_DEV_SETUP" ]]; then
+
+    printf "\033[93m\nFinishing the setup process...\033[39m\n"
+    printf "\033[93mShutting down the exchange...\033[39m\n"
+    printf "\033[93mTo start the exchange, Please use 'hollaex start$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' command\033[39m\n\n"
+    if [[ "$USE_KUBERNETES" ]]; then
+        hollaex stop --kube --skip
+    elif [[ ! "$USE_KUBERNETES" ]]; then
+        hollaex stop --skip
+    fi
   
-
-  # echo "You can add more custom currencies or trading pairs manually if you want."
-  # echo "It doesn't matter you want to skip it for now. You can always add new currencies and trading pairs with 'hollaex toolbox' command."
-  # echo "Do you want to proceed? (Y/n)"
-  # read answer
-
-  # if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
-
-      printf "\033[93m\nFinishing the setup process...\033[39m\n"
-      printf "\033[93mShutting down the exchange...\033[39m\n"
-      printf "\033[93mTo start the exchange, Please use 'hollaex start$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' command\033[39m\n\n"
-      if [[ "$USE_KUBERNETES" ]]; then
-          hollaex stop --kube --skip
-      elif [[ ! "$USE_KUBERNETES" ]]; then
-          hollaex stop --skip
-      fi
-
-  # fi
-
-  # while true;
-  # do read -r -p "Do you want to add (setup) new currency? (y/N)" answer   
-  #     if [[ ! "$answer" = "${answer#[Yy]}" ]];
-  #     then
-  #         if [[ "$USE_KUBERNETES" ]]; then
-  #             hollaex toolbox --add_coin --kube
-          
-  #         elif [[ ! "$USE_KUBERNETES" ]]; then
-  #             hollaex toolbox --add_coin
-  #         fi
-  #     else
-  #         while true;
-  #             do read -r -p "Do you want to add (setup) new trading pair? (y/N)" answer   
-  #                 if [[ ! "$answer" = "${answer#[Yy]}" ]];
-  #                 then
-  #                     if [[ "$USE_KUBERNETES" ]]; then
-  #                         hollaex toolbox --add_trading_pair --kube
-  #                     elif [[ ! "$USE_KUBERNETES" ]]; then
-  #                         hollaex toolbox --add_trading_pair
-  #                     fi
-  #                 else   
-  #                     echo "Finishing the setup process..."
-  #                     echo "Shutting down the exchange"
-  #                     echo "To start the exchange, Please use 'hollaex start' command"
-  #                     if [[ "$USE_KUBERNETES" ]]; then
-  #                         hollaex stop --kube --skip
-  #                     elif [[ ! "$USE_KUBERNETES" ]]; then
-  #                         hollaex stop --skip
-  #                     fi
-  #                     exit 0;
-  #                 fi
-  #             done
-  #     fi
-
-  # done
+  fi
 
 }
 
 function build_user_hollaex_core() {
 
   # Preparing HollaEx Core image with custom mail configurations
-  echo "Building the user HollaEx Core image with user mail folder & plugins setup."
+  echo "Building the user HollaEx Core image with user custom Kit setups."
 
   if command docker build -t $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION -f $HOLLAEX_CLI_INIT_PATH/Dockerfile $HOLLAEX_CLI_INIT_PATH; then
 
@@ -4472,10 +4652,13 @@ function build_user_hollaex_core() {
             echo "Skipping..."
             echo "Your image name: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION."
             echo "You can later tag and push it by using 'docker tag' and 'docker push' command manually."
-        
+
+            export USER_HOLLAEX_CORE_PUSHED=false
+
         else 
 
           push_user_hollaex_core;
+          export USER_HOLLAEX_CORE_PUSHED=true
       
         fi
       
@@ -4653,22 +4836,24 @@ function hollaex_ascii_web_server_is_up() {
 
       /bin/cat << EOF
 
-1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
-.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
-.0@G                                                                  L@8,
-.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
-.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
-.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
-.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
-.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
-.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
-.0@G
-.@@@888888888888888888888888888888888888888888888888888888888888888888880.
-1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
+                                      ,t:
+                                    ,L@@@f.
+                                  ,L@@@8f:
+                                ,L@@@@f,
+                              ,L@@@8f,
+                            ,L@@@8f,
+          :i              ,L@@@8f,
+        .L@@Gi          ,L@@@8f,
+        .10@@@Gi      ,L@@@8f,
+          iG@@@Gi  ,L@@@8f,
+            iG@@@GL@@@8f,
+              iG@@@@8f,
+                iG8f,
+                  ,
 
-              Web Client for your exchange is ready!
-              Try to reach $(if [[ ! "$HOLLAEX_CONFIGMAP_DOMAIN" == *"example.com" ]]; then echo "$HOLLAEX_CONFIGMAP_DOMAIN"; fi) $(if [[ ! "$HOLLAEX_CONFIGMAP_DOMAIN" == *"example.com" ]] && [[ ! "$USE_KUBERNETES" ]]; then echo "or"; fi) $(if [[ ! "$USE_KUBERNETES" ]]; then echo "localhost:8080"; fi)
-      
+  Web Client for your exchange is ready!
+  Try to reach $(if [[ ! "$HOLLAEX_CONFIGMAP_DOMAIN" == *"example.com" ]]; then echo "$HOLLAEX_CONFIGMAP_DOMAIN"; fi) $(if [[ ! "$HOLLAEX_CONFIGMAP_DOMAIN" == *"example.com" ]] && [[ ! "$USE_KUBERNETES" ]]; then echo "or"; fi) $(if [[ ! "$USE_KUBERNETES" ]]; then echo "localhost:8080"; fi)
+
 EOF
 
 }
@@ -4677,21 +4862,23 @@ function hollaex_ascii_web_server_has_been_setup() {
 
       /bin/cat << EOF
 
-1ttffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffttt.
-.@@@000000000000000000000000000000000000000000000000000000000000000000@@@,
-.0@G                                                                  L@8,
-.8@G     fLL:  ;LLt         ;00L:00C         ;LfLCCCC;                C@@,
-.8@G    .@@@;  i@@8  :1fti, i@@G;@@0 ,ittti, t@@0ttfL1ttt..ttt,       C@@,
-.8@G    .8@@0GG0@@G:0@@LG@@f;@@C;@@0.L00L8@@;1@@0LL.  t@@CC@@1        C@@,
-.8@G    .8@@LttC@@GC@@t  8@@f@@C;@@G:LGCtG@@1i@@Gtt    1@@@8:         C@8,
-.8@G    .@@@;  i@@0i@@81L@@Ci@@G;@@0f@@G10@@t1@@8ffLL1i8@C0@8;.1t;    C@@,
-.8@G     tff,  :fft ,1LCCf; ,ff1,fft.1LCL1ff;:fffLLLf;fff ,fLf,;i:    ;ii.
-.0@G
-.@@@888888888888888888888888888888888888888888888888888888888888888888880.
-1ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.
+                                        ,t:
+                                      ,L@@@f.
+                                    ,L@@@8f:
+                                  ,L@@@@f,
+                                ,L@@@8f,
+                              ,L@@@8f,
+            :i              ,L@@@8f,
+          .L@@Gi          ,L@@@8f,
+          .10@@@Gi      ,L@@@8f,
+            iG@@@Gi  ,L@@@8f,
+              iG@@@GL@@@8f,
+                iG@@@@8f,
+                  iG8f,
+                    ,
 
-        Web Server for your exchange has been setup and prepared.
-        Please run 'hollaex web --start $(if [[ "$USE_KUBERNETES" ]]; then echo "--kube"; fi)' to bring the web server up!
+  Web Server for your exchange has been setup and prepared.
+  Please run 'hollaex web --start $(if [[ "$USE_KUBERNETES" ]]; then echo "--kube"; fi)' to bring the web server up!
 
 EOF
 
@@ -4855,6 +5042,7 @@ function update_hollaex_cli_to_latest() {
       printf "\033[93m\nNewer version of HollaEx CLI has been detected.\033[39m\n"
       printf "\nLatest version of HollaEx CLI : \033[92m$LATEST_HOLLAEX_CLI_VERSION\033[39m"
       printf "\nCurrent installed version of HollaEx CLI : \033[93m$(cat $SCRIPTPATH/version)\033[39m\n\n"
+     
       echo "Upgrading HollaEx CLI to latest..."
       curl -L https://raw.githubusercontent.com/bitholla/hollaex-cli/master/install.sh | bash;
       printf "\nPlease run 'hollaex upgrade' again to proceed upgrading your exchange.\n"
@@ -5105,20 +5293,12 @@ function hollaex_pull_and_apply_exchange_data() {
   local HOLLAEX_CONFIGMAP_API_NAME_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].name";)
 
   #LOGO PATH ESCAPING
-  local ORIGINAL_CHARACTER_FOR_DOMAIN=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.EXCHANGE_CLIENT_URL";)
-  local HOLLAEX_CONFIGMAP_DOMAIN_OVERRIDE="${ORIGINAL_CHARACTER_FOR_DOMAIN//\//\\/}"
-
-  #LOGO PATH ESCAPING
   local ORIGINAL_CHARACTER_FOR_LOGO_PATH=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.LOGO_IMAGE_LIGHT";)
   local HOLLAEX_CONFIGMAP_LOGO_PATH_OVERRIDE="${ORIGINAL_CHARACTER_FOR_LOGO_PATH//\//\\/}"
 
   #LOGO BLACK PATH ESCAPING
   local ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.LOGO_IMAGE_DARK";)
   local HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH_OVERRIDE="${ORIGINAL_CHARACTER_FOR_LOGO_BLACK_PATH//\//\\/}"
-
-  #CAPTCHA SITEKEY
-  local ORIGINAL_HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY="$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY";)"
-  local HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY_OVERRIDE="${ORIGINAL_HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY//\//\\/}"
 
   local ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.DEFAULT_COUNTRY";)
 
@@ -5163,9 +5343,6 @@ function hollaex_pull_and_apply_exchange_data() {
 
   local HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE=$(IFS=','; echo "${pairs_array[*]}")
   unset pairs_array
-  
-  local ORIGINAL_CHARACTER_FOR_API_HOST=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.EXCHANGE_SERVER_URL";)
-  local HOLLAEX_CONFIGMAP_API_HOST_OVERRIDE="${ORIGINAL_CHARACTER_FOR_API_HOST//\//\\/}"
 
   local HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ACCOUNT_TIERS";)
 
@@ -5179,14 +5356,13 @@ function hollaex_pull_and_apply_exchange_data() {
   
   local HOLLAEX_CONFIGMAP_ID_DOCS_BUCKET_OVERRIDE=$(echo "$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.STORAGE_TYPE";):$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.STORAGE_REGION";)")
 
-  local ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(curl -s https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/core-version | jq -r '.version')"
+  # Set the default HollaEx Core version as the maximum compatible version of the current release of CLI.
+  local ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$HOLLAEX_CORE_MAXIMUM_COMPATIBLE"
+
+  local HOLLAEX_CONFIGMAP_TECH_EMAIL_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.TECH_EMAIL";)
 
   # Secrets
   local HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.ADMIN_PASSWORD";)
-
-  #CAPTCHA SECRETKEY
-  local ORIGINAL_HOLLAEX_SECRET_CAPTCHA_SECRET_KEY="$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.HOLLAEX_SECRET_CAPTCHA_SECRET_KEY";)"
-  local HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE="${ORIGINAL_HOLLAEX_SECRET_CAPTCHA_SECRET_KEY//\//\\/}"
 
   ## SMTP Password escaping
   local ORIGINAL_CHARACTER_FOR_SMTP_PASSWORD=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.AUTOAMTED_EMAIL_PASSWORD";)
@@ -5197,16 +5373,15 @@ function hollaex_pull_and_apply_exchange_data() {
   local HOLLAEX_SECRET_S3_SECRETACCESSKEY_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.STORAGE_SECRET";)
   local HOLLAEX_SECRET_S3_REGION_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.tech.STORAGE_REGION";)
 
-  # CONFIGMAP
-  sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=.*/HOLLAEX_CONFIGMAP_API_NAME=$HOLLAEX_CONFIGMAP_API_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
+  local HOLLAEX_SECRET_TECH_PASSWORD_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.TECH_PASSWORD";)
 
-  sed -i.bak "s/HOLLAEX_CONFIGMAP_DOMAIN=.*/HOLLAEX_CONFIGMAP_DOMAIN=$HOLLAEX_CONFIGMAP_DOMAIN_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    
+  # CONFIGMAP 
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=.*/HOLLAEX_CONFIGMAP_API_NAME=$HOLLAEX_CONFIGMAP_API_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
   sed -i.bak "s/HOLLAEX_CONFIGMAP_LOGO_PATH=.*/HOLLAEX_CONFIGMAP_LOGO_PATH=$HOLLAEX_CONFIGMAP_LOGO_PATH_OVERRIDE/" $CONFIGMAP_FILE_PATH
   sed -i.bak "s/HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH=.*/HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH=$HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH_OVERRIDE/" $CONFIGMAP_FILE_PATH
-
-  sed -i.bak "s/HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY=$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY/HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY=$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY_OVERRIDE/" $CONFIGMAP_FILE_PATH
-
+  
   sed -i.bak "s/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY/ENVIRONMENT_WEB_DEFAULT_COUNTRY=$ENVIRONMENT_WEB_DEFAULT_COUNTRY_OVERRIDE/" $CONFIGMAP_FILE_PATH
   sed -i.bak "s/HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE=.*/HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE=$HOLLAEX_CONFIGMAP_EMAILS_TIMEZONE_OVERRIDE/" $CONFIGMAP_FILE_PATH
   sed -i.bak "s/HOLLAEX_CONFIGMAP_VALID_LANGUAGES=$HOLLAEX_CONFIGMAP_VALID_LANGUAGES/HOLLAEX_CONFIGMAP_VALID_LANGUAGES=$HOLLAEX_CONFIGMAP_VALID_LANGUAGES_OVERRIDE/" $CONFIGMAP_FILE_PATH
@@ -5216,7 +5391,6 @@ function hollaex_pull_and_apply_exchange_data() {
   sed -i.bak "s/HOLLAEX_CONFIGMAP_CURRENCIES=$HOLLAEX_CONFIGMAP_CURRENCIES/HOLLAEX_CONFIGMAP_CURRENCIES=$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
   sed -i.bak "s/HOLLAEX_CONFIGMAP_PAIRS=.*/HOLLAEX_CONFIGMAP_PAIRS='$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE'/" $CONFIGMAP_FILE_PATH
 
-  sed -i.bak "s/HOLLAEX_CONFIGMAP_API_HOST=.*/HOLLAEX_CONFIGMAP_API_HOST=$HOLLAEX_CONFIGMAP_API_HOST_OVERRIDE/" $CONFIGMAP_FILE_PATH
   sed -i.bak "s/HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER=$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER/HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER=$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER_OVERRIDE/" $CONFIGMAP_FILE_PATH
   sed -i.bak "s/HOLLAEX_CONFIGMAP_ADMIN_EMAIL=$HOLLAEX_CONFIGMAP_ADMIN_EMAIL/HOLLAEX_CONFIGMAP_ADMIN_EMAIL=$HOLLAEX_CONFIGMAP_ADMIN_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
   sed -i.bak "s/HOLLAEX_CONFIGMAP_SUPPORT_EMAIL=$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL/HOLLAEX_CONFIGMAP_SUPPORT_EMAIL=$HOLLAEX_CONFIGMAP_SUPPORT_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
@@ -5230,10 +5404,10 @@ function hollaex_pull_and_apply_exchange_data() {
 
   sed -i.bak "s/ENVIRONMENT_DOCKER_IMAGE_VERSION=.*/ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
+  sed -i.bak "s/HOLLAEX_CONFIGMAP_TECH_EMAIL=.*/HOLLAEX_CONFIGMAP_TECH_EMAIL=$HOLLAEX_CONFIGMAP_TECH_EMAIL_OVERRIDE/" $CONFIGMAP_FILE_PATH
+
   # SECRET 
   sed -i.bak "s/HOLLAEX_SECRET_ADMIN_PASSWORD=.*/HOLLAEX_SECRET_ADMIN_PASSWORD=$HOLLAEX_SECRET_ADMIN_PASSWORD_OVERRIDE/" $SECRET_FILE_PATH
-
-  sed -i.bak "s/HOLLAEX_SECRET_CAPTCHA_SECRET_KEY=$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY/HOLLAEX_SECRET_CAPTCHA_SECRET_KEY=$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE/" $SECRET_FILE_PATH
 
   sed -i.bak "s/HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID/HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID=$HOLLAEX_SECRET_S3_WRITE_ACCESSKEYID_OVERRIDE/" $SECRET_FILE_PATH
   sed -i.bak "s/HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=.*/HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE/" $SECRET_FILE_PATH
@@ -5242,7 +5416,9 @@ function hollaex_pull_and_apply_exchange_data() {
   sed -i.bak "s/HOLLAEX_SECRET_S3_READ_SECRETACCESSKEY=.*/HOLLAEX_SECRET_S3_READ_SECRETACCESSKEY=$HOLLAEX_SECRET_S3_WRITE_SECRETACCESSKEY_OVERRIDE/" $SECRET_FILE_PATH
 
   sed -i.bak "s/HOLLAEX_SECRET_SMTP_PASSWORD=.*/HOLLAEX_SECRET_SMTP_PASSWORD=$HOLLAEX_SECRET_SMTP_PASSWORD_OVERRIDE/" $SECRET_FILE_PATH
-  
+
+  sed -i.bak "s/HOLLAEX_SECRET_TECH_PASSWORD=.*/HOLLAEX_SECRET_TECH_PASSWORD=$HOLLAEX_SECRET_TECH_PASSWORD_OVERRIDE/" $SECRET_FILE_PATH
+
   rm $CONFIGMAP_FILE_PATH.bak
   rm $SECRET_FILE_PATH.bak
 
@@ -5421,4 +5597,82 @@ function check_docker_compose_is_installed() {
 
   fi
   
+}
+
+
+function check_kit_version_compatibility_range() {
+
+  CURRENT_HOLLAEX_KIT_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/version)
+
+  if [[ "$CURRENT_HOLLAEX_KIT_VERSION" < "$HOLLAEX_KIT_MINIMUM_COMPATIBLE" ]] || [[ "$CURRENT_HOLLAEX_KIT_VERSION" > "$HOLLAEX_KIT_MAXIMUM_COMPATIBLE" ]]; then
+
+    printf "\n\033[91mError: The HollaEx Kit version that you are trying to run is not compatible with the installed CLI.\033[39m\n"
+    printf "Your HollaEx Kit version: \033[1m$CURRENT_HOLLAEX_KIT_VERSION\033[0m\n"
+    printf "Supported HollaEx Kit version range: \033[1m$HOLLAEX_KIT_MINIMUM_COMPATIBLE ~ $HOLLAEX_KIT_MAXIMUM_COMPATIBLE.\033[0m\n"
+
+    if [[ "$CURRENT_HOLLAEX_KIT_VERSION" > "$HOLLAEX_KIT_MAXIMUM_COMPATIBLE" ]]; then
+
+      printf "\nYour Kit version is \033[1mhigher than the maximum compatible version\033[0m of your CLI.\n"
+      printf "You can \033[1mreinstall the HollaEx CLI\033[0m to higher version.\n\n"
+      printf "To reinstall the HollaEx CLI to a compatible version, Please run '\033[1mhollaex toolbox --install_cli <VERSION_NUMBER>\033[0m.\n"
+
+    elif [[ "$CURRENT_HOLLAEX_KIT_VERSION" < "$HOLLAEX_KIT_MINIMUM_COMPATIBLE" ]]; then
+
+      printf "\nYour Kit version is \033[1mlower than the minimum compatible version\033[0m of your CLI.\n"
+      printf "\nYou can either \033[1mreinstall the HollaEx CLI, or upgrade your HollaEx Kit\033[0m.\n\n"
+      printf "To reinstall the HollaEx CLI to a compatible version, Please run '\033[1mhollaex toolbox --install_cli <VERSION_NUMBER>\033[0m.\n"
+      printf "To see how to upgrade your HollaEx Kit, Please \033[1mcheck our official upgrade docs (docs.bitholla.com/hollaex-kit/upgrade)\033[0m.\n"
+
+    fi
+
+    printf "\nYou can see the version compatibility range of between CLI and Kit at our \033[1mofficial docs (docs.bitholla.com/hollaex-kit/upgrade/version-compatibility)\033[0m.\n\n"
+
+    exit 1;
+
+  fi
+
+}
+
+function check_core_version_compatibility_range() {
+
+  CURRENT_HOLLAEX_CORE_VERSION=$(echo $ENVIRONMENT_DOCKER_IMAGE_VERSION | cut -f1 -d "-")
+
+  if [[ "$CURRENT_HOLLAEX_CORE_VERSION" < "$HOLLAEX_CORE_MINIMUM_COMPATIBLE" ]] || [[ "$CURRENT_HOLLAEX_CORE_VERSION" > "$HOLLAEX_CORE_MAXIMUM_COMPATIBLE" ]]; then
+
+    printf "\n\033[91mError: The HollaEx Core version that you are trying to run is not compatible with the installed CLI.\033[39m\n"
+    printf "Your HollaEx Core version: \033[1m$CURRENT_HOLLAEX_CORE_VERSION\033[0m\n"
+    printf "Supported HollaEx Core version range: \033[1m$HOLLAEX_CORE_MINIMUM_COMPATIBLE ~ $HOLLAEX_CORE_MAXIMUM_COMPATIBLE.\033[0m\n"
+
+    printf "\nPlease try it again after setting up the correct ranged version of Core.\033[0m.\n\n"
+
+    exit 1;
+
+  fi
+
+}
+
+function generate_backend_passwords() {
+
+  echo "Generating random passwords for backends..."
+
+  export HOLLAEX_SECRET_REDIS_PASSWORD=$(generate_random_values)
+  export HOLLAEX_SECRET_DB_PASSWORD=$(generate_random_values)
+  export HOLLAEX_SECRET_INFLUX_PASSWORD=$(generate_random_values)
+
+  if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE" $i > /dev/null ; then
+
+    SECRET_FILE_PATH=$i
+
+    sed -i.bak "s/HOLLAEX_SECRET_REDIS_PASSWORD=.*/HOLLAEX_SECRET_REDIS_PASSWORD=$HOLLAEX_SECRET_REDIS_PASSWORD/" $SECRET_FILE_PATH
+    sed -i.bak "s/HOLLAEX_SECRET_PUBSUB_PASSWORD=.*/HOLLAEX_SECRET_PUBSUB_PASSWORD=$HOLLAEX_SECRET_REDIS_PASSWORD/" $SECRET_FILE_PATH
+
+    sed -i.bak "s/HOLLAEX_SECRET_DB_PASSWORD=.*/HOLLAEX_SECRET_DB_PASSWORD=$HOLLAEX_SECRET_DB_PASSWORD/" $SECRET_FILE_PATH
+
+    sed -i.bak "s/HOLLAEX_SECRET_INFLUX_PASSWORD=.*/HOLLAEX_SECRET_INFLUX_PASSWORD=$HOLLAEX_SECRET_INFLUX_PASSWORD/" $SECRET_FILE_PATH
+
+    rm $SECRET_FILE_PATH.bak
+    
+  fi
+
+
 }
