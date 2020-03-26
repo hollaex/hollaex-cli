@@ -589,7 +589,7 @@ elif [[ "$1" == "setup" ]]; then
     check_kit_version_compatibility_range;
 
     # Randomly generates backend passwords
-    if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_INFLUX_PASSWORD" ]]; then
+    if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_INFLUX_PASSWORD" ]]; then
     
         generate_backend_passwords;
 
