@@ -4501,7 +4501,7 @@ function hollaex_ascii_exchange_has_been_terminated() {
                                       .10Gi
                                         .  .
 
-                Your Exchange has been terminated.
+            Your Exchange has been terminated.
     Run 'hollaex setup$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to setup the exchange from a scratch.
                  
 

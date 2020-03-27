@@ -353,7 +353,7 @@ if [[ "$1" == "dev" ]]; then
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
             load_config_variables;
-            
+
             generate_local_env;
 
         fi
@@ -2432,6 +2432,7 @@ elif [[ "$1" == "prod" ]]; then
                     else 
 
                         hollaex toolbox --issue_ssl --skip;
+                        break;
 
                     fi
                 
