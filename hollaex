@@ -134,13 +134,6 @@ if [[ "$1" == "dev" ]]; then
     while true; do
         [[ $# -eq 0 ]] && break
         case $1 in
-            --path)
-                shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                HOLLAEX_CLI_INIT_PATH=$1
-                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
-                shift; continue
-                ;;
             --command)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
@@ -207,6 +200,20 @@ if [[ "$1" == "dev" ]]; then
                 echo 'Removing trading pair for dev environment.'
                 shift; continue
                 ;;
+            --kit-path)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_DEV_LEGACY=true
+                HOLLAEX_KIT_PATH=$1
+                echo "HollaEx Kit Path : $HOLLAEX_KIT_PATH."
+                shift; continue
+                ;;
+            --legacy)
+                shift 
+                HOLLAEX_DEV_LEGACY=true
+                echo "HollaEx dev legacy mode."
+                shift; continue
+                ;;
             --skip)
                 RUN_WITH_VERIFY=false
                 echo 'Skipping the command confirmation.'
@@ -223,30 +230,39 @@ if [[ "$1" == "dev" ]]; then
 
     IS_DEVELOP=true
 
-    HOLLAEX_CODEBASE_PATH=$(pwd)/server
+    if [[ "$HOLLAEX_DEV_LEGACY" ]]; then
 
-    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+        HOLLAEX_CODEBASE_PATH=$(pwd)
+
+        CONFIG_FILE_PATH=$HOLLAEX_KIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_KIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_KIT_PATH/.hollaex
+
+    else 
+
+        HOLLAEX_CODEBASE_PATH=$(pwd)/server
 
         HOLLAEX_CLI_INIT_PATH=$(pwd)
         CONFIG_FILE_PATH=$(pwd)/settings/*
         TEMPLATE_GENERATE_PATH=$(pwd)/templates
         INIT_PATH_CHECK=$(pwd)/.hollaex
-
-    fi
-
-    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
-
-        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
-        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
-        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
-        
-    fi
+    
+    fi 
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
     done;
     
     source $SCRIPTPATH/tools_generator.sh
+
+    if [[ "$HOLLAEX_DEV_LEGACY" ]] && [[ ! "$HOLLAEX_KIT_PATH" ]]; then
+
+        echo "Error: HollaEx Kit path has not been defined."
+        echo "The dev leagcy mode requires Kit path to operate."
+        echo "Please use '--kit-path' flag to specify your Kit path."
+        exit 1;
+
+    fi
 
     # ADD & REMOVE COINS AND PAIRS INTERATION FOR DEV
     if [[ "$LOCAL_ADD_COIN" ]]; then    
@@ -359,8 +375,17 @@ if [[ "$1" == "dev" ]]; then
         fi
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
+        
+            if [[ "$HOLLAEX_DEV_LEGACY" ]]; then
 
-            generate_local_docker_compose_for_dev;
+                generate_local_docker_compose_for_dev_legacy;
+
+            else    
+
+                generate_local_docker_compose_for_dev;
+
+            fi
+
         fi
 
         generate_nginx_upstream;
@@ -368,21 +393,35 @@ if [[ "$1" == "dev" ]]; then
         if [[ "$HOLLAEX_DEV_SETUP" ]]; then
 
             docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml up -d --build  
-
+            
             echo "Installing npm packages for /plugins"
             docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller_1 bash -c '
                 cd /app/plugins && \
                 npm install --loglevel=error && \
                 for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done'
-
-            hollaex dev --database_init
             
-            hollaex dev --restart
+            if [[ "$HOLLAEX_DEV_LEGACY" ]]; then
+ 
+                hollaex dev --kit-path $HOLLAEX_KIT_PATH --database_init 
+             
+                docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
 
-            hollaex_setup_finalization;
+                hollaex_setup_finalization;
 
-            hollaex dev --restart
-        
+                docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
+
+            else
+
+                hollaex dev --database_init
+            
+                docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
+
+                hollaex_setup_finalization;
+
+                docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
+            
+            fi 
+            
         elif [[ "$HOLLAEX_DEV_RESTART" ]]; then
 
             docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml stop
@@ -4415,6 +4454,14 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "HollaEx CLI is configured as dev mode for development purpose."
                 shift; continue
                 ;;
+            --kit-path)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_KIT_PATH=$1
+                HOLLAEX_DEV_LEGACY=true
+                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
+                shift; continue
+                ;;
             --upgrade_backends)
                 UPGRADE_BACKENDS=true
                 TOOLBOX_ENABLE=true
@@ -4577,6 +4624,18 @@ elif [[ "$1" == "toolbox" ]]; then
         TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
         INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
         
+    fi
+
+    # For dev command legacy mode
+    if [[ "$HOLLAEX_DEV_LEGACY" ]]; then
+
+        HOLLAEX_CODEBASE_PATH=$(pwd)
+
+        HOLLAEX_CLI_INIT_PATH=$HOLLAEX_KIT_PATH
+        CONFIG_FILE_PATH=$HOLLAEX_KIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_KIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_KIT_PATH/.hollaex
+
     fi
 
     # PATH overriding for develop    
