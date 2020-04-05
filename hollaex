@@ -203,15 +203,9 @@ if [[ "$1" == "dev" ]]; then
             --kit-path)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                HOLLAEX_DEV_LEGACY=true
+                HOLLAEX_DEV_FOR_CORE=true
                 HOLLAEX_KIT_PATH=$1
                 echo "HollaEx Kit Path : $HOLLAEX_KIT_PATH."
-                shift; continue
-                ;;
-            --legacy)
-                shift 
-                HOLLAEX_DEV_LEGACY=true
-                echo "HollaEx dev legacy mode."
                 shift; continue
                 ;;
             --skip)
@@ -230,7 +224,7 @@ if [[ "$1" == "dev" ]]; then
 
     IS_DEVELOP=true
 
-    if [[ "$HOLLAEX_DEV_LEGACY" ]]; then
+    if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
 
         HOLLAEX_CODEBASE_PATH=$(pwd)
 
@@ -239,9 +233,7 @@ if [[ "$1" == "dev" ]]; then
         INIT_PATH_CHECK=$HOLLAEX_KIT_PATH/.hollaex
 
     else 
-
-        HOLLAEX_CODEBASE_PATH=$(pwd)/server
-
+        
         HOLLAEX_CLI_INIT_PATH=$(pwd)
         CONFIG_FILE_PATH=$(pwd)/settings/*
         TEMPLATE_GENERATE_PATH=$(pwd)/templates
@@ -255,10 +247,10 @@ if [[ "$1" == "dev" ]]; then
     
     source $SCRIPTPATH/tools_generator.sh
 
-    if [[ "$HOLLAEX_DEV_LEGACY" ]] && [[ ! "$HOLLAEX_KIT_PATH" ]]; then
+    if [[ "$HOLLAEX_DEV_FOR_CORE" ]] && [[ ! "$HOLLAEX_KIT_PATH" ]]; then
 
         echo "Error: HollaEx Kit path has not been defined."
-        echo "The dev leagcy mode requires Kit path to operate."
+        echo "HollaEx Core dev mode requires HollaEx Kit to bind."
         echo "Please use '--kit-path' flag to specify your Kit path."
         exit 1;
 
@@ -300,153 +292,152 @@ if [[ "$1" == "dev" ]]; then
         exit 0;
 
     fi
+    # Checking docker-compose is installed on this machine.
+    if command docker-compose version > /dev/null 2>&1; then
+        echo "*********************************************"
+        echo "docker-compose detected"
+        echo "version: $(docker-compose version)"
+        echo "*********************************************"
 
-    if [[ ! "$USE_KUBERNETES" ]]; then
+    else
+        echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
+        exit 1;
 
-        # Checking docker-compose is installed on this machine.
-        if command docker-compose version > /dev/null 2>&1; then
-            echo "*********************************************"
-            echo "docker-compose detected"
-            echo "version: $(docker-compose version)"
-            echo "*********************************************"
+    fi
 
-        else
-            echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
-            exit 1;
+    if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
+        mkdir $TEMPLATE_GENERATE_PATH/local;
+    fi
 
-        fi
+    if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx" ]]; then
+        mkdir $TEMPLATE_GENERATE_PATH/local/nginx;
+    fi
 
-        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
-            mkdir $TEMPLATE_GENERATE_PATH/local;
-        fi
+    if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
+        mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
+    fi
 
-        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx" ]]; then
-            mkdir $TEMPLATE_GENERATE_PATH/local/nginx;
-        fi
 
-        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
-            mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
-        fi
+    #Quit if necessary flags are missing
+
+    if [[ "$HOLLAEX_DEV_MANUAL_COMMAND" ]] && [[ ! "$LOCAL_COMMAND" ]]; then
+        echo "*********************************************"
+        echo "Make sure to specify --command flag for dev commands"
+        echo "*********************************************"
+        print_usage;
+        exit 1;
+    fi
     
+    
+    
+    # Running database jobs for local db.
+    if [[ ! "$LOCAL_COMMAND" ]] && [[ "$LOCAL_DATABASE_INIT" == true ]]; then
+    
+        local_database_init start;
 
-        #Quit if necessary flags are missing
+        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
 
-        if [[ "$HOLLAEX_DEV_MANUAL_COMMAND" ]] && [[ ! "$LOCAL_COMMAND" ]]; then
-            echo "*********************************************"
-            echo "Make sure to specify --command flag for dev commands"
-            echo "*********************************************"
-            print_usage;
-            exit 1;
+        exit 0;
+
+    fi
+
+    if [[ "$HOLLAEX_DEV_SETUP" ]]; then
+
+        # Randomly generates backend passwords
+        if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_INFLUX_PASSWORD" ]]; then
+        
+            generate_backend_passwords;
+
         fi
+
+    fi
+
+    #Generating random values for passwords and update config file to contain it;
+    update_random_values_to_config;
+
+    if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
+
+        load_config_variables;
+
+        generate_local_env;
+
+    fi
+
+    if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
+    
+        if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
+
+             generate_local_docker_compose_for_dev;
+
+        else    
+
+            generate_local_docker_compose_for_kit_dev;
+
+        fi
+
+    fi
+
+    generate_nginx_upstream;
+
+    if [[ "$HOLLAEX_DEV_SETUP" ]]; then
+
+        build_user_hollaex_core;
+
+        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml up -d --build  
         
+        echo "Installing npm packages for /plugins"
+        docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller_1 bash -c '
+            cd /app/plugins && \
+            npm install --loglevel=error && \
+            for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done && \
+            cd /app/mail && npm install --loglevel=error'
         
-        
-        # Running database jobs for local db.
-        if [[ ! "$LOCAL_COMMAND" ]] && [[ "$LOCAL_DATABASE_INIT" == true ]]; then
-        
-            local_database_init start;
+        if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
+
+            hollaex dev --kit-path $HOLLAEX_KIT_PATH --database_init 
+            
+            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
+
+            hollaex_setup_finalization;
 
             docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
 
-            exit 0;
+        else
 
-        fi
-
-        if [[ "$HOLLAEX_DEV_SETUP" ]]; then
-
-            # Randomly generates backend passwords
-            if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_INFLUX_PASSWORD" ]]; then
-            
-                generate_backend_passwords;
-
-            fi
-
-        fi
-
-        #Generating random values for passwords and update config file to contain it;
-        update_random_values_to_config;
-
-        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
-
-            load_config_variables;
-
-            generate_local_env;
-
-        fi
-
-        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
+            hollaex dev --database_init
         
-            if [[ "$HOLLAEX_DEV_LEGACY" ]]; then
+            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
 
-                generate_local_docker_compose_for_dev_legacy;
+            hollaex_setup_finalization;
 
-            else    
+            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
+        
+        fi 
+        
+    elif [[ "$HOLLAEX_DEV_RESTART" ]]; then
 
-                generate_local_docker_compose_for_dev;
+        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml stop
+        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml up -d --build
 
-            fi
+        if [[ ! "$HOLLAEX_DEV_SETUP" ]]; then
 
-        fi
-
-        generate_nginx_upstream;
-
-        if [[ "$HOLLAEX_DEV_SETUP" ]]; then
-
-            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml up -d --build  
-            
             echo "Installing npm packages for /plugins"
             docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller_1 bash -c '
                 cd /app/plugins && \
                 npm install --loglevel=error && \
-                for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done'
-            
-            if [[ "$HOLLAEX_DEV_LEGACY" ]]; then
- 
-                hollaex dev --kit-path $HOLLAEX_KIT_PATH --database_init 
-             
-                docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
+                for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done && \
+                cd /app/mail && npm install --loglevel=error'
 
-                hollaex_setup_finalization;
+        fi 
 
-                docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
+    else 
 
-            else
-
-                hollaex dev --database_init
-            
-                docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
-
-                hollaex_setup_finalization;
-
-                docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
-            
-            fi 
-            
-        elif [[ "$HOLLAEX_DEV_RESTART" ]]; then
-
-            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml stop
-            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml up -d --build
-
-            if [[ ! "$HOLLAEX_DEV_SETUP" ]]; then
-
-                echo "Installing npm packages for /plugins"
-                docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller_1 bash -c '
-                    cd /app/plugins && \
-                    npm install --loglevel=error && \
-                    for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done'
-
-            fi 
-
-        else 
-    
-            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml $LOCAL_COMMAND
-
-        fi
-
- 
-        exit 0;
+        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml $LOCAL_COMMAND
 
     fi
+
+
+    exit 0;
 
 
 elif [[ "$1" == "init" ]]; then

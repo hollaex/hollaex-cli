@@ -6,3 +6,9 @@ local/nginx/conf.d/*
 local/logs/*
 local/letsencrypt/*
 !local/letsencrypt/.gitkeep
+
+plugins/node_modules
+plugins/*/node_modules
+
+mail/node_modules
+mail/*/node_modules
