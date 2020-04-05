@@ -366,8 +366,8 @@ if [[ "$1" == "dev" ]]; then
     if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
     
         if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
-
-             generate_local_docker_compose_for_dev;
+             
+             generate_local_docker_compose_for_dev_legacy;
 
         else    
 
@@ -381,7 +381,11 @@ if [[ "$1" == "dev" ]]; then
 
     if [[ "$HOLLAEX_DEV_SETUP" ]]; then
 
-        build_user_hollaex_core;
+        if [[ ! "$HOLLAEX_DEV_FOR_CORE" ]] ; then 
+
+            build_user_hollaex_core;
+
+        fi
 
         docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml up -d --build  
         
