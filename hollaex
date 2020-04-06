@@ -4559,6 +4559,12 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "Override database-stored cosntants with local configmap-stored values."
                 shift; continue
                 ;;
+            --set_security)
+                set_security=true
+                TOOLBOX_ENABLE=true
+                echo "Override exchange secret values with provided ones."
+                shift; continue
+                ;;
              --connect_database)
                 CONNECT_DATABASE=true
                 TOOLBOX_ENABLE=true
@@ -5391,17 +5397,17 @@ elif [[ "$1" == "toolbox" ]]; then
 
             toolbox_set_config_confirm_message;
 
-            echo "Generating Kubernetes Configmap."
-            generate_kubernetes_configmap;
+            # echo "Generating Kubernetes Configmap."
+            # generate_kubernetes_configmap;
 
-            echo "Generating Kubernetes Secret."
-            generate_kubernetes_secret;
+            # echo "Generating Kubernetes Secret."
+            # generate_kubernetes_secret;
 
-             echo "Applying configmap on the namespace."
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+            #  echo "Applying configmap on the namespace."
+            # kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
             
-            echo "Applying secret on the namespace."
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+            # echo "Applying secret on the namespace."
+            # kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
             set_config_exec;
             
@@ -5415,6 +5421,56 @@ elif [[ "$1" == "toolbox" ]]; then
             set_config_exec;
 
         fi
+
+    elif [[ "$set_security" ]]; then
+
+        function toolbox_set_security_confirm_message() {
+
+            echo "Warning: This command would override security values* values of your exchange with new ones provided."
+            echo "*Security values: Allowed domains, Allowed Admin IPs, reCaptcha Access & Secret keys."
+            echo "Do you want to continue? (y/N)"
+            read answer
+
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                echo "Exiting..."
+                exit 0;
+            fi
+
+        }
+
+        if [[ "$USE_KUBERNETES" ]]; then 
+
+            toolbox_set_security_confirm_message;
+
+            set_security_input;
+
+            echo "Generating Kubernetes Configmap."
+            generate_kubernetes_configmap;
+
+            echo "Generating Kubernetes Secret."
+            generate_kubernetes_secret;
+
+             echo "Applying configmap on the namespace."
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+            
+            echo "Applying secret on the namespace."
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+            
+            set_security_exec;
+            
+
+        elif [[ ! "$USE_KUBERNETES" ]]; then 
+        
+            check_docker_compose_dependencies; 
+
+            toolbox_set_security_confirm_message;
+
+            set_security_input;
+
+            set_security_exec;
+
+        fi
+
 
 
     elif [[ "$CONNECT_DATABASE" ]]; then

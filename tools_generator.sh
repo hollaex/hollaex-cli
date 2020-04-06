@@ -5739,6 +5739,218 @@ EOL
 
 }
 
+function set_security_input() {
+
+  /bin/cat << EOF
+  
+Please fill up the interaction form to re-set the exchange secrets.
+
+EOF
+
+  # Whitelist IPs
+  echo "***************************************************************"
+  echo "[1/4] Admin Whitelist IPs: ($HOLLAEX_CONFIGMAP_ADMIN_WHITELIST_IP)"
+  printf "\033[2m- IPs to add on admin whitelist. Comman separated.\033[22m\n"
+  read answer
+
+  local HOLLAEX_CONFIGMAP_ADMIN_WHITELIST_IP_OVERRIDE="${answer:-$HOLLAEX_CONFIGMAP_ADMIN_WHITELIST_IP}"
+
+  printf "\n"
+  echo "${HOLLAEX_CONFIGMAP_ADMIN_WHITELIST_IP_OVERRIDE} ✔"
+  printf "\n"
+
+  # Allowed Domains
+  echo "***************************************************************"
+  echo "[2/4] Allowed Domains: ($HOLLAEX_CONFIGMAP_ALLOWED_DOMAINS)"
+  printf "\033[2m- Domains to allow to access exchange server (CORS). Comma separated.\033[22m\n"
+  read answer
+
+  local HOLLAEX_CONFIGMAP_ALLOWED_DOMAINS_OVERRIDE="${answer:-$HOLLAEX_CONFIGMAP_ALLOWED_DOMAINS}"
+
+  while true;
+    do if [[ "$HOLLAEX_CONFIGMAP_ALLOWED_DOMAINS_OVERRIDE" == *"http"* ]]; then
+      printf "\nValue should not have 'http' or 'https'.\n"
+      echo  "Allowed Domains: "
+      read answer
+      local HOLLAEX_CONFIGMAP_ALLOWED_DOMAINS_OVERRIDE="${answer}"
+    else
+      break;
+    fi
+  done
+
+  printf "\n"
+  echo "${HOLLAEX_CONFIGMAP_ALLOWED_DOMAINS_OVERRIDE} ✔"
+  printf "\n"
+
+  # WEB CAPTCHA SITE KEY
+  echo "***************************************************************"
+  echo "[3/4] Exchange Web Google reCaptcha Sitekey: ($HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY)"
+  printf "\n"
+  read answer
+
+  local HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY_OVERRIDE="${answer:-$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY}"
+
+  printf "\n"
+  echo "${HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY_OVERRIDE} ✔"
+  printf "\n"
+
+  # WEB CAPTCHA Secret KEY
+  echo "***************************************************************"
+  echo "[4/4] Exchange Web Google reCaptcha Secretkey: ($(echo ${HOLLAEX_SECRET_CAPTCHA_SECRET_KEY//?/◼︎}$(echo $HOLLAEX_SECRET_CAPTCHA_SECRET_KEY | grep -o '....$')))"
+  printf "\033[2m- Enter your API Server Google reCaptcha Secretkey. \033[22m\n"
+  read answer
+
+  local HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE="${answer:-$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY}"
+
+  local HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE_MASKED=$(echo ${HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE//?/◼︎}$(echo $HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE | grep -o '....$'))
+
+  printf "\n"
+  echo "$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE_MASKED ✔"
+  printf "\n"
+
+  /bin/cat << EOF
+  
+*********************************************
+Admin Whitelist IPs: $HOLLAEX_CONFIGMAP_ADMIN_WHITELIST_IP
+
+Allowed Domains: $HOLLAEX_CONFIGMAP_ALLOWED_DOMAINS_OVERRIDE
+
+Google reCaptcha Sitekey: $HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY_OVERRIDE
+
+Google reCaptcha Secretkey: $HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE_MASKED
+*********************************************
+
+EOF
+
+  echo "Do you want to continue? (Y/n)"
+  read answer
+
+  if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+      
+    echo "You picked false. Please confirm the values and run the command again."
+    exit 1;
+  
+  fi
+
+  echo "Provided values would be updated on your settings files automatically."
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+
+    # Update exchange name
+    if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+    CONFIGMAP_FILE_PATH=$i
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_ADMIN_WHITELIST_IP=.*/HOLLAEX_CONFIGMAP_ADMIN_WHITELIST_IP=$HOLLAEX_CONFIGMAP_ADMIN_WHITELIST_IP_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_CONFIGMAP_ALLOWED_DOMAINS=.*/HOLLAEX_CONFIGMAP_ALLOWED_DOMAINS=$HOLLAEX_CONFIGMAP_ALLOWED_DOMAINS_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=.*/ENVIRONMENT_WEB_CAPTCHA_SITE_KEY=$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    sed -i.bak "s/HOLLAEX_SECRET_CAPTCHA_SECRET_KEY=.*/HOLLAEX_SECRET_CAPTCHA_SECRET_KEY=$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE/" $CONFIGMAP_FILE_PATH
+    rm $CONFIGMAP_FILE_PATH.bak
+    fi
+      
+  done
+
+  export HOLLAEX_CONFIGMAP_ADMIN_WHITELIST_IP=$HOLLAEX_CONFIGMAP_ADMIN_WHITELIST_IP_OVERRIDE
+
+  export HOLLAEX_CONFIGMAP_ALLOWED_DOMAINS=$HOLLAEX_CONFIGMAP_ALLOWED_DOMAINS_OVERRIDE
+
+  export HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY=$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY_OVERRIDE
+  
+  export HOLLAEX_SECRET_CAPTCHA_SECRET_KEY=$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY_OVERRIDE
+
+}
+
+function set_security_exec() {
+
+  if [[ "$USE_KUBERNETES" ]]; then 
+
+    # Generate Kubernetes Configmap
+    cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/set_security.yaml <<EOL
+job:
+  enable: true
+  mode: set_security
+EOL
+
+    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-set-security \
+                            --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                            --set job.enable="true" \
+                            --set job.mode="set_config" \
+                            --set DEPLOYMENT_MODE="api" \
+                            --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                            --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                            --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                            -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/set_security.yaml \
+                            $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+
+      echo "Kubernetes Job has been created for setting up security values."
+
+      echo "Waiting until Job get completely run..."
+      sleep 30;
+
+    else 
+
+      printf "\033[91mFailed to create Kubernetes Job for setting up security values. Please confirm the logs and try again.\033[39m\n"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-secret
+
+    fi
+
+    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-set-secret --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+
+      echo "Your database constants has been successfully updated!"
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-security
+
+      echo "Removing created Kubernetes Job for setting up security values..."
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-security
+
+      echo "Successfully updated security values with your local configmap values."
+      echo "Make sure to run 'hollaex restart --kube' to fully apply it."
+
+    else 
+
+      printf "\033[91mFailed to update the database constants! Please try again.\033[39m\n"
+      
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-security
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-security
+
+      exit 1;
+
+    fi
+
+
+  elif [[ ! "$USE_KUBERNETES" ]]; then
+
+    IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+          
+    # Overriding container prefix for develop server
+    if [[ "$IS_DEVELOP" ]]; then
+      
+      CONTAINER_PREFIX=
+
+    fi
+
+    echo "Updating security values..."
+    if command docker exec --env ADMIN_WHITELIST_IP=$HOLLAEX_CONFIGMAP_ADMIN_WHITELIST_IP \
+                --env ALLOWED_DOMAINS=$HOLLAEX_CONFIGMAP_ALLOWED_DOMAINS \
+                --env CAPTCHA_SITE_KEY=$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY \
+                --env CAPTCHA_SECRET_KEY=$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY \
+                ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
+                node tools/dbs/setSecurity.js; then
+
+        echo "Successfully updated exchange security values with the new ones."
+        echo "Make sure to run 'hollaex restart' to fully apply it."
+
+    else 
+
+        echo "Error: Failed to update security values with your local configmap values."
+        echo "Please check the logs and try again."
+
+    fi
+          
+  fi
+
+}
+
 function check_docker_compose_dependencies() {
 
   # Checking docker-compose is installed on this machine.
