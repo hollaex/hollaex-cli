@@ -4453,7 +4453,7 @@ elif [[ "$1" == "toolbox" ]]; then
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 HOLLAEX_KIT_PATH=$1
-                HOLLAEX_DEV_LEGACY=true
+                HOLLAEX_DEV_FOR_CORE=true
                 echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
@@ -4628,7 +4628,7 @@ elif [[ "$1" == "toolbox" ]]; then
     fi
 
     # For dev command legacy mode
-    if [[ "$HOLLAEX_DEV_LEGACY" ]]; then
+    if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
 
         HOLLAEX_CODEBASE_PATH=$(pwd)
 

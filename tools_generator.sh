@@ -2225,12 +2225,12 @@ EOL
 
       IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
           
-      # Overriding container prefix for develop server
-      if [[ "$IS_DEVELOP" ]]; then
+      # # Overriding container prefix for develop server
+      # if [[ "$IS_DEVELOP" ]]; then
         
-        CONTAINER_PREFIX=
+      #   CONTAINER_PREFIX=
 
-      fi
+      # fi
 
       # echo "Shutting down Nginx to block exchange external access"
       # docker stop $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ")
@@ -2486,11 +2486,11 @@ function remove_coin_exec() {
       IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
       # # Overriding container prefix for develop server
-      if [[ "$IS_DEVELOP" ]]; then
+      # if [[ "$IS_DEVELOP" ]]; then
         
-        CONTAINER_PREFIX=
+      #   CONTAINER_PREFIX=
 
-      fi
+      # fi
 
       # echo "Shutting down Nginx to block exchange external access"
       # docker stop $(docker ps -a | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ")
@@ -3051,11 +3051,11 @@ EOL
       IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
           
       # Overriding container prefix for develop server
-      if [[ "$IS_DEVELOP" ]]; then
+      # if [[ "$IS_DEVELOP" ]]; then
         
-        CONTAINER_PREFIX=
+      #   CONTAINER_PREFIX=
 
-      fi
+      # fi
 
       # echo "Shutting down Nginx to block exchange external access"
       # docker stop $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ")
@@ -3303,11 +3303,11 @@ function remove_pair_exec() {
       IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
       # Overriding container prefix for develop server
-      if [[ "$IS_DEVELOP" ]]; then
+      # if [[ "$IS_DEVELOP" ]]; then
         
-        CONTAINER_PREFIX=
+      #   CONTAINER_PREFIX=
 
-      fi
+      # fi
 
       # echo "Shutting down Nginx to block exchange external access"
       # docker stop $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ")
@@ -5023,7 +5023,7 @@ function hollaex_setup_finalization() {
 
   if [[ "$USE_KUBERNETES" ]]; then
 
-      if [[ "$HOLLAEX_DEV_LEGACY" ]]; then
+      if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
 
         hollaex toolbox --add_coin --kube --is_hollaex_setup --kit-path "$HOLLAEX_KIT_PATH"
 
@@ -5035,7 +5035,7 @@ function hollaex_setup_finalization() {
   
   elif [[ ! "$USE_KUBERNETES" ]]; then
 
-       if [[ "$HOLLAEX_DEV_LEGACY" ]]; then
+       if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
 
         hollaex toolbox --add_coin --is_hollaex_setup --kit-path "$HOLLAEX_KIT_PATH"
 
@@ -5051,7 +5051,7 @@ function hollaex_setup_finalization() {
 
   if [[ "$USE_KUBERNETES" ]]; then
 
-      if [[ "$HOLLAEX_DEV_LEGACY" ]]; then
+      if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
 
         hollaex toolbox --add_trading_pair --kube --is_hollaex_setup --kit-path "$HOLLAEX_KIT_PATH"
 
@@ -5063,7 +5063,7 @@ function hollaex_setup_finalization() {
 
   elif [[ ! "$USE_KUBERNETES" ]]; then
 
-      if [[ "$HOLLAEX_DEV_LEGACY" ]]; then
+      if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
 
         hollaex toolbox --add_trading_pair --is_hollaex_setup --kit-path "$HOLLAEX_KIT_PATH"
 
@@ -5637,11 +5637,11 @@ EOL
     IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
           
     # Overriding container prefix for develop server
-    if [[ "$IS_DEVELOP" ]]; then
+    # if [[ "$IS_DEVELOP" ]]; then
       
-      CONTAINER_PREFIX=
+    #   CONTAINER_PREFIX=
 
-    fi
+    # fi
 
     echo "Setting up the exchange with provided activation code"
     docker exec --env "ACTIVATION_CODE=${HOLLAEX_SECRET_ACTIVATION_CODE}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/setExchange.js
@@ -5715,11 +5715,11 @@ EOL
     IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
           
     # Overriding container prefix for develop server
-    if [[ "$IS_DEVELOP" ]]; then
+    # if [[ "$IS_DEVELOP" ]]; then
       
-      CONTAINER_PREFIX=
+    #   CONTAINER_PREFIX=
 
-    fi
+    # fi
 
     echo "Updating constants..."
     if command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/setConfig.js; then
@@ -5922,11 +5922,11 @@ EOL
     IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
           
     # Overriding container prefix for develop server
-    if [[ "$IS_DEVELOP" ]]; then
+    # if [[ "$IS_DEVELOP" ]]; then
       
-      CONTAINER_PREFIX=
+    #   CONTAINER_PREFIX=
 
-    fi
+    # fi
 
     echo "Updating security values..."
     if command docker exec --env ADMIN_WHITELIST_IP=$HOLLAEX_CONFIGMAP_ADMIN_WHITELIST_IP \
