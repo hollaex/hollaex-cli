@@ -5869,18 +5869,22 @@ job:
 EOL
 
     if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-set-security \
-                            --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                            --set job.enable="true" \
-                            --set job.mode="set_config" \
-                            --set DEPLOYMENT_MODE="api" \
-                            --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
-                            --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
-                            --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
-                            -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
-                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/set_security.yaml \
-                            $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+                --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                --set job.enable="true" \
+                --set job.mode="set_config" \
+                --set DEPLOYMENT_MODE="api" \
+                --set allowed_domains="$HOLLAEX_CONFIGMAP_ALLOWED_DOMAINS" \
+                --set admin_whitelist_ip="$HOLLAEX_CONFIGMAP_ADMIN_WHITELIST_IP" \
+                --set captcha_site_key="$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY" \
+                --set captcha_secret_key="$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY" \
+                --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/set_security.yaml \
+                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
 
       echo "Kubernetes Job has been created for setting up security values."
 
@@ -5890,11 +5894,11 @@ EOL
     else 
 
       printf "\033[91mFailed to create Kubernetes Job for setting up security values. Please confirm the logs and try again.\033[39m\n"
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-secret
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-security
 
     fi
 
-    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-set-secret --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-set-security --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
 
       echo "Your database constants has been successfully updated!"
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-security
