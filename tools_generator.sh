@@ -668,9 +668,6 @@ services:
       - plugins/index.js
     volumes:
       - ${HOLLAEX_CLI_INIT_PATH}/plugins:/app/plugins
-      - ${HOLLAEX_CLI_INIT_PATH}/db/migrations:/app/db/migrations
-      - ${HOLLAEX_CLI_INIT_PATH}/db/models:/app/db/models
-      - ${HOLLAEX_CLI_INIT_PATH}/db/seeders:/app/db/seeders
     ports:
       - 10011:10011
     networks:
@@ -687,10 +684,6 @@ services:
       - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
     entrypoint:
       - /app/stream-binary
-    volumes:
-      - ${HOLLAEX_CLI_INIT_PATH}/db/migrations:/app/db/migrations
-      - ${HOLLAEX_CLI_INIT_PATH}/db/models:/app/db/models
-      - ${HOLLAEX_CLI_INIT_PATH}/db/seeders:/app/db/seeders
     ports:
       - 10080:10080
     networks:
@@ -737,21 +730,16 @@ EOL
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
     restart: always
     env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+      - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
     environment:
-      - PAIR="${TRADE_PARIS_DEPLOYMENT}"
+      - PAIR=${TRADE_PARIS_DEPLOYMENT}
     entrypoint:
       - /app/engine-binary
-    volumes:
-      - ${HOLLAEX_CLI_INIT_PATH}/db/migrations:/app/db/migrations
-      - ${HOLLAEX_CLI_INIT_PATH}/db/models:/app/db/models
-      - ${HOLLAEX_CLI_INIT_PATH}/db/seeders:/app/db/seeders
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
       - hollaex-redis
-      - hollaex-db
-      
+      - hollaex-db      
 EOL
 
   done
