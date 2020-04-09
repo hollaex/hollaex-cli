@@ -648,7 +648,7 @@ services:
       - ${HOLLAEX_CLI_INIT_PATH}/db/migrations:/app/db/migrations
       - ${HOLLAEX_CLI_INIT_PATH}/db/models:/app/db/models
       - ${HOLLAEX_CLI_INIT_PATH}/db/seeders:/app/db/seeders
-      - ${HOLLAEX_CLI_INIT_PATH}/mail:/app/mail
+      # - ${HOLLAEX_CLI_INIT_PATH}/mail:/app/mail
     ports:
       - 10010:10010
     networks:
