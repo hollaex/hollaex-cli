@@ -17,7 +17,7 @@ function local_database_init() {
     # fi
 
     echo "Preparing to initialize exchange database..."
-    sleep 5;
+    sleep 10;
     
     if [[ "$1" == "start" ]]; then
 
@@ -555,6 +555,444 @@ EOL
 
 }
 
+function generate_local_docker_compose_for_dev_legacy() {
+
+# Generate docker-compose
+cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml <<EOL
+version: '3'
+services:
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-redis:
+    image: ${ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY:-redis}:${ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION:-5.0.5-alpine}
+    restart: always
+    depends_on:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
+    ports:
+      - 6379:6379
+    environment:
+      - REDIS_PASSWORD=${HOLLAEX_SECRET_REDIS_PASSWORD}
+    command : ["sh", "-c", "redis-server --requirepass \$\${REDIS_PASSWORD}"]
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-db:
+    image: ${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY:-postgres}:${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION:-10.9-alpine}
+    restart: always
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_DB=$HOLLAEX_SECRET_DB_NAME
+      - POSTGRES_USER=$HOLLAEX_SECRET_DB_USERNAME
+      - POSTGRES_PASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-influxdb:
+    image: ${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_REGISTRY:-influxdb}:${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION:-1.7-alpine}
+    restart: always
+    ports:
+      - 8086:8086
+    environment:
+      - INFLUX_DB=$HOLLAEX_SECRET_INFLUX_DB
+      - INFLUX_HOST=${ENVIRONMENT_EXCHANGE_NAME}-influxdb
+      - INFLUX_PORT=8086
+      - INFLUX_USER=$HOLLAEX_SECRET_INFLUX_USER
+      - INFLUX_PASSWORD=$HOLLAEX_SECRET_INFLUX_PASSWORD
+      - INFLUXDB_HTTP_LOG_ENABLED=false
+      - INFLUXDB_DATA_QUERY_LOG_ENABLED=false
+      - INFLUXDB_CONTINUOUS_QUERIES_LOG_ENABLED=false
+      - INFLUXDB_LOGGING_LEVEL=error
+    depends_on:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
+      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-api:
+    image: ${ENVIRONMENT_EXCHANGE_NAME}-server-dev
+    build:
+      context: ${HOLLAEX_CODEBASE_PATH}
+      dockerfile: ${HOLLAEX_CODEBASE_PATH}/tools/Dockerfile.pm2
+    restart: always
+    env_file:
+      - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    environment:
+      - DEPLOYMENT_MODE=api
+    entrypoint:
+      - pm2-runtime
+      - start
+      - ecosystem.config.js
+      - --env
+      - development
+    volumes:
+      - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
+      - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
+      - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
+      - ${HOLLAEX_KIT_PATH}/db/migrations:/app/db/migrations
+      - ${HOLLAEX_KIT_PATH}/db/models:/app/db/models
+      - ${HOLLAEX_KIT_PATH}/db/seeders:/app/db/seeders
+      - ${HOLLAEX_KIT_PATH}/mail:/app/mail
+      - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
+      - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
+      - ${HOLLAEX_CODEBASE_PATH}/server.js:/app/server.js
+      - ${HOLLAEX_CODEBASE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
+      - ${HOLLAEX_CODEBASE_PATH}/constants.js:/app/constants.js
+      - ${HOLLAEX_CODEBASE_PATH}/messages.js:/app/messages.js
+      - ${HOLLAEX_CODEBASE_PATH}/logs:/app/logs
+      - ${HOLLAEX_CODEBASE_PATH}/test:/app/test
+      - ${HOLLAEX_CODEBASE_PATH}/tools:/app/tools
+      - ${HOLLAEX_CODEBASE_PATH}/utils:/app/utils
+      - ${HOLLAEX_CODEBASE_PATH}/init.js:/app/init.js
+    ports:
+      - 10010:10010
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+    depends_on:
+      - hollaex-influxdb
+      - hollaex-redis
+      - hollaex-db
+  
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
+    image: ${ENVIRONMENT_EXCHANGE_NAME}-server-dev
+    restart: always
+    env_file:
+      - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    environment:
+      - DEPLOYMENT_MODE=plugins
+    entrypoint:
+      - pm2-runtime
+      - start
+      - ecosystem.config.js
+      - --env
+      - development
+    volumes:
+      - ${HOLLAEX_KIT_PATH}/plugins:/app/plugins
+      - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
+      - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
+      - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
+      - ${HOLLAEX_KIT_PATH}/db/migrations:/app/db/migrations
+      - ${HOLLAEX_KIT_PATH}/db/models:/app/db/models
+      - ${HOLLAEX_KIT_PATH}/db/seeders:/app/db/seeders
+      - ${HOLLAEX_KIT_PATH}/mail:/app/mail
+      - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
+      - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
+      - ${HOLLAEX_CODEBASE_PATH}/server.js:/app/server.js
+      - ${HOLLAEX_CODEBASE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
+      - ${HOLLAEX_CODEBASE_PATH}/constants.js:/app/constants.js
+      - ${HOLLAEX_CODEBASE_PATH}/messages.js:/app/messages.js
+      - ${HOLLAEX_CODEBASE_PATH}/logs:/app/logs
+      - ${HOLLAEX_CODEBASE_PATH}/test:/app/test
+      - ${HOLLAEX_CODEBASE_PATH}/tools:/app/tools
+      - ${HOLLAEX_CODEBASE_PATH}/utils:/app/utils
+      - ${HOLLAEX_CODEBASE_PATH}/init.js:/app/init.js
+    ports:
+      - 10011:10011
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+    depends_on:
+      - hollaex-influxdb
+      - hollaex-redis
+      - hollaex-db
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-stream:
+    image: ${ENVIRONMENT_EXCHANGE_NAME}-server-dev
+    restart: always
+    env_file:
+      - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    environment:
+      - DEPLOYMENT_MODE=stream
+    entrypoint:
+      - pm2-runtime
+      - start
+      - ecosystem.config.js
+      - --env
+      - development
+    volumes:
+      - ${HOLLAEX_KIT_PATH}/api:/app/api
+      - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
+      - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
+      - ${HOLLAEX_KIT_PATH}/db/migrations:/app/db/migrations
+      - ${HOLLAEX_KIT_PATH}/db/models:/app/db/models
+      - ${HOLLAEX_KIT_PATH}/db/seeders:/app/db/seeders
+      - ${HOLLAEX_KIT_PATH}/mail:/app/mail
+      - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
+      - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
+      - ${HOLLAEX_CODEBASE_PATH}/server.js:/app/server.js
+      - ${HOLLAEX_CODEBASE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
+      - ${HOLLAEX_CODEBASE_PATH}/constants.js:/app/constants.js
+      - ${HOLLAEX_CODEBASE_PATH}/messages.js:/app/messages.js
+      - ${HOLLAEX_CODEBASE_PATH}/logs:/app/logs
+      - ${HOLLAEX_CODEBASE_PATH}/test:/app/test
+      - ${HOLLAEX_CODEBASE_PATH}/tools:/app/tools
+      - ${HOLLAEX_CODEBASE_PATH}/utils:/app/utils
+      - ${HOLLAEX_CODEBASE_PATH}/init.js:/app/init.js
+    ports:
+      - 10080:10080
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+    depends_on:
+      - hollaex-influxdb
+      - hollaex-redis
+      - hollaex-db
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
+    image: ${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_REGISTRY:-bitholla/nginx-with-certbot}:${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_VERSION:-1.15.8}
+    restart: always
+    volumes:
+      - ./nginx:/etc/nginx
+      - ./logs/nginx:/var/log/nginx
+      - ./nginx/static/:/usr/share/nginx/html
+      - ./letsencrypt:/etc/letsencrypt
+    ports:
+      - ${ENVIRONMENT_LOCAL_NGINX_HTTP_PORT:-80}:80
+      - ${ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT:-443}:443
+    environment:
+      - NGINX_PORT=80
+    entrypoint: 
+      - /bin/sh
+      - -c 
+      - ip -4 route list match 0/0 | awk '{print \$\$3 " host.access"}' >> /etc/hosts && nginx -g "daemon off;"
+    depends_on:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-server-api
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+      
+EOL
+
+  IFS=',' read -ra PAIRS <<< "$HOLLAEX_CONFIGMAP_PAIRS"    #Convert string to array
+
+  for j in "${PAIRS[@]}"; do
+    TRADE_PARIS_DEPLOYMENT=$(echo $j | cut -f1 -d ",")
+
+  # Generate docker-compose
+  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml <<EOL
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-engine-$TRADE_PARIS_DEPLOYMENT:
+    image: ${ENVIRONMENT_EXCHANGE_NAME}-server-dev
+    restart: always
+    env_file:
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    environment:
+      - DEPLOYMENT_MODE="queue ${TRADE_PARIS_DEPLOYMENT}"
+    entrypoint:
+      - pm2-runtime
+      - start
+      - ecosystem.config.js
+      - --env
+      - development
+    volumes:
+      - ${HOLLAEX_KIT_PATH}/api:/app/api
+      - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
+      - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
+      - ${HOLLAEX_KIT_PATH}/mail:/app/mail
+      - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
+      - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
+      - ${HOLLAEX_CODEBASE_PATH}/server.js:/app/server.js
+      - ${HOLLAEX_CODEBASE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
+      - ${HOLLAEX_CODEBASE_PATH}/constants.js:/app/constants.js
+      - ${HOLLAEX_CODEBASE_PATH}/messages.js:/app/messages.js
+      - ${HOLLAEX_CODEBASE_PATH}/logs:/app/logs
+      - ${HOLLAEX_CODEBASE_PATH}/test:/app/test
+      - ${HOLLAEX_CODEBASE_PATH}/tools:/app/tools
+      - ${HOLLAEX_CODEBASE_PATH}/utils:/app/utils
+      - ${HOLLAEX_CODEBASE_PATH}/init.js:/app/init.js
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+    depends_on:
+      - hollaex-redis
+      - hollaex-db
+      
+EOL
+
+  done
+
+# Generate docker-compose
+cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml <<EOL
+networks:
+  ${ENVIRONMENT_EXCHANGE_NAME}-network:
+  
+EOL
+}
+
+function generate_local_docker_compose_for_kit_dev() {
+
+# Generate docker-compose
+cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml <<EOL
+version: '3'
+services:
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-redis:
+    image: ${ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY:-redis}:${ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION:-5.0.5-alpine}
+    restart: always
+    depends_on:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
+    ports:
+      - 6379:6379
+    environment:
+      - REDIS_PASSWORD=${HOLLAEX_SECRET_REDIS_PASSWORD}
+    command : ["sh", "-c", "redis-server --requirepass \$\${REDIS_PASSWORD}"]
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-db:
+    image: ${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY:-postgres}:${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION:-10.9-alpine}
+    restart: always
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_DB=$HOLLAEX_SECRET_DB_NAME
+      - POSTGRES_USER=$HOLLAEX_SECRET_DB_USERNAME
+      - POSTGRES_PASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-influxdb:
+    image: ${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_REGISTRY:-influxdb}:${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION:-1.7-alpine}
+    restart: always
+    ports:
+      - 8086:8086
+    environment:
+      - INFLUX_DB=$HOLLAEX_SECRET_INFLUX_DB
+      - INFLUX_HOST=${ENVIRONMENT_EXCHANGE_NAME}-influxdb
+      - INFLUX_PORT=8086
+      - INFLUX_USER=$HOLLAEX_SECRET_INFLUX_USER
+      - INFLUX_PASSWORD=$HOLLAEX_SECRET_INFLUX_PASSWORD
+      - INFLUXDB_HTTP_LOG_ENABLED=false
+      - INFLUXDB_DATA_QUERY_LOG_ENABLED=false
+      - INFLUXDB_CONTINUOUS_QUERIES_LOG_ENABLED=false
+      - INFLUXDB_LOGGING_LEVEL=error
+    depends_on:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
+      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-api:
+    image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
+    restart: always
+    env_file:
+      - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    entrypoint:
+      - /app/api-binary
+    volumes:
+      - ${HOLLAEX_CLI_INIT_PATH}/db/migrations:/app/db/migrations
+      - ${HOLLAEX_CLI_INIT_PATH}/db/models:/app/db/models
+      - ${HOLLAEX_CLI_INIT_PATH}/db/seeders:/app/db/seeders
+      - ${HOLLAEX_CLI_INIT_PATH}/mail:/app/mail
+    ports:
+      - 10010:10010
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+    depends_on:
+      - hollaex-influxdb
+      - hollaex-redis
+      - hollaex-db
+  
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
+    image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
+    restart: always
+    env_file:
+      - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    entrypoint:
+      - nodemon
+      - plugins/index.js
+    volumes:
+      - ${HOLLAEX_CLI_INIT_PATH}/plugins:/app/plugins
+      - ${HOLLAEX_CLI_INIT_PATH}/db/migrations:/app/db/migrations
+      - ${HOLLAEX_CLI_INIT_PATH}/db/models:/app/db/models
+      - ${HOLLAEX_CLI_INIT_PATH}/db/seeders:/app/db/seeders
+      - ${HOLLAEX_CLI_INIT_PATH}/mail:/app/mail
+    ports:
+      - 10011:10011
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+    depends_on:
+      - hollaex-influxdb
+      - hollaex-redis
+      - hollaex-db
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-stream:
+    image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
+    restart: always
+    env_file:
+      - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    entrypoint:
+      - /app/stream-binary
+    volumes:
+      - ${HOLLAEX_CLI_INIT_PATH}/db/migrations:/app/db/migrations
+      - ${HOLLAEX_CLI_INIT_PATH}/db/models:/app/db/models
+      - ${HOLLAEX_CLI_INIT_PATH}/db/seeders:/app/db/seeders
+    ports:
+      - 10080:10080
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+    depends_on:
+      - hollaex-influxdb
+      - hollaex-redis
+      - hollaex-db
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
+    image: ${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_REGISTRY:-bitholla/nginx-with-certbot}:${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_VERSION:-1.15.8}
+    restart: always
+    volumes:
+      - ./nginx:/etc/nginx
+      - ./logs/nginx:/var/log/nginx
+      - ./nginx/static/:/usr/share/nginx/html
+      - ./letsencrypt:/etc/letsencrypt
+    ports:
+      - ${ENVIRONMENT_LOCAL_NGINX_HTTP_PORT:-80}:80
+      - ${ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT:-443}:443
+    environment:
+      - NGINX_PORT=80
+    entrypoint: 
+      - /bin/sh
+      - -c 
+      - ip -4 route list match 0/0 | awk '{print \$\$3 " host.access"}' >> /etc/hosts && nginx -g "daemon off;"
+    depends_on:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-server-api
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+      
+EOL
+
+  IFS=',' read -ra PAIRS <<< "$HOLLAEX_CONFIGMAP_PAIRS"    #Convert string to array
+
+  for j in "${PAIRS[@]}"; do
+    TRADE_PARIS_DEPLOYMENT=$(echo $j | cut -f1 -d ",")
+
+  # Generate docker-compose
+  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml <<EOL
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-engine-$TRADE_PARIS_DEPLOYMENT:
+    image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
+    restart: always
+    env_file:
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    environment:
+      - PAIR="${TRADE_PARIS_DEPLOYMENT}"
+    entrypoint:
+      - /app/engine-binary
+    volumes:
+      - ${HOLLAEX_CLI_INIT_PATH}/db/migrations:/app/db/migrations
+      - ${HOLLAEX_CLI_INIT_PATH}/db/models:/app/db/models
+      - ${HOLLAEX_CLI_INIT_PATH}/db/seeders:/app/db/seeders
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+    depends_on:
+      - hollaex-redis
+      - hollaex-db
+      
+EOL
+
+  done
+
+# Generate docker-compose
+cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml <<EOL
+networks:
+  ${ENVIRONMENT_EXCHANGE_NAME}-network:
+  
+EOL
+}
 
 function generate_local_docker_compose() {
 
@@ -2972,7 +3410,7 @@ function generate_hollaex_web_local_env() {
 
 cat > $HOLLAEX_CLI_INIT_PATH/web/.env <<EOL
 
-NODE_ENV=production
+NODE_ENV=${HOLLAEX_CONFIGMAP_NODE_ENV}
 
 REACT_APP_PUBLIC_URL=${HOLLAEX_CONFIGMAP_DOMAIN}
 REACT_APP_SERVER_ENDPOINT=${HOLLAEX_CONFIGMAP_API_HOST}
@@ -4586,11 +5024,27 @@ function hollaex_setup_finalization() {
 
   if [[ "$USE_KUBERNETES" ]]; then
 
-      hollaex toolbox --add_coin --kube --is_hollaex_setup
+      if [[ "$HOLLAEX_DEV_LEGACY" ]]; then
+
+        hollaex toolbox --add_coin --kube --is_hollaex_setup --kit-path "$HOLLAEX_KIT_PATH"
+
+      else
+
+        hollaex toolbox --add_coin --kube --is_hollaex_setup 
+
+      fi
   
   elif [[ ! "$USE_KUBERNETES" ]]; then
 
-      hollaex toolbox --add_coin --is_hollaex_setup
+       if [[ "$HOLLAEX_DEV_LEGACY" ]]; then
+
+        hollaex toolbox --add_coin --is_hollaex_setup --kit-path "$HOLLAEX_KIT_PATH"
+
+      else
+
+        hollaex toolbox --add_coin --is_hollaex_setup 
+
+      fi
 
   fi
 
@@ -4598,11 +5052,27 @@ function hollaex_setup_finalization() {
 
   if [[ "$USE_KUBERNETES" ]]; then
 
-      hollaex toolbox --add_trading_pair --kube --is_hollaex_setup
+      if [[ "$HOLLAEX_DEV_LEGACY" ]]; then
+
+        hollaex toolbox --add_trading_pair --kube --is_hollaex_setup --kit-path "$HOLLAEX_KIT_PATH"
+
+      else 
+
+        hollaex toolbox --add_trading_pair --kube --is_hollaex_setup
+
+      fi
 
   elif [[ ! "$USE_KUBERNETES" ]]; then
 
-      hollaex toolbox --add_trading_pair --is_hollaex_setup
+      if [[ "$HOLLAEX_DEV_LEGACY" ]]; then
+
+        hollaex toolbox --add_trading_pair --is_hollaex_setup --kit-path "$HOLLAEX_KIT_PATH"
+
+      else 
+
+        hollaex toolbox --add_trading_pair --is_hollaex_setup
+
+      fi
 
   fi
 
