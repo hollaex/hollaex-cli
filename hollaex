@@ -2418,10 +2418,26 @@ elif [[ "$1" == "prod" ]]; then
     # fi
 
     apply_nginx_user_defined_values;
-    
+
     printf "\n"
-    echo "Do you want to issue SSL cert for your exchange? (Y/n)"
-    echo "If you are going to use an external load balancer with SSL, Please type 'N'."
+
+    if [[ ! "$USE_KUBERNETES" ]]; then
+    
+        echo "Do you want to issue SSL cert for your exchange? (Y/n)"
+        echo "If you are going to use an external load balancer with SSL, Please type 'N'."
+
+    elif [[ "$USE_KUBERNETES" ]]; then
+
+        echo "HollaEx CLI natively supports issuing SSL cert through 'cert-manager' and Let's encrypt."
+        echo "Please make sure to install latest 'cert-manager' on your Kubernetes cluster."
+        echo "Official document is available for installation. (cert-manager.io/docs/installation/kubernetes)"
+
+        printf "\n"
+
+        echo "Do you want to set up cert-manager issuer name for SSL? (Y/n)"
+        echo "If you are going to use an external load balancer with SSL, Please type 'N'."
+
+    fi
     
     read answer 
 
@@ -2435,16 +2451,12 @@ elif [[ "$1" == "prod" ]]; then
     else 
 
         if [[ "$USE_KUBERNETES" ]]; then
-
-            echo "HollaEx CLI natively supports issuing SSL cert through 'cert-manager' and Let's encrypt."
-            echo "Please make sure to install latest 'cert-manager' on your Kubernetes cluster."
-            echo "Official document is available for installation. (cert-manager.io/docs/installation/kubernetes)"
-
+        
             echo "The 'cert-manager' requires an issuer name to reach SSL ACME service."
             echo "Please provide your cert-manager issuer name."
             read answer
 
-            echo "Updating the issuer name on user's settings file."
+            echo "Updating the issuer name on user's settings file..."
             for i in ${CONFIG_FILE_PATH[@]}; do
 
                 # Update exchange name
@@ -2455,6 +2467,10 @@ elif [[ "$1" == "prod" ]]; then
                 fi
                 
             done
+
+            printf "\n"
+            echo "$answer ✔"
+            printf "\n"
 
         elif [[ ! "$USE_KUBERNETES" ]]; then
 
