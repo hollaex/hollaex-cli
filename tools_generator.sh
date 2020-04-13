@@ -625,6 +625,7 @@ services:
       - --env
       - development
     volumes:
+      - ${HOLLAEX_KIT_PATH}/plugins:/app/plugins
       - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
       - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
       - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
