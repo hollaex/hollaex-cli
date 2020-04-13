@@ -394,7 +394,7 @@ services:
       - --env
       - development
     volumes:
-      - ${HOLLAEX_CODEBASE_PATH}/plugins:/app/plugins
+      - ${HOLLAEX_KIT_PATH}/plugins:/app/plugins
       - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
       - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
       - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
@@ -470,7 +470,7 @@ services:
     env_file:
       - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
     environment:
-      - DEPLOYMENT_MODE=stream
+      - DEPLOYMENT_MODE=ws
     entrypoint:
       - pm2-runtime
       - start
@@ -478,7 +478,7 @@ services:
       - --env
       - development
     volumes:
-      - ${HOLLAEX_KIT_PATH}/api:/app/api
+      - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
       - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
       - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
       - ${HOLLAEX_KIT_PATH}/db/migrations:/app/db/migrations
@@ -543,7 +543,7 @@ EOL
     env_file:
       - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
     environment:
-      - DEPLOYMENT_MODE="queue ${TRADE_PARIS_DEPLOYMENT}"
+      - DEPLOYMENT_MODE=queue ${TRADE_PARIS_DEPLOYMENT}
     entrypoint:
       - pm2-runtime
       - start
@@ -551,9 +551,12 @@ EOL
       - --env
       - development
     volumes:
-      - ${HOLLAEX_KIT_PATH}/api:/app/api
+      - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
       - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
       - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
+      - ${HOLLAEX_KIT_PATH}/db/migrations:/app/db/migrations
+      - ${HOLLAEX_KIT_PATH}/db/models:/app/db/models
+      - ${HOLLAEX_KIT_PATH}/db/seeders:/app/db/seeders
       - ${HOLLAEX_KIT_PATH}/mail:/app/mail
       - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
       - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
