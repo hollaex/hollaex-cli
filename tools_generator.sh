@@ -4577,6 +4577,18 @@ function hollaex_ascii_exchange_is_up() {
             Your Exchange is up!
     Try to reach ${HOLLAEX_CONFIGMAP_API_HOST}/v1/health
 
+    You can easily check the exchange status with 'hollaex status'.
+
+    $(if [[ "$USE_KUBERNETES" ]]; then 
+      if ! command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null 2>&1; then 
+        echo "You can proceed to setup the web server with 'hollaex web --setup --kube'." 
+      fi 
+    elif [[ ! "$USE_KUBERNETES" ]]; then 
+      if ! command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null 2>&1; then 
+        echo "You can proceed to setup the web server with 'hollaex web --setup'." 
+      fi 
+    fi)
+
 EOF
 
 }
@@ -4670,9 +4682,9 @@ function hollaex_ascii_exchange_has_been_stopped() {
                   ..,,,...
 
         Your Exchange has been stopped
+  $(if [[ "$IS_HOLLAEX_SETUP" ]]; then echo "Now It's time to bring up the exchange online."; fi)
     Run 'hollaex start$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to start the exchange.
           
-
 EOF
 
 }
@@ -4844,9 +4856,9 @@ function hollaex_setup_finalization() {
     printf "\033[93mShutting down the exchange...\033[39m\n"
     printf "\033[93mTo start the exchange, Please use 'hollaex start$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' command\033[39m\n\n"
     if [[ "$USE_KUBERNETES" ]]; then
-        hollaex stop --kube --skip
+        hollaex stop --kube --skip --is_hollaex_setup
     elif [[ ! "$USE_KUBERNETES" ]]; then
-        hollaex stop --skip
+        hollaex stop --skip --is_hollaex_setup
     fi
   
   fi
@@ -4876,7 +4888,7 @@ function build_user_hollaex_core() {
         
         printf "\n\nYou can rename (tag) and push the built image to your Docker Registry. (Optional)\n"
         echo "Note that this is an optional job, so could be skipped."
-        echo "Do you want to also push it at your Docker Registry? (y/N)"
+        echo "Do you want to push this image to your Docker Registry? (y/N)"
         read pushAnswer
           
         if [[ "$pushAnswer" = "${pushAnswer#[Yy]}" ]] ;then
@@ -4987,7 +4999,7 @@ function build_user_hollaex_web() {
       
       else 
         
-        echo "Do you want to also push it at your Docker Registry? (y/N)"
+        echo "Do you want to push this image to your Docker Registry? (y/N)"
 
         read answer
 

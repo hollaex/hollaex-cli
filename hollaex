@@ -687,7 +687,7 @@ elif [[ "$1" == "setup" ]]; then
     if [[ ! "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]] && [[ $HOLLAEX_SECRET_ACTIVATION_CODE ]]; then
 
         echo "HollaEx CLI detected the preconfigured values on your HollaEx Kit."
-        echo "Do you want to proceed with this configurations? (Y/n)"
+        echo "Do you want to proceed with these preconfigured values? (Y/n)"
         read answer
 
         if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
@@ -773,7 +773,7 @@ elif [[ "$1" == "setup" ]]; then
 
             echo "*********************************************"
             printf "\033[91mError: HollaEx CLI detected that the exchange exists on your remote Kubernetes environment.\033[39m\n"
-            printf "\033[91mExchange setup can't be done for multiple times.\033[39m\n\n"
+            printf "\033[91mCannot setup an exchange multiple times.\033[39m\n\n"
             echo "Exiting..."
             echo "*********************************************"
             exit 1;
@@ -1388,7 +1388,7 @@ elif [[ "$1" == "login" ]]; then
         else
 
             echo -e "\033[92mYour existing access token is valid!\033[39m"
-            echo "Info: If you want to revoke the existing token manually, remove '.token' file at your Kit."
+            echo "Info: Delete the ‘.token’ file in your HollaEx Kit to remove the existing token."
 
         fi
 
@@ -2551,6 +2551,10 @@ elif [[ "$1" == "stop" ]]; then
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 LOCAL_DEPLOYMENT_MODE=$1
                 echo "Your DEPLOYMENT_MODE setup : $LOCAL_DEPLOYMENT_MODE."
+                shift; continue
+                ;;
+            --is_hollaex_setup)
+                IS_HOLLAEX_SETUP=true
                 shift; continue
                 ;;
             --kube)

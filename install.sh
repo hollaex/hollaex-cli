@@ -7,23 +7,14 @@ export HOLLAEX_INSTALLER_VERSION_TARGET=${1:-"master"}
 
 /bin/cat << EOF
 
-                        ..,,,..
-         ,ifGi      .:tLG8@@@@@@0Cfi,
-      .iC@@@@1    :f0@@@@@0GGG08@@@@@Ci.
-     10@@@0f;.  ,L@@@@C1:.     .,;f0@@@0i
-   .C@@@G;     i8@@8t,              iG@@@L
-  .G@@@t      i@@@0:                  f@@@C
-  t@@@t      ,8@@8,                    f@@@1
- .8@@0       1@@@1                     .8@@0
- ,@@@G       f@@@;                      G@@8.
- .8@@0       1@@@1                     .8@@0
-  f@@@t      ,8@@8.                    f@@@t
-  .G@@@t      i@@@0,                  t@@@G
-   .C@@@C;     i@@@8t,              ;G@@@C.
-     18@@@Gt;.  ,C@@@8Li,.      ,;f0@@@0i
-      .1G@@@@1    :f8@@@@80GGGG8@@@@@Gi.
-         ,ifGi      .;tC08@@@@@@8Cfi,
-                         .,,,,,.
+
+:tt1   ;tti          LCC:1CC1         ,11tffttt            :tt;  ;tfi.tt1 ,,,
+t@@8   f@@0  ,;ii;.  8@@;L@@f .:i1i:. ;@@@CLCGC;ii; ,iii.  t@@L,C@@L,.CCf,0@@;,
+t@@8LLf0@@G,C@@G0@8L.0@@;L@@t.C80L0@8i:@@8tt;  :8@@1G@@1.  t@@0@@8:  ,8888@@@8G
+t@@8CCC0@@CC@@L  G@@fG@@;L@@t,fCCfG@@L:@@@LLi    C@@@8,    t@@@C8@0: ,@@G.G@@,
+t@@8   L@@G1@@0;;8@@i0@@;L@@fC@@Li0@@f:@@@iii11:i8@G@@C,   t@@L :0@@1,@@0 G@@1;
+iGGL   tGGf ;LG00Gf: CGG:tGG1:LGGCLCG1:GGG0000fiGGL 1GGf.  iCC1  .LGG1CGf :LG0G,
+
 
 EOF
 
