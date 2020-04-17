@@ -1150,6 +1150,7 @@ metadata:
     $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
     nginx.ingress.kubernetes.io/proxy-body-size: "2m"
     nginx.org/websocket-services: "${ENVIRONMENT_EXCHANGE_NAME}-server-stream"
+    nginx.ingress.kubernetes.io/upstream-hash-by: "$binary_remote_addr"
 spec:
   rules:
   - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
@@ -5950,7 +5951,7 @@ function apply_pairs_config_to_settings_file() {
       export INCREMENT_SIZE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].INCREMENT_AMOUNT")
       export INCREMENT_PRICE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].INCREMENT_PRICE")
 
-      if [[ "$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].PAIR_ACTIVATE")" == "Y" ]]; then
+      if [[ "$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].PAIR_ACTIVATE")" == "Y" || "$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.PAIRS[$i].PAIR_ACTIVATE")" == "true" ]]; then
 
           export PAIR_ACTIVE_BOOL=true
       
