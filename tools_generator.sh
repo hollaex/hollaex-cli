@@ -1201,7 +1201,8 @@ EOL
 
 function generate_random_values() {
 
-  python3 -c "import os; import codecs; print(codecs.encode(os.urandom(16), 'hex').decode())"
+  # Runs random.js through docker with latest compatible hollaex core (minimum 1.23.0)
+  docker run --entrypoint node bitholla/hollaex-core:${HOLLAEX_CORE_MAXIMUM_COMPATIBLE:-1.23.0} tools/general/random.js
 
 }
 
@@ -1903,7 +1904,19 @@ EOL
 
     echo "Adding new coin $COIN_SYMBOL on Kubernetes"
     
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL --namespace $ENVIRONMENT_EXCHANGE_NAME --set job.enable="true" --set job.mode="add_coin" --set DEPLOYMENT_MODE="api" --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/add-coin.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL \
+                            --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                            --set job.enable="true" \
+                            --set job.mode="add_coin" \
+                            --set DEPLOYMENT_MODE="api" \
+                            --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                            --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                            --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                            -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/add-coin.yaml \
+                            $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
 
       echo "Kubernetes Job has been created for adding new coin $COIN_SYMBOL."
 
@@ -2782,18 +2795,23 @@ EOL
       
       fi
 
-      echo "Running $(echo ${!PAIR_NAME_OVERRIDE}) on the Kubernetes."
-      helm install --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                   --name $ENVIRONMENT_EXCHANGE_NAME-server-engine-$(echo ${!PAIR_BASE_OVERRIDE})$(echo ${!PAIR_2_OVERRIDE}) \
-                   --set DEPLOYMENT_MODE="engine" \
-                   --set PAIR="$(echo ${!PAIR_NAME_OVERRIDE})" \
-                   --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
-                   --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                   --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
-                   --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                   --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-                   -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
-                   -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+      # Run engine container (helm install) if it doesn't exists on the cluster.
+      if ! command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-server-engine-$(echo ${!PAIR_BASE_OVERRIDE})$(echo ${!PAIR_2_OVERRIDE}); then
+
+        echo "Running $(echo ${!PAIR_NAME_OVERRIDE}) on the Kubernetes."
+        helm install --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                    --name $ENVIRONMENT_EXCHANGE_NAME-server-engine-$(echo ${!PAIR_BASE_OVERRIDE})$(echo ${!PAIR_2_OVERRIDE}) \
+                    --set DEPLOYMENT_MODE="engine" \
+                    --set PAIR="$(echo ${!PAIR_NAME_OVERRIDE})" \
+                    --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                    --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                    --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                    --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                    --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
+                    -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                    -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+      
+      fi
 
       hollaex_ascii_pair_has_been_added;
 
@@ -5281,7 +5299,12 @@ function update_hollaex_cli_to_latest() {
   echo "Checking for a newer version of HollaEx CLI is available..."
   LATEST_HOLLAEX_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version)
 
-  if [[ $LATEST_HOLLAEX_CLI_VERSION > $(cat $SCRIPTPATH/version) ]]; then
+  local LATEST_HOLLAEX_CLI_VERSION_PARSED=${LATEST_HOLLAEX_CLI_VERSION//./}
+  
+  local CURRENT_HOLLAEX_CLI_VERSION=$(cat $SCRIPTPATH/version)
+  local CURRENT_HOLLAEX_CLI_VERSION_PARSED=${CURRENT_HOLLAEX_CLI_VERSION//./}
+
+  if (( $LATEST_HOLLAEX_CLI_VERSION_PARSED > $CURRENT_HOLLAEX_CLI_VERSION_PARSED )); then
 
       printf "\033[93m\nNewer version of HollaEx CLI has been detected.\033[39m\n"
       printf "\nLatest version of HollaEx CLI : \033[92m$LATEST_HOLLAEX_CLI_VERSION\033[39m"

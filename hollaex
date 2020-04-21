@@ -927,8 +927,6 @@ elif [[ "$1" == "setup" ]]; then
 
         hollaex_setup_finalization;
 
-        # hollaex_ascii_exchange_has_been_setup;
-
         echo "Shutting down the exchange..."
         hollaex stop --kube --skip
         
@@ -4294,15 +4292,15 @@ elif [[ "$1" == "web" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to restart web client for the exchange on this machine? (y/N)"
+                echo "Are you sure you want to restart web client for the exchange on this machine? (Y/n)"
 
                 read answer
 
-                if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
                     echo "Exiting..."
                     exit 0;
                 fi
-
+                
             fi
 
             echo "Generating web docker-compose file"
@@ -4506,17 +4504,12 @@ elif [[ "$1" == "toolbox" ]]; then
                 shift; continue
                 ;;
             --upgrade_api_only)
-                UPGRADE_API_ONLY=true
-                TOOLBOX_ENABLE=true
-                echo "HollaEx CLI will rolling-upgrade API containers only for Kubernetes."
-                shift; continue
-                ;;
-            # Version flag for --upgrade_api_only (rolling upgrade) for Kubernetes deployment.
-             --version)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                UPGRADE_API_ONLY=true
                 ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$1
-                echo "Target HollaEx release version for API rolling upgrade : v $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE."
+                TOOLBOX_ENABLE=true
+                echo "HollaEx CLI will rolling-upgrade API containers only for Kubernetes."
                 shift; continue
                 ;;
             --add_coin)
@@ -4713,9 +4706,9 @@ elif [[ "$1" == "toolbox" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
-    # --version flag for --upgrade_api_only
+    # for --upgrade_api_only
     # Override target docker image version if user passed it manually with flag.
-    if [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
+    if [[ "$UPGRADE_API_ONLY" ]] && [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
         
         override_docker_image_version;
         export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
@@ -5427,26 +5420,27 @@ elif [[ "$1" == "toolbox" ]]; then
 
             toolbox_set_config_confirm_message;
 
-            # echo "Generating Kubernetes Configmap."
-            # generate_kubernetes_configmap;
+            echo "Generating Kubernetes Configmap."
+            generate_kubernetes_configmap;
 
-            # echo "Generating Kubernetes Secret."
-            # generate_kubernetes_secret;
+            echo "Generating Kubernetes Secret."
+            generate_kubernetes_secret;
 
-            #  echo "Applying configmap on the namespace."
-            # kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+             echo "Applying configmap on the namespace."
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
             
-            # echo "Applying secret on the namespace."
-            # kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+            echo "Applying secret on the namespace."
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
             set_config_exec;
             
-
         elif [[ ! "$USE_KUBERNETES" ]]; then 
         
             check_docker_compose_dependencies; 
 
             toolbox_set_config_confirm_message;
+            
+            generate_local_env;
 
             set_config_exec;
 
