@@ -1523,45 +1523,8 @@ elif [[ "$1" == "logout" ]]; then
 
     fi
 
-    for i in ${CONFIG_FILE_PATH[@]}; do
-
-        if command grep -q "HOLLAEX_CONFIGMAP_API_NAME=" $i > /dev/null ; then
-
-            export CONFIGMAP_FILE_PATH=$i
-
-        fi
-
-    done
-
-    for i in ${CONFIG_FILE_PATH[@]}; do
-
-        if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE=" $i > /dev/null ; then
-
-            export SECRET_FILE_PATH=$i
-
-        fi
-
-    done
-
-    for i in ${CONFIG_FILE_PATH[@]}; do
-        source $i
-    done;
-
-    source $SCRIPTPATH/tools_generator.sh
-    load_config_variables;
-    
-    if [[ ! "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then
-
-        printf "\033[91mFailed to read pre-bound Activation code.\033[39m\n"
-        echo "'hollaex logout' works only after you successfully logged in."
-        exit 1;
-    
-    fi
-
-    printf "\nCurrent bound Exchange name: \033[92m$HOLLAEX_CONFIGMAP_API_NAME\033[39m\n\n"
-    echo "This command will remove both Exchange name and Activation code from your local HollaEx Kit."
-    echo "The rest of Exchagne configurations WILL NOT BE removed."
-    echo "Are you sure you want to unbind this exchange from HollaEx Kit? (y/N)"
+    printf "\nAre you sure you want to \033[1mlogout\033[0m from bitHolla? (y/N)\n"
+    printf "This command \033[1mwould not affect\033[0m your exchange data.\n"
     read answer
 
     if [[ "$answer" = "${answer#[Yy]}" ]]; then
@@ -1574,26 +1537,14 @@ elif [[ "$1" == "logout" ]]; then
 
         rm $HOLLAEX_CLI_INIT_PATH/.token
     
-    fi
+    else 
 
-    if command sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=.*/HOLLAEX_CONFIGMAP_API_NAME=/" $CONFIGMAP_FILE_PATH; then
-
-        rm $CONFIGMAP_FILE_PATH.bak
-
-        if command sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=.*/HOLLAEX_SECRET_ACTIVATION_CODE=/" $SECRET_FILE_PATH; then
-
-            rm $SECRET_FILE_PATH.bak
-
-            printf "\n\033[92mSuccessfully removed the exchange data from HollaEx Kit.\033[39m\n"
-        fi
+        printf "\n\033[93mThere was no login data to revoke.\033[39m\n"
     
-    else
-
-        printf "\033[91mFailed to remove exchange data from HollaEx Kit.\033[39m\n"
-        echo "Please review the error and try again."
-        exit 1;
-
     fi
+
+    printf "\nPlease run 'hollaex login' if you want to login back.\n"
+    printf "Bye!\n\n"
 
 elif [[ "$1" == "pull" ]]; then
 
