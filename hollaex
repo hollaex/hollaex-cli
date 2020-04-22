@@ -111,7 +111,7 @@ Usage :
     hollaex [ dev ] (--flags)
 
 General Flags :
-    --kit-path, Manually pointing HollaEx Kit path. Should be always absolute path.
+    --core-path, Manually pointing HollaEx Core path. Should be always an absolute path.
     --skip, Run command without user's double confirmation.
 
 Options:
@@ -181,32 +181,13 @@ if [[ "$1" == "dev" ]]; then
                 echo 'Local mocha code test mode enabled.'
                 shift; continue
                 ;;
-            --add_coin)
-                LOCAL_ADD_COIN=true
-                echo 'Adding coin for dev environment.'
-                shift; continue
-                ;;
-            --add_trading_pair)
-                LOCAL_ADD_PAIR=true
-                echo 'Adding trading pair for dev environment.'
-                shift; continue
-                ;;
-            --remove_coin)
-                LOCAL_REMOVE_COIN=true
-                echo 'Removing coin for dev environment.'
-                shift; continue
-                ;;
-            --remove_trading_pair)
-                LOCAL_REMOVE_PAIR=true
-                echo 'Removing trading pair for dev environment.'
-                shift; continue
-                ;;
-            --kit-path)
+            --core-path)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 HOLLAEX_DEV_FOR_CORE=true
-                HOLLAEX_KIT_PATH=$1
-                echo "HollaEx Kit Path : $HOLLAEX_KIT_PATH."
+                HOLLAEX_CORE_PATH=$1
+                echo "Enabling HollaEx Core development mode."
+                echo "HollaEx Core Path : $HOLLAEX_CORE_PATH."
                 shift; continue
                 ;;
             --skip)
@@ -225,22 +206,10 @@ if [[ "$1" == "dev" ]]; then
 
     IS_DEVELOP=true
 
-    if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
-
-        HOLLAEX_CODEBASE_PATH=$(pwd)
-
-        CONFIG_FILE_PATH=$HOLLAEX_KIT_PATH/settings/*
-        TEMPLATE_GENERATE_PATH=$HOLLAEX_KIT_PATH/templates
-        INIT_PATH_CHECK=$HOLLAEX_KIT_PATH/.hollaex
-
-    else 
-        
-        HOLLAEX_CLI_INIT_PATH=$(pwd)
-        CONFIG_FILE_PATH=$(pwd)/settings/*
-        TEMPLATE_GENERATE_PATH=$(pwd)/templates
-        INIT_PATH_CHECK=$(pwd)/.hollaex
-    
-    fi 
+    HOLLAEX_CLI_INIT_PATH=$(pwd)
+    CONFIG_FILE_PATH=$(pwd)/settings/*
+    TEMPLATE_GENERATE_PATH=$(pwd)/templates
+    INIT_PATH_CHECK=$(pwd)/.hollaex
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
@@ -248,51 +217,15 @@ if [[ "$1" == "dev" ]]; then
     
     source $SCRIPTPATH/tools_generator.sh
 
-    if [[ "$HOLLAEX_DEV_FOR_CORE" ]] && [[ ! "$HOLLAEX_KIT_PATH" ]]; then
+    # #Quit if necessary flags are missing
+    # if [[ ! "$LOCAL_DATABASE_INIT" ]] && [[ ! "$LOCAL_COMMAND" ]]; then
+    #     echo "*********************************************"
+    #     echo "Make sure to specify run mode for dev commands"
+    #     echo "*********************************************"
+    #     print_usage;
+    #     exit 1;
+    # fi
 
-        echo "Error: HollaEx Kit path has not been defined."
-        echo "HollaEx Core dev mode requires HollaEx Kit to bind."
-        echo "Please use '--kit-path' flag to specify your Kit path."
-        exit 1;
-
-    fi
-
-    # ADD & REMOVE COINS AND PAIRS INTERATION FOR DEV
-    if [[ "$LOCAL_ADD_COIN" ]]; then    
-
-        add_coin_input
-
-        add_coin_exec
-
-        exit 0;
-
-    elif [[ "$LOCAL_REMOVE_COIN" ]]; then
-
-        remove_coin_input
-
-        remove_coin_exec
-
-        exit 0;
-
-
-    elif [[ "$LOCAL_ADD_PAIR" ]]; then
-
-        add_pair_input
-
-        add_pair_exec
-
-        exit 0;
-
-
-    elif [[ "$LOCAL_REMOVE_PAIR" ]]; then
-
-        remove_pair_input
-
-        remove_pair_exec
-
-        exit 0;
-
-    fi
     # Checking docker-compose is installed on this machine.
     if command docker-compose version > /dev/null 2>&1; then
         echo "*********************************************"
@@ -317,26 +250,13 @@ if [[ "$1" == "dev" ]]; then
     if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
         mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
     fi
-
-
-    #Quit if necessary flags are missing
-
-    if [[ "$HOLLAEX_DEV_MANUAL_COMMAND" ]] && [[ ! "$LOCAL_COMMAND" ]]; then
-        echo "*********************************************"
-        echo "Make sure to specify --command flag for dev commands"
-        echo "*********************************************"
-        print_usage;
-        exit 1;
-    fi
-    
-    
     
     # Running database jobs for local db.
     if [[ ! "$LOCAL_COMMAND" ]] && [[ "$LOCAL_DATABASE_INIT" == true ]]; then
     
         local_database_init start;
 
-        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
+        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml restart
 
         exit 0;
 
@@ -367,12 +287,12 @@ if [[ "$1" == "dev" ]]; then
     if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
     
         if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
-             
-             generate_local_docker_compose_for_dev_legacy;
+            
+            generate_local_docker_compose_for_core_dev;
 
         else    
 
-            generate_local_docker_compose_for_kit_dev;
+            generate_local_docker_compose_for_dev;
 
         fi
 
@@ -382,13 +302,51 @@ if [[ "$1" == "dev" ]]; then
 
     if [[ "$HOLLAEX_DEV_SETUP" ]]; then
 
-        if [[ ! "$HOLLAEX_DEV_FOR_CORE" ]] ; then 
+        if [[ "$HOLLAEX_DEV_FOR_CORE" ]] ; then 
 
-            build_user_hollaex_core;
+            function build_hollaex_core_for_dev() {
+                
+                local BUILD_HOLLAEX_CORE_VERSION=$(grep version $HOLLAEX_CORE_PATH/package.json | cut -c 15- | rev | cut -c 3- | rev)
+                local BUILD_HOLLAEX_CORE_BRANCH=$(git --git-dir /Users/kycfeel/documents/bitHolla/hollaex-core/.git rev-parse --abbrev-ref HEAD)
+                local BUILD_HOLLAEX_CORE_DATE="$(echo $(date +%y%m%d%H%M))"
+
+                local BUILD_HOLLAEX_CORE_IMAGE_TAG=${BUILD_HOLLAEX_CORE_VERSION}-${BUILD_HOLLAEX_CORE_BRANCH}-${BUILD_HOLLAEX_CORE_DATE}
+                export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$BUILD_HOLLAEX_CORE_IMAGE_TAG
+
+                docker build -t bitholla/hollaex-core:$BUILD_HOLLAEX_CORE_IMAGE_TAG -f $HOLLAEX_CORE_PATH/tools/Dockerfile.pm2 $HOLLAEX_CORE_PATH
+
+            }
+
+            build_hollaex_core_for_dev;
+            override_docker_image_version;
+
+        else 
+
+            export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$HOLLAEX_CORE_MAXIMUM_COMPATIBLE
+            override_docker_image_version;
+        
+        fi
+
+        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+
+        build_user_hollaex_core;
+
+        # Regenerating docker compose file with the new image tag just defined above.
+         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
+    
+            if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
+                
+                generate_local_docker_compose_for_core_dev;
+
+            else    
+
+                generate_local_docker_compose_for_dev;
+
+            fi
 
         fi
 
-        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml up -d --build  
+        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml up -d  
         
         echo "Installing npm packages for /plugins"
         docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller_1 bash -c '
@@ -399,33 +357,20 @@ if [[ "$1" == "dev" ]]; then
         # echo "Installing npm packages for /mail"
         #     docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-api_1 bash -c '
                 # cd /app/mail && npm install --loglevel=error'
+
+        hollaex dev --database_init
+    
+        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml restart
+
+        hollaex_setup_finalization;
+
+        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml restart
         
-        if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
-
-            hollaex dev --kit-path $HOLLAEX_KIT_PATH --database_init 
-            
-            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
-
-            hollaex_setup_finalization;
-
-            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
-
-        else
-
-            hollaex dev --database_init
-        
-            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
-
-            hollaex_setup_finalization;
-
-            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
-        
-        fi 
         
     elif [[ "$HOLLAEX_DEV_RESTART" ]]; then
 
-        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml stop
-        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml up -d --build
+        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml stop
+        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml up -d
 
         if [[ ! "$HOLLAEX_DEV_SETUP" ]]; then
 
@@ -443,7 +388,7 @@ if [[ "$1" == "dev" ]]; then
 
     else 
 
-        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml $LOCAL_COMMAND
+        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml $LOCAL_COMMAND
 
     fi
 
@@ -3069,6 +3014,11 @@ elif [[ "$1" == "upgrade" ]]; then
                 echo "HollaEx CLI will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
+            --ignore-compatibility-check)
+                IGNORE_COMPATIBILITY_CHECK=true
+                echo "Warning: HollaEx CLI will ignore all compatibility checkes for HollaEx Core and Kit."
+                shift; continue
+                ;;
             --user-image-registry)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
@@ -3139,31 +3089,35 @@ elif [[ "$1" == "upgrade" ]]; then
 
     load_config_variables;
 
-    echo "Checking the version compatibility between the latest HollaEx CLI and your local Kit..."
-    if command curl -s -f https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version_range > $SCRIPTPATH/.master_version_range; then 
+    if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then
 
-        source $SCRIPTPATH/.master_version_range
-        rm $SCRIPTPATH/.master_version_range
+        echo "Checking the version compatibility between the latest HollaEx CLI and your local Kit..."
+        if command curl -s -f https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version_range > $SCRIPTPATH/.master_version_range; then 
 
-        if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
+            source $SCRIPTPATH/.master_version_range
+            rm $SCRIPTPATH/.master_version_range
 
-            export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$HOLLAEX_CORE_MAXIMUM_COMPATIBLE
+            if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
+
+                export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$HOLLAEX_CORE_MAXIMUM_COMPATIBLE
+
+            fi
+
+        else 
+
+            printf "\n\033[91mError: Failed to read latest version compatibility range from the server.\n\033[39m"
+            echo "Please check your internet connectivity and try it again."
+            
+            exit 1;
 
         fi
 
-    else 
+        # Check Kit version compatibility range.
+        check_kit_version_compatibility_range;
 
-        printf "\n\033[91mError: Failed to read latest version compatibility range from the server.\n\033[39m"
-        echo "Please check your internet connectivity and try it again."
-        
-        exit 1;
+        check_core_version_compatibility_range;
 
     fi
-
-    # Check Kit version compatibility range.
-    check_kit_version_compatibility_range;
-
-    check_core_version_compatibility_range;
 
     # Update HollaEx CLI to latest if there is newer release available.
     update_hollaex_cli_to_latest;
@@ -4426,14 +4380,6 @@ elif [[ "$1" == "toolbox" ]]; then
             --dev)
                 IS_DEVELOP=true
                 echo "HollaEx CLI is configured as dev mode for development purpose."
-                shift; continue
-                ;;
-            --kit-path)
-                shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                HOLLAEX_KIT_PATH=$1
-                HOLLAEX_DEV_FOR_CORE=true
-                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
             --upgrade_backends)

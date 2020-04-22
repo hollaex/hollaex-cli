@@ -324,10 +324,10 @@ function apply_nginx_user_defined_values(){
     fi
 }
 
-function generate_local_docker_compose_for_dev_legacy() {
+function generate_local_docker_compose_for_core_dev() {
 
 # Generate docker-compose
-cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml <<EOL
+cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
 version: '3'
 services:
 
@@ -378,10 +378,7 @@ services:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-api:
-    image: ${ENVIRONMENT_EXCHANGE_NAME}-server-dev
-    build:
-      context: ${HOLLAEX_CODEBASE_PATH}
-      dockerfile: ${HOLLAEX_CODEBASE_PATH}/tools/Dockerfile.pm2
+    image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
     restart: always
     env_file:
       - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
@@ -394,25 +391,25 @@ services:
       - --env
       - development
     volumes:
-      - ${HOLLAEX_KIT_PATH}/plugins:/app/plugins
-      - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
-      - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
-      - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
-      - ${HOLLAEX_KIT_PATH}/db/migrations:/app/db/migrations
-      - ${HOLLAEX_KIT_PATH}/db/models:/app/db/models
-      - ${HOLLAEX_KIT_PATH}/db/seeders:/app/db/seeders
-      - ${HOLLAEX_KIT_PATH}/mail:/app/mail
-      - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
-      - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
-      - ${HOLLAEX_CODEBASE_PATH}/server.js:/app/server.js
-      - ${HOLLAEX_CODEBASE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
-      - ${HOLLAEX_CODEBASE_PATH}/constants.js:/app/constants.js
-      - ${HOLLAEX_CODEBASE_PATH}/messages.js:/app/messages.js
-      - ${HOLLAEX_CODEBASE_PATH}/logs:/app/logs
-      - ${HOLLAEX_CODEBASE_PATH}/test:/app/test
-      - ${HOLLAEX_CODEBASE_PATH}/tools:/app/tools
-      - ${HOLLAEX_CODEBASE_PATH}/utils:/app/utils
-      - ${HOLLAEX_CODEBASE_PATH}/init.js:/app/init.js
+      - ${HOLLAEX_CLI_INIT_PATH}/plugins:/app/plugins
+      - ${HOLLAEX_CORE_PATH}/api:/app/api
+      - ${HOLLAEX_CORE_PATH}/config:/app/config
+      - ${HOLLAEX_CORE_PATH}/db:/app/db
+      - ${HOLLAEX_CLI_INIT_PATH}/db/migrations:/app/db/migrations
+      - ${HOLLAEX_CLI_INIT_PATH}/db/models:/app/db/models
+      - ${HOLLAEX_CLI_INIT_PATH}/db/seeders:/app/db/seeders
+      - ${HOLLAEX_CLI_INIT_PATH}/mail:/app/mail
+      - ${HOLLAEX_CORE_PATH}/queue:/app/queue
+      - ${HOLLAEX_CORE_PATH}/ws:/app/ws
+      - ${HOLLAEX_CORE_PATH}/server.js:/app/server.js
+      - ${HOLLAEX_CORE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
+      - ${HOLLAEX_CORE_PATH}/constants.js:/app/constants.js
+      - ${HOLLAEX_CORE_PATH}/messages.js:/app/messages.js
+      - ${HOLLAEX_CORE_PATH}/logs:/app/logs
+      - ${HOLLAEX_CORE_PATH}/test:/app/test
+      - ${HOLLAEX_CORE_PATH}/tools:/app/tools
+      - ${HOLLAEX_CORE_PATH}/utils:/app/utils
+      - ${HOLLAEX_CORE_PATH}/init.js:/app/init.js
     ports:
       - 10010:10010
     networks:
@@ -423,7 +420,7 @@ services:
       - hollaex-db
   
   ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
-    image: ${ENVIRONMENT_EXCHANGE_NAME}-server-dev
+    image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
     restart: always
     env_file:
       - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
@@ -436,25 +433,25 @@ services:
       - --env
       - development
     volumes:
-      - ${HOLLAEX_KIT_PATH}/plugins:/app/plugins
-      - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
-      - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
-      - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
-      - ${HOLLAEX_KIT_PATH}/db/migrations:/app/db/migrations
-      - ${HOLLAEX_KIT_PATH}/db/models:/app/db/models
-      - ${HOLLAEX_KIT_PATH}/db/seeders:/app/db/seeders
-      - ${HOLLAEX_KIT_PATH}/mail:/app/mail
-      - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
-      - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
-      - ${HOLLAEX_CODEBASE_PATH}/server.js:/app/server.js
-      - ${HOLLAEX_CODEBASE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
-      - ${HOLLAEX_CODEBASE_PATH}/constants.js:/app/constants.js
-      - ${HOLLAEX_CODEBASE_PATH}/messages.js:/app/messages.js
-      - ${HOLLAEX_CODEBASE_PATH}/logs:/app/logs
-      - ${HOLLAEX_CODEBASE_PATH}/test:/app/test
-      - ${HOLLAEX_CODEBASE_PATH}/tools:/app/tools
-      - ${HOLLAEX_CODEBASE_PATH}/utils:/app/utils
-      - ${HOLLAEX_CODEBASE_PATH}/init.js:/app/init.js
+      - ${HOLLAEX_CLI_INIT_PATH}/plugins:/app/plugins
+      - ${HOLLAEX_CORE_PATH}/api:/app/api
+      - ${HOLLAEX_CORE_PATH}/config:/app/config
+      - ${HOLLAEX_CORE_PATH}/db:/app/db
+      - ${HOLLAEX_CLI_INIT_PATH}/db/migrations:/app/db/migrations
+      - ${HOLLAEX_CLI_INIT_PATH}/db/models:/app/db/models
+      - ${HOLLAEX_CLI_INIT_PATH}/db/seeders:/app/db/seeders
+      - ${HOLLAEX_CLI_INIT_PATH}/mail:/app/mail
+      - ${HOLLAEX_CORE_PATH}/queue:/app/queue
+      - ${HOLLAEX_CORE_PATH}/ws:/app/ws
+      - ${HOLLAEX_CORE_PATH}/server.js:/app/server.js
+      - ${HOLLAEX_CORE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
+      - ${HOLLAEX_CORE_PATH}/constants.js:/app/constants.js
+      - ${HOLLAEX_CORE_PATH}/messages.js:/app/messages.js
+      - ${HOLLAEX_CORE_PATH}/logs:/app/logs
+      - ${HOLLAEX_CORE_PATH}/test:/app/test
+      - ${HOLLAEX_CORE_PATH}/tools:/app/tools
+      - ${HOLLAEX_CORE_PATH}/utils:/app/utils
+      - ${HOLLAEX_CORE_PATH}/init.js:/app/init.js
     ports:
       - 10011:10011
     networks:
@@ -465,7 +462,7 @@ services:
       - hollaex-db
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-stream:
-    image: ${ENVIRONMENT_EXCHANGE_NAME}-server-dev
+    image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
     restart: always
     env_file:
       - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
@@ -478,24 +475,24 @@ services:
       - --env
       - development
     volumes:
-      - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
-      - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
-      - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
-      - ${HOLLAEX_KIT_PATH}/db/migrations:/app/db/migrations
-      - ${HOLLAEX_KIT_PATH}/db/models:/app/db/models
-      - ${HOLLAEX_KIT_PATH}/db/seeders:/app/db/seeders
-      - ${HOLLAEX_KIT_PATH}/mail:/app/mail
-      - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
-      - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
-      - ${HOLLAEX_CODEBASE_PATH}/server.js:/app/server.js
-      - ${HOLLAEX_CODEBASE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
-      - ${HOLLAEX_CODEBASE_PATH}/constants.js:/app/constants.js
-      - ${HOLLAEX_CODEBASE_PATH}/messages.js:/app/messages.js
-      - ${HOLLAEX_CODEBASE_PATH}/logs:/app/logs
-      - ${HOLLAEX_CODEBASE_PATH}/test:/app/test
-      - ${HOLLAEX_CODEBASE_PATH}/tools:/app/tools
-      - ${HOLLAEX_CODEBASE_PATH}/utils:/app/utils
-      - ${HOLLAEX_CODEBASE_PATH}/init.js:/app/init.js
+      - ${HOLLAEX_CORE_PATH}/api:/app/api
+      - ${HOLLAEX_CORE_PATH}/config:/app/config
+      - ${HOLLAEX_CORE_PATH}/db:/app/db
+      - ${HOLLAEX_CLI_INIT_PATH}/db/migrations:/app/db/migrations
+      - ${HOLLAEX_CLI_INIT_PATH}/db/models:/app/db/models
+      - ${HOLLAEX_CLI_INIT_PATH}/db/seeders:/app/db/seeders
+      - ${HOLLAEX_CLI_INIT_PATH}/mail:/app/mail
+      - ${HOLLAEX_CORE_PATH}/queue:/app/queue
+      - ${HOLLAEX_CORE_PATH}/ws:/app/ws
+      - ${HOLLAEX_CORE_PATH}/server.js:/app/server.js
+      - ${HOLLAEX_CORE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
+      - ${HOLLAEX_CORE_PATH}/constants.js:/app/constants.js
+      - ${HOLLAEX_CORE_PATH}/messages.js:/app/messages.js
+      - ${HOLLAEX_CORE_PATH}/logs:/app/logs
+      - ${HOLLAEX_CORE_PATH}/test:/app/test
+      - ${HOLLAEX_CORE_PATH}/tools:/app/tools
+      - ${HOLLAEX_CORE_PATH}/utils:/app/utils
+      - ${HOLLAEX_CORE_PATH}/init.js:/app/init.js
     ports:
       - 10080:10080
     networks:
@@ -535,10 +532,10 @@ EOL
     TRADE_PARIS_DEPLOYMENT=$(echo $j | cut -f1 -d ",")
 
   # Generate docker-compose
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml <<EOL
+  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-engine-$TRADE_PARIS_DEPLOYMENT:
-    image: ${ENVIRONMENT_EXCHANGE_NAME}-server-dev
+    image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
     restart: always
     env_file:
       - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
@@ -551,24 +548,24 @@ EOL
       - --env
       - development
     volumes:
-      - ${HOLLAEX_CODEBASE_PATH}/api:/app/api
-      - ${HOLLAEX_CODEBASE_PATH}/config:/app/config
-      - ${HOLLAEX_CODEBASE_PATH}/db:/app/db
-      - ${HOLLAEX_KIT_PATH}/db/migrations:/app/db/migrations
-      - ${HOLLAEX_KIT_PATH}/db/models:/app/db/models
-      - ${HOLLAEX_KIT_PATH}/db/seeders:/app/db/seeders
-      - ${HOLLAEX_KIT_PATH}/mail:/app/mail
-      - ${HOLLAEX_CODEBASE_PATH}/queue:/app/queue
-      - ${HOLLAEX_CODEBASE_PATH}/ws:/app/ws
-      - ${HOLLAEX_CODEBASE_PATH}/server.js:/app/server.js
-      - ${HOLLAEX_CODEBASE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
-      - ${HOLLAEX_CODEBASE_PATH}/constants.js:/app/constants.js
-      - ${HOLLAEX_CODEBASE_PATH}/messages.js:/app/messages.js
-      - ${HOLLAEX_CODEBASE_PATH}/logs:/app/logs
-      - ${HOLLAEX_CODEBASE_PATH}/test:/app/test
-      - ${HOLLAEX_CODEBASE_PATH}/tools:/app/tools
-      - ${HOLLAEX_CODEBASE_PATH}/utils:/app/utils
-      - ${HOLLAEX_CODEBASE_PATH}/init.js:/app/init.js
+      - ${HOLLAEX_CORE_PATH}/api:/app/api
+      - ${HOLLAEX_CORE_PATH}/config:/app/config
+      - ${HOLLAEX_CORE_PATH}/db:/app/db
+      - ${HOLLAEX_CLI_INIT_PATH}/db/migrations:/app/db/migrations
+      - ${HOLLAEX_CLI_INIT_PATH}/db/models:/app/db/models
+      - ${HOLLAEX_CLI_INIT_PATH}/db/seeders:/app/db/seeders
+      - ${HOLLAEX_CLI_INIT_PATH}/mail:/app/mail
+      - ${HOLLAEX_CORE_PATH}/queue:/app/queue
+      - ${HOLLAEX_CORE_PATH}/ws:/app/ws
+      - ${HOLLAEX_CORE_PATH}/server.js:/app/server.js
+      - ${HOLLAEX_CORE_PATH}/ecosystem.config.js:/app/ecosystem.config.js
+      - ${HOLLAEX_CORE_PATH}/constants.js:/app/constants.js
+      - ${HOLLAEX_CORE_PATH}/messages.js:/app/messages.js
+      - ${HOLLAEX_CORE_PATH}/logs:/app/logs
+      - ${HOLLAEX_CORE_PATH}/test:/app/test
+      - ${HOLLAEX_CORE_PATH}/tools:/app/tools
+      - ${HOLLAEX_CORE_PATH}/utils:/app/utils
+      - ${HOLLAEX_CORE_PATH}/init.js:/app/init.js
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
@@ -580,17 +577,17 @@ EOL
   done
 
 # Generate docker-compose
-cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml <<EOL
+cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
 networks:
   ${ENVIRONMENT_EXCHANGE_NAME}-network:
   
 EOL
 }
 
-function generate_local_docker_compose_for_kit_dev() {
+function generate_local_docker_compose_for_dev() {
 
 # Generate docker-compose
-cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml <<EOL
+cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
 version: '3'
 services:
 
@@ -727,7 +724,7 @@ EOL
     TRADE_PARIS_DEPLOYMENT=$(echo $j | cut -f1 -d ",")
 
   # Generate docker-compose
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml <<EOL
+  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-engine-$TRADE_PARIS_DEPLOYMENT:
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
@@ -748,7 +745,7 @@ EOL
   done
 
 # Generate docker-compose
-cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml <<EOL
+cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
 networks:
   ${ENVIRONMENT_EXCHANGE_NAME}-network:
   
@@ -2072,8 +2069,8 @@ EOL
 
         #   # Restarting containers after database init jobs.
         #   echo "Restarting containers to apply database changes."
-        #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-        #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+        #   docker-compose -f $HOLLAEX_CORE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+        #   docker-compose -f $HOLLAEX_CORE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
         # else
 
@@ -2306,8 +2303,8 @@ function remove_coin_exec() {
 
       #   # Restarting containers after database init jobs.
       #   echo "Restarting containers to apply database changes."
-      #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-      #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+      #   docker-compose -f $HOLLAEX_CORE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+      #   docker-compose -f $HOLLAEX_CORE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
 
       # else
@@ -2334,8 +2331,8 @@ function remove_coin_exec() {
 
         #   # Restarting containers after database init jobs.
         #   echo "Restarting containers to apply database changes."
-        #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-        #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+        #   docker-compose -f $HOLLAEX_CORE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+        #   docker-compose -f $HOLLAEX_CORE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
         # else
 
@@ -2905,7 +2902,7 @@ EOL
 
         #   # Restarting containers after database init jobs.
         #   echo "Restarting containers to apply database changes."
-        #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+        #   docker-compose -f $HOLLAEX_CORE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
 
         # else
 
@@ -3126,8 +3123,8 @@ function remove_pair_exec() {
 
         #   # Restarting containers after database init jobs.
         #   echo "Restarting containers to apply database changes."
-        #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-        #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
+        #   docker-compose -f $HOLLAEX_CORE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+        #   docker-compose -f $HOLLAEX_CORE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
 
         # else
 
@@ -3148,8 +3145,8 @@ function remove_pair_exec() {
 
         #   # Restarting containers after database init jobs.
         #   echo "Restarting containers to apply database changes."
-        #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-        #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
+        #   docker-compose -f $HOLLAEX_CORE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+        #   docker-compose -f $HOLLAEX_CORE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans
 
         # else
 
@@ -3168,7 +3165,7 @@ function remove_pair_exec() {
 
         #   # Restarting containers after database init jobs.
         #   echo "Restarting containers to apply database changes."
-        #   docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+        #   docker-compose -f $HOLLAEX_CORE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
 
         # else
 
@@ -4545,8 +4542,8 @@ EOF
 
 #       # Restarting containers after database init jobs.
 #       echo "Restarting containers to apply database changes."
-#       docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-#       docker-compose -f $HOLLAEX_CODEBASE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+#       docker-compose -f $HOLLAEX_CORE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
+#       docker-compose -f $HOLLAEX_CORE_PATH/.$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
 
 #     else
 
@@ -4818,7 +4815,7 @@ function hollaex_setup_finalization() {
 
       if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
 
-        hollaex toolbox --add_coin --kube --is_hollaex_setup --kit-path "$HOLLAEX_KIT_PATH"
+        hollaex toolbox --add_coin --kube --is_hollaex_setup
 
       else
 
@@ -4830,7 +4827,7 @@ function hollaex_setup_finalization() {
 
        if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
 
-        hollaex toolbox --add_coin --is_hollaex_setup --kit-path "$HOLLAEX_KIT_PATH"
+        hollaex toolbox --add_coin --is_hollaex_setup
 
       else
 
@@ -4846,7 +4843,7 @@ function hollaex_setup_finalization() {
 
       if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
 
-        hollaex toolbox --add_trading_pair --kube --is_hollaex_setup --kit-path "$HOLLAEX_KIT_PATH"
+        hollaex toolbox --add_trading_pair --kube --is_hollaex_setup
 
       else 
 
@@ -4858,7 +4855,7 @@ function hollaex_setup_finalization() {
 
       if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
 
-        hollaex toolbox --add_trading_pair --is_hollaex_setup --kit-path "$HOLLAEX_KIT_PATH"
+        hollaex toolbox --add_trading_pair --is_hollaex_setup
 
       else 
 
