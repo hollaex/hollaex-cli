@@ -1199,7 +1199,7 @@ EOL
 function generate_random_values() {
 
   # Runs random.js through docker with latest compatible hollaex core (minimum 1.23.0)
-  docker run --entrypoint node bitholla/hollaex-core:${HOLLAEX_CORE_MAXIMUM_COMPATIBLE:-1.23.0} tools/general/random.js
+  docker run --rm --entrypoint node bitholla/hollaex-core:${HOLLAEX_CORE_MAXIMUM_COMPATIBLE:-1.23.0} tools/general/random.js
 
 }
 
@@ -4901,9 +4901,31 @@ function build_user_hollaex_core() {
       
       else 
         
-        printf "\n\nYou can rename (tag) and push the built image to your Docker Registry. (Optional)\n"
-        echo "Note that this is an optional job, so could be skipped."
-        echo "Do you want to push this image to your Docker Registry? (y/N)"
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+          echo "Please type in your new image name. ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION)"
+          echo "Press enter to proceed with the previous name."
+          read tag
+        
+        else 
+
+          echo "Using $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE as Docker image tag..."
+        
+        fi
+
+        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} | cut -f1 -d ":")
+        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION} | cut -f2 -d ":")
+
+        override_user_hollaex_core;
+
+        docker tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
+
+        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE
+        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
+
+        echo "Your new image name is: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION."
+
+        echo "Do you want to push this image to your Docker Registry? (y/N) (Optional)"
         read pushAnswer
           
         if [[ "$pushAnswer" = "${pushAnswer#[Yy]}" ]] ;then
@@ -4937,30 +4959,7 @@ function build_user_hollaex_core() {
 
 function push_user_hollaex_core() {
 
-  if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-    echo "Please type in your new image name. ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION)"
-    echo "Press enter to proceed with the previous name."
-    read tag
-  
-  else 
-
-    echo "Using $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE as Docker image tag..."
-  
-  fi
-
-  export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} | cut -f1 -d ":")
-  export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION} | cut -f2 -d ":")
-
-  override_user_hollaex_core;
-
-  docker tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
-
-  export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE
-  export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
-
-  echo "Your new image name is: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION."
-  echo "Now pushing it to docker registry..."
+  echo "Pushing the image to docker registry..."
 
   if command docker push $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION; then 
 
@@ -5768,9 +5767,11 @@ function check_docker_compose_dependencies() {
 
 }
 
-function hollaex_pull_and_apply_exchange_data() {
+function hollaex_pull_and_apply_exchange_data() {  
 
   local HOLLAEX_CONFIGMAP_API_NAME_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].name";)
+
+  local ENVIRONMENT_EXCHANGE_NAME_OVERRIDE=$(echo $HOLLAEX_CONFIGMAP_API_NAME_OVERRIDE | tr -dc '[:alnum:]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
 
   #LOGO PATH ESCAPING
   local ORIGINAL_CHARACTER_FOR_LOGO_PATH=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.LOGO_IMAGE_LIGHT";)
@@ -5857,6 +5858,8 @@ function hollaex_pull_and_apply_exchange_data() {
 
     
   # CONFIGMAP 
+  sed -i.bak "s/ENVIRONMENT_EXCHANGE_NAME=.*/ENVIRONMENT_EXCHANGE_NAME=$ENVIRONMENT_EXCHANGE_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
+
   sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=.*/HOLLAEX_CONFIGMAP_API_NAME=$HOLLAEX_CONFIGMAP_API_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
   sed -i.bak "s/HOLLAEX_CONFIGMAP_LOGO_PATH=.*/HOLLAEX_CONFIGMAP_LOGO_PATH=$HOLLAEX_CONFIGMAP_LOGO_PATH_OVERRIDE/" $CONFIGMAP_FILE_PATH
@@ -6155,4 +6158,168 @@ function generate_backend_passwords() {
   fi
 
 
+}
+
+function system_dependencies_check() {
+
+  echo "Checking system dependencies..."
+
+  ### Common dependencies ###
+  if command docker -v > /dev/null 2>&1; then
+
+    IS_DOCKER_INSTALLED=true
+    
+  fi
+
+  if command jq --version > /dev/null 2>&1; then
+
+    IS_JQ_INSTALLED=true
+    
+  fi
+
+  if command nslookup -version > /dev/null 2>&1; then
+
+    IS_NSLOOKUP_INSTALLED=true
+  
+  fi
+
+  ### Checking for environment specific dependencies ###
+
+  # Kubernetes deployment dependencies
+  if [[ "$USE_KUBERNETES" ]]; then
+
+    if command kubectl version > /dev/null 2>&1; then
+
+      IS_KUBECTL_INSTALLED=true
+    
+    fi
+
+    if command helm version > /dev/null 2>&1; then
+
+      IS_HELM_INSTALLED=true
+    
+    fi
+
+  # Local deployment dependencies
+  else  
+
+    if command docker-compose -v > /dev/null 2>&1; then
+
+      IS_DOCKER_COMPOSE_INSTALLED=true
+    
+    fi
+
+  fi
+
+  ### Printing error if dependencies are missing ###
+  if [[ ! "$IS_DOCKER_INSTALLED" ]] || [[ ! "$IS_JQ_INSTALLED" ]] || [[ ! "$IS_NSLOOKUP_INSTALLED" ]]; then
+
+    printf "\033[91mError: Some of the common dependencies are missing on your system.\033[39m\n"
+
+    # Docker installation status chekc
+    if [[ "$IS_DOCKER_INSTALLED" ]]; then
+
+        printf "\033[92mDocker: Installed\033[39m\n"
+
+    else 
+
+        printf "\033[91mDocker: Not Installed\033[39m\n"
+    
+    fi  
+
+    # Docker-compose installation status check
+    if [[ "$IS_DOCKER_COMPOSE_INSTALLED" ]]; then
+
+        printf "\033[92mDocker-Compose: Installed\033[39m\n"
+
+    else
+
+        printf "\033[91mDocker-Compose: Not Installed\033[39m\n"
+
+    fi
+
+    # jq installation status check
+    if [[ "$IS_JQ_INSTALLED" ]]; then
+
+        printf "\033[92mjq: Installed\033[39m\n"
+
+    else 
+
+        printf "\033[91mjq: Not Installed\033[39m\n"
+
+    fi
+
+    # nslookup installation status check
+    if [[ "$IS_NSLOOKUP_INSTALLED" ]]; then
+
+        printf "\033[92mnslookup: Installed\033[39m\n"
+
+    else 
+
+        printf "\033[91mnslookup: Not Installed\033[39m\n"
+
+    fi
+
+    echo "Please install the missing dependencies and try again."
+    exit 1;
+
+  fi
+
+  if [[ "$USE_KUBERNETES" ]]; then
+
+    if [[ ! "$IS_KUBECTL_INSTALLED" ]] || [[ ! "$IS_HELM_INSTALLED" ]]; then
+
+      printf "\033[91mError: Some of the Kubernetes dependencies are missing on your system.\033[39m\n"
+
+      if [[ "$IS_KUBECTL_INSTALLED" ]]; then
+
+          printf "\033[92mKubectl: Installed\033[39m\n"
+
+      else 
+
+          printf "\033[91mKubectl: Not Installed\033[39m\n"
+
+      fi
+
+      if [[ "$IS_HELM_INSTALLED" ]]; then
+
+          printf "\033[92mHelm v2: Installed\033[39m\n"
+
+      else 
+
+          printf "\033[91mHelm v2: Not Installed\033[39m\n"
+
+      fi
+
+      echo "Please install the missing dependencies and try again."
+      exit 1;
+
+    fi
+
+  else
+
+    if [[ ! "$IS_DOCKER_COMPOSE_INSTALLED" ]]; then
+
+      printf "\033[91mError: Some of the Kubernetes dependencies are missing on your system.\033[39m\n"
+
+      # Docker installation status chekc
+      if [[ "$IS_DOCKER_COMPOSE_INSTALLED" ]]; then
+
+          printf "\033[92mDocker-Compose: Installed\033[39m\n"
+
+      else 
+
+          printf "\033[91mDocker-Compose: Not Installed\033[39m\n"
+      
+      fi
+
+      echo "Please install the missing dependencies and try again."
+      exit 1;
+
+    fi
+
+  fi
+
+  echo "You are good to go!"
+    
 }
