@@ -62,6 +62,7 @@ Options:
     upgrade: Upgrade the exchange to new version.
         --version, Version number of HollaEx Core to upgrade.
         --user-image-registry, Specify Docker registry and version (tag) for the user HollaEx Core image.
+        --ignore-compatibility-check, Ignore Kit and Core compatibility check before an upgrade.
 
     terminate: Terminate the existing exchange. THIS COMMAND WILL COMPLETELY REMOVE YOUR EXCHANGE.
       
