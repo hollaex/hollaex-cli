@@ -52,6 +52,11 @@ spec:
         args:
           - node tools/dbs/setConfig.js;
 
+{{- else if eq .Values.job.mode "set_security" }}
+
+        args:
+          - node tools/dbs/setSecurity.js;
+
 {{- else if eq .Values.job.mode "hollaex_upgrade" }}
 
         args:
@@ -139,6 +144,17 @@ spec:
 
           - name: ACTIVATION_CODE
             value: "{{.Values.job.env.activation_code}}"
+
+{{- else if eq .Values.job.mode "set_security" }}
+
+          - name: ALLOWED_DOMAINS
+            value: "{{.Values.job.env.allowed_domains}}"
+          - name: ADMIN_WHITELIST_IP
+            value: "{{.Values.job.env.admin_whitelist_ip}}"
+          - name: CAPTCHA_SITE_KEY
+            value: "{{.Values.job.env.captcha_site_key}}"
+          - name: CAPTCHA_SECRET_KEY
+            value: "{{.Values.job.env.captcha_secret_key}}"
 
 {{- end }}
 
