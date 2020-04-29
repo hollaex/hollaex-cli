@@ -62,6 +62,7 @@ Options:
     upgrade: Upgrade the exchange to new version.
         --version, Version number of HollaEx Core to upgrade.
         --user-image-registry, Specify Docker registry and version (tag) for the user HollaEx Core image.
+        --ignore-compatibility-check, Ignore Kit and Core compatibility check before an upgrade.
 
     terminate: Terminate the existing exchange. THIS COMMAND WILL COMPLETELY REMOVE YOUR EXCHANGE.
       
@@ -85,6 +86,7 @@ Options:
         --renew_ssl, Renew SSL certificate on local Nginx by using Let's Encrypt.
         --update_registry_secret, Update existing docker registry secret for Kubernetes.
         --set_config, Update constants configured on the exchange database.
+        --set_security, Override security values at admin panel for the exchange.
         --set_activation_code, Set or update activation code for the exchange.
         --connect_database, Direct connection to PostgreSQL Database via postgresql-client.
         --connect_redis, Direct connection to Redis via redis-client.
@@ -110,7 +112,7 @@ Usage :
     hollaex [ dev ] (--flags)
 
 General Flags :
-    --kit-path, Manually pointing HollaEx Kit path. Should be always absolute path.
+    --core-path, Manually pointing HollaEx Core path. Should be always an absolute path.
     --skip, Run command without user's double confirmation.
 
 Options:
@@ -180,32 +182,13 @@ if [[ "$1" == "dev" ]]; then
                 echo 'Local mocha code test mode enabled.'
                 shift; continue
                 ;;
-            --add_coin)
-                LOCAL_ADD_COIN=true
-                echo 'Adding coin for dev environment.'
-                shift; continue
-                ;;
-            --add_trading_pair)
-                LOCAL_ADD_PAIR=true
-                echo 'Adding trading pair for dev environment.'
-                shift; continue
-                ;;
-            --remove_coin)
-                LOCAL_REMOVE_COIN=true
-                echo 'Removing coin for dev environment.'
-                shift; continue
-                ;;
-            --remove_trading_pair)
-                LOCAL_REMOVE_PAIR=true
-                echo 'Removing trading pair for dev environment.'
-                shift; continue
-                ;;
-            --kit-path)
+            --core-path)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 HOLLAEX_DEV_FOR_CORE=true
-                HOLLAEX_KIT_PATH=$1
-                echo "HollaEx Kit Path : $HOLLAEX_KIT_PATH."
+                HOLLAEX_CORE_PATH=$1
+                echo "Enabling HollaEx Core development mode."
+                echo "HollaEx Core Path : $HOLLAEX_CORE_PATH."
                 shift; continue
                 ;;
             --skip)
@@ -224,22 +207,10 @@ if [[ "$1" == "dev" ]]; then
 
     IS_DEVELOP=true
 
-    if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
-
-        HOLLAEX_CODEBASE_PATH=$(pwd)
-
-        CONFIG_FILE_PATH=$HOLLAEX_KIT_PATH/settings/*
-        TEMPLATE_GENERATE_PATH=$HOLLAEX_KIT_PATH/templates
-        INIT_PATH_CHECK=$HOLLAEX_KIT_PATH/.hollaex
-
-    else 
-        
-        HOLLAEX_CLI_INIT_PATH=$(pwd)
-        CONFIG_FILE_PATH=$(pwd)/settings/*
-        TEMPLATE_GENERATE_PATH=$(pwd)/templates
-        INIT_PATH_CHECK=$(pwd)/.hollaex
-    
-    fi 
+    HOLLAEX_CLI_INIT_PATH=$(pwd)
+    CONFIG_FILE_PATH=$(pwd)/settings/*
+    TEMPLATE_GENERATE_PATH=$(pwd)/templates
+    INIT_PATH_CHECK=$(pwd)/.hollaex
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
@@ -247,51 +218,15 @@ if [[ "$1" == "dev" ]]; then
     
     source $SCRIPTPATH/tools_generator.sh
 
-    if [[ "$HOLLAEX_DEV_FOR_CORE" ]] && [[ ! "$HOLLAEX_KIT_PATH" ]]; then
+    # #Quit if necessary flags are missing
+    # if [[ ! "$LOCAL_DATABASE_INIT" ]] && [[ ! "$LOCAL_COMMAND" ]]; then
+    #     echo "*********************************************"
+    #     echo "Make sure to specify run mode for dev commands"
+    #     echo "*********************************************"
+    #     print_usage;
+    #     exit 1;
+    # fi
 
-        echo "Error: HollaEx Kit path has not been defined."
-        echo "HollaEx Core dev mode requires HollaEx Kit to bind."
-        echo "Please use '--kit-path' flag to specify your Kit path."
-        exit 1;
-
-    fi
-
-    # ADD & REMOVE COINS AND PAIRS INTERATION FOR DEV
-    if [[ "$LOCAL_ADD_COIN" ]]; then    
-
-        add_coin_input
-
-        add_coin_exec
-
-        exit 0;
-
-    elif [[ "$LOCAL_REMOVE_COIN" ]]; then
-
-        remove_coin_input
-
-        remove_coin_exec
-
-        exit 0;
-
-
-    elif [[ "$LOCAL_ADD_PAIR" ]]; then
-
-        add_pair_input
-
-        add_pair_exec
-
-        exit 0;
-
-
-    elif [[ "$LOCAL_REMOVE_PAIR" ]]; then
-
-        remove_pair_input
-
-        remove_pair_exec
-
-        exit 0;
-
-    fi
     # Checking docker-compose is installed on this machine.
     if command docker-compose version > /dev/null 2>&1; then
         echo "*********************************************"
@@ -316,26 +251,13 @@ if [[ "$1" == "dev" ]]; then
     if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
         mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
     fi
-
-
-    #Quit if necessary flags are missing
-
-    if [[ "$HOLLAEX_DEV_MANUAL_COMMAND" ]] && [[ ! "$LOCAL_COMMAND" ]]; then
-        echo "*********************************************"
-        echo "Make sure to specify --command flag for dev commands"
-        echo "*********************************************"
-        print_usage;
-        exit 1;
-    fi
-    
-    
     
     # Running database jobs for local db.
     if [[ ! "$LOCAL_COMMAND" ]] && [[ "$LOCAL_DATABASE_INIT" == true ]]; then
     
         local_database_init start;
 
-        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
+        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml restart
 
         exit 0;
 
@@ -366,12 +288,12 @@ if [[ "$1" == "dev" ]]; then
     if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
     
         if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
-             
-             generate_local_docker_compose_for_dev_legacy;
+            
+            generate_local_docker_compose_for_core_dev;
 
         else    
 
-            generate_local_docker_compose_for_kit_dev;
+            generate_local_docker_compose_for_dev;
 
         fi
 
@@ -381,47 +303,75 @@ if [[ "$1" == "dev" ]]; then
 
     if [[ "$HOLLAEX_DEV_SETUP" ]]; then
 
-        if [[ ! "$HOLLAEX_DEV_FOR_CORE" ]] ; then 
+        if [[ "$HOLLAEX_DEV_FOR_CORE" ]] ; then 
 
-            build_user_hollaex_core;
+            function build_hollaex_core_for_dev() {
+                
+                local BUILD_HOLLAEX_CORE_VERSION=$(grep version $HOLLAEX_CORE_PATH/package.json | cut -c 15- | rev | cut -c 3- | rev)
+                local BUILD_HOLLAEX_CORE_BRANCH=$(git --git-dir /Users/kycfeel/documents/bitHolla/hollaex-core/.git rev-parse --abbrev-ref HEAD)
+                local BUILD_HOLLAEX_CORE_DATE="$(echo $(date +%y%m%d%H%M))"
+
+                local BUILD_HOLLAEX_CORE_IMAGE_TAG=${BUILD_HOLLAEX_CORE_VERSION}-${BUILD_HOLLAEX_CORE_BRANCH}-${BUILD_HOLLAEX_CORE_DATE}
+                export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$BUILD_HOLLAEX_CORE_IMAGE_TAG
+
+                docker build -t bitholla/hollaex-core:$BUILD_HOLLAEX_CORE_IMAGE_TAG -f $HOLLAEX_CORE_PATH/tools/Dockerfile.pm2 $HOLLAEX_CORE_PATH
+
+            }
+
+            build_hollaex_core_for_dev;
+            override_docker_image_version;
+
+        else 
+
+            export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$HOLLAEX_CORE_MAXIMUM_COMPATIBLE
+            override_docker_image_version;
+        
+        fi
+
+        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+
+        build_user_hollaex_core;
+
+        # Regenerating docker compose file with the new image tag just defined above.
+         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
+    
+            if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
+                
+                generate_local_docker_compose_for_core_dev;
+
+            else    
+
+                generate_local_docker_compose_for_dev;
+
+            fi
 
         fi
 
-        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml up -d --build  
+        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml up -d  
         
         echo "Installing npm packages for /plugins"
         docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller_1 bash -c '
             cd /app/plugins && \
             npm install --loglevel=error && \
-            for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done && \
-            cd /app/mail && npm install --loglevel=error'
+            for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done'
         
-        if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
+        # echo "Installing npm packages for /mail"
+        #     docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-api_1 bash -c '
+                # cd /app/mail && npm install --loglevel=error'
 
-            hollaex dev --kit-path $HOLLAEX_KIT_PATH --database_init 
-            
-            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
+        hollaex dev --database_init
+    
+        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml restart
 
-            hollaex_setup_finalization;
+        hollaex_setup_finalization;
 
-            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
-
-        else
-
-            hollaex dev --database_init
+        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml restart
         
-            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
-
-            hollaex_setup_finalization;
-
-            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml restart
-        
-        fi 
         
     elif [[ "$HOLLAEX_DEV_RESTART" ]]; then
 
-        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml stop
-        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml up -d --build
+        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml stop
+        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml up -d
 
         if [[ ! "$HOLLAEX_DEV_SETUP" ]]; then
 
@@ -429,14 +379,17 @@ if [[ "$1" == "dev" ]]; then
             docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller_1 bash -c '
                 cd /app/plugins && \
                 npm install --loglevel=error && \
-                for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done && \
-                cd /app/mail && npm install --loglevel=error'
+                for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done'
+
+            # echo "Installing npm packages for /mail"
+            # docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-api_1 bash -c '
+            #     cd /app/mail && npm install --loglevel=error'
 
         fi 
 
     else 
 
-        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-dev-docker-compose.yaml $LOCAL_COMMAND
+        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml $LOCAL_COMMAND
 
     fi
 
@@ -588,23 +541,17 @@ elif [[ "$1" == "setup" ]]; then
 
     fi
 
-    # Returns error If 'jq' doesn't exists.
-    if ! command jq --version > /dev/null 2>&1; then
-
-        printf "\033[91mError: 'jq' (https://stedolan.github.io/jq/) has not been detected on your system.\033[39m\n"
-        echo "HollaEx CLI requires 'jq' to handle certain functionalities."
-        echo "Please install it first and try again."
-
-        printf "\nFor Ubuntu (Debian) users: 'apt-get install -y jq'\n"
-        printf "For macOS users with Homebrew: 'brew install jq'\n\n"
-
-        exit 1;
-
-    fi
+    echo "Setting the Kit /settings folder as 'assumed-unchanged' state."
+    git --git-dir=$HOLLAEX_CLI_INIT_PATH/.git update-index --assume-unchanged ./settings/*
 
     source $SCRIPTPATH/tools_generator.sh
 
-     #Generating random values for passwords and update config file to contain it;
+    system_dependencies_check;
+
+    # Check Kit version compatibility range.
+    check_kit_version_compatibility_range;
+
+    #Generating random values for passwords and update config file to contain it;
     update_random_values_to_config;
 
     for i in ${CONFIG_FILE_PATH[@]}; do
@@ -631,16 +578,13 @@ elif [[ "$1" == "setup" ]]; then
 
     done
 
-    # Check Kit version compatibility range.
-    check_kit_version_compatibility_range;
-
-    # Randomly generates backend passwords
+     # Randomly generates backend passwords
     if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_INFLUX_PASSWORD" ]]; then
     
         generate_backend_passwords;
 
     fi
-    
+
     # hollaex setup --reconfigure
     if [[ "$RECONFIGURE_BASIC_SETTINGS" ]]; then
 
@@ -677,7 +621,7 @@ elif [[ "$1" == "setup" ]]; then
     if [[ ! "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]] && [[ $HOLLAEX_SECRET_ACTIVATION_CODE ]]; then
 
         echo "HollaEx CLI detected the preconfigured values on your HollaEx Kit."
-        echo "Do you want to proceed with this configurations? (Y/n)"
+        echo "Do you want to proceed with these preconfigured values? (Y/n)"
         read answer
 
         if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
@@ -763,7 +707,7 @@ elif [[ "$1" == "setup" ]]; then
 
             echo "*********************************************"
             printf "\033[91mError: HollaEx CLI detected that the exchange exists on your remote Kubernetes environment.\033[39m\n"
-            printf "\033[91mExchange setup can't be done for multiple times.\033[39m\n\n"
+            printf "\033[91mCannot setup an exchange multiple times.\033[39m\n\n"
             echo "Exiting..."
             echo "*********************************************"
             exit 1;
@@ -916,8 +860,6 @@ elif [[ "$1" == "setup" ]]; then
         kubernetes_database_init launch;
 
         hollaex_setup_finalization;
-
-        # hollaex_ascii_exchange_has_been_setup;
 
         echo "Shutting down the exchange..."
         hollaex stop --kube --skip
@@ -1378,7 +1320,7 @@ elif [[ "$1" == "login" ]]; then
         else
 
             echo -e "\033[92mYour existing access token is valid!\033[39m"
-            echo "Info: If you want to revoke the existing token manually, remove '.token' file at your Kit."
+            echo "Info: Delete the ‘.token’ file in your HollaEx Kit to remove the existing token."
 
         fi
 
@@ -1515,45 +1457,8 @@ elif [[ "$1" == "logout" ]]; then
 
     fi
 
-    for i in ${CONFIG_FILE_PATH[@]}; do
-
-        if command grep -q "HOLLAEX_CONFIGMAP_API_NAME=" $i > /dev/null ; then
-
-            export CONFIGMAP_FILE_PATH=$i
-
-        fi
-
-    done
-
-    for i in ${CONFIG_FILE_PATH[@]}; do
-
-        if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE=" $i > /dev/null ; then
-
-            export SECRET_FILE_PATH=$i
-
-        fi
-
-    done
-
-    for i in ${CONFIG_FILE_PATH[@]}; do
-        source $i
-    done;
-
-    source $SCRIPTPATH/tools_generator.sh
-    load_config_variables;
-    
-    if [[ ! "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then
-
-        printf "\033[91mFailed to read pre-bound Activation code.\033[39m\n"
-        echo "'hollaex logout' works only after you successfully logged in."
-        exit 1;
-    
-    fi
-
-    printf "\nCurrent bound Exchange name: \033[92m$HOLLAEX_CONFIGMAP_API_NAME\033[39m\n\n"
-    echo "This command will remove both Exchange name and Activation code from your local HollaEx Kit."
-    echo "The rest of Exchagne configurations WILL NOT BE removed."
-    echo "Are you sure you want to unbind this exchange from HollaEx Kit? (y/N)"
+    printf "\nAre you sure you want to \033[1mlogout\033[0m from bitHolla? (y/N)\n"
+    printf "This command \033[1mwould not affect\033[0m your exchange data.\n"
     read answer
 
     if [[ "$answer" = "${answer#[Yy]}" ]]; then
@@ -1566,26 +1471,14 @@ elif [[ "$1" == "logout" ]]; then
 
         rm $HOLLAEX_CLI_INIT_PATH/.token
     
-    fi
+    else 
 
-    if command sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=.*/HOLLAEX_CONFIGMAP_API_NAME=/" $CONFIGMAP_FILE_PATH; then
-
-        rm $CONFIGMAP_FILE_PATH.bak
-
-        if command sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=.*/HOLLAEX_SECRET_ACTIVATION_CODE=/" $SECRET_FILE_PATH; then
-
-            rm $SECRET_FILE_PATH.bak
-
-            printf "\n\033[92mSuccessfully removed the exchange data from HollaEx Kit.\033[39m\n"
-        fi
+        printf "\n\033[93mThere was no login data to revoke.\033[39m\n"
     
-    else
-
-        printf "\033[91mFailed to remove exchange data from HollaEx Kit.\033[39m\n"
-        echo "Please review the error and try again."
-        exit 1;
-
     fi
+
+    printf "\nPlease run 'hollaex login' if you want to login back.\n"
+    printf "Bye!\n\n"
 
 elif [[ "$1" == "pull" ]]; then
 
@@ -1964,6 +1857,12 @@ elif [[ "$1" == "start" ]]; then
         if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
             echo "Scaling up containers on the cluster..."
+            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-db --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-influxdb --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=$ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS --namespace $ENVIRONMENT_EXCHANGE_NAME
 
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
@@ -1973,12 +1872,6 @@ elif [[ "$1" == "start" ]]; then
             helm_dynamic_trading_paris scaleup;
 
             helm_dynamic_trading_paris run;
-
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-db --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-influxdb --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
             
             echo "Applying Ingress rules..."
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
@@ -2409,11 +2302,11 @@ elif [[ "$1" == "prod" ]]; then
     # fi
 
     apply_nginx_user_defined_values;
-    
+
     printf "\n"
 
     if [[ ! "$USE_KUBERNETES" ]]; then
-
+    
         echo "Do you want to issue SSL cert for your exchange? (Y/n)"
         echo "If you are going to use an external load balancer with SSL, Please type 'N'."
 
@@ -2442,7 +2335,7 @@ elif [[ "$1" == "prod" ]]; then
     else 
 
         if [[ "$USE_KUBERNETES" ]]; then
-
+        
             echo "The 'cert-manager' requires an issuer name to reach SSL ACME service."
             echo "Please provide your cert-manager issuer name."
             read answer
@@ -2541,6 +2434,10 @@ elif [[ "$1" == "stop" ]]; then
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 LOCAL_DEPLOYMENT_MODE=$1
                 echo "Your DEPLOYMENT_MODE setup : $LOCAL_DEPLOYMENT_MODE."
+                shift; continue
+                ;;
+            --is_hollaex_setup)
+                IS_HOLLAEX_SETUP=true
                 shift; continue
                 ;;
             --kube)
@@ -3106,6 +3003,11 @@ elif [[ "$1" == "upgrade" ]]; then
                 echo "HollaEx CLI will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
+            --ignore-compatibility-check)
+                IGNORE_COMPATIBILITY_CHECK=true
+                echo "Warning: HollaEx CLI will ignore all compatibility checkes for HollaEx Core and Kit."
+                shift; continue
+                ;;
             --user-image-registry)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
@@ -3176,40 +3078,47 @@ elif [[ "$1" == "upgrade" ]]; then
 
     load_config_variables;
 
-    echo "Checking the version compatibility between the latest HollaEx CLI and your local Kit..."
-    if command curl -s -f https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version_range > $SCRIPTPATH/.master_version_range; then 
+    if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then
 
-        source $SCRIPTPATH/.master_version_range
-        rm $SCRIPTPATH/.master_version_range
+        echo "Checking the version compatibility between the latest HollaEx CLI and your local Kit..."
+        if command curl -s -f https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version_range > $SCRIPTPATH/.master_version_range; then 
 
-        if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
+            source $SCRIPTPATH/.master_version_range
+            rm $SCRIPTPATH/.master_version_range
 
-            export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$HOLLAEX_CORE_MAXIMUM_COMPATIBLE
+            if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
+
+                export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$HOLLAEX_CORE_MAXIMUM_COMPATIBLE
+
+            fi
+
+        else 
+
+            printf "\n\033[91mError: Failed to read latest version compatibility range from the server.\n\033[39m"
+            echo "Please check your internet connectivity and try it again."
+            
+            exit 1;
 
         fi
 
-    else 
+        # Check Kit version compatibility range.
+        check_kit_version_compatibility_range;
 
-        printf "\n\033[91mError: Failed to read latest version compatibility range from the server.\n\033[39m"
-        echo "Please check your internet connectivity and try it again."
-        
-        exit 1;
+        check_core_version_compatibility_range;
 
     fi
-
-    # Check Kit version compatibility range.
-    check_kit_version_compatibility_range;
-
-    check_core_version_compatibility_range;
 
     # Update HollaEx CLI to latest if there is newer release available.
     update_hollaex_cli_to_latest;
 
-    # Override target docker image version if user passed it manually with flag / version range available at each CLI releases.     
-    override_docker_image_version;
-    export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION
-        
+    # Override target docker image version if user passed it manually with flag / version range available at each CLI releases.  
+    if [[ ! "$NO_IMAGE_BUILD" ]]; then   
+
+        override_docker_image_version;
+        export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION
+    
+    fi
 
     # Override target docker registry if user passed it manually with flag.
     if [[ "$ENVIRONMENT_USER_REGISTRY_OVERRIDE" ]]; then
@@ -4280,15 +4189,15 @@ elif [[ "$1" == "web" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to restart web client for the exchange on this machine? (y/N)"
+                echo "Are you sure you want to restart web client for the exchange on this machine? (Y/n)"
 
                 read answer
 
-                if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
                     echo "Exiting..."
                     exit 0;
                 fi
-
+                
             fi
 
             echo "Generating web docker-compose file"
@@ -4465,14 +4374,6 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "HollaEx CLI is configured as dev mode for development purpose."
                 shift; continue
                 ;;
-            --kit-path)
-                shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                HOLLAEX_KIT_PATH=$1
-                HOLLAEX_DEV_LEGACY=true
-                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
-                shift; continue
-                ;;
             --upgrade_backends)
                 UPGRADE_BACKENDS=true
                 TOOLBOX_ENABLE=true
@@ -4492,17 +4393,12 @@ elif [[ "$1" == "toolbox" ]]; then
                 shift; continue
                 ;;
             --upgrade_api_only)
-                UPGRADE_API_ONLY=true
-                TOOLBOX_ENABLE=true
-                echo "HollaEx CLI will rolling-upgrade API containers only for Kubernetes."
-                shift; continue
-                ;;
-            # Version flag for --upgrade_api_only (rolling upgrade) for Kubernetes deployment.
-             --version)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                UPGRADE_API_ONLY=true
                 ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$1
-                echo "Target HollaEx release version for API rolling upgrade : v $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE."
+                TOOLBOX_ENABLE=true
+                echo "HollaEx CLI will rolling-upgrade API containers only for Kubernetes."
                 shift; continue
                 ;;
             --add_coin)
@@ -4575,6 +4471,12 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "Override database-stored cosntants with local configmap-stored values."
                 shift; continue
                 ;;
+            --set_security)
+                set_security=true
+                TOOLBOX_ENABLE=true
+                echo "Override exchange secret values with provided ones."
+                shift; continue
+                ;;
              --connect_database)
                 CONNECT_DATABASE=true
                 TOOLBOX_ENABLE=true
@@ -4638,7 +4540,7 @@ elif [[ "$1" == "toolbox" ]]; then
     fi
 
     # For dev command legacy mode
-    if [[ "$HOLLAEX_DEV_LEGACY" ]]; then
+    if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
 
         HOLLAEX_CODEBASE_PATH=$(pwd)
 
@@ -4693,9 +4595,9 @@ elif [[ "$1" == "toolbox" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
-    # --version flag for --upgrade_api_only
+    # for --upgrade_api_only
     # Override target docker image version if user passed it manually with flag.
-    if [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
+    if [[ "$UPGRADE_API_ONLY" ]] && [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
         
         override_docker_image_version;
         export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
@@ -5421,16 +5323,67 @@ elif [[ "$1" == "toolbox" ]]; then
 
             set_config_exec;
             
-
         elif [[ ! "$USE_KUBERNETES" ]]; then 
         
             check_docker_compose_dependencies; 
 
             toolbox_set_config_confirm_message;
+            
+            generate_local_env;
 
             set_config_exec;
 
         fi
+
+    elif [[ "$set_security" ]]; then
+
+        function toolbox_set_security_confirm_message() {
+
+            echo "Warning: This command would override security values* values of your exchange with new ones provided."
+            echo "*Security values: Allowed domains, Allowed Admin IPs, reCaptcha Access & Secret keys."
+            echo "Do you want to continue? (y/N)"
+            read answer
+
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                echo "Exiting..."
+                exit 0;
+            fi
+
+        }
+
+        if [[ "$USE_KUBERNETES" ]]; then 
+
+            toolbox_set_security_confirm_message;
+
+            set_security_input;
+
+            echo "Generating Kubernetes Configmap."
+            generate_kubernetes_configmap;
+
+            echo "Generating Kubernetes Secret."
+            generate_kubernetes_secret;
+
+             echo "Applying configmap on the namespace."
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+            
+            echo "Applying secret on the namespace."
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+            
+            set_security_exec;
+            
+
+        elif [[ ! "$USE_KUBERNETES" ]]; then 
+        
+            check_docker_compose_dependencies; 
+
+            toolbox_set_security_confirm_message;
+
+            set_security_input;
+
+            set_security_exec;
+
+        fi
+
 
 
     elif [[ "$CONNECT_DATABASE" ]]; then
@@ -6087,23 +6040,14 @@ elif [[ "$1" == "version" ]]; then
      
     /bin/cat << EOF
 
-                        ..,,,..
-         ,ifGi      .:tLG8@@@@@@0Cfi,
-      .iC@@@@1    :f0@@@@@0GGG08@@@@@Ci.
-     10@@@0f;.  ,L@@@@C1:.     .,;f0@@@0i
-   .C@@@G;     i8@@8t,              iG@@@L
-  .G@@@t      i@@@0:                  f@@@C
-  t@@@t      ,8@@8,                    f@@@1
- .8@@0       1@@@1                     .8@@0
- ,@@@G       f@@@;                      G@@8.
- .8@@0       1@@@1                     .8@@0
-  f@@@t      ,8@@8.                    f@@@t
-  .G@@@t      i@@@0,                  t@@@G
-   .C@@@C;     i@@@8t,              ;G@@@C.
-     18@@@Gt;.  ,C@@@8Li,.      ,;f0@@@0i
-      .1G@@@@1    :f8@@@@80GGGG8@@@@@Gi.
-         ,ifGi      .;tC08@@@@@@8Cfi,
-                         .,,,,,.
+
+:tt1   ;tti          LCC:1CC1         ,11tffttt            :tt;  ;tfi.tt1 ,,,
+t@@8   f@@0  ,;ii;.  8@@;L@@f .:i1i:. ;@@@CLCGC;ii; ,iii.  t@@L,C@@L,.CCf,0@@;,
+t@@8LLf0@@G,C@@G0@8L.0@@;L@@t.C80L0@8i:@@8tt;  :8@@1G@@1.  t@@0@@8:  ,8888@@@8G
+t@@8CCC0@@CC@@L  G@@fG@@;L@@t,fCCfG@@L:@@@LLi    C@@@8,    t@@@C8@0: ,@@G.G@@,
+t@@8   L@@G1@@0;;8@@i0@@;L@@fC@@Li0@@f:@@@iii11:i8@G@@C,   t@@L :0@@1,@@0 G@@1;
+iGGL   tGGf ;LG00Gf: CGG:tGG1:LGGCLCG1:GGG0000fiGGL 1GGf.  iCC1  .LGG1CGf :LG0G,
+
 
 HollaEx CLI : v$(cat $SCRIPTPATH/version), Made with <3 by bitHolla Inc.
 

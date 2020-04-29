@@ -27,12 +27,23 @@ autoScaling:
   hpa:
     enable: false 
     maxReplicas: 4
-    avgMemory: 1300m
+    avgMemory: 1300000000
 
 APM_URL:
 
 podRestart_webhook_url:
 
+resources:
+  api:
+    limits:
+      memory: "1536Mi"
+    requests:
+      memory: "1536Mi"
+  general:
+    limits:
+      memory: "1024Mi"
+    requests:
+      memory: "128Mi"
 
 job:
   enable: false
