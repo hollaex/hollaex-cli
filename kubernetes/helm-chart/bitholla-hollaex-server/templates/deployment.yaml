@@ -111,16 +111,16 @@ spec:
         resources:
           limits:
 {{- if or (eq .Values.DEPLOYMENT_MODE "api") (eq .Values.DEPLOYMENT_MODE "stream") (eq .Values.DEPLOYMENT_MODE "plugins-controller") }}
-            memory: "1536Mi"
+            memory: {{.Values.resources.api.limits.memory}}
 {{- else }}
-            memory: "2048Mi"
+            memory: {{.Values.resources.general.limits.memory}}
 {{- end }}
             cpu: "1000m"
           requests:
 {{- if eq .Values.DEPLOYMENT_MODE "api" }}
-            memory: "1536Mi"
+            memory: {{.Values.resources.api.requests.memory}}
 {{- else }}
-            memory: "512Mi"
+            memory: {{.Values.resources.general.requests.memory}}
 {{- end }}
             cpu: "10m"
         
