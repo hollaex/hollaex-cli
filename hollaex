@@ -3078,6 +3078,9 @@ elif [[ "$1" == "upgrade" ]]; then
 
     load_config_variables;
 
+    # Update HollaEx CLI to latest if there is newer release available.
+    update_hollaex_cli_to_latest;
+
     if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then
 
         echo "Checking the version compatibility between the latest HollaEx CLI and your local Kit..."
@@ -3107,9 +3110,6 @@ elif [[ "$1" == "upgrade" ]]; then
         check_core_version_compatibility_range;
 
     fi
-
-    # Update HollaEx CLI to latest if there is newer release available.
-    update_hollaex_cli_to_latest;
 
     # Override target docker image version if user passed it manually with flag / version range available at each CLI releases.  
     if [[ ! "$NO_IMAGE_BUILD" ]]; then   
