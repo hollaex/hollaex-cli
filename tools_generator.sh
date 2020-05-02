@@ -415,9 +415,9 @@ services:
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
-      - hollaex-influxdb
-      - hollaex-redis
-      - hollaex-db
+      - ${ENVIRONMENT_EXCHANGE_NAME}-influxdb
+      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
   
   ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
@@ -457,9 +457,9 @@ services:
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
-      - hollaex-influxdb
-      - hollaex-redis
-      - hollaex-db
+      - ${ENVIRONMENT_EXCHANGE_NAME}-influxdb
+      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-stream:
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
@@ -498,9 +498,9 @@ services:
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
-      - hollaex-influxdb
-      - hollaex-redis
-      - hollaex-db
+      - ${ENVIRONMENT_EXCHANGE_NAME}-influxdb
+      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
 
   ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
     image: ${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_REGISTRY:-bitholla/nginx-with-certbot}:${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_VERSION:-1.15.8}
@@ -569,8 +569,8 @@ EOL
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
-      - hollaex-redis
-      - hollaex-db
+      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
       
 EOL
 
@@ -654,9 +654,9 @@ services:
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
-      - hollaex-influxdb
-      - hollaex-redis
-      - hollaex-db
+      - ${ENVIRONMENT_EXCHANGE_NAME}-influxdb
+      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
   
   ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
@@ -673,9 +673,9 @@ services:
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
-      - hollaex-influxdb
-      - hollaex-redis
-      - hollaex-db
+      - ${ENVIRONMENT_EXCHANGE_NAME}-influxdb
+      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-stream:
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
@@ -689,9 +689,9 @@ services:
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
-      - hollaex-influxdb
-      - hollaex-redis
-      - hollaex-db
+      - ${ENVIRONMENT_EXCHANGE_NAME}-influxdb
+      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
 
   ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
     image: ${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_REGISTRY:-bitholla/nginx-with-certbot}:${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_VERSION:-1.15.8}
@@ -738,8 +738,8 @@ EOL
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
-      - hollaex-redis
-      - hollaex-db      
+      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db      
 EOL
 
   done
