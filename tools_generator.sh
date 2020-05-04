@@ -1313,6 +1313,10 @@ function helm_dynamic_trading_paris() {
                    --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
                    --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                    --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                   --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_ENGINE_CPU_LIMITS:-1000m}" \
+                   --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_ENGINE_MEMORY_LIMITS:-1024Mi}" \
+                   --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_ENGINE_CPU_REQUESTS:-10m}" \
+                   --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_ENGINE_MEMORY_REQUESTS:-128Mi}" \
                    --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
                    -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
                    -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server

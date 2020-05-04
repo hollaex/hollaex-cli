@@ -34,16 +34,12 @@ APM_URL:
 podRestart_webhook_url:
 
 resources:
-  api:
-    limits:
-      memory: "1536Mi"
-    requests:
-      memory: "1536Mi"
-  general:
-    limits:
-      memory: "1024Mi"
-    requests:
-      memory: "128Mi"
+  limits:
+    cpu: "1000m"
+    memory: "1536Mi"
+  requests:
+    cpu: "10m"
+    memory: "256Mi"
 
 job:
   enable: false
