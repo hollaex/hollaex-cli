@@ -38,7 +38,7 @@ function local_database_init() {
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/initializeInflux.js
 
       echo "Setting up the exchange with provided activation code"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/setExchange.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/setActivationCode.js
 
     elif [[ "$1" == 'upgrade' ]]; then
 
@@ -57,7 +57,7 @@ function local_database_init() {
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/initializeInflux.js
 
       echo "Setting up the exchange with provided activation code"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/setExchange.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/setActivationCode.js
     
     # elif [[ "$1" == 'dev' ]]; then
 
@@ -108,7 +108,7 @@ function kubernetes_database_init() {
     kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
 
     echo "Setting up the exchange with provided activation code"
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/setExchange.js
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/setActivationCode.js
 
   elif [[ "$1" == "upgrade" ]]; then
 
@@ -415,9 +415,9 @@ services:
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
-      - hollaex-influxdb
-      - hollaex-redis
-      - hollaex-db
+      - ${ENVIRONMENT_EXCHANGE_NAME}-influxdb
+      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
   
   ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
@@ -457,9 +457,9 @@ services:
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
-      - hollaex-influxdb
-      - hollaex-redis
-      - hollaex-db
+      - ${ENVIRONMENT_EXCHANGE_NAME}-influxdb
+      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-stream:
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
@@ -498,9 +498,9 @@ services:
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
-      - hollaex-influxdb
-      - hollaex-redis
-      - hollaex-db
+      - ${ENVIRONMENT_EXCHANGE_NAME}-influxdb
+      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
 
   ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
     image: ${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_REGISTRY:-bitholla/nginx-with-certbot}:${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_VERSION:-1.15.8}
@@ -569,8 +569,8 @@ EOL
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
-      - hollaex-redis
-      - hollaex-db
+      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
       
 EOL
 
@@ -654,9 +654,9 @@ services:
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
-      - hollaex-influxdb
-      - hollaex-redis
-      - hollaex-db
+      - ${ENVIRONMENT_EXCHANGE_NAME}-influxdb
+      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
   
   ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
@@ -673,9 +673,9 @@ services:
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
-      - hollaex-influxdb
-      - hollaex-redis
-      - hollaex-db
+      - ${ENVIRONMENT_EXCHANGE_NAME}-influxdb
+      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-stream:
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
@@ -689,9 +689,9 @@ services:
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
-      - hollaex-influxdb
-      - hollaex-redis
-      - hollaex-db
+      - ${ENVIRONMENT_EXCHANGE_NAME}-influxdb
+      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
 
   ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
     image: ${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_REGISTRY:-bitholla/nginx-with-certbot}:${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_VERSION:-1.15.8}
@@ -738,8 +738,8 @@ EOL
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
-      - hollaex-redis
-      - hollaex-db      
+      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db      
 EOL
 
   done
@@ -4534,7 +4534,7 @@ EOF
 #                   --env "API_NA<E=${PAIR_BASE}" \
 #                   --env "ACTIVATION_CODE=${PAIR_2}" \
 #                   ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
-#                   node tools/dbs/setExchange.js; then
+#                   node tools/dbs/setActivationCode.js; then
   
 #     echo "Restarting the exchange to apply changes."
 
@@ -5438,7 +5438,7 @@ EOL
     # fi
 
     echo "Setting up the exchange with provided activation code"
-    docker exec --env "ACTIVATION_CODE=${HOLLAEX_SECRET_ACTIVATION_CODE}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/setExchange.js
+    docker exec --env "ACTIVATION_CODE=${HOLLAEX_SECRET_ACTIVATION_CODE}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/setActivationCode.js
           
   fi
 

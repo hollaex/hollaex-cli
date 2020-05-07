@@ -45,7 +45,7 @@ spec:
 {{- else if eq .Values.job.mode "set_activation_code" }}
 
         args:
-          - node tools/dbs/setExchange.js;
+          - node tools/dbs/setActivationCode.js;
 
 {{- else if eq .Values.job.mode "set_config" }}
 
@@ -64,7 +64,7 @@ spec:
             node tools/dbs/checkConstants.js;
             node tools/dbs/runTriggers.js;
             node tools/dbs/initializeInflux.js;
-            node tools/dbs/setExchange.js;
+            node tools/dbs/setActivationCode.js;
 
 {{- end }}
 
