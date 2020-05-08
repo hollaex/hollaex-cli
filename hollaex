@@ -851,6 +851,7 @@ elif [[ "$1" == "setup" ]]; then
                      --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_API_MEMORY_LIMITS:-1536Mi}" \
                      --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_API_CPU_REQUESTS:-10m}" \
                      --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_API_MEMORY_REQUESTS:-1536Mi}" \
+                     --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
                      -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
                      -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
@@ -866,6 +867,7 @@ elif [[ "$1" == "setup" ]]; then
                      --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_STREAM_MEMORY_LIMITS:-1024Mi}" \
                      --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_STREAM_CPU_REQUESTS:-10m}" \
                      --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_STREAM_MEMORY_REQUESTS:-128Mi}" \
+                     --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
                      -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
                      -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
@@ -880,6 +882,7 @@ elif [[ "$1" == "setup" ]]; then
                      --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_PLUGINS_MEMORY_LIMITS:-1024Mi}" \
                      --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_PLUGINS_CPU_REQUESTS:-10m}" \
                      --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_PLUGINS_MEMORY_REQUESTS:-128Mi}" \
+                     --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
                      -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
                      -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
@@ -3137,8 +3140,6 @@ elif [[ "$1" == "upgrade" ]]; then
         # Check Kit version compatibility range.
         check_kit_version_compatibility_range;
 
-        check_core_version_compatibility_range;
-
     fi
 
     # Override target docker image version if user passed it manually with flag / version range available at each CLI releases.  
@@ -3149,6 +3150,8 @@ elif [[ "$1" == "upgrade" ]]; then
         export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION
     
     fi
+
+    check_core_version_compatibility_range;
 
     # Override target docker registry if user passed it manually with flag.
     if [[ "$ENVIRONMENT_USER_REGISTRY_OVERRIDE" ]]; then
@@ -3295,6 +3298,7 @@ elif [[ "$1" == "upgrade" ]]; then
                      --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_PLUGINS_MEMORY_LIMITS:-1536Mi}" \
                      --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_PLUGINS_CPU_REQUESTS:-10m}" \
                      --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_PLUGINS_MEMORY_REQUESTS:-1536Mi}" \
+                     --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
                      -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
                      -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
         
