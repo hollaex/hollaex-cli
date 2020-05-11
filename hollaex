@@ -3139,7 +3139,11 @@ elif [[ "$1" == "upgrade" ]]; then
     
     fi
 
-    check_core_version_compatibility_range;
+    if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then
+
+        check_core_version_compatibility_range;
+
+    fi
 
     # Override target docker registry if user passed it manually with flag.
     if [[ "$ENVIRONMENT_USER_REGISTRY_OVERRIDE" ]]; then
