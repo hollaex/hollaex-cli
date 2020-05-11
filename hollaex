@@ -78,6 +78,7 @@ Options:
         --backup, Run the full backup with 'pg_dumpall' for exchange's PostgreSQL database.
         --flush_redis, Run the full flush of Redis stored data.
         --upgrade_api_only, Do zero-downtime rolling upgrade for exchange API contianers on Kubernetes.
+        --upgrade_plugins_only, Do zero-downtime rolling upgrade for exchange Plugins contianers on Kubernetes.
         --add_coin, Add new currency on exchange.
         --remove_coin, Remove exisiting currency from exhcnage.
         --add_trading_pair, Add new trading pair on ehchange.
@@ -4525,7 +4526,16 @@ elif [[ "$1" == "toolbox" ]]; then
                 UPGRADE_API_ONLY=true
                 ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$1
                 TOOLBOX_ENABLE=true
-                echo "HollaEx CLI will rolling-upgrade API containers only for Kubernetes."
+                echo "HollaEx CLI will rolling-upgrade API pods on Kubernetes."
+                shift; continue
+                ;;
+            --upgrade_plugins_only)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                UPGRADE_PLUGINS_ONLY=true
+                ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$1
+                TOOLBOX_ENABLE=true
+                echo "HollaEx CLI will rolling-upgrade plugins pods on Kubernetes."
                 shift; continue
                 ;;
             --add_coin)
@@ -5003,7 +5013,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to do rolling upgrade for $HOLLAEX_CONFIGMAP_API_NAME api pods to v$ENVIRONMENT_DOCKER_IMAGE_VERSION on this cluster? (y/N)"
+                echo "Are you sure you want to do rolling upgrade for $HOLLAEX_CONFIGMAP_API_NAME api pods to v $ENVIRONMENT_DOCKER_IMAGE_VERSION on this cluster? (y/N)"
                 echo "Configmap values would be updated either while on the rolling upgrade"
 
                 read answer
@@ -5051,12 +5061,49 @@ elif [[ "$1" == "toolbox" ]]; then
         elif [[ ! "$USE_KUBERNETES" ]] ; then
 
             echo "HollaEx CLI only supports rolling-upgrade for api contianers on Kubernets environment."
-            echo "Please use --kube flag to point Kubernetes."
+            echo "Please use --kube flag to target Kubernetes."
 
             exit 1;
 
         fi
 
+    elif [[ "$UPGRADE_PLUGINS_ONLY" ]]; then
+
+        if [[ "$USE_KUBERNETES" ]] ; then
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "Are you sure you want to do rolling upgrade for $HOLLAEX_CONFIGMAP_API_NAME plugins pods to v $ENVIRONMENT_DOCKER_IMAGE_VERSION on this cluster? (y/N)"
+                read answer
+
+                if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                    echo "Exiting..."
+                    exit 0;
+                fi
+
+            fi
+
+            echo "Upgrading $HOLLAEX_CONFIGMAP_API_NAME plugins pods only on Kubernetes."
+            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-plugins-controller \
+                        --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                        --reuse-values \
+                        --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                        $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+
+            echo "Rolling upgrade process has been finished."
+            echo "It would take few minutes to Kubernetes replace api pods to new version completely. Please check the status constantly."
+            
+            exit 0;
+            
+        
+        elif [[ ! "$USE_KUBERNETES" ]] ; then
+
+            echo "HollaEx CLI only supports rolling-upgrade for plugins contianers on Kubernets environment."
+            echo "Please use --kube flag to target Kubernetes."
+
+            exit 1;
+
+        fi
 
     elif [[ "$ADD_COIN" ]]; then
 
