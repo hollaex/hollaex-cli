@@ -4899,46 +4899,38 @@ function build_user_hollaex_core() {
 
       fi
 
-      if [[ "$RUN_WITH_VERIFY" == false ]]; then
-
-        push_user_hollaex_core;
-      
-      else 
+      if [[ "$RUN_WITH_VERIFY" == true ]]; then
         
-        if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
           echo "Please type in your new image name. ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION)"
           echo "Press enter to proceed with the previous name."
           read tag
         
-        else 
+      fi 
 
-          echo "Using $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE as Docker image tag..."
-        
-        fi
+      export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} | cut -f1 -d ":")
+      export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION} | cut -f2 -d ":")
 
-        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} | cut -f1 -d ":")
-        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION} | cut -f2 -d ":")
+      override_user_hollaex_core;
 
-        override_user_hollaex_core;
+      docker tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
 
-        docker tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
+      export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE
+      export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
 
-        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE
-        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
-
-        echo "Your new image name is: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION."
+      echo "Your new image name is: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION."
+      
+      if [[ "$RUN_WITH_VERIFY" == true ]]; then 
 
         echo "Do you want to push this image to your Docker Registry? (y/N) (Optional)"
         read pushAnswer
-          
+        
         if [[ "$pushAnswer" = "${pushAnswer#[Yy]}" ]] ;then
 
-            echo "Skipping..."
-            echo "Your image name: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION."
-            echo "You can later tag and push it by using 'docker tag' and 'docker push' command manually."
+          echo "Skipping..."
+          echo "Your image name: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION."
+          echo "You can later tag and push it by using 'docker tag' and 'docker push' command manually."
 
-            export USER_HOLLAEX_CORE_PUSHED=false
+          export USER_HOLLAEX_CORE_PUSHED=false
 
         else 
 
@@ -4946,6 +4938,11 @@ function build_user_hollaex_core() {
           export USER_HOLLAEX_CORE_PUSHED=true
       
         fi
+
+      else 
+
+        push_user_hollaex_core;
+        export USER_HOLLAEX_CORE_PUSHED=true
       
       fi
 

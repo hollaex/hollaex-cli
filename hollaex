@@ -616,23 +616,32 @@ elif [[ "$1" == "setup" ]]; then
 
     # PRESET env for user initial setup config value selection
     CONTINUE_WITH_PRECONFIGURED_VALUES=false 
+    
+    if [[ "$RUN_WITH_VERIFY" == true ]]; then 
 
-    # Check that settings files are already configured.
-    if [[ ! "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]] && [[ $HOLLAEX_SECRET_ACTIVATION_CODE ]]; then
+        # Check that settings files are already configured.
+        if [[ ! "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]] && [[ $HOLLAEX_SECRET_ACTIVATION_CODE ]]; then
 
-        echo "HollaEx CLI detected the preconfigured values on your HollaEx Kit."
-        echo "Do you want to proceed with these preconfigured values? (Y/n)"
-        read answer
+            echo "HollaEx CLI detected the preconfigured values on your HollaEx Kit."
+            echo "Do you want to proceed with these preconfigured values? (Y/n)"
+            read answer
 
-        if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+            if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+                
+                export CONTINUE_WITH_PRECONFIGURED_VALUES=false
             
-            export CONTINUE_WITH_PRECONFIGURED_VALUES=false
-        
-        else 
+            else 
 
-            export CONTINUE_WITH_PRECONFIGURED_VALUES=true
+                export CONTINUE_WITH_PRECONFIGURED_VALUES=true
+
+            fi
 
         fi
+    
+    else 
+
+        echo "Proceeding with the preconfigured values..."
+        export CONTINUE_WITH_PRECONFIGURED_VALUES=true
 
     fi
 
@@ -691,10 +700,10 @@ elif [[ "$1" == "setup" ]]; then
     load_config_variables;
     
     export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_DOCKER_IMAGE_VERSION
-
     override_docker_image_version;
+
     export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE}-$(date +%y%m%d%H%M)"
 
     build_user_hollaex_core;
 
