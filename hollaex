@@ -501,6 +501,13 @@ elif [[ "$1" == "setup" ]]; then
                 echo "Skipping the command confirmation."
                 shift; continue
                 ;;
+            --user-image-registry)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE=$1
+                echo "Target hollaex docker registry : $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE."
+                shift; continue
+                ;;
             --reconfigure)
                 RECONFIGURE_BASIC_SETTINGS=true
                 echo "HollaEx CLI will proceed to reconfigure your exchange's basic settings."
@@ -701,8 +708,14 @@ elif [[ "$1" == "setup" ]]; then
     
     export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_DOCKER_IMAGE_VERSION
     override_docker_image_version;
+    
+    # export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+    if [[ "$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE" ]]; then 
 
-    export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE
+    
+    fi
+
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION}-$(date +%y%m%d%H%M)"
 
     build_user_hollaex_core;
@@ -2945,7 +2958,7 @@ elif [[ "$1" == "build" ]]; then
                 echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
-            --registry)
+            --user-image-registry)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE=$1
@@ -3687,6 +3700,14 @@ elif [[ "$1" == "web" ]]; then
                 WEB_CLIENT_TERMINATE=true
                 shift; continue
                 ;;
+            # Build related
+            --user-image-registry)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE=$1
+                echo "Target hollaex docker registry : $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE."
+                shift; continue
+                ;;
             --*) 
                 err_msg "Invalid option: $1"
                 print_usage;
@@ -3734,6 +3755,12 @@ elif [[ "$1" == "web" ]]; then
 
     # hollaex web --setup
     if [[ "$WEB_CLIENT_SETUP" ]]; then
+
+        if [[ "$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE" ]]; then 
+        
+            export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE
+        
+        fi 
 
         export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat version)-$(date +%y%m%d%H%M)"
         build_user_hollaex_web;
