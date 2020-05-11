@@ -3168,6 +3168,12 @@ elif [[ "$1" == "upgrade" ]]; then
     # Override target docker image version if user passed it manually with flag / version range available at each CLI releases.  
     if [[ ! "$NO_IMAGE_BUILD" ]]; then   
 
+        if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
+
+            export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$HOLLAEX_CORE_MAXIMUM_COMPATIBLE
+
+        fi 
+
         override_docker_image_version;
         export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
     
