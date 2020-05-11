@@ -703,7 +703,7 @@ elif [[ "$1" == "setup" ]]; then
     override_docker_image_version;
 
     export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE}-$(date +%y%m%d%H%M)"
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION}-$(date +%y%m%d%H%M)"
 
     build_user_hollaex_core;
 
@@ -3012,6 +3012,7 @@ elif [[ "$1" == "build" ]]; then
 
     fi
 
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION}-$(date +%y%m%d%H%M)"
 
     build_user_hollaex_core;
 
@@ -3156,7 +3157,6 @@ elif [[ "$1" == "upgrade" ]]; then
 
         override_docker_image_version;
         export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
-        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION
     
     fi
 
@@ -3172,6 +3172,7 @@ elif [[ "$1" == "upgrade" ]]; then
     if [[ ! "$NO_IMAGE_BUILD" ]]; then
 
         # Building new HollaEx Core image based on passed (or specified) version.
+        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION}-$(date +%y%m%d%H%M)"
         build_user_hollaex_core;
     
     fi
@@ -3734,6 +3735,7 @@ elif [[ "$1" == "web" ]]; then
     # hollaex web --setup
     if [[ "$WEB_CLIENT_SETUP" ]]; then
 
+        export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat version)-$(date +%y%m%d%H%M)"
         build_user_hollaex_web;
 
         if [[ "$USE_KUBERNETES" ]]; then
@@ -4336,7 +4338,8 @@ elif [[ "$1" == "web" ]]; then
     fi
 
     if [[ "$WEB_CLIENT_REBUILD" ]];  then
-    
+        
+        export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat version)-$(date +%y%m%d%H%M)"
         build_user_hollaex_web;
 
         exit 0;
