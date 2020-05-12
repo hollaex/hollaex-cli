@@ -4562,6 +4562,20 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "HollaEx CLI will proceed to remove trading pair on your existing exchange."
                 shift; continue
                 ;;
+            --coin_symbol)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                IS_COIN_SYMBOL_PASSED=true
+                COIN_SYMBOL=$1
+                shift; continue
+                ;;
+             --pair_name)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                IS_PAIR_NAME_PASSED=true
+                PAIR_NAME=$1
+                shift; continue
+                ;;
             --is_hollaex_setup)
                 IS_HOLLAEX_SETUP=true
                 shift; continue
@@ -5158,6 +5172,33 @@ elif [[ "$1" == "toolbox" ]]; then
                 docker exec --env "CURRENCIES=${HOLLAEX_CONFIGMAP_CURRENCIES}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null;
             
             fi
+             
+        elif [[ "$IS_COIN_SYMBOL_PASSED" ]]; then
+
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
+
+                    export CONFIGMAP_FILE_PATH=$i
+
+                fi
+
+            done
+
+            if command grep -q "ENVIRONMENT_ADD_COIN_$(echo $COIN_SYMBOL | tr a-z A-Z)_" $CONFIGMAP_FILE_PATH > /dev/null ; then
+
+                echo "Proceeding with stored configurations..."
+                export VALUE_IMPORTED_FROM_CONFIGMAP=true
+
+                add_coin_exec;
+
+            else 
+
+                echo "Failed to detect $COIN_SYMBOL configuration in your settings files."
+                echo "Please check the configuration and try again."
+                exit 1;
+
+            fi 
 
         else 
 
@@ -5174,10 +5215,41 @@ elif [[ "$1" == "toolbox" ]]; then
 
         printf "\033[93mWarning: Removing new coin requires full restart of the exchange!\033[39m\n"
         echo "Please double confirm that you are good to proceed"
-        
-        remove_coin_input;
 
-        remove_coin_exec;
+        if [[ "$IS_COIN_SYMBOL_PASSED" ]]; then
+
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
+
+                    export CONFIGMAP_FILE_PATH=$i
+
+                fi
+
+            done
+
+            if command grep -q "ENVIRONMENT_ADD_COIN_$(echo $COIN_SYMBOL | tr a-z A-Z)_" $CONFIGMAP_FILE_PATH > /dev/null ; then
+
+                echo "Proceeding with stored configurations..."
+                export VALUE_IMPORTED_FROM_CONFIGMAP=true
+
+                remove_coin_exec;
+
+            else 
+
+                echo "Failed to detect $COIN_SYMBOL configuration in your settings files."
+                echo "Please check the configuration and try again."
+                exit 1;
+
+            fi 
+
+        else 
+            
+            remove_coin_input;
+
+            remove_coin_exec;
+        
+        fi
     
     elif [[ "$ADD_TRADING_PAIR" ]]; then
 
@@ -5237,6 +5309,33 @@ elif [[ "$1" == "toolbox" ]]; then
             
             fi
 
+        elif [[ "$IS_PAIR_NAME_PASSED" ]]; then
+
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
+
+                    export CONFIGMAP_FILE_PATH=$i
+
+                fi
+
+            done
+
+                if command grep -q "ENVIRONMENT_ADD_PAIR_$(echo $PAIR_NAME | tr a-z A-Z)_" $CONFIGMAP_FILE_PATH > /dev/null ; then
+
+                    echo "Proceeding with stored configurations..."
+                    export VALUE_IMPORTED_FROM_CONFIGMAP=true
+
+                    add_pair_exec;
+
+                else 
+
+                    echo "Failed to detect $PAIR_NAME configuration in your settings files."
+                    echo "Please check the configuration and try again."
+                    exit 1;
+
+                fi 
+
         else 
 
             printf "\033[93mWarning: Adding new pair requires full restart of the exchange!\033[39m\n"
@@ -5252,10 +5351,44 @@ elif [[ "$1" == "toolbox" ]]; then
 
         printf "\033[93mWarning: Removing new pair requires full restart of the exchange!\033[39m\n"
         echo "Please double confirm that you are good to proceed"
-        
-        remove_pair_input;
 
-        remove_pair_exec;
+        if [[ "$IS_PAIR_NAME_PASSED" ]]; then
+
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
+
+                    export CONFIGMAP_FILE_PATH=$i
+
+                fi
+
+            done 
+
+            PAIR_BASE=$(echo $PAIR_NAME | cut -f1 -d '-')
+            PAIR_2=$(echo $PAIR_NAME | cut -f2 -d '-')
+
+            if command grep -q "ENVIRONMENT_ADD_PAIR_$(echo $PAIR_BASE | tr a-z A-Z)_$(echo $PAIR_2 | tr a-z A-Z)_" $CONFIGMAP_FILE_PATH > /dev/null ; then
+
+                echo "Proceeding with stored configurations..."
+                export VALUE_IMPORTED_FROM_CONFIGMAP=true
+
+                remove_pair_exec;
+
+            else 
+
+                echo "Failed to detect $PAIR_NAME configuration in your settings files."
+                echo "Please check the configuration and try again."
+                exit 1;
+
+            fi 
+
+        else 
+        
+            remove_pair_input;
+
+            remove_pair_exec;
+        
+        fi 
     
     # elif [[ "$RECONFIGURE_BASIC_SETTINGS" ]]; then
 
