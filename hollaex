@@ -4699,6 +4699,12 @@ elif [[ "$1" == "toolbox" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
         fi
 
+        if [[ ! -f "$TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml" ]]; then
+
+            generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hollaex
+
+        fi
+
     else 
 
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
