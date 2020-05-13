@@ -4690,6 +4690,33 @@ elif [[ "$1" == "toolbox" ]]; then
         
     fi
 
+    #Creating kubernetes_config directory for generating config for Kubernetes.
+
+    if [[ "$USE_KUBERNETES" ]]; then 
+        
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/kubernetes;
+            mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
+        fi
+
+    else 
+
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local;
+        fi
+
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local/nginx;
+        fi
+
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
+        fi
+
+    fi
+
+
+
     # For dev command legacy mode
     if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
 
