@@ -808,6 +808,10 @@ elif [[ "$1" == "setup" ]]; then
             helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-redis \
                         --namespace $ENVIRONMENT_EXCHANGE_NAME \
                         --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                        --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_REDIS_CPU_LIMITS:-100m}" \
+                        --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_REDIS_MEMORY_LIMITS:-200Mi}" \
+                        --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_REDIS_CPU_REQUESTS:-10m}" \
+                        --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_REDIS_MEMORY_REQUESTS:-100Mi}" \
                         $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT)
         
         fi
@@ -823,6 +827,10 @@ elif [[ "$1" == "setup" ]]; then
                         --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" \
                         --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" \
                         --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                        --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_POSTGRESQL_CPU_LIMITS:-100m}" \
+                        --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_POSTGRESQL_MEMORY_LIMITS:-200Mi}" \
+                        --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_POSTGRESQL_CPU_REQUESTS:-10m}" \
+                        --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_POSTGRESQL_MEMORY_REQUESTS:-100Mi}" \
                         -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml \
                         -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml \
                         $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
@@ -843,6 +851,10 @@ elif [[ "$1" == "setup" ]]; then
                         --set setCustomUser.enabled="true" \
                         --set setCustomUser.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                         --set persistence.size="$ENVIRONMENT_KUBERNETES_INFLUXDB_VOLUMESIZE" \
+                        --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_INFLUXDB_CPU_LIMITS:-200m}" \
+                        --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_INFLUXDB_MEMORY_LIMITS:-400Mi}" \
+                        --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_INFLUXDB_CPU_REQUESTS:-100m}" \
+                        --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_INFLUXDB_MEMORY_REQUESTS:-256Mi}" \
                         -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb/values.yaml \
                         -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-influxdb.yaml \
                         $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb $(kubernetes_set_backend_image_target is_influxdb $ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION)
@@ -855,7 +867,8 @@ elif [[ "$1" == "setup" ]]; then
         create_kubernetes_docker_registry_secret;
 
         # FOR GENERATING NODESELECTOR VALUES
-        generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hollaex
+        generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATEFUL_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateful
+        generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateless
 
         echo "Running $HOLLAEX_CONFIGMAP_API_NAME workload containers."
 
@@ -870,12 +883,12 @@ elif [[ "$1" == "setup" ]]; then
                      --set autoScaling.hpa.enable="true" \
                      --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                      --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                     --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_API_CPU_LIMITS:-1000m}" \
-                     --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_API_MEMORY_LIMITS:-1536Mi}" \
+                     --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_API_CPU_LIMITS:-500m}" \
+                     --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_API_MEMORY_LIMITS:-1024Mi}" \
                      --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_API_CPU_REQUESTS:-10m}" \
-                     --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_API_MEMORY_REQUESTS:-1536Mi}" \
+                     --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_API_MEMORY_REQUESTS:-1024Mi}" \
                      --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
                      -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream \
@@ -886,12 +899,12 @@ elif [[ "$1" == "setup" ]]; then
                      --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
                      --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                      --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                     --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_STREAM_CPU_LIMITS:-1000m}" \
-                     --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_STREAM_MEMORY_LIMITS:-1024Mi}" \
+                     --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_STREAM_CPU_LIMITS:-500m}" \
+                     --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_STREAM_MEMORY_LIMITS:-512Mi}" \
                      --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_STREAM_CPU_REQUESTS:-10m}" \
                      --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_STREAM_MEMORY_REQUESTS:-128Mi}" \
                      --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
                      -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-plugins-controller \
@@ -901,12 +914,12 @@ elif [[ "$1" == "setup" ]]; then
                      --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
                      --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                      --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                     --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_PLUGINS_CPU_LIMITS:-1000m}" \
-                     --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_PLUGINS_MEMORY_LIMITS:-1024Mi}" \
+                     --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_PLUGINS_CPU_LIMITS:-500m}" \
+                     --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_PLUGINS_MEMORY_LIMITS:-512Mi}" \
                      --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_PLUGINS_CPU_REQUESTS:-10m}" \
                      --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_PLUGINS_MEMORY_REQUESTS:-128Mi}" \
                      --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                      -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
         helm_dynamic_trading_paris run;
@@ -2818,9 +2831,6 @@ elif [[ "$1" == "restart" ]]; then
         echo "Applying latest secret on the cluster"
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
-        # FOR GENERATING NODESELECTOR VALUES
-        generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hollaex
-
         echo "Restarting all exchange containers on cluster"
         kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
 
@@ -3282,7 +3292,8 @@ elif [[ "$1" == "upgrade" ]]; then
         fi
 
         # FOR GENERATING NODESELECTOR VALUES
-        generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hollaex
+        generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATEFUL_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateful
+        generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateless
 
         echo "Upgrading $HOLLAEX_CONFIGMAP_API_NAME Pods on Kubernetes."
         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api \
@@ -3300,7 +3311,7 @@ elif [[ "$1" == "upgrade" ]]; then
                     --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_API_CPU_REQUESTS:-10m}" \
                     --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_API_MEMORY_REQUESTS:-1536Mi}" \
                     --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-                    -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                    -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
                     -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
                     $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
@@ -3317,7 +3328,7 @@ elif [[ "$1" == "upgrade" ]]; then
                     --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_STREAM_CPU_REQUESTS:-10m}" \
                     --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_STREAM_MEMORY_REQUESTS:-1536Mi}" \
                     --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-                    -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                    -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
                     -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
                     $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
@@ -3333,8 +3344,9 @@ elif [[ "$1" == "upgrade" ]]; then
                      --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_PLUGINS_CPU_REQUESTS:-10m}" \
                      --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_PLUGINS_MEMORY_REQUESTS:-1536Mi}" \
                      --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
-                     -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
+                     -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                     $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
         
         helm_dynamic_trading_paris run;
 
@@ -3831,7 +3843,7 @@ elif [[ "$1" == "web" ]]; then
             fi
 
             # FOR GENERATING NODESELECTOR VALUES
-            generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hollaex
+            generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateless
 
             echo "Running the web server on Kubernetes..."
             if command helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-web \
@@ -3845,7 +3857,7 @@ elif [[ "$1" == "web" ]]; then
                         --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_WEB_CPU_REQUESTS:-2m}" \
                         --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_WEB_MEMORY_REQUESTS:-100Mi}" \
                         --set envName="$ENVIRONMENT_EXCHANGE_NAME-web-env" \
-                        -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                        -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
                         -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web; then
 
 
@@ -4234,6 +4246,8 @@ elif [[ "$1" == "web" ]]; then
 
             if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
 
+                export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat version)-$(date +%y%m%d%H%M)"
+                echo "Building the web server image..."
                 build_user_hollaex_web;
             
             else 
@@ -4244,6 +4258,7 @@ elif [[ "$1" == "web" ]]; then
         
         else 
 
+            export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat version)-$(date +%y%m%d%H%M)"
             echo "Building the web server image..."
             build_user_hollaex_web;
 
@@ -4279,6 +4294,9 @@ elif [[ "$1" == "web" ]]; then
             echo "Applying web ingress rules for Kubernetes"
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
 
+            # FOR GENERATING NODESELECTOR VALUES
+            generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateless
+
             echo "Restarting the $HOLLAEX_CONFIGMAP_API_NAME web server."
             if command helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-web \
                         --namespace $ENVIRONMENT_EXCHANGE_NAME \
@@ -4292,7 +4310,7 @@ elif [[ "$1" == "web" ]]; then
                         --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_WEB_MEMORY_LIMITS:-1024Mi}" \
                         --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_WEB_CPU_REQUESTS:-2m}" \
                         --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_WEB_MEMORY_REQUESTS:-100Mi}" \
-                        -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                        -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
                         -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web; then
 
                 # Scaling up the web in case of it gets already scaled down.
@@ -4754,9 +4772,9 @@ elif [[ "$1" == "toolbox" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
         fi
 
-        if [[ ! -f "$TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml" ]]; then
+        if [[ ! -f "$TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml" ]]; then
 
-            generate_nodeselector_values $ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR hollaex
+            generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATEFUL_NODESELECTOR:-ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateful
 
         fi
 
@@ -4829,7 +4847,19 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "Upgrading PostgreSQL DB"
                 generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
 
-                helm upgrade $ENVIRONMENT_EXCHANGE_NAME-db --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set imageRegistry="${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY}" --set dockerTag="${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION}" --set pvc.create=true --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
+                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db \
+                        --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                        --set pvc.create=true \
+                        --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" \
+                        --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" \
+                        --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                        --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_POSTGRESQL_CPU_LIMITS:-100m}" \
+                        --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_POSTGRESQL_MEMORY_LIMITS:-200Mi}" \
+                        --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_POSTGRESQL_CPU_REQUESTS:-10m}" \
+                        --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_POSTGRESQL_MEMORY_REQUESTS:-100Mi}" \
+                        -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml \
+                        -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml \
+                        $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
 
             fi
 
@@ -4838,7 +4868,14 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "Upgrading Redis"
                 generate_nodeselector_values $ENVIRONMENT_KUBERNETES_REDIS_NODESELECTOR redis
 
-                helm upgrade $ENVIRONMENT_EXCHANGE_NAME-redis --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT)
+                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-redis \
+                        --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                        --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                        --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_REDIS_CPU_LIMITS:-100m}" \
+                        --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_REDIS_MEMORY_LIMITS:-200Mi}" \
+                        --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_REDIS_CPU_REQUESTS:-10m}" \
+                        --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_REDIS_MEMORY_REQUESTS:-100Mi}" \
+                        $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT)
 
             fi
 
@@ -4847,8 +4884,18 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "Upgrading InfluxDB"
                 generate_nodeselector_values $ENVIRONMENT_KUBERNETES_INFLUXDB_NODESELECTOR influxdb
 
-                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-influxdb --recreate-pods --namespace $ENVIRONMENT_EXCHANGE_NAME --set setCustomUser.enabled="true" --set setCustomUser.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret"  -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb/values.yaml -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-influxdb.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb $(kubernetes_set_backend_image_target is_influxdb $ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION)
-
+                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-influxdb \
+                        --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                        --set setCustomUser.enabled="true" \
+                        --set setCustomUser.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                        --set persistence.size="$ENVIRONMENT_KUBERNETES_INFLUXDB_VOLUMESIZE" \
+                        --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_INFLUXDB_CPU_LIMITS:-200m}" \
+                        --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_INFLUXDB_MEMORY_LIMITS:-400Mi}" \
+                        --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_INFLUXDB_CPU_REQUESTS:-100m}" \
+                        --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_INFLUXDB_MEMORY_REQUESTS:-256Mi}" \
+                        -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb/values.yaml \
+                        -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-influxdb.yaml \
+                        $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb $(kubernetes_set_backend_image_target is_influxdb $ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION)
             fi
 
             echo "Restarting all workload containers..."
