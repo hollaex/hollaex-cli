@@ -5449,6 +5449,88 @@ EOL
 
 }
 
+function check_constants_exec() {
+
+  if [[ "$USE_KUBERNETES" ]]; then 
+
+    # Generate Kubernetes Configmap
+    cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/check_constants.yaml <<EOL
+job:
+  enable: true
+  mode: check_constants
+EOL
+
+    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-check-constants \
+                            --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                            --set job.enable="true" \
+                            --set job.mode="check_constants" \
+                            --set DEPLOYMENT_MODE="api" \
+                            --wait \
+                            --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                            --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                            --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
+                            -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/check_constants.yaml \
+                            $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+
+      echo "Kubernetes Job has been created for setting up the config."
+
+      echo "Waiting until Job get completely run..."
+      sleep 30;
+
+    else 
+
+      printf "\033[91mFailed to create Kubernetes Job for checkConstants, Please confirm the logs and try again.\033[39m\n"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-check-constants
+
+    fi
+
+    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-check-constants --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+
+      echo "Your missing database constants has been successfully updated!"
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-check-constants
+
+      echo "Removing created Kubernetes Job for setting up the config..."
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-check-constants
+
+      echo "Successfully updated the missing database constants with your local configmap values."
+      echo "Make sure to run 'hollaex restart --kube' to fully apply it."
+
+    else 
+
+      printf "\033[91mFailed to update the database constants! Please try again.\033[39m\n"
+      
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-check-constants
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-check-constants
+
+      exit 1;
+
+    fi
+
+
+  elif [[ ! "$USE_KUBERNETES" ]]; then
+
+    IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+        
+    echo "Updating constants..."
+    if command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/checkConstants.js; then
+
+        echo "Successfully updated the missing database constants with your local configmap values."
+        echo "Make sure to run 'hollaex restart' to fully apply it."
+
+    else 
+
+        echo "Error: Failed to update the missing database constants with your local configmap values."
+        echo "Please check the logs and try again."
+
+    fi
+          
+  fi
+
+}
+
 function set_config_exec() {
 
   if [[ "$USE_KUBERNETES" ]]; then 

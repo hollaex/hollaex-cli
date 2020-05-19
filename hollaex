@@ -769,27 +769,14 @@ elif [[ "$1" == "setup" ]]; then
 
         fi
 
-        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
+        echo "Generating Kubernetes Configmap."
+        generate_kubernetes_configmap;
 
-            echo "Generating Kubernetes Configmap."
-            generate_kubernetes_configmap;
+        echo "Generating Kubernetes Secret."
+        generate_kubernetes_secret;
 
-        fi
-
-        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]]; then
-
-            echo "Generating Kubernetes Secret."
-            generate_kubernetes_secret;
-
-        fi
-
-
-        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
-
-            echo "Generating Kubernetes Ingress."
-            generate_kubernetes_ingress;
-
-        fi
+        echo "Generating Kubernetes Ingress."
+        generate_kubernetes_ingress;
         
         echo "Creating namespace on Kubernetes."
         kubectl create ns $ENVIRONMENT_EXCHANGE_NAME
@@ -812,6 +799,8 @@ elif [[ "$1" == "setup" ]]; then
                         --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_REDIS_MEMORY_LIMITS:-200Mi}" \
                         --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_REDIS_CPU_REQUESTS:-10m}" \
                         --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_REDIS_MEMORY_REQUESTS:-100Mi}" \
+                        -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis/values.yaml \
+                        -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-redis.yaml \
                         $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT)
         
         fi
@@ -995,29 +984,16 @@ elif [[ "$1" == "setup" ]]; then
 
         # fi
 
-        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
-
-            echo "Generating env file for docker"
-            generate_local_env;
-
-        fi
-    
+        echo "Generating env file for docker"
+        generate_local_env;
         
         # Generating docker-compose yaml for exchange
-        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
-            
-            echo "Generating docker-compose file"
-            generate_local_docker_compose
+        echo "Generating docker-compose file"
+        generate_local_docker_compose
 
-        fi
+        echo "Generating Nginx upstream conf"
+        generate_nginx_upstream;
         
-        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_NGINX_UPSTREAM" == true ]]; then
-
-            echo "Generating Nginx upstream conf"
-            generate_nginx_upstream;
-        
-        fi
-
         # Update nginx.conf to apply user own domains
         echo "Updating nginx conf file based on user settings"
         apply_nginx_user_defined_values;
@@ -1060,6 +1036,12 @@ elif [[ "$1" == "import" ]]; then
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 HOLLAEX_IMPORT_PATH_INPUT=$@
+                shift; continue
+                ;;
+            --with-aws-s3)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                TARGET_AWS_S3_BUCKET=$1
                 shift; continue
                 ;;
             --*) 
@@ -1122,6 +1104,54 @@ OLD_CURRENCIES=$(echo $HOLLAEX_CONFIGMAP_CURRENCIES)
 OLD_PAIRS=$(echo $HOLLAEX_CONFIGMAP_PAIRS)
 
 EOL
+
+    if [[ "$TARGET_AWS_S3_BUCKET" ]]; then 
+
+        if [[ "$ENVIRONMENT_EXCHANGE_NAME" == "hollaex" ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME" ]]; then
+
+            echo "Error: Your haven't typed the exchange name yet."
+            echo "Please type the registered exchange name."
+            echo "The name will be used to point the AWS S3 folder."
+            read exchangeName
+            exchangeNameParsed=$(echo $exchangeName | tr -dc '[:alnum:]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+            
+            echo "Your exchange name: $exchangeNameParsed."
+            echo "Do you want to proceed with this name? (Y/n)"
+            read answer 
+
+            while true;
+                do if [[ ! "$answer" = "${answer#[Nn]}" ]]; then 
+                    echo "Please type the registered exchange name."
+                    read exchangeName
+                    exchangeNameParsed=$(echo $exchangeName | tr -dc '[:alnum:]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+                    
+                    echo "Your exchange name: $exchangeNameParsed."
+                    echo "Do you want to proceed with this name? (Y/n)"
+                    read answer
+                else
+                    break;
+                fi
+            done
+
+            export ENVIRONMENT_EXCHANGE_NAME=$exchangeNameParsed
+
+        fi 
+
+        mkdir -p $HOLLAEX_CLI_INIT_PATH/.settings-temp
+
+        echo "Pulling the settings files from s3://$TARGET_AWS_S3_BUCKET/hollaex-kit-settings/$ENVIRONMENT_EXCHANGE_NAME AWS S3 bucket."
+        if ! command aws s3 cp --recursive s3://$TARGET_AWS_S3_BUCKET/hollaex-kit-settings/$ENVIRONMENT_EXCHANGE_NAME/ $HOLLAEX_CLI_INIT_PATH/.settings-temp; then
+
+            echo "Error: Failed to pull the settings files from s3://$TARGET_AWS_S3_BUCKET/hollaex-kit-settings/$ENVIRONMENT_EXCHANGE_NAME."
+            echo "Please check the error logs and try again."
+
+            exit 1;
+
+        fi 
+
+        export HOLLAEX_IMPORT_PATH=$HOLLAEX_CLI_INIT_PATH/.settings-temp
+
+    fi 
 
     if [[ "${HOLLAEX_IMPORT_PATH[@]}" == *"json"* ]]; then
 
@@ -1254,6 +1284,138 @@ EOL
         exit 1;
     
     fi
+
+    if [[ -d "$HOLLAEX_CLI_INIT_PATH/.settings-temp" ]]; then
+
+        rm -r $HOLLAEX_CLI_INIT_PATH/.settings-temp
+
+    fi 
+
+elif [[ "$1" == "export" ]]; then
+
+    while true; do
+        [[ $# -eq 0 ]] && break
+        case $1 in
+            --path)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_EXPORT_PATH_INPUT=$@
+                shift; continue
+                ;;
+            --with-aws-s3)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                TARGET_AWS_S3_BUCKET=$1
+                shift; continue
+                ;;
+            --*) 
+                err_msg "Invalid option: $1"
+                print_usage;
+                exit 1;
+                ;;
+        esac
+        shift
+    done
+
+    # HOLLAEX_IMPORT_PATH_INPUT=$@
+    IFS=' ' read -ra HOLLAEX_EXPORT_PATH <<< "$HOLLAEX_EXPORT_PATH_INPUT"    #Convert string to array
+
+    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        CONFIG_FILE_PATH=$(pwd)/settings/*
+        IMPORT_FILE_PATH=$(pwd)/settings
+        TEMPLATE_GENERATE_PATH=$(pwd)/templates
+        INIT_PATH_CHECK=$(pwd)/.hollaex
+
+    fi
+
+    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        IMPORT_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        
+    fi
+    
+    #Quit if necessary flags are missing
+    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
+
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
+        print_usage;
+        exit 1;
+
+    fi
+
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
+    
+    source $SCRIPTPATH/tools_generator.sh
+    load_config_variables;
+
+    if [[ ! -d "$HOLLAEX_CLI_INIT_PATH/.old" ]]; then
+
+        mkdir $HOLLAEX_CLI_INIT_PATH/.old
+
+    fi
+
+
+    if [[ "$TARGET_AWS_S3_BUCKET" ]]; then 
+
+        if [[ "$ENVIRONMENT_EXCHANGE_NAME" == "hollaex" ]]; then
+
+            echo "Error: Your haven't typed the exchange name yet."
+            echo "Please type the registered exchange name."
+            echo "The name will be used to point the AWS S3 folder."
+            read exchangeName
+            exchangeNameParsed=$(echo $exchangeName | tr -dc '[:alnum:]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+            
+            echo "Your exchange name: $exchangeNameParsed."
+            echo "Do you want to proceed with this name? (Y/n)"
+            read answer 
+
+            while true;
+                do if [[ ! "$answer" = "${answer#[Nn]}" ]]; then 
+                    echo "Please type the registered exchange name."
+                    read exchangeName
+                    exchangeNameParsed=$(echo $exchangeName | tr -dc '[:alnum:]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+                    
+                    echo "Your exchange name: $exchangeNameParsed."
+                    echo "Do you want to proceed with this name? (Y/n)"
+                    read answer
+                else
+                    break;
+                fi
+            done
+
+            export ENVIRONMENT_EXCHANGE_NAME=$exchangeNameParsed
+
+        fi 
+
+        echo "Pushing the settings files to s3://$TARGET_AWS_S3_BUCKET/hollaex-kit-settings/$ENVIRONMENT_EXCHANGE_NAME AWS S3 bucket."
+        if ! command aws s3 cp --recursive $HOLLAEX_CLI_INIT_PATH/settings s3://$TARGET_AWS_S3_BUCKET/hollaex-kit-settings/$ENVIRONMENT_EXCHANGE_NAME; then
+
+            echo "Error: Failed to push the settings files to s3://$TARGET_AWS_S3_BUCKET/hollaex-kit-settings/$ENVIRONMENT_EXCHANGE_NAME."
+            echo "Please check the error logs and try again."
+
+            exit 1;
+
+        fi 
+
+    elif [[ "$HOLLAEX_EXPORT_PATH_INPUT" ]]; then
+
+        echo "Exporting HollaEx Kit settings files to $HOLLAEX_EXPORT_PATH_INPUT/hollaex-kit-settings/$ENVIRONMENT_EXCHANGE_NAME."
+
+        mkdir -p $HOLLAEX_EXPORT_PATH_INPUT/hollaex-kit-settings
+        mkdir -p $HOLLAEX_EXPORT_PATH_INPUT/hollaex-kit-settings/$ENVIRONMENT_EXCHANGE_NAME
+        
+        cp $HOLLAEX_CLI_INIT_PATH/settings/* $HOLLAEX_EXPORT_PATH_INPUT/hollaex-kit-settings/$ENVIRONMENT_EXCHANGE_NAME
+
+    fi 
+
+    printf "\033[92mYour settings files has been exported successfully!\033[39m\n"
 
 elif [[ "$1" == "login" ]]; then
 
@@ -4236,26 +4398,36 @@ elif [[ "$1" == "web" ]]; then
 
     if [[ "$WEB_CLIENT_RESTART" ]]; then
 
-        if command docker images | grep $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY > /dev/null && command docker images | grep $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION > /dev/null; then
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            printf "\nPre-built image for web server has been detected on your system.\n"
-            echo "You should build the image again if you made code changes for web."
-            echo "Plase input 'Y' to skip the build, 'N' to build the image again."
-            echo "Do you want to proceed with the pre-built image? (Y/n)"
-            read answer 
+            if command docker images | grep $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY > /dev/null && command docker images | grep $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION > /dev/null; then
 
-            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+                printf "\nPre-built image for web server has been detected on your system.\n"
+                echo "You should build the image again if you made code changes for web."
+                echo "Plase input 'Y' to skip the build, 'N' to build the image again."
+                echo "Do you want to proceed with the pre-built image? (Y/n)"
+                read answer 
+
+                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+
+                    export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat version)-$(date +%y%m%d%H%M)"
+                    echo "Building the web server image..."
+                    build_user_hollaex_web;
+                
+                else 
+
+                    echo "Proceeding..."
+                
+                fi
+            
+            else 
 
                 export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat version)-$(date +%y%m%d%H%M)"
                 echo "Building the web server image..."
                 build_user_hollaex_web;
-            
-            else 
 
-                echo "Proceeding..."
-            
             fi
-        
+
         else 
 
             export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat version)-$(date +%y%m%d%H%M)"
@@ -4632,6 +4804,12 @@ elif [[ "$1" == "toolbox" ]]; then
                 SET_ACTIVATION_CODE=true
                 TOOLBOX_ENABLE=true
                 echo "HollaEx CLI will update your activation code for the exchange."
+                shift; continue
+                ;;
+            --check_constants)
+                CHECK_CONSTANTS=true
+                TOOLBOX_ENABLE=true
+                echo "HollaEx CLI will check and update your database constants."
                 shift; continue
                 ;;
             --set_config)
@@ -5042,7 +5220,7 @@ elif [[ "$1" == "toolbox" ]]; then
         
     elif [[ "$FLUSH_REDIS" ]]; then
 
-        printf "\033[93mWarning: Exchange service will be unavailable during the upgrade!\033[39m\n"
+        printf "\033[93mWarning: Exchange service will be unavailable during the flush!\033[39m\n"
 
         if [[ "$USE_KUBERNETES" ]] ; then
 
@@ -5672,6 +5850,53 @@ elif [[ "$1" == "toolbox" ]]; then
             echo "Make sure to run 'hollaex restart' to fully apply it."
 
         fi
+
+    elif [[ "$CHECK_CONSTANTS" ]]; then
+
+        function toolbox_set_constants_confirm_message() {
+
+            echo "This command would check and update the missing database constants, based on your settings files."
+            echo "The missing value could be caused by an upgrade or an error at exchange initialization."
+            echo "Do you want to proceed? (y/N)"
+            read answer
+
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                echo "Exiting..."
+                exit 0;
+            fi
+
+        }
+
+        if [[ "$USE_KUBERNETES" ]]; then 
+
+            toolbox_set_constants_confirm_message;
+
+            echo "Generating Kubernetes Configmap."
+            generate_kubernetes_configmap;
+
+            echo "Generating Kubernetes Secret."
+            generate_kubernetes_secret;
+
+             echo "Applying configmap on the namespace."
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+            
+            echo "Applying secret on the namespace."
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+
+            check_constants_exec;
+            
+        elif [[ ! "$USE_KUBERNETES" ]]; then 
+        
+            toolbox_set_constants_confirm_message; 
+
+            toolbox_set_config_confirm_message;
+            
+            generate_local_env;
+
+            check_constants_exec;
+
+        fi
+
 
     elif [[ "$SET_CONFIG" ]]; then
 
