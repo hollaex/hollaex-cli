@@ -771,8 +771,8 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]]; then
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
     ports:
       - 6379:6379
-    environment:
-      - REDIS_PASSWORD=${HOLLAEX_SECRET_REDIS_PASSWORD}
+    env_file:
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
     command : ["sh", "-c", "redis-server --requirepass \$\${REDIS_PASSWORD}"]
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
@@ -788,10 +788,9 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
     restart: always
     ports:
       - 5432:5432
-    environment:
-      - POSTGRES_DB=$HOLLAEX_SECRET_DB_NAME
-      - POSTGRES_USER=$HOLLAEX_SECRET_DB_USERNAME
-      - POSTGRES_PASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
+    env_file:
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    command : ["sh", "-c", "export POSTGRES_DB=\$\${DB_NAME} && export POSTGRES_USER=\$\${DB_USERNAME} && export POSTGRES_PASSWORD=\$\${DB_PASSWORD} && ./docker-entrypoint.sh postgres"]
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
 EOL
@@ -806,12 +805,9 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" == "true" ]]; then
     restart: always
     ports:
       - 8086:8086
+    env_file:
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
     environment:
-      - INFLUX_DB=$HOLLAEX_SECRET_INFLUX_DB
-      - INFLUX_HOST=${ENVIRONMENT_EXCHANGE_NAME}-influxdb
-      - INFLUX_PORT=8086
-      - INFLUX_USER=$HOLLAEX_SECRET_INFLUX_USER
-      - INFLUX_PASSWORD=$HOLLAEX_SECRET_INFLUX_PASSWORD
       - INFLUXDB_HTTP_LOG_ENABLED=false
       - INFLUXDB_DATA_QUERY_LOG_ENABLED=false
       - INFLUXDB_CONTINUOUS_QUERIES_LOG_ENABLED=false

@@ -1950,6 +1950,11 @@ elif [[ "$1" == "start" ]]; then
                 echo "Creating backend components. Running backend components such as PostgreSQL or Redis together on this machine."
                 shift; continue
                 ;;
+            --ignore_settings)
+                IGNORE_SETTINGS=true
+                echo "HollaEx CLI will ignore local settings update on restart."
+                shift; continue
+                ;;
             --kube)
                 USE_KUBERNETES=true
                 echo "HollaEx CLI will use your Kubernetes cluster as a target."
@@ -1996,11 +2001,20 @@ elif [[ "$1" == "start" ]]; then
 
     fi
 
+     source $SCRIPTPATH/tools_generator.sh
+
+    # Update random secrets if env generation is enabled.
+    if [[ ! "$IGNORE_SETTINGS" ]]; then 
+
+        #Regenerate random secrets
+        update_random_values_to_config;
+
+    fi
+
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
     done;
-    
-    source $SCRIPTPATH/tools_generator.sh
+
 
      # Override user HollaEx Core tag if the flag is available.
     if [[ "$HOLLAEX_CORE_USER_APPLY_TAG" ]]; then
@@ -2009,13 +2023,18 @@ elif [[ "$1" == "start" ]]; then
 
     fi
 
-    #Regenerate random secrets
-    update_random_values_to_config;
-
     load_config_variables;
 
     # Check Kit version compatibility range.
     check_kit_version_compatibility_range;
+
+    if [[ "$IGNORE_SETTINGS" ]]; then
+
+        export ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE=false
+        export ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE=false
+        export ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE=false 
+        
+    fi 
 
     if [[ "$USE_KUBERNETES" ]]; then
 
@@ -2848,6 +2867,11 @@ elif [[ "$1" == "restart" ]]; then
                 HOLLAEX_CORE_USER_APPLY_TAG=$1
                 shift; continue
                 ;;
+            --ignore_settings)
+                IGNORE_SETTINGS=true
+                echo "HollaEx CLI will ignore local settings update on restart."
+                shift; continue
+                ;;
             --kube)
                 USE_KUBERNETES=true
                 echo "HollaEx CLI will use your Kubernetes cluster as a target."
@@ -2893,11 +2917,19 @@ elif [[ "$1" == "restart" ]]; then
 
     fi
 
+     source $SCRIPTPATH/tools_generator.sh
+     
+    # Update random secrets if env generation is enabled.
+    if [[ ! "$IGNORE_SETTINGS" ]]; then 
+
+        #Regenerate random secrets
+        update_random_values_to_config;
+
+    fi
+
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
     done;
-    
-    source $SCRIPTPATH/tools_generator.sh
 
     # Override user HollaEx Core tag if the flag is available.
     if [[ "$HOLLAEX_CORE_USER_APPLY_TAG" ]]; then
@@ -2909,8 +2941,13 @@ elif [[ "$1" == "restart" ]]; then
     # Check Kit version compatibility range.
     check_kit_version_compatibility_range;
 
-    #Regenerate random secrets
-    update_random_values_to_config;
+    if [[ "$IGNORE_SETTINGS" ]]; then
+
+        export ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE=false
+        export ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE=false
+        export ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE=false 
+
+    fi 
 
     if [[ "$USE_KUBERNETES" ]]; then
 
@@ -3256,6 +3293,11 @@ elif [[ "$1" == "upgrade" ]]; then
                 echo "Skipping the new image build."
                 shift; continue
                 ;;
+            --ignore_settings)
+                IGNORE_SETTINGS=true
+                echo "HollaEx CLI will ignore local settings update on restart."
+                shift; continue
+                ;;
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
@@ -3296,14 +3338,19 @@ elif [[ "$1" == "upgrade" ]]; then
 
     fi
 
+    source $SCRIPTPATH/tools_generator.sh
+
+    # Update random secrets if env generation is enabled.
+    if [[ ! "$IGNORE_SETTINGS" ]]; then 
+
+        #Regenerate random secrets
+        update_random_values_to_config;
+
+    fi
+
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
     done;
-    
-    source $SCRIPTPATH/tools_generator.sh
-
-    #Regenerate random secrets
-    update_random_values_to_config;
 
     load_config_variables;
 
