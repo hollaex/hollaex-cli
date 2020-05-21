@@ -917,13 +917,14 @@ elif [[ "$1" == "setup" ]]; then
 
         kubernetes_database_init launch;
 
-        hollaex_setup_finalization;
+        if [[ "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_ACCESSKEY" ]] && [[ "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_SECRETKEY" ]]; then
 
-        echo "Shutting down the exchange..."
-        hollaex stop --kube --skip
-        
-        echo "Finalizing the exchange setup..."
-        sleep 5;
+            echo "Installing PostgreSQL database backup Cronjob..."
+            hollaex toolbox --set_backup_cronjob --kube --skip
+
+        fi 
+
+        hollaex_setup_finalization;
 
         exit 0;
 
@@ -1017,11 +1018,6 @@ elif [[ "$1" == "setup" ]]; then
         fi
         
         hollaex_setup_finalization;
-
-        # hollaex_ascii_exchange_has_been_setup;
-
-        # echo "Finalizing the exchange setup..."
-        # sleep 5;
 
         exit 0;
 
@@ -4751,6 +4747,12 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "HollaEx CLI will run PostgreSQL database dump on your initialized exchange folder."
                 shift; continue
                 ;;
+            --set_backup_cronjob)
+                KUBERNETES_SET_BACKUP_POSTGRESQL_CRONJOB=true
+                TOOLBOX_ENABLE=true
+                echo "HollaEx CLI will install PostgreSQL database dump cronjob on your Kubernetes cluster."
+                shift; continue
+                ;;
             --flush_redis)
                 FLUSH_REDIS=true
                 TOOLBOX_ENABLE=true
@@ -5262,6 +5264,55 @@ elif [[ "$1" == "toolbox" ]]; then
             echo "Dump data is saved as $HOLLAEX_CLI_INIT_PATH/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-$(date +%y%m%d%H%M).dump"
 
             exit 0;
+
+        fi
+
+    elif [[ "$KUBERNETES_SET_BACKUP_POSTGRESQL_CRONJOB" ]]; then
+
+        if [[ "$USE_KUBERNETES" ]] ; then
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "Are you sure you want to install cronjob for database backup on this cluster? (y/N)"
+                read answer
+
+                if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                    echo "Exiting..."
+                    exit 0;
+                fi
+
+            fi
+
+            generate_db_s3_backup_cronjob_config;
+
+            echo "Installing cronjob for database backup on Kubernetes."
+            if command helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db-backup-s3 \
+                        --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                        -f $TEMPLATE_GENERATE_PATH/kubernetes/config/db-s3-backup-cronjob.yaml \
+                        $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres-s3-backup-cronjob; then
+                
+                echo "The cronjob has been installed successfully!"
+
+                echo "The job will be triggered by following $ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_RULE rule."
+                
+                exit 0;
+
+            else 
+
+                echo "Failed to install the cronjob at the Kubernetes cluster."
+                echo "Please check the error logs and try again."
+
+                exit 1;
+
+            fi
+            
+        
+        elif [[ ! "$USE_KUBERNETES" ]] ; then
+
+            echo "HollaEx CLI only supports install cronjob for database backup on Kubernetes environment."
+            echo "Please use --kube flag to target Kubernetes."
+
+            exit 1;
 
         fi
         

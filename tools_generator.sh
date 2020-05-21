@@ -6452,3 +6452,23 @@ function system_dependencies_check() {
   echo "You are good to go!"
     
 }
+
+function generate_db_s3_backup_cronjob_config() {
+
+  # Generate Kubernetes Configmap
+  cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/db-s3-backup-cronjob.yaml <<EOL
+
+  secretName: $ENVIRONMENT_EXCHANGE_NAME-secret
+
+  cronRule: "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_RULE" 
+
+  timeZone: "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_TIMEZONE"
+
+  awsRegion: $ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_REGION
+  awsBucket: $ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_BUCKET
+  awsAccessKey: "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_ACCESSKEY"
+  awsSecretKey: "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_SECRETKEY"
+
+EOL
+
+}
