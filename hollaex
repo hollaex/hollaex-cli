@@ -309,7 +309,7 @@ if [[ "$1" == "dev" ]]; then
             function build_hollaex_core_for_dev() {
                 
                 local BUILD_HOLLAEX_CORE_VERSION=$(grep version $HOLLAEX_CORE_PATH/package.json | cut -c 15- | rev | cut -c 3- | rev)
-                local BUILD_HOLLAEX_CORE_BRANCH=$(git --git-dir /Users/kycfeel/documents/bitHolla/hollaex-core/.git rev-parse --abbrev-ref HEAD)
+                local BUILD_HOLLAEX_CORE_BRANCH=$(git --git-dir $HOLLAEX_CORE_PATH/.git rev-parse --abbrev-ref HEAD)
                 local BUILD_HOLLAEX_CORE_DATE="$(echo $(date +%y%m%d%H%M))"
 
                 local BUILD_HOLLAEX_CORE_IMAGE_TAG=${BUILD_HOLLAEX_CORE_VERSION}-${BUILD_HOLLAEX_CORE_BRANCH}-${BUILD_HOLLAEX_CORE_DATE}
