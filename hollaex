@@ -61,8 +61,8 @@ Options:
     
     upgrade: Upgrade the exchange to new version.
         --version, Version number of HollaEx Core to upgrade.
-        --user-image-registry, Specify Docker registry and version (tag) for the user HollaEx Core image.
-        --ignore-compatibility-check, Ignore Kit and Core compatibility check before an upgrade.
+        --user_image_registry, Specify Docker registry and version (tag) for the user HollaEx Core image.
+        --ignore_compatibility_check, Ignore Kit and Core compatibility check before an upgrade.
 
     terminate: Terminate the existing exchange. THIS COMMAND WILL COMPLETELY REMOVE YOUR EXCHANGE.
       
@@ -502,7 +502,7 @@ elif [[ "$1" == "setup" ]]; then
                 echo "Skipping the command confirmation."
                 shift; continue
                 ;;
-            --user-image-registry)
+            --user_image_registry)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE=$1
@@ -3164,7 +3164,7 @@ elif [[ "$1" == "build" ]]; then
                 echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
-            --user-image-registry)
+            --user_image_registry)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE=$1
@@ -3265,12 +3265,12 @@ elif [[ "$1" == "upgrade" ]]; then
                 echo "HollaEx CLI will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
-            --ignore-compatibility-check)
+            --ignore_compatibility_check)
                 IGNORE_COMPATIBILITY_CHECK=true
                 echo "Warning: HollaEx CLI will ignore all compatibility checkes for HollaEx Core and Kit."
                 shift; continue
                 ;;
-            --user-image-registry)
+            --user_image_registry)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 ENVIRONMENT_USER_REGISTRY_OVERRIDE=$1
@@ -3415,6 +3415,14 @@ elif [[ "$1" == "upgrade" ]]; then
         build_user_hollaex_core;
     
     fi
+
+    if [[ "$IGNORE_SETTINGS" ]]; then
+
+        export ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE=false
+        export ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE=false
+        export ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE=false 
+
+    fi 
 
     if [[ "$USE_KUBERNETES" ]]; then
 
@@ -3929,7 +3937,7 @@ elif [[ "$1" == "web" ]]; then
                 shift; continue
                 ;;
             # Build related
-            --user-image-registry)
+            --user_image_registry)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE=$1
