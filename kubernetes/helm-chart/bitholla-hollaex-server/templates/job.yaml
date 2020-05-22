@@ -47,6 +47,11 @@ spec:
         args:
           - node tools/dbs/setActivationCode.js;
 
+{{- else if eq .Values.job.mode "check_constants" }}
+
+        args:
+          - node tools/dbs/checkConstants.js;
+
 {{- else if eq .Values.job.mode "set_config" }}
 
         args:

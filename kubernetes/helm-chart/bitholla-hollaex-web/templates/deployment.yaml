@@ -46,11 +46,12 @@ spec:
         
         resources:
           limits:
-            memory: "2048Mi"
-            cpu: "1000m"
+            memory: {{.Values.resources.limits.memory}}
+            cpu: {{.Values.resources.limits.cpu}}
           requests:
-            memory: "100Mi"
-            cpu: "2m"
+            memory: {{.Values.resources.requests.memory}}
+            cpu: {{.Values.resources.requests.cpu}}
+      
         
 {{- if .Values.podRestart_webhook_url }}
         lifecycle:

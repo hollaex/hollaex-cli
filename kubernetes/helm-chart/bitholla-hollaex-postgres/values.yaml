@@ -17,6 +17,14 @@ nodeSelector: {}
 imageRegistry: postgres
 dockerTag: 10.9
 
+resources:
+  limits:
+    cpu: "100m"
+    memory: "512Mi"
+  requests:
+    cpu: "10m"
+    memory: "50Mi"
+
 filebeat:
   create: false
   image:
@@ -26,3 +34,4 @@ filebeat:
   kibana_host: es-kibana.elasticsearch
   elasticsearch_host: es-elasticsearch-client.elasticsearch
   elasticsearch_port: 9200
+        

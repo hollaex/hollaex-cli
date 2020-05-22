@@ -62,6 +62,13 @@ spec:
       containers:
       - name: {{.Release.Name}}
         image: {{.Values.imageRegistry}}:{{.Values.dockerTag}}
+        resources:
+          limits:
+            memory: {{.Values.resources.limits.memory}}
+            cpu: {{.Values.resources.limits.cpu}}
+          requests:
+            memory: {{.Values.resources.requests.memory}}
+            cpu: {{.Values.resources.requests.cpu}}
         env:
           - name: POSTGRES_DB
             valueFrom:
@@ -116,6 +123,13 @@ spec:
           "-c", "/etc/filebeat.yml",
           "-e",
         ]
+        resources:
+          limits:
+            memory: {{.Values.resources.limits.memory}}
+            cpu: {{.Values.resources.limits.cpu}}
+          requests:
+            memory: {{.Values.resources.requests.memory}}
+            cpu: {{.Values.resources.requests.cpu}}
         env:
         - name: ELASTICSEARCH_HOST
           value: "{{ .Values.filebeat.elasticsearch_host }}"
@@ -161,13 +175,7 @@ spec:
             crond;
             touch /tmp/cron.log;
             tail -f /tmp/cron.log;
-
-        resources:
-          limits:
-            memory: 50Mi
-          requests:
-            cpu: 100m
-            memory: 10Mi
+            
         securityContext:
           runAsUser: 0
         volumeMounts:
