@@ -63,6 +63,8 @@ Options:
         --version, Version number of HollaEx Core to upgrade.
         --user_image_registry, Specify Docker registry and version (tag) for the user HollaEx Core image.
         --ignore_compatibility_check, Ignore Kit and Core compatibility check before an upgrade.
+        --api_only, Rolling Upgrade API Pods only for Kubernetes.
+        --plugins_only, Rolling Upgrade Plugins Pods only for Kubernetes.
 
     terminate: Terminate the existing exchange. THIS COMMAND WILL COMPLETELY REMOVE YOUR EXCHANGE.
       
@@ -77,8 +79,6 @@ Options:
     toolbox: Toolbox for advanced features which could be helpful for your exchange operations.
         --backup, Run the full backup with 'pg_dumpall' for exchange's PostgreSQL database.
         --flush_redis, Run the full flush of Redis stored data.
-        --upgrade_api_only, Do zero-downtime rolling upgrade for exchange API contianers on Kubernetes.
-        --upgrade_plugins_only, Do zero-downtime rolling upgrade for exchange Plugins contianers on Kubernetes.
         --add_coin, Add new currency on exchange.
         --remove_coin, Remove exisiting currency from exhcnage.
         --add_trading_pair, Add new trading pair on ehchange.
@@ -3294,6 +3294,16 @@ elif [[ "$1" == "upgrade" ]]; then
                 echo "HollaEx CLI will ignore local settings update on restart."
                 shift; continue
                 ;;
+            --api_only)
+                UPGRADE_API_ONLY=true
+                echo "HollaEx CLI will rolling-upgrade API pods on Kubernetes."
+                shift; continue
+                ;;
+            --plugins_only)
+                UPGRADE_PLUGINS_ONLY=true
+                echo "HollaEx CLI will rolling-upgrade plugins pods on Kubernetes."
+                shift; continue
+                ;;
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
@@ -3333,6 +3343,16 @@ elif [[ "$1" == "upgrade" ]]; then
         exit 1;
 
     fi
+
+    if [[ "$UPGRADE_API_ONLY" ]] || [[ "$UPGRADE_PLUGINS_ONLY" ]] && [[ ! "$USE_KUBERNETES" ]]; then
+
+        echo "Error: '--api_only' and '--plugins_only' flags are only available for Kubernetes deployment."
+        echo "If you are trying to target the Kubernetes cluster, please use '--kube' flag along your command."
+
+        exit 1;
+
+    fi 
+
 
     source $SCRIPTPATH/tools_generator.sh
 
@@ -3380,7 +3400,7 @@ elif [[ "$1" == "upgrade" ]]; then
         check_kit_version_compatibility_range;
 
     fi
-
+    
     # Override target docker image version if user passed it manually with flag / version range available at each CLI releases.  
     if [[ ! "$NO_IMAGE_BUILD" ]]; then   
 
@@ -3482,12 +3502,16 @@ elif [[ "$1" == "upgrade" ]]; then
             generate_kubernetes_ingress;
 
         fi
+
+        if [[ ! "$UPGRADE_API_ONLY" ]] && [[ ! "$UPGRADE_PLUGINS_ONLY" ]]; then 
         
-        # Only tries to attempt remove ingress rules from Kubernetes if it exists.
-        if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
-        
-            echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-            kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+            # Only tries to attempt remove ingress rules from Kubernetes if it exists.
+            if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+            
+                echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
+                kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+            fi
 
         fi
 
@@ -3509,9 +3533,11 @@ elif [[ "$1" == "upgrade" ]]; then
         generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateless
 
         echo "Upgrading $HOLLAEX_CONFIGMAP_API_NAME Pods on Kubernetes."
+
+        if [[ ! "$UPGRADE_PLUGINS_ONLY" ]]; then 
+
         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api \
                     --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                    --recreate-pods \
                     --set DEPLOYMENT_MODE="api" \
                     --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                     --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
@@ -3528,22 +3554,28 @@ elif [[ "$1" == "upgrade" ]]; then
                     -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
                     $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
-        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream \
-                    --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                    --recreate-pods \
-                    --set DEPLOYMENT_MODE="stream" \
-                    --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
-                    --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                    --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
-                    --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                    --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_STREAM_CPU_LIMITS:-1000m}" \
-                    --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_STREAM_MEMORY_LIMITS:-1536Mi}" \
-                    --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_STREAM_CPU_REQUESTS:-10m}" \
-                    --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_STREAM_MEMORY_REQUESTS:-1536Mi}" \
-                    --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-                    -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
-                    -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
-                    $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+        fi 
+
+        if [[ ! "$UPGRADE_API_ONLY" ]] && [[ ! "$UPGRADE_PLUGINS_ONLY" ]]; then 
+
+            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream \
+                        --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                        --set DEPLOYMENT_MODE="stream" \
+                        --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                        --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                        --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                        --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                        --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_STREAM_CPU_LIMITS:-1000m}" \
+                        --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_STREAM_MEMORY_LIMITS:-1536Mi}" \
+                        --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_STREAM_CPU_REQUESTS:-10m}" \
+                        --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_STREAM_MEMORY_REQUESTS:-1536Mi}" \
+                        --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
+                        -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
+                        -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                        $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+        fi
+
+        if [[ ! "$UPGRADE_API_ONLY" ]] || [[ "$UPGRADE_PLUGINS_ONLY" ]]; then 
 
         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-plugins-controller \
                      --namespace $ENVIRONMENT_EXCHANGE_NAME \
@@ -3560,31 +3592,41 @@ elif [[ "$1" == "upgrade" ]]; then
                      -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                      -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
                      $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+
+        fi 
+
+        if [[ ! "$UPGRADE_API_ONLY" ]] && [[ ! "$UPGRADE_PLUGINS_ONLY" ]]; then 
         
-        helm_dynamic_trading_paris run;
+            helm_dynamic_trading_paris run;
 
-        # Running database job for Kubernetes
-        kubernetes_database_init upgrade;
+            # Running database job for Kubernetes
+            kubernetes_database_init upgrade;
 
-        echo "Flushing Redis..."
-        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/flushRedis.js
+            echo "Flushing Redis..."
+            kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/flushRedis.js
 
-        echo "Restarting all containers to apply latest database changes..."
-        kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+            echo "Restarting all containers to apply latest database changes..."
+            kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
 
-        echo "Waiting for the containers get fully ready..."
-        sleep 15;
+            echo "Waiting for the containers get fully ready..."
+            sleep 15;
+        
 
-        echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-        kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
-
-        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
-
-            echo "Applying ingress for web client on the namespace"
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
-
+            echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+        
         fi
 
+        if [[ ! "$UPGRADE_API_ONLY" ]] && [[ ! "$UPGRADE_PLUGINS_ONLY" ]]; then 
+
+            if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
+
+                echo "Applying ingress for web client on the namespace"
+                kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
+
+            fi
+
+        fi
 
         hollaex_ascii_exchange_has_been_upgraded;
 
@@ -4767,24 +4809,6 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "HollaEx CLI will run full flush of Redis stored data. This could be helpful in certain situation If the exchange doesnt work properly."
                 shift; continue
                 ;;
-            --upgrade_api_only)
-                shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                UPGRADE_API_ONLY=true
-                ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$1
-                TOOLBOX_ENABLE=true
-                echo "HollaEx CLI will rolling-upgrade API pods on Kubernetes."
-                shift; continue
-                ;;
-            --upgrade_plugins_only)
-                shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                UPGRADE_PLUGINS_ONLY=true
-                ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$1
-                TOOLBOX_ENABLE=true
-                echo "HollaEx CLI will rolling-upgrade plugins pods on Kubernetes."
-                shift; continue
-                ;;
             --add_coin)
                 ADD_COIN=true
                 TOOLBOX_ENABLE=true
@@ -5027,15 +5051,6 @@ elif [[ "$1" == "toolbox" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
         fi
 
-    fi
-
-    # for --upgrade_api_only
-    # Override target docker image version if user passed it manually with flag.
-    if [[ "$UPGRADE_API_ONLY" ]] && [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
-        
-        override_docker_image_version;
-        export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
-        
     fi
 
     if [[ "$USE_KUBERNETES" ]]; then
@@ -5380,104 +5395,6 @@ elif [[ "$1" == "toolbox" ]]; then
             sleep 10;
 
             exit 0;
-        fi
-        
-    elif [[ "$UPGRADE_API_ONLY" ]]; then
-
-        if [[ "$USE_KUBERNETES" ]] ; then
-
-            if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-                echo "Are you sure you want to do rolling upgrade for $HOLLAEX_CONFIGMAP_API_NAME api pods to v $ENVIRONMENT_DOCKER_IMAGE_VERSION on this cluster? (y/N)"
-                echo "Configmap values would be updated either while on the rolling upgrade"
-
-                read answer
-
-                if [[ "$answer" = "${answer#[Yy]}" ]]; then
-                    echo "Exiting..."
-                    exit 0;
-                fi
-
-            fi
-
-            if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
-
-                echo "Generating Kubernetes Configmap"
-                generate_kubernetes_configmap;
-
-            fi
-
-             if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]]; then
-
-                echo "Generating Kubernetes Secret"
-                generate_kubernetes_secret;
-
-            fi
-
-            echo "Applying latest configmap env on the cluster."
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
-
-            echo "Applying latest secret on the cluster"
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
-
-            echo "Upgrading $HOLLAEX_CONFIGMAP_API_NAME API pods only on Kubernetes."
-            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api \
-                        --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                        --reuse-values \
-                        --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                        $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
-
-            echo "Rolling upgrade process has been finished."
-            echo "It would take few minutes to Kubernetes replace api pods to new version completely. Please check the status constantly."
-            
-            exit 0;
-            
-        
-        elif [[ ! "$USE_KUBERNETES" ]] ; then
-
-            echo "HollaEx CLI only supports rolling-upgrade for api contianers on Kubernets environment."
-            echo "Please use --kube flag to target Kubernetes."
-
-            exit 1;
-
-        fi
-
-    elif [[ "$UPGRADE_PLUGINS_ONLY" ]]; then
-
-        if [[ "$USE_KUBERNETES" ]] ; then
-
-            if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-                echo "Are you sure you want to do rolling upgrade for $HOLLAEX_CONFIGMAP_API_NAME plugins pods to v $ENVIRONMENT_DOCKER_IMAGE_VERSION on this cluster? (y/N)"
-                read answer
-
-                if [[ "$answer" = "${answer#[Yy]}" ]]; then
-                    echo "Exiting..."
-                    exit 0;
-                fi
-
-            fi
-
-            echo "Upgrading $HOLLAEX_CONFIGMAP_API_NAME plugins pods only on Kubernetes."
-            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-plugins-controller \
-                        --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                        --reuse-values \
-                        --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                        $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
-
-            echo "Rolling upgrade process has been finished."
-            echo "It would take few minutes to Kubernetes replace api pods to new version completely. Please check the status constantly."
-            
-            exit 0;
-            
-        
-        elif [[ ! "$USE_KUBERNETES" ]] ; then
-
-            echo "HollaEx CLI only supports rolling-upgrade for plugins contianers on Kubernets environment."
-            echo "Please use --kube flag to target Kubernetes."
-
-            exit 1;
-
         fi
 
     elif [[ "$ADD_COIN" ]]; then
