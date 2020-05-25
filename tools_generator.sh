@@ -1143,7 +1143,7 @@ metadata:
     $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
     nginx.ingress.kubernetes.io/proxy-body-size: "2m"
     nginx.org/websocket-services: "${ENVIRONMENT_EXCHANGE_NAME}-server-stream"
-    nginx.ingress.kubernetes.io/upstream-hash-by: '$binary_remote_addr'
+    nginx.ingress.kubernetes.io/upstream-hash-by: "\$binary_remote_addr"
 spec:
   rules:
   - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
