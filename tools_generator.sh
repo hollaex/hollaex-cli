@@ -4937,27 +4937,29 @@ function build_user_hollaex_core() {
 
       echo "Your new image name is: ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION)."
       
-      if [[ "$RUN_WITH_VERIFY" == true ]]; then 
+      if [[ "$RUN_WITH_VERIFY" == true ]] && [[ ! "$USE_KUBERNETES" ]]; then 
 
-        echo "Do you want to push this image to your Docker Registry? (y/N) (Optional)"
-        read pushAnswer
+          echo "Do you want to push this image to your Docker Registry? (y/N) (Optional)"
+          read pushAnswer
+          
+          if [[ "$pushAnswer" = "${pushAnswer#[Yy]}" ]] ;then
+
+            echo "Skipping..."
+            echo "Your image name: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION."
+            echo "You can later tag and push it by using 'docker tag' and 'docker push' command manually."
+
+            export USER_HOLLAEX_CORE_PUSHED=false
+
+          else 
+
+            push_user_hollaex_core;
+            export USER_HOLLAEX_CORE_PUSHED=true
         
-        if [[ "$pushAnswer" = "${pushAnswer#[Yy]}" ]] ;then
-
-          echo "Skipping..."
-          echo "Your image name: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION."
-          echo "You can later tag and push it by using 'docker tag' and 'docker push' command manually."
-
-          export USER_HOLLAEX_CORE_PUSHED=false
-
-        else 
-
-          push_user_hollaex_core;
-          export USER_HOLLAEX_CORE_PUSHED=true
-      
-        fi
+          fi
 
       else 
+
+        echo "Pushing the built image to the Docker Registry..."
 
         push_user_hollaex_core;
         export USER_HOLLAEX_CORE_PUSHED=true
@@ -5069,31 +5071,32 @@ function build_user_hollaex_web() {
 
       echo "Your new image name is: $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION."
 
-      if [[ "$RUN_WITH_VERIFY" == true ]]; then 
+      if [[ "$RUN_WITH_VERIFY" == true ]] && [[ ! "$USE_KUBERNETES" ]]; then 
         
         echo "Do you want to push this image to your Docker Registry? (y/N)"
 
         read answer
       
+        if [[ "$answer" = "${answer#[Yy]}" ]] ;then
 
-          if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-
-            echo "Skipping..."
-            echo "Your current image name: $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION."
-            echo "You can later tag and push it by using 'docker tag' and 'docker push' command manually."
-            echo "Please run 'hollaex web --restart' to apply the new image."
-          
-          else
-
-            push_user_hollaex_web;
-          
-          fi
+          echo "Skipping..."
+          echo "Your current image name: $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION."
+          echo "You can later tag and push it by using 'docker tag' and 'docker push' command manually."
+          echo "Please run 'hollaex web --restart' to apply the new image."
         
-        else 
+        else
 
+          echo "Pushing the built image to the Docker Registry..."
           push_user_hollaex_web;
         
         fi
+        
+      else 
+
+        echo "Pushing the built image to the Docker Registry..." 
+        push_user_hollaex_web;
+      
+      fi
 
   else 
 
