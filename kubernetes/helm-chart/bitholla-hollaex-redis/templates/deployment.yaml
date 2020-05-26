@@ -39,10 +39,11 @@ spec:
             secretKeyRef:
               name: {{.Values.setAuth.secretName}}
               key: REDIS_PASSWORD
+
         resources:
           limits:
-            memory: "1536Mi"
-            cpu: "1000m"
+            memory: {{.Values.resources.limits.memory}}
+            cpu: {{.Values.resources.limits.cpu}}
           requests:
-            memory: "50Mi"
-            cpu: "2m"
+            memory: {{.Values.resources.requests.memory}}
+            cpu: {{.Values.resources.requests.cpu}}

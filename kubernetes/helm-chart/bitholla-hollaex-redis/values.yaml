@@ -12,3 +12,11 @@ dockerTag: 5.0.5-alpine
 
 setAuth:
   secretName: hollaex-secret
+
+resources:
+  limits:
+    cpu: "100m"
+    memory: "512Mi"
+  requests:
+    cpu: "10m"
+    memory: "50Mi"
