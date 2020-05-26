@@ -20,6 +20,12 @@ autoScaling:
 
 podRestart_webhook_url:
   
-    
+resources:
+  limits:
+    cpu: "1000m"
+    memory: "1536Mi"
+  requests:
+    cpu: "10m"
+    memory: "256Mi"   
   
 

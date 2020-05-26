@@ -123,7 +123,7 @@ function kubernetes_database_init() {
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                 --set job.enable=true \
                 --set job.mode=hollaex_upgrade \
-                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                 -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
                 $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
 
@@ -771,8 +771,8 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]]; then
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
     ports:
       - 6379:6379
-    environment:
-      - REDIS_PASSWORD=${HOLLAEX_SECRET_REDIS_PASSWORD}
+    env_file:
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
     command : ["sh", "-c", "redis-server --requirepass \$\${REDIS_PASSWORD}"]
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
@@ -788,10 +788,9 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
     restart: always
     ports:
       - 5432:5432
-    environment:
-      - POSTGRES_DB=$HOLLAEX_SECRET_DB_NAME
-      - POSTGRES_USER=$HOLLAEX_SECRET_DB_USERNAME
-      - POSTGRES_PASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
+    env_file:
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    command : ["sh", "-c", "export POSTGRES_DB=\$\${DB_NAME} && export POSTGRES_USER=\$\${DB_USERNAME} && export POSTGRES_PASSWORD=\$\${DB_PASSWORD} && ./docker-entrypoint.sh postgres"]
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
 EOL
@@ -806,12 +805,9 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" == "true" ]]; then
     restart: always
     ports:
       - 8086:8086
+    env_file:
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
     environment:
-      - INFLUX_DB=$HOLLAEX_SECRET_INFLUX_DB
-      - INFLUX_HOST=${ENVIRONMENT_EXCHANGE_NAME}-influxdb
-      - INFLUX_PORT=8086
-      - INFLUX_USER=$HOLLAEX_SECRET_INFLUX_USER
-      - INFLUX_PASSWORD=$HOLLAEX_SECRET_INFLUX_PASSWORD
       - INFLUXDB_HTTP_LOG_ENABLED=false
       - INFLUXDB_DATA_QUERY_LOG_ENABLED=false
       - INFLUXDB_CONTINUOUS_QUERIES_LOG_ENABLED=false
@@ -1147,7 +1143,7 @@ metadata:
     $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
     nginx.ingress.kubernetes.io/proxy-body-size: "2m"
     nginx.org/websocket-services: "${ENVIRONMENT_EXCHANGE_NAME}-server-stream"
-    nginx.ingress.kubernetes.io/upstream-hash-by: '$binary_remote_addr'
+    nginx.ingress.kubernetes.io/upstream-hash-by: "\$binary_remote_addr"
 spec:
   rules:
   - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
@@ -1313,8 +1309,12 @@ function helm_dynamic_trading_paris() {
                    --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
                    --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                    --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                   --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_ENGINE_CPU_LIMITS:-500m}" \
+                   --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_ENGINE_MEMORY_LIMITS:-1024Mi}" \
+                   --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_ENGINE_CPU_REQUESTS:-10m}" \
+                   --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_ENGINE_MEMORY_REQUESTS:-128Mi}" \
                    --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-                   -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                   -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                    -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
     elif [[ "$1" == "scaleup" ]]; then
@@ -1910,7 +1910,7 @@ EOL
                             --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
                             --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                             --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                             -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/add-coin.yaml \
                             $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
@@ -2180,7 +2180,7 @@ function remove_coin_exec() {
                 --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
                 --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                 -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
                 $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
 
@@ -2722,7 +2722,7 @@ EOL
                 --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
                 --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                 -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/add-pair.yaml \
                 $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
@@ -2805,7 +2805,7 @@ EOL
                     --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                     --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                     --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-                    -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                    -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                     -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
       
       fi
@@ -3003,7 +3003,7 @@ function remove_pair_exec() {
                 --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
                 --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                 -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
                 $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
 
@@ -4895,46 +4895,60 @@ function build_user_hollaex_core() {
 
       fi
 
-      if [[ "$RUN_WITH_VERIFY" == false ]]; then
-
-        push_user_hollaex_core;
-      
-      else 
+      if [[ "$RUN_WITH_VERIFY" == true ]]; then
         
-        if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
           echo "Please type in your new image name. ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION)"
           echo "Press enter to proceed with the previous name."
           read tag
-        
-        else 
 
-          echo "Using $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE as Docker image tag..."
+          export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} | cut -f1 -d ":")
+          export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION} | cut -f2 -d ":")
+
+          echo "Do you want to proceed with this image name? ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE) (Y/n)"
+          read answer
+
+          while true;
+          do if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+            echo "Please type in your new image name. ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION)"
+            echo "Press enter to proceed with the previous name."
+            read tag
+            export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} | cut -f1 -d ":")
+            export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION} | cut -f2 -d ":")
+            echo "Do you want to proceed with this image name? ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE) (Y/n)"
+            read answer
+          else
+            break;
+          fi
+        done
         
-        fi
+      else 
 
         export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} | cut -f1 -d ":")
         export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION} | cut -f2 -d ":")
 
-        override_user_hollaex_core;
+      fi 
 
-        docker tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
+      override_user_hollaex_core;
 
-        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE
-        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
+      docker tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
 
-        echo "Your new image name is: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION."
+      export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE
+      export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
+
+      echo "Your new image name is: ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION)."
+      
+      if [[ "$RUN_WITH_VERIFY" == true ]]; then 
 
         echo "Do you want to push this image to your Docker Registry? (y/N) (Optional)"
         read pushAnswer
-          
+        
         if [[ "$pushAnswer" = "${pushAnswer#[Yy]}" ]] ;then
 
-            echo "Skipping..."
-            echo "Your image name: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION."
-            echo "You can later tag and push it by using 'docker tag' and 'docker push' command manually."
+          echo "Skipping..."
+          echo "Your image name: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION."
+          echo "You can later tag and push it by using 'docker tag' and 'docker push' command manually."
 
-            export USER_HOLLAEX_CORE_PUSHED=false
+          export USER_HOLLAEX_CORE_PUSHED=false
 
         else 
 
@@ -4942,6 +4956,11 @@ function build_user_hollaex_core() {
           export USER_HOLLAEX_CORE_PUSHED=true
       
         fi
+
+      else 
+
+        push_user_hollaex_core;
+        export USER_HOLLAEX_CORE_PUSHED=true
       
       fi
 
@@ -5006,16 +5025,56 @@ function build_user_hollaex_web() {
 
       echo "Your custom HollaEx Web image has been successfully built."
 
-      if [[ "$USE_KUBERNETES" ]]; then
+      if [[ "$RUN_WITH_VERIFY" == true ]]; then 
 
-        echo "Info: Deployment to Kubernetes mandatorily requires image to gets pushed."
-        push_user_hollaex_web;
-      
+        echo "Please type in your new image name. ($ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION)"
+        echo "Press enter to proceed with the previous name."
+        read tag
+
+        export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY} | cut -f1 -d ":")
+        export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION} | cut -f2 -d ":")
+
+        echo "Do you want to proceed with this image name? ($ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE) (Y/n)"
+        read answer
+
+        while true;
+        do if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+          echo "Please type in your new image name. ($ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION)"
+          echo "Press enter to proceed with the previous name."
+          read tag
+          export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY} | cut -f1 -d ":")
+          export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION} | cut -f2 -d ":")
+          echo "Do you want to proceed with this image name? ($ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE) (Y/n)"
+          read answer
+        else
+          break;
+        fi
+      done
+
+
+    
       else 
+
+        export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION} | cut -f1 -d ":")
+        export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION} | cut -f2 -d ":")
+
+      fi 
+
+      override_user_hollaex_web;
+
+      docker tag ${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION} ${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE}:${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE}
+
+      export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE
+      export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION=$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE
+
+      echo "Your new image name is: $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION."
+
+      if [[ "$RUN_WITH_VERIFY" == true ]]; then 
         
         echo "Do you want to push this image to your Docker Registry? (y/N)"
 
         read answer
+      
 
           if [[ "$answer" = "${answer#[Yy]}" ]] ;then
 
@@ -5029,9 +5088,12 @@ function build_user_hollaex_web() {
             push_user_hollaex_web;
           
           fi
+        
+        else 
 
-      fi
-
+          push_user_hollaex_web;
+        
+        fi
 
   else 
 
@@ -5047,22 +5109,7 @@ function build_user_hollaex_web() {
 
 function push_user_hollaex_web() {
 
-  echo "Please type in your new image name. ($ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION)"
-  echo "Press enter to proceed with the previous name."
-  read answer
-
-  export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE=$(echo ${answer:-$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION} | cut -f1 -d ":")
-  export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE=$(echo ${answer:-$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION} | cut -f2 -d ":")
-
-  override_user_hollaex_web;
-
-  docker tag ${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION} ${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE}:${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE}
-
-  export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE
-  export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION=$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE
-
-  echo "Your new image name is: $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION."
-  echo "Now pushing it to docker registry..."
+  echo "Pushing the image to docker registry..."
 
   if command docker push $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION; then 
 
@@ -5389,7 +5436,7 @@ EOL
                             --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
                             --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                             --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                             -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/set-activation-code.yaml \
                             $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
@@ -5444,6 +5491,88 @@ EOL
 
 }
 
+function check_constants_exec() {
+
+  if [[ "$USE_KUBERNETES" ]]; then 
+
+    # Generate Kubernetes Configmap
+    cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/check_constants.yaml <<EOL
+job:
+  enable: true
+  mode: check_constants
+EOL
+
+    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-check-constants \
+                            --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                            --set job.enable="true" \
+                            --set job.mode="check_constants" \
+                            --set DEPLOYMENT_MODE="api" \
+                            --wait \
+                            --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                            --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                            --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
+                            -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/check_constants.yaml \
+                            $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+
+      echo "Kubernetes Job has been created for setting up the config."
+
+      echo "Waiting until Job get completely run..."
+      sleep 30;
+
+    else 
+
+      printf "\033[91mFailed to create Kubernetes Job for checkConstants, Please confirm the logs and try again.\033[39m\n"
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-check-constants
+
+    fi
+
+    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-check-constants --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+
+      echo "Your missing database constants has been successfully updated!"
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-check-constants
+
+      echo "Removing created Kubernetes Job for setting up the config..."
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-check-constants
+
+      echo "Successfully updated the missing database constants with your local configmap values."
+      echo "Make sure to run 'hollaex restart --kube' to fully apply it."
+
+    else 
+
+      printf "\033[91mFailed to update the database constants! Please try again.\033[39m\n"
+      
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-check-constants
+      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-check-constants
+
+      exit 1;
+
+    fi
+
+
+  elif [[ ! "$USE_KUBERNETES" ]]; then
+
+    IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+        
+    echo "Updating constants..."
+    if command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/checkConstants.js; then
+
+        echo "Successfully updated the missing database constants with your local configmap values."
+        echo "Make sure to run 'hollaex restart' to fully apply it."
+
+    else 
+
+        echo "Error: Failed to update the missing database constants with your local configmap values."
+        echo "Please check the logs and try again."
+
+    fi
+          
+  fi
+
+}
+
 function set_config_exec() {
 
   if [[ "$USE_KUBERNETES" ]]; then 
@@ -5464,7 +5593,7 @@ EOL
                             --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
                             --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                             --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                             -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/set_config.yaml \
                             $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
@@ -5675,7 +5804,7 @@ EOL
                 --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
                 --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex.yaml \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                 -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/set_security.yaml \
                 $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
@@ -6322,4 +6451,24 @@ function system_dependencies_check() {
 
   echo "You are good to go!"
     
+}
+
+function generate_db_s3_backup_cronjob_config() {
+
+  # Generate Kubernetes Configmap
+  cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/db-s3-backup-cronjob.yaml <<EOL
+
+  secretName: $ENVIRONMENT_EXCHANGE_NAME-secret
+
+  cronRule: "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_RULE" 
+
+  timeZone: "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_TIMEZONE"
+
+  awsRegion: $ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_REGION
+  awsBucket: $ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_BUCKET
+  awsAccessKey: "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_ACCESSKEY"
+  awsSecretKey: "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_SECRETKEY"
+
+EOL
+
 }
