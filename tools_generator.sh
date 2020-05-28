@@ -223,11 +223,24 @@ function load_config_variables() {
 
   done)
 
-  HOLLAEX_SECRET_VARIABLES_BASE64=$(for value in ${HOLLAEX_SECRET_VARIABLES} 
+  HOLLAEX_SECRET_VARIABLES_QUOTETRIM=$(for value in ${HOLLAEX_SECRET_VARIABLES} 
   do   
+      parseKey=$(echo $value | cut -f1 -d '=')
+      parseValue=$(echo $value | cut -f2 -d '=')
+
+      suffixTrim="${parseValue%\'}"
+      prefixSuffixTrim="${suffixTrim#\'}"
+
+      echo "$parseKey=$prefixSuffixTrim"
+
+  done)
+
+  HOLLAEX_SECRET_VARIABLES_BASE64=$(for value in ${HOLLAEX_SECRET_VARIABLES_QUOTETRIM} 
+  do  
       printf "${value//=$(cut -d "=" -f 2 <<< "$value")/=\'$(cut -d "=" -f 2 <<< "$value" | tr -d '\n' | base64_line_break_per_os)\'} ";
   
   done)
+
   HOLLAEX_SECRET_VARIABLES_YAML=$(for value in ${HOLLAEX_SECRET_VARIABLES_BASE64} 
   do
 
