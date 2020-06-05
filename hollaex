@@ -86,6 +86,7 @@ Options:
 
     toolbox: Toolbox for advanced features which could be helpful for your exchange operations.
         --backup, Run the full backup with 'pg_dumpall' for exchange's PostgreSQL database.
+        --set_backup_cronjob, Set the Kubernetes Cronjob for periodical database backup.
         --flush_redis, Run the full flush of Redis stored data.
         --add_coin, Add new currency on exchange.
         --remove_coin, Remove exisiting currency from exhcnage.
