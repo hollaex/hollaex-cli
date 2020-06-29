@@ -1931,7 +1931,7 @@ EOL
       echo "Kubernetes Job has been created for adding new coin $COIN_SYMBOL."
 
       echo "Waiting until Job get completely run"
-      sleep 30;
+      sleep 60;
 
     else 
 
@@ -3023,7 +3023,7 @@ function remove_pair_exec() {
       echo "*** Kubernetes Job has been created for removing existing pair $PAIR_NAME. ***"
 
       echo "*** Waiting until Job get completely run ***"
-      sleep 30;
+      sleep 60;
 
     else 
 
@@ -5460,7 +5460,7 @@ EOL
       echo "Kubernetes Job has been created for updating activation code."
 
       echo "Waiting until Job get completely run..."
-      sleep 30;
+      sleep 60;
 
     else 
 
