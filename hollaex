@@ -523,6 +523,11 @@ elif [[ "$1" == "setup" ]]; then
                 echo "HollaEx CLI will proceed to reconfigure your exchange's basic settings."
                 shift; continue
                 ;;
+            --ignore_compatibility_check)
+                IGNORE_COMPATIBILITY_CHECK=true
+                echo "Warning: HollaEx CLI will ignore all compatibility checkes for HollaEx Core and Kit."
+                shift; continue
+                ;;
             --*) 
                 err_msg "Invalid option: $1"
                 print_usage;
@@ -565,8 +570,12 @@ elif [[ "$1" == "setup" ]]; then
 
     system_dependencies_check;
 
-    # Check Kit version compatibility range.
-    check_kit_version_compatibility_range;
+    if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
+
+        # Check Kit version compatibility range.
+        check_kit_version_compatibility_range;
+    
+    fi 
 
     #Generating random values for passwords and update config file to contain it;
     update_random_values_to_config;
@@ -1965,6 +1974,11 @@ elif [[ "$1" == "start" ]]; then
                 echo "HollaEx CLI will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
+            --ignore_compatibility_check)
+                IGNORE_COMPATIBILITY_CHECK=true
+                echo "Warning: HollaEx CLI will ignore all compatibility checkes for HollaEx Core and Kit."
+                shift; continue
+                ;;
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
@@ -2030,8 +2044,12 @@ elif [[ "$1" == "start" ]]; then
 
     load_config_variables;
 
-    # Check Kit version compatibility range.
-    check_kit_version_compatibility_range;
+    if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
+
+        # Check Kit version compatibility range.
+        check_kit_version_compatibility_range;
+    
+    fi 
 
     if [[ "$IGNORE_SETTINGS" ]]; then
 
@@ -2102,11 +2120,15 @@ elif [[ "$1" == "start" ]]; then
 
         fi
 
-        echo "Applying configmap on the namespace"
-        kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+        if [[ ! "$IGNORE_SETTINGS" ]]; then 
 
-        echo "Applying secret on the namespace"
-        kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+            echo "Applying configmap on the namespace"
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+
+            echo "Applying secret on the namespace"
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+        
+        fi 
 
         # For scaling up exisitng Exchange on Kubernetes
         if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
@@ -2703,6 +2725,11 @@ elif [[ "$1" == "stop" ]]; then
                 echo "Skipping the command confirmation."
                 shift; continue
                 ;;
+            --ignore_compatibility_check)
+                IGNORE_COMPATIBILITY_CHECK=true
+                echo "Warning: HollaEx CLI will ignore all compatibility checkes for HollaEx Core and Kit."
+                shift; continue
+                ;;
             --*) 
                 err_msg "Invalid option: $1"
                 print_usage;
@@ -2747,8 +2774,12 @@ elif [[ "$1" == "stop" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
-    # Check Kit version compatibility range.
-    check_kit_version_compatibility_range;
+    if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
+
+        # Check Kit version compatibility range.
+        check_kit_version_compatibility_range;
+    
+    fi 
 
     #check_empty_values_on_settings
 
@@ -2885,6 +2916,11 @@ elif [[ "$1" == "restart" ]]; then
                 echo "Skipping the command confirmation."
                 shift; continue
                 ;;
+            --ignore_compatibility_check)
+                IGNORE_COMPATIBILITY_CHECK=true
+                echo "Warning: HollaEx CLI will ignore all compatibility checkes for HollaEx Core and Kit."
+                shift; continue
+                ;;
             --*) 
                 err_msg "Invalid option: $1"
                 print_usage;
@@ -2941,8 +2977,12 @@ elif [[ "$1" == "restart" ]]; then
 
     fi
 
-    # Check Kit version compatibility range.
-    check_kit_version_compatibility_range;
+     if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
+
+        # Check Kit version compatibility range.
+        check_kit_version_compatibility_range;
+    
+    fi 
 
     if [[ "$IGNORE_SETTINGS" ]]; then
 
@@ -3027,11 +3067,15 @@ elif [[ "$1" == "restart" ]]; then
 
         fi
 
-        echo "Applying latest configmap env on the cluster."
-        kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+        if [[ ! "$IGNORE_SETTINGS" ]]; then
 
-        echo "Applying latest secret on the cluster"
-        kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+            echo "Applying latest configmap env on the cluster."
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+
+            echo "Applying latest secret on the cluster"
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+
+        fi
 
         echo "Restarting all exchange containers on cluster"
         kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
@@ -3522,11 +3566,15 @@ elif [[ "$1" == "upgrade" ]]; then
 
         fi
 
-        echo "Applying latest configmap env on the cluster."
-        kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+        if [[ ! "$IGNORE_SETTINGS" ]]; then 
 
-        echo "Applying latest secret on the cluster"
-        kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+            echo "Applying latest configmap env on the cluster."
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+
+            echo "Applying latest secret on the cluster"
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+
+        fi
 
         if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
         
@@ -3784,6 +3832,11 @@ elif [[ "$1" == "terminate" ]]; then
                 echo "Skipping the command confirmation."
                 shift; continue
                 ;;
+            --ignore_compatibility_check)
+                IGNORE_COMPATIBILITY_CHECK=true
+                echo "Warning: HollaEx CLI will ignore all compatibility checkes for HollaEx Core and Kit."
+                shift; continue
+                ;;
             --*) 
                 err_msg "Invalid option: $1"
                 print_usage;
@@ -3826,8 +3879,12 @@ elif [[ "$1" == "terminate" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
-    # Check Kit version compatibility range.
-    check_kit_version_compatibility_range;
+    if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
+
+        # Check Kit version compatibility range.
+        check_kit_version_compatibility_range;
+    
+    fi 
 
     if [[ "$USE_KUBERNETES" ]]; then
 
