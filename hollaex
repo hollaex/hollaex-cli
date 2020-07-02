@@ -2619,7 +2619,7 @@ elif [[ "$1" == "prod" ]]; then
             for i in ${CONFIG_FILE_PATH[@]}; do
 
                 # Update exchange name
-                if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+                if command grep -q "HOLLAEX_CONFIGMAP_API_NAME" $i > /dev/null ; then
                 CONFIGMAP_FILE_PATH=$i
                 sed -i.bak "s/ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER=.*/ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER=$answer/" $CONFIGMAP_FILE_PATH
                 rm $CONFIGMAP_FILE_PATH.bak
@@ -2664,6 +2664,104 @@ elif [[ "$1" == "prod" ]]; then
             done;
 
             
+        fi
+
+        if [[ "$USE_KUBERNETES" ]]; then 
+
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                if command grep -q "HOLLAEX_CONFIGMAP_API_NAME" $i > /dev/null ; then
+                    CONFIGMAP_FILE_PATH=$i
+                fi 
+            
+            done
+
+            echo "Do you want to enable cert-manager based SSL for API server? (Y/n)"
+            read answer
+
+             if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+            
+                echo "Skipping to enable SSL for API server..."
+
+                 if command grep -q "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" $CONFIGMAP_FILE_PATH > /dev/null ; then
+            
+                    echo "Updating the existing ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER value..."
+                    sed -i.bak "s/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER=.*/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER=false/" $CONFIGMAP_FILE_PATH
+                    rm $CONFIGMAP_FILE_PATH.bak
+
+                else 
+
+                    echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER is missing on your settings file. Adding it now..."
+                    echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER=false" >> $CONFIGMAP_FILE_PATH
+
+                fi
+
+            else 
+
+                export ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER=true
+
+                if command grep -q "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" $CONFIGMAP_FILE_PATH > /dev/null ; then
+            
+                    echo "Updating the existing ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER value..."
+                    sed -i.bak "s/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER=.*/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER=true/" $CONFIGMAP_FILE_PATH
+                    rm $CONFIGMAP_FILE_PATH.bak
+
+                else 
+
+                    echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER is missing on your settings file. Adding it now..."
+                    echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER=true" >> $CONFIGMAP_FILE_PATH
+
+                fi
+
+                printf "\n"
+                echo "✔"
+                printf "\n"
+            
+            fi 
+
+            echo "Do you want to enable cert-manager based SSL for Web server? (Y/n)"
+            read answer
+
+            if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+            
+                echo "Skipping to enable SSL for Web server..."
+
+                if command grep -q "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB" $CONFIGMAP_FILE_PATH > /dev/null ; then
+            
+                    echo "Updating the existing ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB value..."
+                    sed -i.bak "s/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=.*/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=false/" $CONFIGMAP_FILE_PATH
+                    rm $CONFIGMAP_FILE_PATH.bak
+
+                else 
+
+                    echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB is missing on your settings file. Adding it now..."
+                    echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=false" >> $CONFIGMAP_FILE_PATH
+
+                fi
+
+            else 
+
+                export ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=true
+
+                if command grep -q "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB" $CONFIGMAP_FILE_PATH > /dev/null ; then
+            
+                    echo "Updating the existing ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB value..."
+                    sed -i.bak "s/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=.*/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=true/" $CONFIGMAP_FILE_PATH
+                    rm $CONFIGMAP_FILE_PATH.bak
+
+                else 
+
+                    echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB is missing on your settings file. Adding it now..."
+                    echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=true" >> $CONFIGMAP_FILE_PATH
+
+                fi
+
+                printf "\n"
+                echo "✔"
+                printf "\n"
+            
+            fi 
+        
         fi
 
         echo "Updating domains on settings files to use 'https' as a prefix..."
@@ -3278,6 +3376,7 @@ elif [[ "$1" == "build" ]]; then
 
     if [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
 
+        export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
         override_docker_image_version;
 
     fi
