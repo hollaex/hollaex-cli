@@ -4194,6 +4194,29 @@ elif [[ "$1" == "web" ]]; then
     # Setting web operation enabled command to true.
     ENVIRONMENT_WEB_ENABLE=true
 
+    if [[ ! "$USE_KUBERNETES" ]]; then
+
+         if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local;
+        fi
+
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local/nginx;
+        fi
+
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
+        fi
+    
+    elif [[ "$USE_KUBERNETES" ]]; then
+
+        #Creating kubernetes_config directory for generating config for Kubernetes.
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
+        fi
+
+    fi
+
     # hollaex web --setup
     if [[ "$WEB_CLIENT_SETUP" ]]; then
 
@@ -4314,11 +4337,6 @@ elif [[ "$1" == "web" ]]; then
             #     fi
 
             # fi
-
-            #Generating nginx conf.d folder
-            if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
-                mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
-            fi
 
             echo "Generating web docker-compose file"
             generate_local_docker_compose_for_web
@@ -4484,11 +4502,6 @@ elif [[ "$1" == "web" ]]; then
 
                 exit 1;
 
-            fi
-
-            #Generating nginx conf.d folder
-            if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
-                mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
             fi
 
             echo "Generating web docker-compose file"
@@ -4721,7 +4734,7 @@ elif [[ "$1" == "web" ]]; then
 
             echo "Applying web ingress rules for Kubernetes"
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
-
+            
             # FOR GENERATING NODESELECTOR VALUES
             generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateless
 
