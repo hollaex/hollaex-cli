@@ -886,8 +886,9 @@ elif [[ "$1" == "setup" ]]; then
                      --set DEPLOYMENT_MODE="api" \
                      --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                      --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                     --set stable.replicaCount="$ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS" \
-                     --set autoScaling.hpa.enable="true" \
+                     --set stable.replicaCount="${ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS:-1}" \
+                     --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_API_HPA_ENABLE:-false}" \
+                     --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_API_HPA_AVGMEMORY:-1300000000}" \
                      --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                      --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                      --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_API_CPU_LIMITS:-500m}" \
@@ -904,6 +905,8 @@ elif [[ "$1" == "setup" ]]; then
                      --set DEPLOYMENT_MODE="stream" \
                      --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                      --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                     --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_STREAM_HPA_ENABLE:-false}" \
+                     --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_STREAM_HPA_AVGMEMORY:-300000000}" \
                      --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                      --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                      --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_STREAM_CPU_LIMITS:-500m}" \
@@ -2140,7 +2143,7 @@ elif [[ "$1" == "start" ]]; then
 
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-influxdb --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=$ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS --namespace $ENVIRONMENT_EXCHANGE_NAME
+            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=${ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS:-1} --namespace $ENVIRONMENT_EXCHANGE_NAME
 
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
             
@@ -3620,7 +3623,7 @@ elif [[ "$1" == "upgrade" ]]; then
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
             printf "\033[93mWarning: Exchange service will be unavailable during the upgrade!\033[39m\n"
-            echo "Are you sure you want to upgrade $HOLLAEX_CONFIGMAP_API_NAME by using $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION with $ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS api containers on this cluster? (y/N)"
+            echo "Are you sure you want to upgrade $HOLLAEX_CONFIGMAP_API_NAME by using $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION with ${ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS:-1} api containers on this cluster? (y/N)"
 
             read answer
 
@@ -3695,8 +3698,9 @@ elif [[ "$1" == "upgrade" ]]; then
                     --set DEPLOYMENT_MODE="api" \
                     --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                     --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                    --set stable.replicaCount="2" \
-                    --set autoScaling.hpa.enable="true" \
+                    --set stable.replicaCount="${ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS:-1}" \
+                    --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_API_HPA_ENABLE:-false}" \
+                    --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_API_HPA_AVGMEMORY:-1300000000}" \
                     --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                     --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                     --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_API_CPU_LIMITS:-1000m}" \
@@ -3717,6 +3721,8 @@ elif [[ "$1" == "upgrade" ]]; then
                         --set DEPLOYMENT_MODE="stream" \
                         --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                         --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                        --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_STREAM_HPA_ENABLE:-false}" \
+                        --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_STREAM_HPA_AVGMEMORY:-300000000}" \
                         --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                         --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                         --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_STREAM_CPU_LIMITS:-1000m}" \
@@ -4292,7 +4298,8 @@ elif [[ "$1" == "web" ]]; then
                         --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY" \
                         --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION" \
                         --set stable.replicaCount="1" \
-                        --set autoScaling.hpa.enable="false" \
+                        --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_WEB_HPA_ENABLE:-false}" \
+                        --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_WEB_HPA_AVGMEMORY:-500000000}" \
                         --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_WEB_CPU_LIMITS:-1000m}" \
                         --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_WEB_MEMORY_LIMITS:-1024Mi}" \
                         --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_WEB_CPU_REQUESTS:-2m}" \
@@ -4745,7 +4752,8 @@ elif [[ "$1" == "web" ]]; then
                         --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY" \
                         --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION" \
                         --set stable.replicaCount="1" \
-                        --set autoScaling.hpa.enable="false" \
+                        --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_WEB_HPA_ENABLE:-false}" \
+                        --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_WEB_HPA_AVGMEMORY:-500000000}" \
                         --set envName="$ENVIRONMENT_EXCHANGE_NAME-web-env" \
                         --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_WEB_CPU_LIMITS:-1000m}" \
                         --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_WEB_MEMORY_LIMITS:-1024Mi}" \
