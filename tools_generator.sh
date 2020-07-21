@@ -1989,6 +1989,13 @@ EOL
 
       done
 
+      if [[ ! -f "$TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml" ]]; then 
+
+        echo "Generating Kubernetes Configmap."
+        generate_kubernetes_configmap;
+      
+      fi
+
       # Adding new value directly at generated env / configmap file
       sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
       rm $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml.bak
@@ -2800,6 +2807,13 @@ EOL
       fi
 
       done
+
+      if [[ ! -f "$TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml" ]]; then 
+
+        echo "Generating Kubernetes Configmap."
+        generate_kubernetes_configmap;
+      
+      fi
 
       # Adding new value directly at generated env / configmap file
       sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE/" $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
