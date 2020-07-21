@@ -906,6 +906,7 @@ elif [[ "$1" == "setup" ]]; then
                      --set DEPLOYMENT_MODE="stream" \
                      --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                      --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                     --set stable.replicaCount="${ENVIRONMENT_KUBERNETES_STREAM_SERVER_REPLICAS:-1}" \
                      --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_STREAM_HPA_ENABLE:-false}" \
                      --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_STREAM_HPA_AVGMEMORY:-300000000}" \
                      --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_STREAM_HPA_MAXREPLICAS:-4}" \
@@ -3724,6 +3725,7 @@ elif [[ "$1" == "upgrade" ]]; then
                         --set DEPLOYMENT_MODE="stream" \
                         --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                         --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                        --set stable.replicaCount="${ENVIRONMENT_KUBERNETES_STREAM_SERVER_REPLICAS:-1}" \
                         --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_STREAM_HPA_ENABLE:-false}" \
                         --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_STREAM_HPA_AVGMEMORY:-300000000}" \
                         --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_STREAM_HPA_MAXREPLICAS:-4}" \
@@ -4301,7 +4303,7 @@ elif [[ "$1" == "web" ]]; then
                         --namespace $ENVIRONMENT_EXCHANGE_NAME \
                         --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY" \
                         --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION" \
-                        --set stable.replicaCount="1" \
+                        --set stable.replicaCount="${ENVIRONMENT_KUBERNETES_WEB_SERVER_REPLICAS:-1}" \
                         --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_WEB_HPA_ENABLE:-false}" \
                         --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_WEB_HPA_AVGMEMORY:-500000000}" \
                         --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_WEB_HPA_MAXREPLICAS:-4}" \
@@ -4756,7 +4758,7 @@ elif [[ "$1" == "web" ]]; then
                         --recreate-pods \
                         --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY" \
                         --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION" \
-                        --set stable.replicaCount="1" \
+                        --set stable.replicaCount="${ENVIRONMENT_KUBERNETES_WEB_SERVER_REPLICAS:-1}" \
                         --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_WEB_HPA_ENABLE:-false}" \
                         --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_WEB_HPA_AVGMEMORY:-500000000}" \
                         --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_WEB_HPA_MAXREPLICAS:-4}" \
