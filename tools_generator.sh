@@ -1226,7 +1226,6 @@ function generate_random_values() {
 
 function update_random_values_to_config() {
 
-
 GENERATE_VALUES_LIST=( "HOLLAEX_SECRET_SUPERVISOR_PASSWORD" "HOLLAEX_SECRET_SUPPORT_PASSWORD" "HOLLAEX_SECRET_KYC_PASSWORD" "HOLLAEX_SECRET_QUICK_TRADE_SECRET" "HOLLAEX_SECRET_SECRET" )
 
 for j in ${CONFIG_FILE_PATH[@]}; do
@@ -1234,59 +1233,41 @@ for j in ${CONFIG_FILE_PATH[@]}; do
   if command grep -q "HOLLAEX_SECRET" $j > /dev/null ; then
 
     SECRET_CONFIG_FILE_PATH=$j
+    echo "Generating random secrets..."
 
-    # if [[ ! -z "$HOLLAEX_SECRET_SECRET" ]] ; then
-  
-    #   echo "Pre-generated secrets are detected on your secret file!"
-    #   printf "\033[93mIf you are trying to migrate your existing Exchange on new machine, DO NOT OVERRIDE IT.\033[39m\n"
-    #   echo "Are you sure you want to override them? (y/N)"
+    for k in ${GENERATE_VALUES_LIST[@]}; do
 
-    #   read answer
+      grep -v $k $SECRET_CONFIG_FILE_PATH > temp && mv temp $SECRET_CONFIG_FILE_PATH
+      #echo $SECRET_CONFIG_FILE_PATH
 
-    #   if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+      # Using special form to generate both API_KEYS keys and secret
+      if [[ "$k" == "HOLLAEX_SECRET_SECRET" ]]; then
 
-    #     echo "Skipping..."
-    #     return 0
-
-    #   fi
-
-    # fi  
-
-        echo "Generating random secrets..."
-
-        for k in ${GENERATE_VALUES_LIST[@]}; do
-
-          grep -v $k $SECRET_CONFIG_FILE_PATH > temp && mv temp $SECRET_CONFIG_FILE_PATH
-          #echo $SECRET_CONFIG_FILE_PATH
-
-          # Using special form to generate both API_KEYS keys and secret
-          if [[ "$k" == "HOLLAEX_SECRET_SECRET" ]]; then
-
-            cat >> $SECRET_CONFIG_FILE_PATH <<EOL
+      cat >> $SECRET_CONFIG_FILE_PATH <<EOL
 $k=$(generate_random_values):$(generate_random_values)
 EOL
 
-          else 
+      else 
 
-            cat >> $SECRET_CONFIG_FILE_PATH <<EOL
+      cat >> $SECRET_CONFIG_FILE_PATH <<EOL
 $k=$(generate_random_values)
 EOL
 
-          fi
+      fi
         
-        done
+    done
 
-        unset k
-        unset GENERATE_VALUES_LIST
-        unset HOLLAEX_CONFIGMAP_VARIABLES
-        unset HOLLAEX_SECRET_VARIABLES
-        unset HOLLAEX_SECRET_VARIABLES_BASE64
-        unset HOLLAEX_SECRET_VARIABLES_YAML
-        unset HOLLAEX_CONFIGMAP_VARIABLES_YAML
+    unset k
+    unset GENERATE_VALUES_LIST
+    unset HOLLAEX_CONFIGMAP_VARIABLES
+    unset HOLLAEX_SECRET_VARIABLES
+    unset HOLLAEX_SECRET_VARIABLES_BASE64
+    unset HOLLAEX_SECRET_VARIABLES_YAML
+    unset HOLLAEX_CONFIGMAP_VARIABLES_YAML
 
-        for i in ${CONFIG_FILE_PATH[@]}; do
-              source $i
-        done;
+    for i in ${CONFIG_FILE_PATH[@]}; do
+          source $i
+    done;
 
       #   load_config_variables;
     
@@ -6511,5 +6492,17 @@ function generate_db_s3_backup_cronjob_config() {
   awsSecretKey: "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_SECRETKEY"
 
 EOL
+
+}
+
+function check_docker_daemon_status() {
+
+  if ! command docker ps > /dev/null 2>&1; then
+
+    printf "\n\033[91mError: Docker Daemon is not running!\033[39m\n"
+    echo "Please check the Docker status of your system and try again."
+    exit 1;
+
+  fi
 
 }
