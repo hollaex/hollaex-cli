@@ -2279,6 +2279,267 @@ elif [[ "$1" == "start" ]]; then
 
     fi
 
+elif [[ "$1" == "scale" ]]; then
+
+    while true; do
+        [[ $# -eq 0 ]] && break
+        case $1 in
+            --path)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_CLI_INIT_PATH=$1
+                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
+                shift; continue
+                ;;
+            --target)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_SCALE_TARGET=$1
+                echo "Scaling Target: $HOLLAEX_SCALE_TARGET."
+                shift; continue
+                ;;
+            --replicas)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_SCALE_TARGET_REPLICAS=$1
+                echo "Target Replicas: $HOLLAEX_SCALE_TARGET_REPLICAS."
+                shift; continue
+                ;;
+            --ignore_settings)
+                IGNORE_SETTINGS=true
+                echo "HollaEx CLI will ignore local settings update on restart."
+                shift; continue
+                ;;
+            --kube)
+                USE_KUBERNETES=true
+                echo "HollaEx CLI will use your Kubernetes cluster as a target."
+                shift; continue
+                ;;
+            --ignore_compatibility_check)
+                IGNORE_COMPATIBILITY_CHECK=true
+                echo "Warning: HollaEx CLI will ignore all compatibility checkes for HollaEx Core and Kit."
+                shift; continue
+                ;;
+            --skip)
+                RUN_WITH_VERIFY=false
+                echo "Skipping the command confirmation."
+                shift; continue
+                ;;
+            --*) 
+                err_msg "Invalid option: $1"
+                print_usage;
+                exit 1;
+                ;;
+        esac
+        shift
+    done
+
+    export ENVIRONMENT_HOLLAEX_SCALEING=true
+
+    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        CONFIG_FILE_PATH=$(pwd)/settings/*
+        TEMPLATE_GENERATE_PATH=$(pwd)/templates
+        INIT_PATH_CHECK=$(pwd)/.hollaex
+
+    fi
+
+    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        
+    fi
+
+    #Quit if necessary flags are missing
+    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
+
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
+        print_usage;
+        exit 1;
+
+    fi
+
+     source $SCRIPTPATH/tools_generator.sh
+
+    # Update random secrets if env generation is enabled.
+    if [[ ! "$IGNORE_SETTINGS" ]]; then 
+
+        #Regenerate random secrets
+        update_random_values_to_config;
+
+    fi
+
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
+
+    load_config_variables;
+
+    if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
+
+        # Check Kit version compatibility range.
+        check_kit_version_compatibility_range;
+    
+    fi 
+
+    if [[ "$IGNORE_SETTINGS" ]]; then
+
+        export ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE=false
+        export ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE=false
+        export ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE=false 
+        
+    fi 
+
+     # Target filtering
+
+    SUPPORTED_TARGETS=("api" "stream")
+
+    if [[ "$HOLLAEX_SCALE_TARGET" ]]; then
+
+        for i in "${SUPPORTED_TARGETS[@]}"
+            do
+                if [ "$i" == "$HOLLAEX_SCALE_TARGET" ] ; then
+                    
+                    export HOLLAEX_SCALE_TARGET_CONVERTED="${ENVIRONMENT_EXCHANGE_NAME}-server-${HOLLAEX_SCALE_TARGET}"
+                    break;
+                
+                else 
+
+                    echo "Error: The specified target $HOLLAEX_SCALE_TARGET is not supported for scaling."
+                    echo "Supported targets: ${SUPPORTED_TARGETS[@]}."
+                    echo "Please try it again."
+
+                    exit 1;
+
+                fi
+        done
+
+    else
+
+        echo "Error: You must specify the target server for scaling with '--target' flag."
+        echo "Please try it again."
+
+        exit 1;
+
+    fi
+
+    if [[ "$USE_KUBERNETES" ]]; then
+
+        #Checking Kubernetes dependencies
+        check_kubernetes_dependencies;
+
+        #Creating kubernetes_config directory for generating config for Kubernetes.
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
+        fi
+
+        if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION"  ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME"  ]] ; then
+            printf "\033[91mError: Please define exchange name and Docker image version on config file before running HollaEx CLI.\033[39m\n"
+            print_usage
+            exit 1;
+        fi
+
+        check_empty_values_on_settings;
+
+        echo "*********************************************"
+        echo "Verifying current KUBECONFIG on the machine"
+        kubectl get nodes
+        echo "*********************************************"
+
+        # For scaling up exisitng Exchange on Kubernetes
+        if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+
+            echo "Scaling up containers on the cluster..."
+            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+            
+            echo "Target $HOLLAEX_SCALE_TARGET has been successfully scaled to $HOLLAEX_SCALE_TARGET_REPLICAS."
+
+            hollaex_ascii_exchange_is_up;
+
+            exit 0;
+
+        else 
+
+            echo "HollaEx CLI failed to detect existing exchange running on this Kubernetes."
+            echo "Please review your settings files and targeted Kubernetes."
+
+            exit 1;
+
+        fi
+
+    fi
+
+    if [[ ! "$USE_KUBERNETES" ]]; then
+
+        # Checking docker-compose is installed on this machine.
+        if command docker-compose version > /dev/null 2>&1; then
+
+            echo "*********************************************"
+            echo "docker-compose detected"
+            echo "version: $(docker-compose version)"
+            echo "*********************************************"
+
+        else
+
+            echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
+            exit 1;
+
+        fi
+
+        # Exit HollaEx CLI If docker_compose 
+        if [[ ! "$ENVIRONMENT_EXCHANGE_RUN_MODE" ]]; then
+
+            echo "Your ENVIRONMENT_EXCHANGE_RUN_MODE value is missing! Please reconfirm your settings files."
+            exit 1;
+
+        fi
+
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local;
+        fi
+
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local/nginx;
+        fi
+
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
+        fi
+        
+        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_NGINX_UPSTREAM" == true ]]; then
+
+            echo "Generating Nginx upstream conf"
+            generate_nginx_upstream;
+        
+        fi
+
+        # Checking that the existing docker-compose file got the host port bound specifications.
+        if command cat $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml | grep -e "10010" -e "10080" > /dev/null 2>&1; then
+            
+            echo "Generating docker-compose file"
+            generate_local_docker_compose
+
+        fi
+
+        # Running docker-compose scale command.
+        if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml scale $HOLLAEX_SCALE_TARGET_CONVERTED=$HOLLAEX_SCALE_TARGET_REPLICAS; then
+
+            echo "Target $HOLLAEX_SCALE_TARGET has been successfully scaled to $HOLLAEX_SCALE_TARGET_REPLICAS."
+        
+        else 
+
+            printf "\033[91mFailed to scale the target $HOLLAEX_SCALE_TARGET! Please review your settings and try again.\033[39m\n"
+            exit 1;
+        
+        fi
+
+        exit 0;
+
+    fi
+
 elif [[ "$1" == "prod" ]]; then
 
     while true; do
