@@ -2436,19 +2436,28 @@ elif [[ "$1" == "scale" ]]; then
         if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
             echo "Scaling up containers on the cluster..."
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+            kubectl scale deployment/$HOLLAEX_SCALE_TARGET_CONVERTED --replicas=$HOLLAEX_SCALE_TARGET_REPLICAS --namespace $ENVIRONMENT_EXCHANGE_NAME
             
-            echo "Target $HOLLAEX_SCALE_TARGET has been successfully scaled to $HOLLAEX_SCALE_TARGET_REPLICAS."
+            export HOLLAEX_SCALE_TARGET_REPLICAS_SETTINGS="ENVIRONMENT_KUBERNETES_$(echo $HOLLAEX_SCALE_TARGET | tr '[:lower:]' '[:upper:]')_SERVER_REPLICAS"
 
-            hollaex_ascii_exchange_is_up;
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                # Update exchange name
+                if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+                    CONFIGMAP_FILE_PATH=$i
+                    sed -i.bak "s/$HOLLAEX_SCALE_TARGET_REPLICAS_SETTINGS=.*/$HOLLAEX_SCALE_TARGET_REPLICAS_SETTINGS=$HOLLAEX_SCALE_TARGET_REPLICAS/" $CONFIGMAP_FILE_PATH
+                    rm $CONFIGMAP_FILE_PATH.bak
+                fi
+                
+            done
+
+            printf "\033[92m\nTarget $HOLLAEX_SCALE_TARGET has been successfully scaled to $HOLLAEX_SCALE_TARGET_REPLICAS.\033[39m\n"
 
             exit 0;
 
         else 
 
-            echo "HollaEx CLI failed to detect existing exchange running on this Kubernetes."
-            echo "Please review your settings files and targeted Kubernetes."
-
+            printf "\033[91mFailed to scale the target $HOLLAEX_SCALE_TARGET! Please review your settings and try again.\033[39m\n"
             exit 1;
 
         fi
@@ -2501,12 +2510,12 @@ elif [[ "$1" == "scale" ]]; then
         fi
 
         # Running docker-compose scale command.
-        if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --scale $HOLLAEX_SCALE_TARGET_CONVERTED=$HOLLAEX_SCALE_TARGET_REPLICAS; then
+        if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --no-recreate --scale $HOLLAEX_SCALE_TARGET_CONVERTED=$HOLLAEX_SCALE_TARGET_REPLICAS; then
             
             # Nginx Reload
             docker exec -it $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
 
-            echo "Target $HOLLAEX_SCALE_TARGET has been successfully scaled to $HOLLAEX_SCALE_TARGET_REPLICAS."
+            printf "\033[92m\nTarget $HOLLAEX_SCALE_TARGET has been successfully scaled to $HOLLAEX_SCALE_TARGET_REPLICAS.\033[39m\n"
         
         else 
 
@@ -2515,9 +2524,10 @@ elif [[ "$1" == "scale" ]]; then
         
         fi
 
-        exit 0;
-
     fi
+
+    exit 0;
+
 
 elif [[ "$1" == "prod" ]]; then
 
