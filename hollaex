@@ -884,7 +884,6 @@ elif [[ "$1" == "setup" ]]; then
         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api \
                      --wait \
                      --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                     --recreate-pods \
                      --set DEPLOYMENT_MODE="api" \
                      --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                      --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
@@ -904,7 +903,6 @@ elif [[ "$1" == "setup" ]]; then
 
         helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream \
                      --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                     --recreate-pods \
                      --set DEPLOYMENT_MODE="stream" \
                      --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                      --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
@@ -3630,12 +3628,16 @@ elif [[ "$1" == "build" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
-    if [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
+    # Update the Core version to the user specified version, or use a latest compatible one.
+    export ENVIRONMENT_DOCKER_IMAGE_VERSION=${ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE:-$HOLLAEX_CORE_MAXIMUM_COMPATIBLE}
 
-        export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
-        override_docker_image_version;
+    if [[ -z $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE ]]; then 
 
-    fi
+        export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=${HOLLAEX_CORE_MAXIMUM_COMPATIBLE}
+
+    fi 
+
+    override_docker_image_version;
 
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION}-$(date +%y%m%d%H%M)"
 
@@ -5005,7 +5007,6 @@ elif [[ "$1" == "web" ]]; then
             echo "Restarting the $HOLLAEX_CONFIGMAP_API_NAME web server."
             if command helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-web \
                         --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                        --recreate-pods \
                         --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY" \
                         --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION" \
                         --set stable.replicaCount="${ENVIRONMENT_KUBERNETES_WEB_SERVER_REPLICAS:-1}" \
