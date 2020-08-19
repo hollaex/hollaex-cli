@@ -1308,7 +1308,6 @@ function helm_dynamic_trading_paris() {
       #Running and Upgrading
       helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME \
                    --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                   --recreate-pods \
                    --set DEPLOYMENT_MODE="engine" \
                    --set PAIR="$TRADE_PARIS_DEPLOYMENT" \
                    --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
@@ -2746,7 +2745,7 @@ EOL
       echo "Kubernetes Job has been created for adding new pair $PAIR_NAME."
 
       echo "Waiting until Job get completely run"
-      sleep 30;
+      sleep 50;
 
     else 
 
