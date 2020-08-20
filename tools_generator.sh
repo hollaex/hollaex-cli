@@ -656,12 +656,13 @@ services:
     env_file:
       - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
     entrypoint:
-      - /app/api-binary
+      - nodemon
+      - app.js
     volumes:
-      - ${HOLLAEX_CLI_INIT_PATH}/db/migrations:/app/db/migrations
-      - ${HOLLAEX_CLI_INIT_PATH}/db/models:/app/db/models
-      - ${HOLLAEX_CLI_INIT_PATH}/db/seeders:/app/db/seeders
-      # - ${HOLLAEX_CLI_INIT_PATH}/mail:/app/mail
+      - ${HOLLAEX_CLI_INIT_PATH}/server/db/migrations:/app/db/migrations
+      - ${HOLLAEX_CLI_INIT_PATH}/server/db/models:/app/db/models
+      - ${HOLLAEX_CLI_INIT_PATH}/server/db/seeders:/app/db/seeders
+      # - ${HOLLAEX_CLI_INIT_PATH}/server/mail:/app/mail
     ports:
       - 10010:10010
     networks:
@@ -696,7 +697,8 @@ services:
     env_file:
       - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
     entrypoint:
-      - /app/stream-binary
+      - nodemon
+      - app.js
     ports:
       - 10080:10080
     networks:
@@ -730,32 +732,6 @@ services:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
       
 EOL
-
-  IFS=',' read -ra PAIRS <<< "$HOLLAEX_CONFIGMAP_PAIRS"    #Convert string to array
-
-  for j in "${PAIRS[@]}"; do
-    TRADE_PARIS_DEPLOYMENT=$(echo $j | cut -f1 -d ",")
-
-  # Generate docker-compose
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
-
-  ${ENVIRONMENT_EXCHANGE_NAME}-server-engine-$TRADE_PARIS_DEPLOYMENT:
-    image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
-    restart: always
-    env_file:
-      - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
-    environment:
-      - PAIR=${TRADE_PARIS_DEPLOYMENT}
-    entrypoint:
-      - /app/engine-binary
-    networks:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-network
-    depends_on:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
-      - ${ENVIRONMENT_EXCHANGE_NAME}-db      
-EOL
-
-  done
 
 # Generate docker-compose
 cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
@@ -870,7 +846,7 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
     env_file:
       - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
     entrypoint:
-      - /app/${i}-binary
+      - node /app/app.js
     $(if [[ "${i}" == "api" ]] || [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "ports:"; fi)
       $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- 10010:10010"; fi) 
       $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- 10080:10080"; fi)
@@ -913,38 +889,6 @@ EOL
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
       
 EOL
-
-  fi
-
-  if [[ "$i" == "engine" ]]; then
-
-  IFS=',' read -ra PAIRS <<< "$HOLLAEX_CONFIGMAP_PAIRS"    #Convert string to array
-
-  for j in "${PAIRS[@]}"; do
-    TRADE_PARIS_DEPLOYMENT=$(echo $j | cut -f1 -d ",")
-
-  # Generate docker-compose
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
-
-  ${ENVIRONMENT_EXCHANGE_NAME}-server-${i}-$TRADE_PARIS_DEPLOYMENT:
-    image: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
-    restart: always
-    env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
-    environment:
-      - PAIR=${TRADE_PARIS_DEPLOYMENT}
-    entrypoint:
-      - /app/${i}-binary
-    networks:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-network
-    $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" ]] || [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" ]] || [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" ]]; then echo "depends_on:"; fi)
-      $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-influxdb"; fi)
-      $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-redis"; fi)
-      $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-db"; fi)
-      
-EOL
-
-  done
 
   fi
 
@@ -1295,96 +1239,6 @@ EOL
 # `helm_dynamic_trading_paris run` for running paris based on config file definition.
 # `helm_dynamic_trading_paris terminate` for terminating installed paris on kubernetes.
 
-function helm_dynamic_trading_paris() {
-
-  IFS=',' read -ra PAIRS <<< "$HOLLAEX_CONFIGMAP_PAIRS"    #Convert string to array
-
-  for i in "${PAIRS[@]}"; do
-    TRADE_PARIS_DEPLOYMENT=$(echo $i | cut -f1 -d ",")
-    TRADE_PARIS_DEPLOYMENT_NAME=${TRADE_PARIS_DEPLOYMENT//-/}
-
-    if [[ "$1" == "run" ]]; then
-
-      #Running and Upgrading
-      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME \
-                   --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                   --set DEPLOYMENT_MODE="engine" \
-                   --set PAIR="$TRADE_PARIS_DEPLOYMENT" \
-                   --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
-                   --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                   --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
-                   --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                   --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_ENGINE_CPU_LIMITS:-500m}" \
-                   --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_ENGINE_MEMORY_LIMITS:-1024Mi}" \
-                   --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_ENGINE_CPU_REQUESTS:-10m}" \
-                   --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_ENGINE_MEMORY_REQUESTS:-128Mi}" \
-                   --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-                   -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
-                   -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
-
-    elif [[ "$1" == "scaleup" ]]; then
-      
-      #Scaling down queue deployments on Kubernetes
-      kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-    elif [[ "$1" == "scaledown" ]]; then
-      
-      #Scaling down queue deployments on Kubernetes
-      kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-    elif [[ "$1" == "terminate" ]]; then
-
-      #Terminating
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME
-
-    fi
-
-  done
-
-}
-
-function check_empty_values_on_settings() {
-
-  for i in ${HOLLAEX_CONFIGMAP_VARIABLES[@]}; do
-
-    PARSED_CONFIGMAP_VARIABLES=$(echo $i | cut -f2 -d '=')
-
-    if [[ -z $PARSED_CONFIGMAP_VARIABLES ]]; then
-
-      printf "\033[94mInfo: Configmap - \"$(echo $i | cut -f1 -d '=')\" got an empty value! Please reconfirm the settings files.\033[39m\n"
-
-    fi
-  
-  done
-
-  GENERATE_VALUES_LIST=( "ADMIN_PASSWORD" "SUPERVISOR_PASSWORD" "SUPPORT_PASSWORD" "KYC_PASSWORD" "QUICK_TRADE_SECRET" "SECRET" )
-
-  for i in ${HOLLAEX_SECRET_VARIABLES[@]}; do
-
-    PARSED_SECRET_VARIABLES=$(echo $i | cut -f2 -d '=')
-
-    if [[ -z $PARSED_SECRET_VARIABLES ]]; then
-
-      printf "\033[94mInfo: Secret - \"$(echo $i | cut -f1 -d '=')\" got an empty value! Please reconfirm the settings files.\033[39m\n"
-
-      for k in "${GENERATE_VALUES_LIST[@]}"; do
-
-          GENERATE_VALUES_FILTER=$(echo $i | cut -f1 -d '=')
-
-          if [[ "$k" == "${GENERATE_VALUES_FILTER}" ]] ; then
-
-              echo -n "\"$k\" is a value should be automatically generated by HollaEx CLI."
-              printf "\n"
-
-          fi
-
-      done
-
-    fi
-  
-  done
-
-}
 
 function override_user_hollaex_core() {
 

@@ -24,7 +24,7 @@ function print_usage() {
 /bin/cat << EOF
 
 Usage : 
-    hollaex [ init ] [ setup ] [ start ] [ restart ] [ stop ] [ build ] [ upgrade ] [ terminate ] [ web ] [ toolbox ] [ status ] [ logs ] [ version ] (--flags)
+    hollaex [ dev ] [ setup ] [ start ] [ restart ] [ stop ] [ build ] [ upgrade ] [ terminate ] [ web ] [ toolbox ] [ status ] [ logs ] [ version ] (--flags)
 
 General Flags (Except for 'hollaex init', 'hollaex import'):
     --path, Manually pointing HollaEx Kit path. Should be always absolute path.
@@ -934,8 +934,6 @@ elif [[ "$1" == "setup" ]]; then
                      --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
                      -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                      -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
-
-        helm_dynamic_trading_paris run;
 
         sleep 5;
 
@@ -2151,8 +2149,6 @@ elif [[ "$1" == "start" ]]; then
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
             
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-plugins-controller --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-            helm_dynamic_trading_paris scaleup;
             
             echo "Applying Ingress rules..."
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
@@ -3174,8 +3170,6 @@ elif [[ "$1" == "stop" ]]; then
 
         kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-plugins-controller --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-        helm_dynamic_trading_paris scaledown;
-
         echo "Scaling down backend components..."
 
         kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
@@ -4015,8 +4009,6 @@ elif [[ "$1" == "upgrade" ]]; then
 
         if [[ ! "$UPGRADE_API_ONLY" ]] && [[ ! "$UPGRADE_PLUGINS_ONLY" ]]; then 
         
-            helm_dynamic_trading_paris run;
-
             # Running database job for Kubernetes
             kubernetes_database_init upgrade;
 
@@ -4284,8 +4276,6 @@ elif [[ "$1" == "terminate" ]]; then
         helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-api
         helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-stream
         helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-plugins-controller
-
-        helm_dynamic_trading_paris terminate;
 
         helm del --purge $ENVIRONMENT_EXCHANGE_NAME-redis 
         helm del --purge $ENVIRONMENT_EXCHANGE_NAME-db
