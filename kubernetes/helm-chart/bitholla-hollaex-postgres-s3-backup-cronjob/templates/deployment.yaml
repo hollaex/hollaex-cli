@@ -49,6 +49,6 @@ spec:
             args:
             - /bin/sh
             - -c
-            - export TZ=$TIMEZONE_SET && export TIMESTAMP="$(date +%y%m%d%H%M)" && pg_dumpall > {{.Release.Namespace}}-$TIMESTAMP.dump && echo successfullly dumped "{{.Release.Namespace}}-$TIMESTAMP, Now pushing it to S3." && ls -al && aws s3 cp {{.Release.Namespace}}-$TIMESTAMP.dump s3://$AWS_BUCKET/{{.Release.Namespace}}-postgres/{{.Release.Namespace}}-$TIMESTAMP.dump
+            - export TZ=$TIMEZONE_SET && export TIMESTAMP="$(date +%y%m%d%H%M)" && pg_dumpall > {{.Release.Namespace}}-$TIMESTAMP.dump && echo successfullly dumped "{{.Release.Namespace}}-$TIMESTAMP, Now pushing it to S3." && ls -al && aws s3 cp {{.Release.Namespace}}-$TIMESTAMP.dump s3://$AWS_BUCKET/backup/{{.Release.Namespace}}-postgres/{{.Release.Namespace}}-$TIMESTAMP.dump
           restartPolicy: OnFailure
 
