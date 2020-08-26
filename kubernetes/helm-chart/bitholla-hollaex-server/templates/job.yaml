@@ -68,7 +68,6 @@ spec:
           - sequelize db:migrate;
             node tools/dbs/checkConstants.js;
             node tools/dbs/runTriggers.js;
-            node tools/dbs/initializeInflux.js;
             node tools/dbs/setActivationCode.js;
 
 {{- end }}

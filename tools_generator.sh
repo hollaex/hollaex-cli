@@ -32,11 +32,6 @@ function local_database_init() {
       echo "Running sequelize db:seed:all"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 sequelize db:seed:all
 
-      echo "Running InfluxDB migrations"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/createInflux.js
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/migrateInflux.js
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/initializeInflux.js
-
       echo "Setting up the exchange with provided activation code"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/setActivationCode.js
 
@@ -52,9 +47,6 @@ function local_database_init() {
 
       echo "Running checkConstants"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/checkConstants.js
-
-      echo "Running InfluxDB initialization"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/initializeInflux.js
 
       echo "Setting up the exchange with provided activation code"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/setActivationCode.js
@@ -101,11 +93,6 @@ function kubernetes_database_init() {
 
     echo "Running sequelize db:seed:all"
     kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:seed:all 
-
-    echo "Running InfluxDB migrations"
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/createInflux.js
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/migrateInflux.js
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
 
     echo "Setting up the exchange with provided activation code"
     kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/setActivationCode.js
@@ -629,27 +616,6 @@ services:
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
 
-  ${ENVIRONMENT_EXCHANGE_NAME}-influxdb:
-    image: ${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_REGISTRY:-influxdb}:${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION:-1.7.8-alpine}
-    restart: always
-    ports:
-      - 8086:8086
-    environment:
-      - INFLUX_DB=$HOLLAEX_SECRET_INFLUX_DB
-      - INFLUX_HOST=${ENVIRONMENT_EXCHANGE_NAME}-influxdb
-      - INFLUX_PORT=8086
-      - INFLUX_USER=$HOLLAEX_SECRET_INFLUX_USER
-      - INFLUX_PASSWORD=$HOLLAEX_SECRET_INFLUX_PASSWORD
-      - INFLUXDB_HTTP_LOG_ENABLED=false
-      - INFLUXDB_DATA_QUERY_LOG_ENABLED=false
-      - INFLUXDB_CONTINUOUS_QUERIES_LOG_ENABLED=false
-      - INFLUXDB_LOGGING_LEVEL=error
-    depends_on:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-db
-      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
-    networks:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-network
-
   ${ENVIRONMENT_EXCHANGE_NAME}-server-api:
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
     restart: always
@@ -668,7 +634,6 @@ services:
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-influxdb
       - ${ENVIRONMENT_EXCHANGE_NAME}-redis
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
   
@@ -687,7 +652,6 @@ services:
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-influxdb
       - ${ENVIRONMENT_EXCHANGE_NAME}-redis
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
 
@@ -704,7 +668,6 @@ services:
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-influxdb
       - ${ENVIRONMENT_EXCHANGE_NAME}-redis
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
 
@@ -786,30 +749,6 @@ EOL
 
 fi
 
-if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" == "true" ]]; then
-  # Generate docker-compose
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
-  ${ENVIRONMENT_EXCHANGE_NAME}-influxdb:
-    image: ${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_REGISTRY:-influxdb}:${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION:-1.7.8-alpine}
-    restart: always
-    ports:
-      - 8086:8086
-    env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
-    environment:
-      - INFLUXDB_HTTP_LOG_ENABLED=false
-      - INFLUXDB_DATA_QUERY_LOG_ENABLED=false
-      - INFLUXDB_CONTINUOUS_QUERIES_LOG_ENABLED=false
-      - INFLUXDB_LOGGING_LEVEL=error
-    depends_on:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-db
-      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
-    networks:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-network
-EOL
-
-fi 
-
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
 
@@ -835,8 +774,6 @@ IFS=',' read -ra LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE <<< "$ENVIRONMENT_EX
 
 for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
 
-  if [[ ! "$i" == "engine" ]]; then
-
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
 
@@ -846,20 +783,20 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
     env_file:
       - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
     entrypoint:
-      - node /app/app.js
+      - node
+    command:
+      $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- app.js"; fi) 
+      $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- ws/index.js"; fi) 
     $(if [[ "${i}" == "api" ]] || [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "ports:"; fi)
       $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- 10010:10010"; fi) 
       $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- 10080:10080"; fi)
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" ]] || [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" ]] || [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" ]]; then echo "depends_on:"; fi)
-      $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-influxdb"; fi)
       $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-redis"; fi)
       $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-db"; fi)
 
 EOL
-
-  fi
 
   if [[ "$i" == "api" ]]; then
   # Generate docker-compose
@@ -4683,63 +4620,6 @@ function hollaex_setup_finalization() {
   echo "*********************************************"
   printf "\n"
   echo "Your exchange is all set!"
-  echo "You can proceed to add your own currencies, trading pairs right away from now on."
-
-  echo "Attempting to add user custom currencies automatically..."
-
-  if [[ "$USE_KUBERNETES" ]]; then
-
-      if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
-
-        hollaex toolbox --add_coin --kube --is_hollaex_setup
-
-      else
-
-        hollaex toolbox --add_coin --kube --is_hollaex_setup 
-
-      fi
-  
-  elif [[ ! "$USE_KUBERNETES" ]]; then
-
-       if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
-
-        hollaex toolbox --add_coin --is_hollaex_setup
-
-      else
-
-        hollaex toolbox --add_coin --is_hollaex_setup 
-
-      fi
-
-  fi
-
-  echo "Attempting to add user custom trading pairs automatically..."
-
-  if [[ "$USE_KUBERNETES" ]]; then
-
-      if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
-
-        hollaex toolbox --add_trading_pair --kube --is_hollaex_setup
-
-      else 
-
-        hollaex toolbox --add_trading_pair --kube --is_hollaex_setup
-
-      fi
-
-  elif [[ ! "$USE_KUBERNETES" ]]; then
-
-      if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
-
-        hollaex toolbox --add_trading_pair --is_hollaex_setup
-
-      else 
-
-        hollaex toolbox --add_trading_pair --is_hollaex_setup
-
-      fi
-
-  fi
 
   if [[ ! "$HOLLAEX_DEV_SETUP" ]]; then
 
@@ -5226,7 +5106,10 @@ function update_hollaex_cli_to_latest() {
   local CURRENT_HOLLAEX_CLI_VERSION=$(cat $SCRIPTPATH/version)
   local CURRENT_HOLLAEX_CLI_VERSION_PARSED=${CURRENT_HOLLAEX_CLI_VERSION//./}
 
-  if (( $LATEST_HOLLAEX_CLI_VERSION_PARSED > $CURRENT_HOLLAEX_CLI_VERSION_PARSED )); then
+  local CURRENT_HOLLAEX_CLI_MAJOR_VERSION=$(echo $CURRENT_HOLLAEX_CLI_VERSION_PARSED | head -c 1)
+  local LATEST_HOLLAEX_CLI_MAJOR_VERSION=$(echo $LATEST_HOLLAEX_CLI_VERSION_PARSED | head -c 1)
+
+  if (( $LATEST_HOLLAEX_CLI_MAJOR_VERSION >= $CURRENT_HOLLAEX_CLI_MAJOR_VERSION )) && (( $LATEST_HOLLAEX_CLI_VERSION_PARSED > $CURRENT_HOLLAEX_CLI_VERSION_PARSED )); then
 
       printf "\033[93m\nNewer version of HollaEx CLI has been detected.\033[39m\n"
       printf "\nLatest version of HollaEx CLI : \033[92m$LATEST_HOLLAEX_CLI_VERSION\033[39m"
@@ -6144,7 +6027,6 @@ function generate_backend_passwords() {
 
   export HOLLAEX_SECRET_REDIS_PASSWORD=$(generate_random_values)
   export HOLLAEX_SECRET_DB_PASSWORD=$(generate_random_values)
-  export HOLLAEX_SECRET_INFLUX_PASSWORD=$(generate_random_values)
 
   if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE" $i > /dev/null ; then
 
@@ -6154,8 +6036,6 @@ function generate_backend_passwords() {
     sed -i.bak "s/HOLLAEX_SECRET_PUBSUB_PASSWORD=.*/HOLLAEX_SECRET_PUBSUB_PASSWORD=$HOLLAEX_SECRET_REDIS_PASSWORD/" $SECRET_FILE_PATH
 
     sed -i.bak "s/HOLLAEX_SECRET_DB_PASSWORD=.*/HOLLAEX_SECRET_DB_PASSWORD=$HOLLAEX_SECRET_DB_PASSWORD/" $SECRET_FILE_PATH
-
-    sed -i.bak "s/HOLLAEX_SECRET_INFLUX_PASSWORD=.*/HOLLAEX_SECRET_INFLUX_PASSWORD=$HOLLAEX_SECRET_INFLUX_PASSWORD/" $SECRET_FILE_PATH
 
     rm $SECRET_FILE_PATH.bak
     
@@ -6357,5 +6237,192 @@ function check_docker_daemon_status() {
     exit 1;
 
   fi
+
+}
+
+function get_hmac_token() {
+
+  echo "Issueing a security token for the HollaEx Network communication..."
+  
+  BITHOLLA_HMAC_TOKEN_GET_COUNT=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
+            --request GET \
+            https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/user/token | jq '.count')
+    
+  if [[ ! $BITHOLLA_HMAC_TOKEN_GET_COUNT == "0" ]]; then 
+
+    printf "\n\033[1mYou already have an active Token!\033[0m\n\n"
+
+    echo -e "You could \033[1mprovide the existing token manually\033[0m on the further menu."
+    echo -e "If you dont have an existing token, \033[1myou could also revoke the token at the https://dash.bitholla.com.\033[0m\n"
+
+    echo -e "Please \033[1mtype 'Y', if you have an existing token and ready to type.\033[0m"
+    echo -e "Please \033[1mtype 'N', if you want to revoke and issue a new token.\033[0m\n"
+
+    echo -e "\033[1mDo you want to continue with the exisitng token manually? (Y/n)\033[0m"
+
+    read tokenAnswer
+
+    if [[ "$tokenAnswer" = "${tokenAnswer#[Yy]}" ]]; then
+
+      echo -e "\nIf you dont have an existing token with you, \033[1myou could also revoke the token at the https://dash.bitholla.com.\033[0m"
+      echo -e "Please \033[1mrevoke it through the bitHolla Dashboard\033[0m, and \033[1mrepeat the process again.\033[0m\n"
+
+      echo -e "See you in a bit!\n"
+
+      exit 1;
+
+    fi 
+
+    function existing_token_form() {
+
+      echo -e "\033[1mYour existing API Key: \033[0m"
+      read answer 
+      HOLLAEX_SECRET_API_KEY=$answer
+
+      echo -e "\033[1mYour existing Secret Key: \033[0m"
+      read answer
+      HOLLAEX_SECRET_API_SECRET=$answer
+
+      echo -e "\n\033[1mAPI Key: $HOLLAEX_SECRET_API_KEY\033[0m"
+      echo -e "\033[1mSecret Key: $HOLLAEX_SECRET_API_SECRET\033[0m\n"
+      
+      echo "Do you want to proceed with these values? (Y/n)"
+      read answer
+
+      if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+
+          existing_token_form;
+
+      fi
+
+      if command sed -i.bak "s/HOLLAEX_SECRET_API_KEY=.*/HOLLAEX_SECRET_API_KEY=$HOLLAEX_SECRET_API_KEY/" $SECRET_FILE_PATH && command sed -i.bak "s/HOLLAEX_SECRET_API_SECRET=.*/HOLLAEX_SECRET_API_SECRET=$HOLLAEX_SECRET_API_SECRET/" $SECRET_FILE_PATH; then
+
+        echo -e "\n\033[92mSuccessfully stored the provided token to the settings file.\033[39m\n"
+
+      else 
+
+        echo -e "\n\033[91mFailed to store the issued token to the settings file.\033[39m\n"
+        echo "Please try it again."
+
+        exit 1;
+
+      fi
+
+    }
+
+    existing_token_form;
+    rm -f $SECRET_FILE_PATH.bak
+
+  else
+
+    BITHOLLA_HMAC_TOKEN_ISSUE_POST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" -w " %{http_code}" \
+          --request POST \
+          -d '{"name": "kit"}' \
+          https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/user/token)
+
+    HOLLAEX_SECRET_API_KEY=$BITHOLLA_HMAC_TOKEN_ISSUE_POST | jq '.apikey'
+    HOLLAEX_SECRET_API_SECRET=$BITHOLLA_HMAC_TOKEN_ISSUE_POST | jq '.secret'
+
+    echo -e "\n# # # # # Your Token # # # # #"
+    echo -e "\033[1mYour API Key: $HOLLAEX_SECRET_API_KEY\033[0m"
+    echo -e "\033[1mYour Secret Key: $HOLLAEX_SECRET_API_SECRET\033[0m"
+    echo -e "# # # # # # # # # # # # # # # #\n"
+
+    if command sed -i.bak "s/HOLLAEX_SECRET_API_KEY=.*/HOLLAEX_SECRET_API_KEY=$HOLLAEX_SECRET_API_KEY/" $SECRET_FILE_PATH && command sed -i.bak "s/HOLLAEX_SECRET_SECRET_KEY=.*/HOLLAEX_SECRET_SECRET_KEY=$HOLLAEX_SECRET_API_SECRET/" $SECRET_FILE_PATH; then
+
+      echo -e "\033[92mSuccessfully stored the issued token to the settings file.\033[39m\n"
+
+    else 
+
+      echo -e "\n\033[91mFailed to store the issued token to the settings file.\033[39m\n"
+      echo "Please make sure to manually save the issued token displayed above, and try the process again."
+      
+      exit 1;
+
+    fi 
+
+    rm -f $SECRET_FILE_PATH.bak
+
+  fi
+  
+}
+
+function hollaex_setup_initialization() {
+
+  if [[ "$RUN_WITH_VERIFY" == true ]]; then 
+
+        # Check that settings files are already configured.
+        if [[ ! "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]] && [[ $HOLLAEX_SECRET_ACTIVATION_CODE ]]; then
+
+            echo "HollaEx CLI detected the preconfigured values on your HollaEx Kit."
+            echo "Do you want to proceed with these preconfigured values? (Y/n)"
+            read answer
+
+            if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+                
+                export CONTINUE_WITH_PRECONFIGURED_VALUES=false
+            
+            else 
+
+                export CONTINUE_WITH_PRECONFIGURED_VALUES=true
+
+            fi
+
+        fi
+    
+    else 
+
+        echo "Proceeding with the preconfigured values..."
+        export CONTINUE_WITH_PRECONFIGURED_VALUES=true
+
+    fi
+
+    if [[ "$CONTINUE_WITH_PRECONFIGURED_VALUES" == false ]]; then
+
+        printf "\nWelcome to HollaEx Setup!\n\n"
+
+        echo -e "You need to \033[1msetup your exchange\033[0m with the configurations."
+        echo -e "You can follow the \033[1mexchange setup wizard\033[0m on \033[1mhttps://dash.bitholla.com\033[0m before you do this process. (Recommended)"
+        echo -e "\033[1mHave you already setup your exchange on bitHolla Dashboard? (Y/n)\033[0m"
+        read answer
+
+        if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+
+            printf "\nWe recommend you to setup your exchange on \033[1mbitHolla dashboard (dash.bitholla.com)\033[0m before you proceed.\n"
+            printf "Select \033[1m'Y'\033[0m to \033[1mquit the CLI\033[0m in order to first setup your exchange on the dashboard,\n" 
+            printf "Select \033[1m'N'\033[0m to proceed \033[1mmanual\033[0m CLI exchange setup wizard.\n" 
+            echo "Do you want to quit the CLI setup? (Y/n)"
+            read answer
+
+            if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+                
+                echo "Proceeding to a CLI exchange wizard..."
+                launch_basic_settings_input;
+            
+            else 
+
+                printf "\n\nPlease visit \033[1mdash.bitholla.com\033[0m and setup your exchange there first.\n"
+                printf "Once your exchange is configured on the dashboard, please start the procedure by using \033[1m'hollaex setup'\033[0m.\n\n"
+                exit 1;
+            
+            fi
+        
+        else 
+
+            if ! command hollaex login; then
+
+                exit 1;
+
+            fi
+
+            if ! command hollaex pull --skip; then
+
+                exit 1;
+
+            fi
+
+        fi
+    
+    fi
 
 }

@@ -12,7 +12,9 @@ GENERATE_PASSWORDS=false
 
 DOCKER_COMPOSE_NAME_PREFIX='local'
 
-ENVIRONMENT_BRIDGE_TARGET_SERVER='api.bitholla.com'
+ENVIRONMENT_BRIDGE_TARGET_SERVER='api.testnet.bitholla.com'
+
+ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER='api.testnet.hollaex.network'
 
 source $SCRIPTPATH/version_range
 
@@ -24,7 +26,7 @@ function print_usage() {
 /bin/cat << EOF
 
 Usage : 
-    hollaex [ dev ] [ setup ] [ start ] [ restart ] [ stop ] [ build ] [ upgrade ] [ terminate ] [ web ] [ toolbox ] [ status ] [ logs ] [ version ] (--flags)
+    hollaex [ dev ] [ setup ] [ import ] [ export ] [ login ] [ pull ] [ logout ] [ start ] [ prod ] [ restart ] [ stop ] [ build ] [ upgrade ] [ terminate ] [ web ] [ toolbox ] [ status ] [ logs ] [ version ] (--flags)
 
 General Flags (Except for 'hollaex init', 'hollaex import'):
     --path, Manually pointing HollaEx Kit path. Should be always absolute path.
@@ -47,15 +49,15 @@ Options:
     
     login: Log in with bitHolla Dashboard account and select my Activation code. 
 
-    logout: Log out and remove my bound Activation code on local.
+    pull: Pull the exchange data from the bitHolla Dashboard.
 
-    pull: Pull my Exchange configurations from bitHolla Dashboard to local.
+    logout: Log out and remove my bound Activation code on local.
 
     start: Start the exchange which already been configured by 'hollaex setup' command.
         --tag, Tag name of the new image to apply.
         --ignore_settings, Ignore local settings files changes and not applying it on the server.
 
-    prod: Bring up the exchange as production. Including public domain setup and SSL configuraiton.
+    prod: Bring up the exchange to production. Including public domain setup and SSL configuraiton.
 
     restart: Restart the existing exchange.
         --tag, Tag name of the new image to apply.
@@ -227,6 +229,16 @@ if [[ "$1" == "dev" ]]; then
     done;
     
     source $SCRIPTPATH/tools_generator.sh
+    
+    for i in ${CONFIG_FILE_PATH[@]}; do
+
+        if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE=" $i > /dev/null ; then
+
+            export SECRET_FILE_PATH=$i
+
+        fi
+
+    done
 
     # #Quit if necessary flags are missing
     # if [[ ! "$LOCAL_DATABASE_INIT" ]] && [[ ! "$LOCAL_COMMAND" ]]; then
@@ -313,27 +325,32 @@ if [[ "$1" == "dev" ]]; then
 
     if [[ "$HOLLAEX_DEV_SETUP" ]]; then
 
+        CONTINUE_WITH_PRECONFIGURED_VALUES=false 
+
+        hollaex_setup_initialization;
+
         if [[ "$HOLLAEX_DEV_FOR_CORE" ]] ; then 
 
-            function build_hollaex_core_for_dev() {
-                
-                local BUILD_HOLLAEX_CORE_VERSION=$(grep version $HOLLAEX_CORE_PATH/package.json | cut -c 15- | rev | cut -c 3- | rev)
-                local BUILD_HOLLAEX_CORE_BRANCH=$(git --git-dir $HOLLAEX_CORE_PATH/.git rev-parse --abbrev-ref HEAD)
-                local BUILD_HOLLAEX_CORE_DATE="$(echo $(date +%y%m%d%H%M))"
+            BUILD_HOLLAEX_CORE_VERSION=$(grep version $HOLLAEX_CORE_PATH/package.json | cut -c 15- | rev | cut -c 3- | rev)
+            BUILD_HOLLAEX_CORE_BRANCH=$(git --git-dir $HOLLAEX_CORE_PATH/.git rev-parse --abbrev-ref HEAD)
+            BUILD_HOLLAEX_CORE_DATE="$(echo $(date +%y%m%d%H%M))"
+            
+            BUILD_HOLLAEX_CORE_IMAGE_TAG=${BUILD_HOLLAEX_CORE_VERSION}-${BUILD_HOLLAEX_CORE_BRANCH}-${BUILD_HOLLAEX_CORE_DATE}
+            export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=${BUILD_HOLLAEX_CORE_VERSION}-${BUILD_HOLLAEX_CORE_BRANCH}-${BUILD_HOLLAEX_CORE_DATE}
 
-                local BUILD_HOLLAEX_CORE_IMAGE_TAG=${BUILD_HOLLAEX_CORE_VERSION}-${BUILD_HOLLAEX_CORE_BRANCH}-${BUILD_HOLLAEX_CORE_DATE}
-                export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$BUILD_HOLLAEX_CORE_IMAGE_TAG
+            docker build -t bitholla/hollaex-core:$BUILD_HOLLAEX_CORE_IMAGE_TAG -f $HOLLAEX_CORE_PATH/tools/Dockerfile.pm2 $HOLLAEX_CORE_PATH
 
-                docker build -t bitholla/hollaex-core:$BUILD_HOLLAEX_CORE_IMAGE_TAG -f $HOLLAEX_CORE_PATH/tools/Dockerfile.pm2 $HOLLAEX_CORE_PATH
-
-            }
-
-            build_hollaex_core_for_dev;
             override_docker_image_version;
 
         else 
 
-            export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$HOLLAEX_CORE_MAXIMUM_COMPATIBLE
+            BUILD_HOLLAEX_CORE_VERSION=$HOLLAEX_CORE_MAXIMUM_COMPATIBLE
+            BUILD_HOLLAEX_CORE_BRANCH=$(git --git-dir $HOLLAEX_CLI_INIT_PATH/.git rev-parse --abbrev-ref HEAD)
+            BUILD_HOLLAEX_CORE_DATE="$(echo $(date +%y%m%d%H%M))"
+
+            BUILD_HOLLAEX_CORE_IMAGE_TAG=${BUILD_HOLLAEX_CORE_VERSION}-${BUILD_HOLLAEX_CORE_BRANCH}-${BUILD_HOLLAEX_CORE_DATE}
+            export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=${BUILD_HOLLAEX_CORE_VERSION}-${BUILD_HOLLAEX_CORE_BRANCH}-${BUILD_HOLLAEX_CORE_DATE}
+
             override_docker_image_version;
         
         fi
@@ -405,90 +422,6 @@ if [[ "$1" == "dev" ]]; then
 
 
     exit 0;
-
-
-elif [[ "$1" == "init" ]]; then
-    
-    # while true; do
-    #     [[ $# -eq 0 ]] && break
-    #     case $1 in
-    #         # --name)
-    #         #     shift 
-    #         #     case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-    #         #     ENVIRONMENT_EXCHANGE_NAME=$1
-    #         #     echo "Name of your Exchange : $ENVIRONMENT_EXCHANGE_NAME."
-    #         #     shift; continue
-    #         #     ;;
-    #         --standalone)
-    #             shift 
-    #             HOLLAEX_INIT_STANDALONE=true
-    #             echo "HollaEx CLI will proceed to generate initialized directory without pulling HollaEx Kit repo."
-    #             shift; continue
-    #             ;;
-    #     esac
-    #     shift
-    # done
-
-    # #Quit if name of exchange is missing
-    # if [[ ! "$ENVIRONMENT_EXCHANGE_NAME" ]]; then
-
-    #     echo "You must specify the name of your Exchange! Use `--name` flag to pass name."
-    #     print_usage;
-    #     exit 1;
-
-    # fi
-
-    # if [[ ! "$HOLLAEX_INIT_STANDALONE" ]]; then
-
-        echo "Pulling remote HollaEx Kit repo on $(pwd)"
-        if command git clone https://github.com/bitholla/hollaex-kit.git; then
-            
-            HOLLAEX_CLI_INIT_PATH=$(pwd)/hollaex-kit
-            CONFIG_FILE_PATH=$(pwd)/hollaex-kit/settings/*
-            TEMPLATE_GENERATE_PATH=$(pwd)/hollaex-kit/templates
-            INIT_PATH_CHECK=$(pwd)/hollaex-kit/.hollaex
-
-            echo "HollaEx Kit is successfully initialized."
-            echo "You can go to: $(pwd)/hollaex-kit and start setting up your exchange with 'hollaex setup' command."
-            
-
-        else 
-
-            printf "\033[91mFailed to pull HollaEx Kit repository from GitHub. Please check your internet connectivity.\033[39m\n"
-            exit 1;
-
-        fi
-
-    # else 
-
-    #     HOLLAEX_CLI_INIT_PATH=$(pwd)/$ENVIRONMENT_EXCHANGE_NAME
-
-    #     if [[ -d "$HOLLAEX_CLI_INIT_PATH" ]]; then
-
-    #         echo "Init path exists! HollaEx CLI can't override exsiting exchange files."
-    #         exit 1;
-    #     fi
-
-    #     echo "Initializing new Exchange - $HOLLAEX_CONFIGMAP_API_NAME on $HOLLAEX_CLI_INIT_PATH ..."
-
-    #     mkdir $HOLLAEX_CLI_INIT_PATH
-
-    #     cp -r $SCRIPTPATH/settings $HOLLAEX_CLI_INIT_PATH/settings
-    #     cp -r $SCRIPTPATH/plugins $HOLLAEX_CLI_INIT_PATH/plugins
-    #     cp -r $SCRIPTPATH/templates $HOLLAEX_CLI_INIT_PATH/templates
-    #     touch $HOLLAEX_CLI_INIT_PATH/.hollaex
-    #     echo "Initialized by using HollaEx CLI v$(cat $SCRIPTPATH/version)" >> $HOLLAEX_CLI_INIT_PATH/.hollaex
-
-    #     # grep -v ENVIRONMENT_EXCHANGE_NAME= $HOLLAEX_CLI_INIT_PATH/settings/configmap > temp.init && mv temp.init $HOLLAEX_CLI_INIT_PATH/settings/configmap
-
-    #     # (echo "ENVIRONMENT_EXCHANGE_NAME=$ENVIRONMENT_EXCHANGE_NAME" && cat $HOLLAEX_CLI_INIT_PATH/settings/configmap) > temp.init && mv temp.init $HOLLAEX_CLI_INIT_PATH/settings/configmap
-
-    #     echo "All done!"
-    #     echo "To run HollaEx CLI commands further, Please get into initialized path first to let HollaEx CLI reads settings."
-
-    # fi
-        
-        exit 0;
     
 elif [[ "$1" == "setup" ]]; then
     while true; do
@@ -516,11 +449,6 @@ elif [[ "$1" == "setup" ]]; then
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE=$1
                 echo "Target hollaex docker registry : $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE."
-                shift; continue
-                ;;
-            --reconfigure)
-                RECONFIGURE_BASIC_SETTINGS=true
-                echo "HollaEx CLI will proceed to reconfigure your exchange's basic settings."
                 shift; continue
                 ;;
             --ignore_compatibility_check)
@@ -613,119 +541,16 @@ elif [[ "$1" == "setup" ]]; then
 
     fi
 
-    # hollaex setup --reconfigure
-    if [[ "$RECONFIGURE_BASIC_SETTINGS" ]]; then
-
-        if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-            echo "Are you sure you want to reconfigure the exchange? (Y/n)"
-
-            read answer
-
-            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-                echo "Exiting..."
-                exit 0;
-            fi
-
-        fi
-
-        # Ask for basic necessary settings
-        launch_basic_settings_input;
-
-        #hollaex upgrade --skip $(if [[ "$USE_KUBERNETES" ]]; then echo "--kube"; fi)
-
-        echo "All done!"
-        echo "Make sure to check your settings files been successfully updated by following your provided values."
-        echo "You can run 'hollaex restart (--kube)' for applying the updated values on your exchange."
-
-        exit 0;
-
-    fi
-
     # PRESET env for user initial setup config value selection
     CONTINUE_WITH_PRECONFIGURED_VALUES=false 
-    
-    if [[ "$RUN_WITH_VERIFY" == true ]]; then 
-
-        # Check that settings files are already configured.
-        if [[ ! "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]] && [[ $HOLLAEX_SECRET_ACTIVATION_CODE ]]; then
-
-            echo "HollaEx CLI detected the preconfigured values on your HollaEx Kit."
-            echo "Do you want to proceed with these preconfigured values? (Y/n)"
-            read answer
-
-            if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
-                
-                export CONTINUE_WITH_PRECONFIGURED_VALUES=false
-            
-            else 
-
-                export CONTINUE_WITH_PRECONFIGURED_VALUES=true
-
-            fi
-
-        fi
-    
-    else 
-
-        echo "Proceeding with the preconfigured values..."
-        export CONTINUE_WITH_PRECONFIGURED_VALUES=true
-
-    fi
-
-    if [[ "$CONTINUE_WITH_PRECONFIGURED_VALUES" == false ]]; then
-
-        printf "\nWelcome to HollaEx Setup!\n\n"
-
-        echo -e "You need to \033[1msetup your exchange\033[0m with the configurations."
-        echo -e "You can follow the \033[1mexchange setup wizard\033[0m on \033[1mhttps://dash.bitholla.com\033[0m before you do this process. (Recommended)"
-        echo -e "\033[1mHave you already setup your exchange on bitHolla Dashboard? (Y/n)\033[0m"
-        read answer
-
-        if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
-
-            printf "\nWe recommend you to setup your exchange on \033[1mbitHolla dashboard (dash.bitholla.com)\033[0m before you proceed.\n"
-            printf "Select \033[1m'Y'\033[0m to \033[1mquit the CLI\033[0m in order to first setup your exchange on the dashboard,\n" 
-            printf "Select \033[1m'N'\033[0m to proceed \033[1mmanual\033[0m CLI exchange setup wizard.\n" 
-            echo "Do you want to quit the CLI setup? (Y/n)"
-            read answer
-
-            if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
-                
-                echo "Proceeding to a CLI exchange wizard..."
-                launch_basic_settings_input;
-            
-            else 
-
-                printf "\n\nPlease visit \033[1mdash.bitholla.com\033[0m and setup your exchange there first.\n"
-                printf "Once your exchange is configured on the dashboard, please start the procedure by using \033[1m'hollaex setup'\033[0m.\n\n"
-                exit 1;
-            
-            fi
-        
-        else 
-
-            if ! command hollaex login; then
-
-                exit 1;
-
-            fi
-
-            if ! command hollaex pull --skip; then
-
-                exit 1;
-
-            fi
-
-        fi
-    
-    fi
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
     done;
 
     load_config_variables;
+
+    hollaex_setup_initialization;
     
     export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_DOCKER_IMAGE_VERSION
     override_docker_image_version;
@@ -993,20 +818,6 @@ elif [[ "$1" == "setup" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
         fi
         
-
-        # if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-        #     echo "Are you sure you want to run $HOLLAEX_CONFIGMAP_API_NAME on your machine? (Y/n)"
-
-        #     read answer
-
-        #     if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-        #         echo "Exiting..."
-        #         exit 0;
-        #     fi
-
-        # fi
-
         echo "Generating env file for docker"
         generate_local_env;
         
@@ -1505,6 +1316,14 @@ elif [[ "$1" == "login" ]]; then
 
     done
 
+    for i in ${CONFIG_FILE_PATH[@]}; do
+
+        source $i
+
+    done;
+
+    source $SCRIPTPATH/tools_generator.sh
+
     function hollaex_login_form() {
 
         echo -e "\033[1mbitHolla Account Email:\033[0m "
@@ -1675,6 +1494,25 @@ elif [[ "$1" == "login" ]]; then
         exit 1;
 
     fi
+    
+    # ENVIRONMENT_BRIDGE_TARGET_SERVER=$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER
+    # hollaex_login_form;
+
+    if [[ "$HOLLAEX_SECRET_API_KEY" ]] && [[ "$HOLLAEX_SECRET_API_SECRET" ]]; then 
+
+        echo -e "\n\033[92mHollaEx CLI detected that the HollaEx Network security token is already set on the settings file.\033[39m\n"
+
+        echo "API Key: $HOLLAEX_SECRET_API_KEY"
+        echo "Secret Key: $(echo ${HOLLAEX_SECRET_API_SECRET//?/◼︎}$(echo $HOLLAEX_SECRET_API_SECRET | grep -o '....$'))"
+        
+        echo -e "\nSkipping to issue a security token..."
+
+    else 
+
+        get_hmac_token;
+
+    fi
+
 
 elif [[ "$1" == "logout" ]]; then
 
@@ -2079,8 +1917,6 @@ elif [[ "$1" == "start" ]]; then
             exit 1;
         fi
 
-        check_empty_values_on_settings;
-
         echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
         kubectl get nodes
@@ -2207,8 +2043,6 @@ elif [[ "$1" == "start" ]]; then
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
         fi
-
-        check_empty_values_on_settings;
         
         LOCAL_COMMAND="up -d"
 
@@ -2418,8 +2252,6 @@ elif [[ "$1" == "scale" ]]; then
             print_usage
             exit 1;
         fi
-
-        check_empty_values_on_settings;
 
         echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
@@ -3129,8 +2961,6 @@ elif [[ "$1" == "stop" ]]; then
     
     fi 
 
-    #check_empty_values_on_settings
-
     if [[ "$USE_KUBERNETES" ]]; then
         
 
@@ -3354,8 +3184,6 @@ elif [[ "$1" == "restart" ]]; then
             exit 1;
         fi
 
-        check_empty_values_on_settings;
-
         echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
         kubectl get nodes
@@ -3474,8 +3302,6 @@ elif [[ "$1" == "restart" ]]; then
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
         fi
-
-        check_empty_values_on_settings;
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
             
@@ -3861,8 +3687,6 @@ elif [[ "$1" == "upgrade" ]]; then
             print_usage
             exit 1;
         fi
-
-        check_empty_values_on_settings;
         
         echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
@@ -4072,8 +3896,6 @@ elif [[ "$1" == "upgrade" ]]; then
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
         fi
-
-        check_empty_values_on_settings;
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
             
