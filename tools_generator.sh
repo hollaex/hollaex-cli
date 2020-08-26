@@ -662,7 +662,7 @@ services:
       - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
     entrypoint:
       - nodemon
-      - app.js
+      - ws/index.js
     ports:
       - 10080:10080
     networks:
