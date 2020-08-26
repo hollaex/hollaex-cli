@@ -621,9 +621,14 @@ services:
     restart: always
     env_file:
       - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    environment:
+      - DEPLOYMENT_MODE=api
     entrypoint:
-      - nodemon
-      - app.js
+      - pm2-runtime
+      - start
+      - ecosystem.config.js
+      - --env
+      - development
     volumes:
       - ${HOLLAEX_CLI_INIT_PATH}/server/db/migrations:/app/db/migrations
       - ${HOLLAEX_CLI_INIT_PATH}/server/db/models:/app/db/models
@@ -636,33 +641,20 @@ services:
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-redis
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
-  
-  ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
-    image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
-    restart: always
-    env_file:
-      - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
-    entrypoint:
-      - nodemon
-      - plugins/index.js
-    volumes:
-      - ${HOLLAEX_CLI_INIT_PATH}/plugins:/app/plugins
-    ports:
-      - 10011:10011
-    networks:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-network
-    depends_on:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
-      - ${ENVIRONMENT_EXCHANGE_NAME}-db
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-stream:
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
     restart: always
+    environment:
+      - DEPLOYMENT_MODE=ws
     env_file:
       - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
     entrypoint:
-      - nodemon
-      - ws/index.js
+      - pm2-runtime
+      - start
+      - ecosystem.config.js
+      - --env
+      - development
     ports:
       - 10080:10080
     networks:
@@ -748,25 +740,6 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
 EOL
 
 fi
-
-  # Generate docker-compose
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
-
-  ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
-    image: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
-    restart: always
-    ports:
-      - 10011:10011
-    entrypoint:
-      - node
-    command:
-      - plugins/index.js
-    env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
-    networks:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-network
-EOL
-
 
 #LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE=$ENVIRONMENT_EXCHANGE_RUN_MODE
 
