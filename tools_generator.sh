@@ -2745,7 +2745,7 @@ EOL
       echo "Kubernetes Job has been created for adding new pair $PAIR_NAME."
 
       echo "Waiting until Job get completely run"
-      sleep 50;
+      sleep 70;
 
     else 
 

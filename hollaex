@@ -24,7 +24,7 @@ function print_usage() {
 /bin/cat << EOF
 
 Usage : 
-    hollaex [ init ] [ setup ] [ start ] [ restart ] [ stop ] [ build ] [ upgrade ] [ terminate ] [ web ] [ toolbox ] [ status ] [ logs ] [ version ] (--flags)
+    hollaex [ dev ] [ setup ] [ start ] [ restart ] [ stop ] [ build ] [ upgrade ] [ terminate ] [ web ] [ toolbox ] [ status ] [ logs ] [ version ] (--flags)
 
 General Flags (Except for 'hollaex init', 'hollaex import'):
     --path, Manually pointing HollaEx Kit path. Should be always absolute path.
@@ -2151,9 +2151,9 @@ elif [[ "$1" == "start" ]]; then
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
             
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-plugins-controller --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-            helm_dynamic_trading_paris scaleup;
             
+            helm_dynamic_trading_paris scaleup;
+
             echo "Applying Ingress rules..."
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
@@ -4014,7 +4014,7 @@ elif [[ "$1" == "upgrade" ]]; then
         fi 
 
         if [[ ! "$UPGRADE_API_ONLY" ]] && [[ ! "$UPGRADE_PLUGINS_ONLY" ]]; then 
-        
+
             helm_dynamic_trading_paris run;
 
             # Running database job for Kubernetes
