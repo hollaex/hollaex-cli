@@ -7112,9 +7112,27 @@ elif [[ "$1" == "logs" ]]; then
  
 
 elif [[ "$1" == "version" ]]; then
-     
-    /bin/cat << EOF
 
+if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+    HOLLAEX_CLI_INIT_PATH=$(pwd)
+    CONFIG_FILE_PATH=$(pwd)/settings/*
+    TEMPLATE_GENERATE_PATH=$(pwd)/templates
+    INIT_PATH_CHECK=$(pwd)/.hollaex
+
+fi
+
+if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+    CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+    TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+    INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+    
+fi
+    
+source $SCRIPTPATH/tools_generator.sh
+     
+/bin/cat << EOF
 
 :tt1   ;tti          LCC:1CC1         ,11tffttt            :tt;  ;tfi.tt1 ,,,
 t@@8   f@@0  ,;ii;.  8@@;L@@f .:i1i:. ;@@@CLCGC;ii; ,iii.  t@@L,C@@L,.CCf,0@@;,
@@ -7124,7 +7142,14 @@ t@@8   L@@G1@@0;;8@@i0@@;L@@fC@@Li0@@f:@@@iii11:i8@G@@C,   t@@L :0@@1,@@0 G@@1;
 iGGL   tGGf ;LG00Gf: CGG:tGG1:LGGCLCG1:GGG0000fiGGL 1GGf.  iCC1  .LGG1CGf :LG0G,
 
 
-HollaEx CLI : v$(cat $SCRIPTPATH/version), Made with <3 by bitHolla Inc.
+HollaEx CLI : v$(cat $SCRIPTPATH/version).
+HollaEx Kit : $(if [[ -f "$INIT_PATH_CHECK" ]]; then 
+    echo "v$(cat $HOLLAEX_CLI_INIT_PATH/version)."
+else
+    echo -e "\033[91mNot in the Kit directory.\033[39m"
+fi)
+
+Made with <3 by bitHolla Inc.
 
 EOF
 
