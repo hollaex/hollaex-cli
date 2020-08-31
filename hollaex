@@ -12,8 +12,6 @@ GENERATE_PASSWORDS=false
 
 DOCKER_COMPOSE_NAME_PREFIX='local'
 
-ENVIRONMENT_BRIDGE_TARGET_SERVER='api.testnet.bitholla.com'
-
 ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER='api.testnet.hollaex.network'
 
 source $SCRIPTPATH/version_range
@@ -1339,7 +1337,7 @@ elif [[ "$1" == "login" ]]; then
         BITHOLLA_ACCOUNT_TOKEN=$(curl -s -H "Content-Type: application/json" \
             --request POST \
             --data "{\"email\": \"${email}\", \"password\": \"${password}\", \"otp_code\": \"${otp}\", \"service\": \"cli\"}" \
-            https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/login \
+            https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/login \
             | jq -r '.token')
 
         if [[ ! "$BITHOLLA_ACCOUNT_TOKEN" ]] || [[ "$BITHOLLA_ACCOUNT_TOKEN" == "null" ]]; then
@@ -1372,11 +1370,11 @@ elif [[ "$1" == "login" ]]; then
 
         BITHOLLA_USER_TOKEN_EXPIRY_CHECK=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
             --request GET \
-            https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange)
+            https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange)
 
         BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
             --request GET \
-            https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange \
+            https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange \
             | jq '.')
 
         if [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" ]] || [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" == "200" ]]; then
@@ -1400,7 +1398,7 @@ elif [[ "$1" == "login" ]]; then
 
     BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
         --request GET \
-        https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange \
+        https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange \
        | jq '.')
     
     BITHOLLA_USER_EXCHANGE_COUNT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r '.count')
@@ -1495,7 +1493,7 @@ elif [[ "$1" == "login" ]]; then
 
     fi
     
-    # ENVIRONMENT_BRIDGE_TARGET_SERVER=$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER
+    # ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER=$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER
     # hollaex_login_form;
 
     if [[ "$HOLLAEX_SECRET_API_KEY" ]] && [[ "$HOLLAEX_SECRET_API_SECRET" ]]; then 
@@ -1695,11 +1693,11 @@ elif [[ "$1" == "pull" ]]; then
 
     BITHOLLA_USER_TOKEN_EXPIRY_CHECK=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
             --request GET \
-            https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange)
+            https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange)
 
     BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
         --request GET \
-        https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange \
+        https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange \
        | jq '.')
 
     if [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" ]] || [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" == "200" ]]; then
@@ -6632,9 +6630,9 @@ elif [[ "$1" == "status" ]]; then
 
     fi
 
-    printf "\nCalling the exchange health page ($HOLLAEX_CONFIGMAP_API_HOST/v1/health) ...\n"
+    printf "\nCalling the exchange health page ($HOLLAEX_CONFIGMAP_API_HOST/v2/health) ...\n"
 
-    if command curl $HOLLAEX_CONFIGMAP_API_HOST/v1/health; then 
+    if command curl $HOLLAEX_CONFIGMAP_API_HOST/v2/health; then 
 
         printf "\n\033[92mSuccessfully reached to the exchange health page.\033[39m\n"
 

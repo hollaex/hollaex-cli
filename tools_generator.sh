@@ -4376,7 +4376,7 @@ function hollaex_ascii_exchange_is_up() {
                   ,
 
             Your Exchange is up!
-    Try to reach ${HOLLAEX_CONFIGMAP_API_HOST}/v1/health
+    Try to reach ${HOLLAEX_CONFIGMAP_API_HOST}/v2/health
 
     You can easily check the exchange status with 'hollaex status'.
 
@@ -6219,11 +6219,11 @@ function issue_new_hmac_token() {
         --request POST \
         -d '{"name": "kit"}' \
         https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/user/token)
+  
+  HOLLAEX_SECRET_API_KEY=$(echo $BITHOLLA_HMAC_TOKEN_ISSUE_POST | jq '.apiKey')
+  HOLLAEX_SECRET_API_SECRET=$(echo $BITHOLLA_HMAC_TOKEN_ISSUE_POST | jq '.secret')
 
-  HOLLAEX_SECRET_API_KEY=$BITHOLLA_HMAC_TOKEN_ISSUE_POST | jq '.apikey'
-  HOLLAEX_SECRET_API_SECRET=$BITHOLLA_HMAC_TOKEN_ISSUE_POST | jq '.secret'
-
-  echo -e "\n# # # # # Your Token # # # # #"
+  echo -e "\n# # # # # Your Security Token # # # # #"
   echo -e "\033[1mYour API Key: $HOLLAEX_SECRET_API_KEY\033[0m"
   echo -e "\033[1mYour Secret Key: $HOLLAEX_SECRET_API_SECRET\033[0m"
   echo -e "# # # # # # # # # # # # # # # #\n"
@@ -6251,11 +6251,15 @@ function get_hmac_token() {
   
   BITHOLLA_HMAC_TOKEN_GET_COUNT=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
             --request GET \
-            https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/user/token | jq '.count')
+            https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/user/token?active=true | jq '.count')
     
   if [[ ! $BITHOLLA_HMAC_TOKEN_GET_COUNT == "0" ]]; then 
 
-    printf "\n\033[1mYou already have an active Token!\033[0m\n\n"
+    BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
+            --request GET \
+            https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/user/token?active=true | jq -r '.data[0].apiKey')
+
+    printf "\n\033[1mYou already have an active Token! (API Key: $BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY)\033[0m\n\n"
 
     echo -e "You could \033[1mprovide the existing token manually\033[0m on the further menu."
     echo -e "If you dont have an existing token, \033[1myou could also revoke the token at the https://dash.bitholla.com.\033[0m\n"
@@ -6272,7 +6276,7 @@ function get_hmac_token() {
       echo -e "\nIf you dont have an existing token with you, you could \033[1mrevoke and reissue it.\033[0m"
       echo -e "\n\033[1mRevoking the token can't be undo and would bring down the existing exchange running with the revoked token.\033[0m"
       echo -e "Please \033[1mmake sure that you are not running the exchange already.\033[0m"
-      echo -e "\nDo you want to \033[1mproceed to revoke\033[0m the existing token? (y/N)"
+      echo -e "\nDo you want to \033[1mproceed to revoke\033[0m the existing token? (API Key: $BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY) (y/N)"
 
       read answer
 
@@ -6288,14 +6292,21 @@ function get_hmac_token() {
 
       fi
 
+      echo -e "Revoking the exisitng token ($BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY)..."
+
       # Revoking the security token through the bitHolla API.
-      BITHOLLA_HMAC_TOKEN_REVOKE_CALL=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" -w " %{http_code}" \
+      BITHOLLA_HMAC_TOKEN_REVOKE_CALL=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" -w " HTTP_CODE=%{http_code}" \
           --request DELETE \
-          -d '{"token_id": "$HOLLAEX_SECRET_API_KEY"}' \
+          -d "{\"name\": \"kit\", \"token_id\": $BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY}" \
           https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/user/token)
 
-      BITHOLLA_HMAC_TOKEN_REVOKE_CALL_RESPOND=$(echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL | cut -f1 -d " ")
-      BITHOLLA_HMAC_TOKEN_REVOKE_CALL_HTTP_CODE=$(echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL | cut -f2 -d " ")
+      BITHOLLA_HMAC_TOKEN_REVOKE_CALL_RESPOND=$(echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL | cut -f1 -d "=")
+      BITHOLLA_HMAC_TOKEN_REVOKE_CALL_HTTP_CODE=$(echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL | cut -f2 -d "=")
+
+      echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL
+
+      echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL_RESPOND
+      echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL_HTTP_CODE
 
       if [[ ! "$BITHOLLA_HMAC_TOKEN_REVOKE_CALL_HTTP_CODE" == "200" ]]; then 
 
