@@ -24,7 +24,7 @@ function print_usage() {
 /bin/cat << EOF
 
 Usage : 
-    hollaex [ dev ] [ setup ] [ start ] [ restart ] [ stop ] [ build ] [ upgrade ] [ terminate ] [ web ] [ toolbox ] [ status ] [ logs ] [ version ] (--flags)
+    hollaex [ dev ] [ setup ] [ start ] [ restart ] [ stop ] [ build ] [ upgrade ] [ terminate ] [ web ] [ toolbox ] [ cloud ] [ status ] [ logs ] [ version ] (--flags)
 
 General Flags (Except for 'hollaex init', 'hollaex import'):
     --path, Manually pointing HollaEx Kit path. Should be always absolute path.
@@ -74,7 +74,7 @@ Options:
         --api_only, Rolling Upgrade API Pods only for Kubernetes.
         --plugins_only, Rolling Upgrade Plugins Pods only for Kubernetes.
 
-    terminate: Terminate the existing exchange. THIS COMMAND WILL COMPLETELY REMOVE YOUR EXCHANGE.
+    terminate: Terminate the existing exchange. THIS COMMAND WILL COMPLETELY REMOVE YOUR EXCHANGE AND CAN'T BE UNDO.
       
     web: Run web server for the exchange.
         --setup, Setup the web server for the first launch.
@@ -82,7 +82,7 @@ Options:
         --stop, Stop the web server.
         --restart, Restart the web server while applying new changes (If it's available).
         --build, Build the web server docker image. This command would not affect the existing web server before restart.
-        --terminate, Terminate the web server. THIS COMMAND WILL COMPLETELY REMOVE YOUR WEB CLIENT.
+        --terminate, Terminate the web server. THIS COMMAND WILL COMPLETELY REMOVE YOUR WEB CLIENT AND CAN'T BE UNDO.
 
     toolbox: Toolbox for advanced features which could be helpful for your exchange operations.
         --backup, Run the full backup with 'pg_dumpall' for exchange's PostgreSQL database.
@@ -103,7 +103,14 @@ Options:
         --connect_influxdb, Direct connection to InfluxDB via influx-client.
         --install_cli, Install specific version of HollaEx CLI.
         --influxdb_migration, Migrate InfluxDB data to a new InfluxDB.
-        
+
+    cloud: Operate the exchange running on the HollaCloud.
+        --start, Start the stopped exchange exists on the HollaCloud. 
+        --stop, Stop the running exchange on the HollaCloud.
+        --restart, Restart the running exchange on the HollaCloud.
+        --upgrade, Upgrade the running exchange on the HollaCloud with the latest version of HollaEx Kit.
+        --terminate, Terminate the existing exchange on the HollaCloud. THIS COMMAND WILL COMPLETELY REMOVE YOUR EXCHANGE AND CAN'T BE UNDO.
+
     status: Show the exchange server status.
 
     logs: Show overview of logs from the exchange server. 
@@ -1507,79 +1514,7 @@ elif [[ "$1" == "login" ]]; then
 
     done
 
-    function hollaex_login_form() {
-
-        echo -e "\033[1mbitHolla Account Email:\033[0m "
-        read email
-
-        echo -e "\033[1mbitHolla Account Password:\033[0m "
-        read -s password
-        printf "\n"
-
-        echo -e "\033[1mOTP Code\033[0m (Enter if you don't have OTP set for your account): "
-        read otp
-
-        BITHOLLA_ACCOUNT_TOKEN=$(curl -s -H "Content-Type: application/json" \
-            --request POST \
-            --data "{\"email\": \"${email}\", \"password\": \"${password}\", \"otp_code\": \"${otp}\", \"service\": \"cli\"}" \
-            https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/login \
-            | jq -r '.token')
-
-        if [[ ! "$BITHOLLA_ACCOUNT_TOKEN" ]] || [[ "$BITHOLLA_ACCOUNT_TOKEN" == "null" ]]; then
-
-            printf "\033[91mFailed to authenticate on bitHolla Server with your passed credentials.\033[39m\n"
-            echo "Please try it again."
-            exit 1;
-
-        else 
-
-            printf "\033[92mSuccessfully authenticated on bitHolla Server.\033[39m\n"
-            # echo "Info: Your authentication will be only available for 24 hours."
-
-            echo $BITHOLLA_ACCOUNT_TOKEN > $HOLLAEX_CLI_INIT_PATH/.token
-
-            if [[ "$HOLLAEX_LOGIN_RENEW" ]]; then 
-
-                exit 0;
-
-            fi 
-
-        fi
-
-    }
-
-    if [[ -f "$HOLLAEX_CLI_INIT_PATH/.token" ]]; then
-
-        echo "Validating the existing access token..."
-        BITHOLLA_ACCOUNT_TOKEN=$(cat $HOLLAEX_CLI_INIT_PATH/.token)
-
-        BITHOLLA_USER_TOKEN_EXPIRY_CHECK=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
-            --request GET \
-            https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange)
-
-        BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
-            --request GET \
-            https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange \
-            | jq '.')
-
-        if [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" ]] || [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" == "200" ]]; then
-
-            printf "\033[91mError: Your access token has been expired!\033[39m\n"
-            printf "Please login again with your bitHolla account to issue a new access token.\n\n"
-            hollaex_login_form;
-
-        else
-
-            echo -e "\033[92mYour existing access token is valid!\033[39m"
-            echo "Info: Delete the ‘.token’ file in your HollaEx Kit to remove the existing token."
-
-        fi
-
-    else 
-
-        hollaex_login_form;
-
-    fi
+    hollaex_login_token_validate_and_issue;
 
     BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
         --request GET \
@@ -6736,6 +6671,118 @@ elif [[ "$1" == "toolbox" ]]; then
         fi
         
     fi
+
+elif [[ "$1" == "web" ]]; then
+
+    while true; do
+        [[ $# -eq 0 ]] && break
+        case $1 in
+            --path)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_CLI_INIT_PATH=$1
+                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
+                shift; continue
+                ;;
+            --skip)
+                RUN_WITH_VERIFY=false
+                echo "Skipping the command confirmation."
+                shift; continue
+                ;;
+            --start)
+                HOLLAEX_CLOUD_START=true
+                shift; continue
+                ;;
+            --stop)
+                HOLLAEX_CLOUD_STOP=true
+                shift; continue
+                ;;
+            --restart)
+                HOLLAEX_CLOUD_RESTART=true
+                shift; continue
+                ;;
+            --upgrade)
+                HOLLAEX_CLOUD_REBUILD=true
+                shift; continue
+                ;;
+            --terminate)
+                HOLLAEX_CLOUD_TERMINATE=true
+                shift; continue
+                ;;
+            # Build related
+            --user_image_registry)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE=$1
+                echo "Target hollaex docker registry : $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE."
+                shift; continue
+                ;;
+            --*) 
+                err_msg "Invalid option: $1"
+                print_usage;
+                exit 1;
+                ;;
+        esac
+        shift
+    done
+
+    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        CONFIG_FILE_PATH=$(pwd)/settings/*
+        TEMPLATE_GENERATE_PATH=$(pwd)/templates
+        INIT_PATH_CHECK=$(pwd)/.hollaex
+
+    fi
+
+    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        
+    fi
+
+    #Quit if necessary flags are missing
+    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
+
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
+        print_usage;
+        exit 1;
+
+    fi
+
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
+    
+    source $SCRIPTPATH/tools_generator.sh
+    load_config_variables;
+
+    if [[ ! "$USE_KUBERNETES" ]]; then
+
+         if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local;
+        fi
+
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local/nginx;
+        fi
+
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
+        fi
+    
+    elif [[ "$USE_KUBERNETES" ]]; then
+
+        #Creating kubernetes_config directory for generating config for Kubernetes.
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
+        fi
+
+    fi
+    
+    hollaex_login_token_validate_and_issue;
 
 
 elif [[ "$1" == "status" ]]; then
