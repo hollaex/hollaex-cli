@@ -607,10 +607,24 @@ services:
       - --env
       - development
     volumes:
+      - ${HOLLAEX_CLI_INIT_PATH}/server/plugins:/app/plugins
+      - ${HOLLAEX_CLI_INIT_PATH}/server/api:/app/api
+      - ${HOLLAEX_CLI_INIT_PATH}/server/config:/app/config
+      - ${HOLLAEX_CLI_INIT_PATH}/server/db:/app/db
       - ${HOLLAEX_CLI_INIT_PATH}/server/db/migrations:/app/db/migrations
       - ${HOLLAEX_CLI_INIT_PATH}/server/db/models:/app/db/models
       - ${HOLLAEX_CLI_INIT_PATH}/server/db/seeders:/app/db/seeders
-      # - ${HOLLAEX_CLI_INIT_PATH}/server/mail:/app/mail
+      - ${HOLLAEX_CLI_INIT_PATH}/server/mail:/app/mail
+      - ${HOLLAEX_CLI_INIT_PATH}/server/ws:/app/ws
+      - ${HOLLAEX_CLI_INIT_PATH}/server/server.js:/app/server.js
+      - ${HOLLAEX_CLI_INIT_PATH}/server/ecosystem.config.js:/app/ecosystem.config.js
+      - ${HOLLAEX_CLI_INIT_PATH}/server/constants.js:/app/constants.js
+      - ${HOLLAEX_CLI_INIT_PATH}/server/messages.js:/app/messages.js
+      - ${HOLLAEX_CLI_INIT_PATH}/server/logs:/app/logs
+      - ${HOLLAEX_CLI_INIT_PATH}/server/test:/app/test
+      - ${HOLLAEX_CLI_INIT_PATH}/server/tools:/app/tools
+      - ${HOLLAEX_CLI_INIT_PATH}/server/utils:/app/utils
+      - ${HOLLAEX_CLI_INIT_PATH}/server/init.js:/app/init.js
     ports:
       - 10010:10010
     networks:
@@ -632,6 +646,25 @@ services:
       - ecosystem.config.js
       - --env
       - development
+    volumes:
+      - ${HOLLAEX_CLI_INIT_PATH}/server/plugins:/app/plugins
+      - ${HOLLAEX_CLI_INIT_PATH}/server/api:/app/api
+      - ${HOLLAEX_CLI_INIT_PATH}/server/config:/app/config
+      - ${HOLLAEX_CLI_INIT_PATH}/server/db:/app/db
+      - ${HOLLAEX_CLI_INIT_PATH}/server/db/migrations:/app/db/migrations
+      - ${HOLLAEX_CLI_INIT_PATH}/server/db/models:/app/db/models
+      - ${HOLLAEX_CLI_INIT_PATH}/server/db/seeders:/app/db/seeders
+      - ${HOLLAEX_CLI_INIT_PATH}/server/mail:/app/mail
+      - ${HOLLAEX_CLI_INIT_PATH}/server/ws:/app/ws
+      - ${HOLLAEX_CLI_INIT_PATH}/server/server.js:/app/server.js
+      - ${HOLLAEX_CLI_INIT_PATH}/server/ecosystem.config.js:/app/ecosystem.config.js
+      - ${HOLLAEX_CLI_INIT_PATH}/server/constants.js:/app/constants.js
+      - ${HOLLAEX_CLI_INIT_PATH}/server/messages.js:/app/messages.js
+      - ${HOLLAEX_CLI_INIT_PATH}/server/logs:/app/logs
+      - ${HOLLAEX_CLI_INIT_PATH}/server/test:/app/test
+      - ${HOLLAEX_CLI_INIT_PATH}/server/tools:/app/tools
+      - ${HOLLAEX_CLI_INIT_PATH}/server/utils:/app/utils
+      - ${HOLLAEX_CLI_INIT_PATH}/server/init.js:/app/init.js
     ports:
       - 10080:10080
     networks:

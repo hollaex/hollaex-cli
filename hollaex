@@ -375,7 +375,7 @@ if [[ "$1" == "dev" ]]; then
         docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml up -d  
         
         echo "Installing npm packages for /plugins"
-        docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller_1 bash -c '
+        docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-api_1 bash -c '
             cd /app/plugins && \
             npm install --loglevel=error && \
             for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done'
@@ -401,7 +401,7 @@ if [[ "$1" == "dev" ]]; then
         if [[ ! "$HOLLAEX_DEV_SETUP" ]]; then
 
             echo "Installing npm packages for /plugins"
-            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller_1 bash -c '
+            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-api_1 bash -c '
                 cd /app/plugins && \
                 npm install --loglevel=error && \
                 for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done'
