@@ -267,34 +267,11 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
     ip_hash;
     server ${ENVIRONMENT_EXCHANGE_NAME}-server-stream:10080;
   }
-  upstream plugins-controller {
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:10011;
-  }
 EOL
 
   fi
 
 done
-
-
-# #Upstream generator for dev environments
-# if [[ "$IS_DEVELOP" ]]; then
-
-#  # Generate local nginx conf
-#   cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
-#   upstream api {
-#     server ${ENVIRONMENT_EXCHANGE_NAME}-server:10010;
-#   }
-#   upstream socket {
-#     ip_hash;
-#     server ${ENVIRONMENT_EXCHANGE_NAME}-server:10080;
-#   }
-#   upstream plugins-controller {
-#     server ${ENVIRONMENT_EXCHANGE_NAME}-server:10011;
-#   }
-# EOL
-
-# fi
 
 }
 
@@ -6215,20 +6192,34 @@ function check_docker_daemon_status() {
 
 function issue_new_hmac_token() {
 
-  BITHOLLA_HMAC_TOKEN_ISSUE_POST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" -w " %{http_code}" \
+  BITHOLLA_HMAC_TOKEN_ISSUE_POST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" -w "=%{http_code}" \
         --request POST \
         -d '{"name": "kit"}' \
         https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/user/token)
+
+  BITHOLLA_HMAC_TOKEN_ISSUE_POST_RESPOND=$(echo $BITHOLLA_HMAC_TOKEN_ISSUE_POST | cut -f1 -d "=")
+  BITHOLLA_HMAC_TOKEN_ISSUE_POST_HTTP_CODE=$(echo $BITHOLLA_HMAC_TOKEN_ISSUE_POST | cut -f2 -d "=")
+
+  if [[ ! "$BITHOLLA_HMAC_TOKEN_ISSUE_POST_HTTP_CODE" == "200" ]]; then
+
+    echo -e "\nFailed to issue a security token!"
+
+    echo -e "\nPlease check your internet connectivity, and try it again."
+    echo -e "You could also check the bitHolla service status at https://status.bitholla.com."
+
+    exit 1;
+
+  fi 
   
-  HOLLAEX_SECRET_API_KEY=$(echo $BITHOLLA_HMAC_TOKEN_ISSUE_POST | jq '.apiKey')
-  HOLLAEX_SECRET_API_SECRET=$(echo $BITHOLLA_HMAC_TOKEN_ISSUE_POST | jq '.secret')
+  HOLLAEX_SECRET_API_KEY=$(echo $BITHOLLA_HMAC_TOKEN_ISSUE_POST_RESPOND | jq -r '.apiKey')
+  HOLLAEX_SECRET_API_SECRET=$(echo $BITHOLLA_HMAC_TOKEN_ISSUE_POST_RESPOND | jq -r '.secret')
 
   echo -e "\n# # # # # Your Security Token # # # # #"
   echo -e "\033[1mYour API Key: $HOLLAEX_SECRET_API_KEY\033[0m"
   echo -e "\033[1mYour Secret Key: $HOLLAEX_SECRET_API_SECRET\033[0m"
   echo -e "# # # # # # # # # # # # # # # #\n"
 
-  if command sed -i.bak "s/HOLLAEX_SECRET_API_KEY=.*/HOLLAEX_SECRET_API_KEY=$HOLLAEX_SECRET_API_KEY/" $SECRET_FILE_PATH && command sed -i.bak "s/HOLLAEX_SECRET_SECRET_KEY=.*/HOLLAEX_SECRET_SECRET_KEY=$HOLLAEX_SECRET_API_SECRET/" $SECRET_FILE_PATH; then
+  if command sed -i.bak "s/HOLLAEX_SECRET_API_KEY=.*/HOLLAEX_SECRET_API_KEY=$HOLLAEX_SECRET_API_KEY/" $SECRET_FILE_PATH && command sed -i.bak "s/HOLLAEX_SECRET_API_SECRET=.*/HOLLAEX_SECRET_API_SECRET=$HOLLAEX_SECRET_API_SECRET/" $SECRET_FILE_PATH; then
 
     echo -e "\033[92mSuccessfully stored the issued token to the settings file.\033[39m\n"
 
@@ -6258,6 +6249,10 @@ function get_hmac_token() {
     BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
             --request GET \
             https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/user/token?active=true | jq -r '.data[0].apiKey')
+    
+    BITHOLLA_HMAC_TOKEN_EXISTING_TOKEN_ID=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
+            --request GET \
+            https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/user/token?active=true | jq -r '.data[0].id')
 
     printf "\n\033[1mYou already have an active Token! (API Key: $BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY)\033[0m\n\n"
 
@@ -6297,16 +6292,11 @@ function get_hmac_token() {
       # Revoking the security token through the bitHolla API.
       BITHOLLA_HMAC_TOKEN_REVOKE_CALL=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" -w " HTTP_CODE=%{http_code}" \
           --request DELETE \
-          -d "{\"name\": \"kit\", \"token_id\": $BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY}" \
+          -d "{\"name\": \"kit\", \"token_id\": $BITHOLLA_HMAC_TOKEN_EXISTING_TOKEN_ID}" \
           https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/user/token)
 
       BITHOLLA_HMAC_TOKEN_REVOKE_CALL_RESPOND=$(echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL | cut -f1 -d "=")
       BITHOLLA_HMAC_TOKEN_REVOKE_CALL_HTTP_CODE=$(echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL | cut -f2 -d "=")
-
-      echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL
-
-      echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL_RESPOND
-      echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL_HTTP_CODE
 
       if [[ ! "$BITHOLLA_HMAC_TOKEN_REVOKE_CALL_HTTP_CODE" == "200" ]]; then 
 
@@ -6323,47 +6313,49 @@ function get_hmac_token() {
       echo -e "\n\033[1mProceeding to reissue it...\033[0m"
       issue_new_hmac_token;
 
+    else
+
+      function existing_token_form() {
+
+        echo -e "\033[1mYour existing API Key: \033[0m"
+        read answer 
+        HOLLAEX_SECRET_API_KEY=$answer
+
+        echo -e "\033[1mYour existing Secret Key: \033[0m"
+        read answer
+        HOLLAEX_SECRET_API_SECRET=$answer
+
+        echo -e "\n\033[1mAPI Key: $HOLLAEX_SECRET_API_KEY\033[0m"
+        echo -e "\033[1mSecret Key: $HOLLAEX_SECRET_API_SECRET\033[0m\n"
+        
+        echo "Do you want to proceed with these values? (Y/n)"
+        read answer
+
+        if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+
+            existing_token_form;
+
+        fi
+
+        if command sed -i.bak "s/HOLLAEX_SECRET_API_KEY=.*/HOLLAEX_SECRET_API_KEY=$HOLLAEX_SECRET_API_KEY/" $SECRET_FILE_PATH && command sed -i.bak "s/HOLLAEX_SECRET_API_SECRET=.*/HOLLAEX_SECRET_API_SECRET=$HOLLAEX_SECRET_API_SECRET/" $SECRET_FILE_PATH; then
+
+          echo -e "\n\033[92mSuccessfully stored the provided token to the settings file.\033[39m\n"
+
+        else 
+
+          echo -e "\n\033[91mFailed to store the issued token to the settings file.\033[39m\n"
+          echo "Please try it again."
+
+          exit 1;
+
+        fi
+
+      }
+
+      existing_token_form;
+      rm -f $SECRET_FILE_PATH.bak
+  
     fi 
-
-    function existing_token_form() {
-
-      echo -e "\033[1mYour existing API Key: \033[0m"
-      read answer 
-      HOLLAEX_SECRET_API_KEY=$answer
-
-      echo -e "\033[1mYour existing Secret Key: \033[0m"
-      read answer
-      HOLLAEX_SECRET_API_SECRET=$answer
-
-      echo -e "\n\033[1mAPI Key: $HOLLAEX_SECRET_API_KEY\033[0m"
-      echo -e "\033[1mSecret Key: $HOLLAEX_SECRET_API_SECRET\033[0m\n"
-      
-      echo "Do you want to proceed with these values? (Y/n)"
-      read answer
-
-      if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-
-          existing_token_form;
-
-      fi
-
-      if command sed -i.bak "s/HOLLAEX_SECRET_API_KEY=.*/HOLLAEX_SECRET_API_KEY=$HOLLAEX_SECRET_API_KEY/" $SECRET_FILE_PATH && command sed -i.bak "s/HOLLAEX_SECRET_API_SECRET=.*/HOLLAEX_SECRET_API_SECRET=$HOLLAEX_SECRET_API_SECRET/" $SECRET_FILE_PATH; then
-
-        echo -e "\n\033[92mSuccessfully stored the provided token to the settings file.\033[39m\n"
-
-      else 
-
-        echo -e "\n\033[91mFailed to store the issued token to the settings file.\033[39m\n"
-        echo "Please try it again."
-
-        exit 1;
-
-      fi
-
-    }
-
-    existing_token_form;
-    rm -f $SECRET_FILE_PATH.bak
 
   else
 
@@ -6378,7 +6370,7 @@ function hollaex_setup_initialization() {
   if [[ "$RUN_WITH_VERIFY" == true ]]; then 
 
         # Check that settings files are already configured.
-        if [[ ! "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]] && [[ $HOLLAEX_SECRET_ACTIVATION_CODE ]]; then
+        if [[ ! "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]] && [[ $HOLLAEX_SECRET_ACTIVATION_CODE ]] && [[ $HOLLAEX_SECRET_API_KEY ]] && [[ $HOLLAEX_SECRET_API_SECRET ]]; then
 
             echo "HollaEx CLI detected the preconfigured values on your HollaEx Kit."
             echo "Do you want to proceed with these preconfigured values? (Y/n)"

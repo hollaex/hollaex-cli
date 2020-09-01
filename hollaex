@@ -542,13 +542,13 @@ elif [[ "$1" == "setup" ]]; then
     # PRESET env for user initial setup config value selection
     CONTINUE_WITH_PRECONFIGURED_VALUES=false 
 
-    for i in ${CONFIG_FILE_PATH[@]}; do
+    hollaex_setup_initialization;
+
+     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
     done;
 
     load_config_variables;
-
-    hollaex_setup_initialization;
     
     export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_DOCKER_IMAGE_VERSION
     override_docker_image_version;
