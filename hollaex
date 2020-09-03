@@ -1514,6 +1514,8 @@ elif [[ "$1" == "login" ]]; then
 
     done
 
+    source $SCRIPTPATH/tools_generator.sh
+
     hollaex_login_token_validate_and_issue;
 
     BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
@@ -6684,6 +6686,20 @@ elif [[ "$1" == "cloud" ]]; then
                 echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
+            --kit_repo)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_CLOUD_CUSTOM_KIT_REPO="${1:-'https://github.com/bitholla/hollaex-kit.git'}"
+                echo "Your Custom HollaEx Kit Git Repository : $HOLLAEX_CLOUD_CUSTOM_KIT_REPO."
+                shift; continue
+                ;;
+            --kit_branch)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_CLOUD_CUSTOM_KIT_BRANCH="${1:-master}"
+                echo "Your Custom HollaEx Kit Git Branch : $HOLLAEX_CLOUD_CUSTOM_KIT_BRANCH."
+                shift; continue
+                ;;
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
@@ -6784,6 +6800,147 @@ elif [[ "$1" == "cloud" ]]; then
     
     hollaex_login_token_validate_and_issue;
 
+    # # # FIGURE OUT THE EXCHANGE ID # # #
+    HOLLAEX_CLOUD_GET_EXCHANGE_INFO_REQUEST=$(curl -s -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
+          --request GET \
+          https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange)
+
+    HOLLAEX_CLOUD_GET_EXCHANGE_NAME_LIST=$(echo $HOLLAEX_CLOUD_GET_EXCHANGE_INFO_REQUEST | jq -r '.data[].name')
+
+    j=0
+    for i in ${HOLLAEX_CLOUD_GET_EXCHANGE_NAME_LIST[@]}; do 
+
+        if [[ "$i" == "$HOLLAEX_CONFIGMAP_API_NAME" ]]; then
+
+            EXCHANGE_ARRAY_ORDER=$j
+
+        fi
+
+        ((j++))
+
+    done
+
+    HOLLAEX_CLOUD_EXCHANGE_ID=$(echo $HOLLAEX_CLOUD_GET_EXCHANGE_INFO_REQUEST | jq -r ".data[$EXCHANGE_ARRAY_ORDER].id")
+    
+    # # # END # # # 
+
+    if [[ "$HOLLAEX_CLOUD_START" ]]; then 
+
+        echo -e "\nSending a request to start the stopped exchange on the HollaCloud..."
+
+        HOLLAEX_CLOUD_START_API_REQUEST=$(curl -s -o /dev/null -w "%{http_code}" -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
+        --request POST \
+        --data "{\"exchange_id\": ${HOLLAEX_CLOUD_EXCHANGE_ID}, \"command\": \"start\", \"data\": { \"exchange_name\": \"$HOLLAEX_CONFIGMAP_API_NAME\", \"agent\": \"CLI v$(cat $SCRIPTPATH/version)\" }}" \
+        https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange/cloud) 
+        
+        if [[ "$HOLLAEX_CLOUD_START_API_REQUEST" == "200" ]]; then 
+
+            echo -e "\n\033[92mSuccessfully sent the request to the HollaCloud to start your exchange.\033[39m\n"
+            echo "The job would take around 10~20 minutes."
+            echo -e "We will inform you through the email once it's done!\n"
+
+            exit 0;
+        
+        else 
+
+            echo -e "\n\033[91mFailed to send the request to the server.\033[39m"
+            echo -e "Please review the logs, and try it again.\n"
+
+            exit 1;
+
+        fi
+
+    elif [[ "$HOLLAEX_CLOUD_STOP" ]]; then 
+
+        echo -e "\nSending a request to stop the running exchange on the HollaCloud..."
+
+        HOLLAEX_CLOUD_STOP_API_REQUEST=$(curl -s -o /dev/null -w "%{http_code}" -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
+        --request POST \
+        --data "{\"exchange_id\": ${HOLLAEX_CLOUD_EXCHANGE_ID}, \"command\": \"stop\", \"data\": { \"exchange_name\": \"$HOLLAEX_CONFIGMAP_API_NAME\", \"agent\": \"CLI v$(cat $SCRIPTPATH/version)\" }}" \
+        https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange/cloud) 
+        
+        if [[ "$HOLLAEX_CLOUD_STOP_API_REQUEST" == "200" ]]; then 
+
+            echo -e "\n\033[92mSuccessfully sent the request to the HollaCloud to stop your exchange.\033[39m\n"
+            echo "The job would take around 10~20 minutes."
+            echo -e "We will inform you through the email once it's done!\n"
+
+            exit 0;
+        
+        else 
+
+            echo -e "\n\033[91mFailed to send the request to the server.\033[39m"
+            echo "Please review the logs, and try it again."
+
+            exit 1;
+
+        fi
+
+    elif [[ "$HOLLAEX_CLOUD_UPGRADE" ]]; then 
+
+        echo -e "\nSending a request to uprade the running exchange on the HollaCloud..."
+
+        echo -e "\n# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #"
+        echo "Your HollaEx Kit Git repository: ${HOLLAEX_CLOUD_CUSTOM_KIT_REPO:-'https://github.com/bitholla/hollaex-kit.git'}"
+        echo "Your HollaEx Kit Git branch: ${HOLLAEX_CLOUD_CUSTOM_KIT_BRANCH:-'master'}"
+        echo -e "# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #\n"
+
+        HOLLAEX_CLOUD_UPGRADE_API_REQUEST=$(curl -s -o /dev/null -w "%{http_code}" -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
+        --request POST \
+        --data "{\"exchange_id\": ${HOLLAEX_CLOUD_EXCHANGE_ID}, \"command\": \"stop\", \"data\": { \"kit_repo\": \"$HOLLAEX_CLOUD_CUSTOM_KIT_REPO\", \"kit_branch\": \"$HOLLAEX_CLOUD_CUSTOM_KIT_BRANCH\", \"exchange_name\": \"$HOLLAEX_CONFIGMAP_API_NAME\", \"agent\": \"CLI v$(cat $SCRIPTPATH/version)\"}}" \
+        https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange/cloud) 
+        
+        if [[ "$HOLLAEX_CLOUD_UPGRADE_API_REQUEST" == "200" ]]; then 
+
+            echo -e "\n\033[92mSuccessfully sent the request to the HollaCloud to stop your exchange.\033[39m\n"
+            echo "The job would take around 20~30 minutes."
+            echo -e "We will inform you through the email once it's done!\n"
+
+            exit 0;
+        
+        else 
+
+            echo -e "\n\033[91mFailed to send the request to the server.\033[39m"
+            echo "Please review the logs, and try it again."
+
+            exit 1;
+
+        fi
+
+    elif [[ "$HOLLAEX_CLOUD_TERMINATE" ]]; then 
+
+        echo -e "\nSending a request to TERMINATE the running exchange on the HollaCloud..."
+        echo "Warning: This can't be undo."
+
+        HOLLAEX_CLOUD_TERMINATE_API_REQUEST=$(curl -s -o /dev/null -w "%{http_code}" -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
+        --request POST \
+        --data "{\"exchange_id\": ${HOLLAEX_CLOUD_EXCHANGE_ID}, \"command\": \"terminate\", \"data\": { \"exchange_name\": \"$HOLLAEX_CONFIGMAP_API_NAME\", \"agent\": \"CLI v$(cat $SCRIPTPATH/version)\" }}" \
+        https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange/cloud) 
+        
+        if [[ "$HOLLAEX_CLOUD_TERMINATE_API_REQUEST" == "200" ]]; then 
+
+            echo -e "\n\033[92mSuccessfully sent the request to the HollaCloud to terminate your exchange.\033[39m\n"
+            echo "The job would take around 20~30 minutes."
+            echo -e "We will inform you through the email once it's done!\n"
+
+            exit 0;
+        
+        else 
+
+            echo -e "\n\033[91mFailed to send the request to the server.\033[39m"
+            echo -e "Please review the logs, and try it again.\n"
+
+            exit 1;
+
+        fi
+
+    fi 
+
+    exit 0;
 
 elif [[ "$1" == "status" ]]; then
 
