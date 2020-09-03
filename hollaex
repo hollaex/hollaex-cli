@@ -6672,7 +6672,7 @@ elif [[ "$1" == "toolbox" ]]; then
         
     fi
 
-elif [[ "$1" == "web" ]]; then
+elif [[ "$1" == "cloud" ]]; then
 
     while true; do
         [[ $# -eq 0 ]] && break
