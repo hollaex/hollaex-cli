@@ -6706,22 +6706,27 @@ elif [[ "$1" == "cloud" ]]; then
                 shift; continue
                 ;;
             --start)
+                HOLLAEX_CLOUD_INPUT=true
                 HOLLAEX_CLOUD_START=true
                 shift; continue
                 ;;
             --stop)
+                HOLLAEX_CLOUD_INPUT=true
                 HOLLAEX_CLOUD_STOP=true
                 shift; continue
                 ;;
             --restart)
+                HOLLAEX_CLOUD_INPUT=true
                 HOLLAEX_CLOUD_RESTART=true
                 shift; continue
                 ;;
             --upgrade)
+                HOLLAEX_CLOUD_INPUT=true
                 HOLLAEX_CLOUD_UPGRADE=true
                 shift; continue
                 ;;
             --terminate)
+                HOLLAEX_CLOUD_INPUT=true
                 HOLLAEX_CLOUD_TERMINATE=true
                 shift; continue
                 ;;
@@ -6797,6 +6802,17 @@ elif [[ "$1" == "cloud" ]]; then
         fi
 
     fi
+
+    if [[ ! "$HOLLAEX_CLOUD_INPUT" ]]; then 
+
+        print_usage
+
+        echo -e "\033[91mError: You haven't specified any action for the 'hollaex cloud' command.\033[39m"
+        echo -e "Please check the command list above and try it again.\n"
+
+        exit 1;
+
+    fi 
     
     hollaex_login_token_validate_and_issue;
 
@@ -6853,6 +6869,19 @@ elif [[ "$1" == "cloud" ]]; then
 
     elif [[ "$HOLLAEX_CLOUD_STOP" ]]; then 
 
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+            echo "Are you sure you want to stop the $HOLLAEX_CONFIGMAP_API_NAME on the HollaCloud? (y/N)"
+
+            read answer
+
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                echo "Exiting..."
+                exit 0;
+            fi
+
+        fi
+
         echo -e "\nSending a request to stop the running exchange on the HollaCloud..."
 
         HOLLAEX_CLOUD_STOP_API_REQUEST=$(curl -s -o /dev/null -w "%{http_code}" -H "Content-Type: application/json" \
@@ -6877,10 +6906,64 @@ elif [[ "$1" == "cloud" ]]; then
             exit 1;
 
         fi
+    
+    elif [[ "$HOLLAEX_CLOUD_RESTART" ]]; then 
+
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+            echo "Are you sure you want to restart the $HOLLAEX_CONFIGMAP_API_NAME on the HollaCloud? (y/N)"
+
+            read answer
+
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                echo "Exiting..."
+                exit 0;
+            fi
+
+        fi
+
+        echo -e "\nSending a request to restart the running exchange on the HollaCloud..."
+
+        HOLLAEX_CLOUD_RESTART_API_REQUEST=$(curl -s -o /dev/null -w "%{http_code}" -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
+        --request POST \
+        --data "{\"exchange_id\": ${HOLLAEX_CLOUD_EXCHANGE_ID}, \"command\": \"restart\", \"data\": { \"exchange_name\": \"$HOLLAEX_CONFIGMAP_API_NAME\", \"agent\": \"CLI v$(cat $SCRIPTPATH/version)\" }}" \
+        https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange/cloud) 
+        
+        if [[ "$HOLLAEX_CLOUD_RESTART_API_REQUEST" == "200" ]]; then 
+
+            echo -e "\n\033[92mSuccessfully sent the request to the HollaCloud to restart your exchange.\033[39m\n"
+            echo "The job would take around 10~20 minutes."
+            echo -e "We will inform you through the email once it's done!\n"
+
+            exit 0;
+        
+        else 
+
+            echo -e "\n\033[91mFailed to send the request to the server.\033[39m"
+            echo "Please review the logs, and try it again."
+
+            exit 1;
+
+        fi
 
     elif [[ "$HOLLAEX_CLOUD_UPGRADE" ]]; then 
 
-        echo -e "\nSending a request to uprade the running exchange on the HollaCloud..."
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+            echo "Warning: The upgrade would cause a downtime on your exchange."
+            echo "Are you sure you want to upgrade the $HOLLAEX_CONFIGMAP_API_NAME on the HollaCloud? (y/N)"
+
+            read answer
+
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                echo "Exiting..."
+                exit 0;
+            fi
+
+        fi
+
+        echo -e "\nSending a request to upgrade the running exchange on the HollaCloud..."
 
         echo -e "\n# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #"
         echo "Your HollaEx Kit Git repository: ${HOLLAEX_CLOUD_CUSTOM_KIT_REPO:-'https://github.com/bitholla/hollaex-kit.git'}"
@@ -6912,6 +6995,20 @@ elif [[ "$1" == "cloud" ]]; then
 
     elif [[ "$HOLLAEX_CLOUD_TERMINATE" ]]; then 
 
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+            echo "Warning: The termination could not be undo."
+            echo "Are you sure you want to TERMINATE the $HOLLAEX_CONFIGMAP_API_NAME on the HollaCloud? (y/N)"
+
+            read answer
+
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                echo "Exiting..."
+                exit 0;
+            fi
+
+        fi
+
         echo -e "\nSending a request to TERMINATE the running exchange on the HollaCloud..."
         echo "Warning: This can't be undo."
 
@@ -6938,7 +7035,7 @@ elif [[ "$1" == "cloud" ]]; then
 
         fi
 
-    fi 
+    fi
 
     exit 0;
 
