@@ -6718,7 +6718,7 @@ elif [[ "$1" == "cloud" ]]; then
                 shift; continue
                 ;;
             --upgrade)
-                HOLLAEX_CLOUD_REBUILD=true
+                HOLLAEX_CLOUD_UPGRADE=true
                 shift; continue
                 ;;
             --terminate)
@@ -6885,12 +6885,12 @@ elif [[ "$1" == "cloud" ]]; then
         echo -e "\n# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #"
         echo "Your HollaEx Kit Git repository: ${HOLLAEX_CLOUD_CUSTOM_KIT_REPO:-'https://github.com/bitholla/hollaex-kit.git'}"
         echo "Your HollaEx Kit Git branch: ${HOLLAEX_CLOUD_CUSTOM_KIT_BRANCH:-'master'}"
-        echo -e "# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #\n"
+        echo -e "# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #"
 
         HOLLAEX_CLOUD_UPGRADE_API_REQUEST=$(curl -s -o /dev/null -w "%{http_code}" -H "Content-Type: application/json" \
         -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
         --request POST \
-        --data "{\"exchange_id\": ${HOLLAEX_CLOUD_EXCHANGE_ID}, \"command\": \"stop\", \"data\": { \"kit_repo\": \"$HOLLAEX_CLOUD_CUSTOM_KIT_REPO\", \"kit_branch\": \"$HOLLAEX_CLOUD_CUSTOM_KIT_BRANCH\", \"exchange_name\": \"$HOLLAEX_CONFIGMAP_API_NAME\", \"agent\": \"CLI v$(cat $SCRIPTPATH/version)\"}}" \
+        --data "{\"exchange_id\": ${HOLLAEX_CLOUD_EXCHANGE_ID}, \"command\": \"upgrade\", \"data\": { \"kit_repo\": \"$HOLLAEX_CLOUD_CUSTOM_KIT_REPO\", \"kit_branch\": \"$HOLLAEX_CLOUD_CUSTOM_KIT_BRANCH\", \"exchange_name\": \"$HOLLAEX_CONFIGMAP_API_NAME\", \"agent\": \"CLI v$(cat $SCRIPTPATH/version)\"}}" \
         https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange/cloud) 
         
         if [[ "$HOLLAEX_CLOUD_UPGRADE_API_REQUEST" == "200" ]]; then 
