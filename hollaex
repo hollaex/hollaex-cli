@@ -5217,14 +5217,14 @@ elif [[ "$1" == "toolbox" ]]; then
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 IS_COIN_SYMBOL_PASSED=true
-                COIN_SYMBOL=$1
+                PASSED_COIN_SYMBOL=$1
                 shift; continue
                 ;;
              --pair_name)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 IS_PAIR_NAME_PASSED=true
-                PAIR_NAME=$1
+                PASSED_PAIR_NAME=$1
                 shift; continue
                 ;;
             --is_hollaex_setup)
@@ -5843,20 +5843,36 @@ elif [[ "$1" == "toolbox" ]]; then
 
             done
 
-            if command grep -q "ENVIRONMENT_ADD_COIN_$(echo $COIN_SYMBOL | tr a-z A-Z)_" $CONFIGMAP_FILE_PATH > /dev/null ; then
+            IFS=',' read -ra CUSTOM_CURRENCIES_TO_ADD <<< "$PASSED_COIN_SYMBOL"
 
-                echo "Proceeding with stored configurations..."
-                export VALUE_IMPORTED_FROM_CONFIGMAP=true
+            for j in ${CUSTOM_CURRENCIES_TO_ADD[@]}; do
+                
+                for i in ${CONFIG_FILE_PATH[@]}; do
+                    source $i
+                done;
 
+                if [[ $(echo $j | grep $HOLLAEX_CONFIGMAP_CURRENCIES) ]]; then
+
+                    echo "Error: Coin $j is already exists on your exchange."
+                    exit 1;
+
+                fi
+                
+                COIN_SYMBOL=$j
+                COIN_FULLNAME=$(echo $j | tr a-z A-Z)
+                COIN_ALLOW_DEPOSIT=true
+                COIN_ALLOW_WITHDRAWAL=true
+                COIN_WITHDRAWAL_FEE=0.01
+                COIN_MIN=0.01
+                COIN_MAX=10000
+                COIN_INCREMENT_UNIT=0.001
+                COIN_ACTIVE=true
+                COIN_DEPOSIT_LIMITS=$(join_array_to_json $(for ((i=1;i<=$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER;i++)); do echo -n "$i " ; done;))
+                COIN_WITHDRAWAL_LIMITS=$(join_array_to_json $(for ((i=1;i<=$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER;i++)); do echo -n "$i " ; done;))
+                
                 add_coin_exec;
-
-            else 
-
-                echo "Failed to detect $COIN_SYMBOL configuration in your settings files."
-                echo "Please check the configuration and try again."
-                exit 1;
-
-            fi 
+                   
+            done
 
         else 
 
@@ -5886,20 +5902,36 @@ elif [[ "$1" == "toolbox" ]]; then
 
             done
 
-            if command grep -q "ENVIRONMENT_ADD_COIN_$(echo $COIN_SYMBOL | tr a-z A-Z)_" $CONFIGMAP_FILE_PATH > /dev/null ; then
+            for i in ${CONFIG_FILE_PATH[@]}; do
 
-                echo "Proceeding with stored configurations..."
-                export VALUE_IMPORTED_FROM_CONFIGMAP=true
+                if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
+
+                    export CONFIGMAP_FILE_PATH=$i
+
+                fi
+
+            done
+
+            IFS=',' read -ra CUSTOM_CURRENCIES_TO_REMOVE <<< "$PASSED_COIN_SYMBOL"
+
+            for j in ${CUSTOM_CURRENCIES_TO_REMOVE[@]}; do
+
+                for i in ${CONFIG_FILE_PATH[@]}; do
+                    source $i
+                done;
+
+                if [[ ! $(echo $HOLLAEX_CONFIGMAP_CURRENCIES | grep $j) ]]; then
+
+                    echo "Error: Coin $j doesn't exists on your exchange."
+                    exit 1;
+
+                fi
+                
+                COIN_SYMBOL=$j
 
                 remove_coin_exec;
-
-            else 
-
-                echo "Failed to detect $COIN_SYMBOL configuration in your settings files."
-                echo "Please check the configuration and try again."
-                exit 1;
-
-            fi 
+                   
+            done
 
         else 
             
@@ -5979,20 +6011,37 @@ elif [[ "$1" == "toolbox" ]]; then
 
             done
 
-                if command grep -q "ENVIRONMENT_ADD_PAIR_$(echo $PAIR_NAME | tr a-z A-Z)_" $CONFIGMAP_FILE_PATH > /dev/null ; then
+            IFS=',' read -ra CUSTOM_PAIRS_TO_ADD <<< "$PASSED_PAIR_NAME"
 
-                    echo "Proceeding with stored configurations..."
-                    export VALUE_IMPORTED_FROM_CONFIGMAP=true
+            for j in ${CUSTOM_PAIRS_TO_ADD[@]}; do
 
-                    add_pair_exec;
+                for i in ${CONFIG_FILE_PATH[@]}; do
+                    source $i
+                done;
 
-                else 
+                if [[ $(echo $j | grep $HOLLAEX_CONFIGMAP_PAIRS) ]]; then
 
-                    echo "Failed to detect $PAIR_NAME configuration in your settings files."
-                    echo "Please check the configuration and try again."
+                    echo "Error: Pair $j is already exists on your exchange."
                     exit 1;
 
-                fi 
+                fi
+                
+                PAIR_NAME=$j
+                PAIR_BASE=$(echo $PAIR_NAME | cut -f1 -d '-')
+                PAIR_2=$(echo $PAIR_NAME | cut -f2 -d '-')
+                MIN_SIZE=0.00001
+                MAX_SIZE=10000000
+                MIN_PRICE=0.000001
+                MAX_PRICE=1000000
+                INCREMENT_SIZE=0.001
+                INCREMENT_PRICE=0.001
+                PAIR_ACTIVE=true
+                TAKER_FEES=$(join_array_to_json $(for ((i=1;i<=$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER;i++)); do echo -n "$i " ; done;))
+                MAKER_FEES=$(join_array_to_json $(for ((i=1;i<=$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER;i++)); do echo -n "$i " ; done;))
+                
+                add_pair_exec;
+                   
+            done
 
         else 
 
@@ -6022,24 +6071,28 @@ elif [[ "$1" == "toolbox" ]]; then
 
             done 
 
-            PAIR_BASE=$(echo $PAIR_NAME | cut -f1 -d '-')
-            PAIR_2=$(echo $PAIR_NAME | cut -f2 -d '-')
+            IFS=',' read -ra CUSTOM_PAIRS_TO_REMOVE <<< "$PASSED_PAIR_NAME"
 
-            if command grep -q "ENVIRONMENT_ADD_PAIR_$(echo $PAIR_BASE | tr a-z A-Z)_$(echo $PAIR_2 | tr a-z A-Z)_" $CONFIGMAP_FILE_PATH > /dev/null ; then
+            for j in ${CUSTOM_PAIRS_TO_REMOVE[@]}; do
 
-                echo "Proceeding with stored configurations..."
-                export VALUE_IMPORTED_FROM_CONFIGMAP=true
+                for i in ${CONFIG_FILE_PATH[@]}; do
+                    source $i
+                done;
 
+                if [[ ! $(echo $HOLLAEX_CONFIGMAP_PAIRS | grep $j) ]]; then
+
+                    echo "Error: Pair $j doesn't exists on your exchange."
+                    exit 1;
+
+                fi
+                
+                PAIR_NAME=$j
+                PAIR_BASE=$(echo $PAIR_NAME | cut -f1 -d '-')
+                PAIR_2=$(echo $PAIR_NAME | cut -f2 -d '-')
+                
                 remove_pair_exec;
-
-            else 
-
-                echo "Failed to detect $PAIR_NAME configuration in your settings files."
-                echo "Please check the configuration and try again."
-                exit 1;
-
-            fi 
-
+                   
+            done
         else 
         
             remove_pair_input;
