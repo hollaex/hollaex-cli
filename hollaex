@@ -32,8 +32,6 @@ General Flags (Except for 'hollaex init', 'hollaex import'):
     --skip, Run command without user's double confirmation.
 
 Options:
-    init: Pull HollaEx Kit for your new exchange.
-
     setup: Setup the exchange for the first launch.
         --reconfigure, Reconfigure basic settings such as Server domain or Activation Code.
     
@@ -72,7 +70,6 @@ Options:
         --ignore_compatibility_check, Ignore Kit and Core compatibility check before an upgrade.
         --ignore_settings, Ignore local settings files changes and not applying it on the server.
         --api_only, Rolling Upgrade API Pods only for Kubernetes.
-        --plugins_only, Rolling Upgrade Plugins Pods only for Kubernetes.
 
     terminate: Terminate the existing exchange. THIS COMMAND WILL COMPLETELY REMOVE YOUR EXCHANGE.
       
@@ -88,10 +85,6 @@ Options:
         --backup, Run the full backup with 'pg_dumpall' for exchange's PostgreSQL database.
         --set_backup_cronjob, Set the Kubernetes Cronjob for periodical database backup.
         --flush_redis, Run the full flush of Redis stored data.
-        --add_coin, Add new currency on exchange.
-        --remove_coin, Remove exisiting currency from exhcnage.
-        --add_trading_pair, Add new trading pair on ehchange.
-        --remove_trading_pair, Remove existing trading pair from exchange.
         --issue_ssl, Issue SSL certificate on local Nginx by using Let's Encrypt.
         --renew_ssl, Renew SSL certificate on local Nginx by using Let's Encrypt.
         --update_registry_secret, Update existing docker registry secret for Kubernetes.
@@ -100,9 +93,7 @@ Options:
         --set_activation_code, Set or update activation code for the exchange.
         --connect_database, Direct connection to PostgreSQL Database via postgresql-client.
         --connect_redis, Direct connection to Redis via redis-client.
-        --connect_influxdb, Direct connection to InfluxDB via influx-client.
         --install_cli, Install specific version of HollaEx CLI.
-        --influxdb_migration, Migrate InfluxDB data to a new InfluxDB.
         
     status: Show the exchange server status.
 
@@ -238,15 +229,6 @@ if [[ "$1" == "dev" ]]; then
 
     done
 
-    # #Quit if necessary flags are missing
-    # if [[ ! "$LOCAL_DATABASE_INIT" ]] && [[ ! "$LOCAL_COMMAND" ]]; then
-    #     echo "*********************************************"
-    #     echo "Make sure to specify run mode for dev commands"
-    #     echo "*********************************************"
-    #     print_usage;
-    #     exit 1;
-    # fi
-
     # Checking docker-compose is installed on this machine.
     if command docker-compose version > /dev/null 2>&1; then
         echo "*********************************************"
@@ -286,7 +268,7 @@ if [[ "$1" == "dev" ]]; then
     if [[ "$HOLLAEX_DEV_SETUP" ]]; then
 
         # Randomly generates backend passwords
-        if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_INFLUX_PASSWORD" ]]; then
+        if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] ; then
         
             generate_backend_passwords;
 
@@ -379,10 +361,6 @@ if [[ "$1" == "dev" ]]; then
             cd /app/plugins && \
             npm install --loglevel=error && \
             for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done'
-        
-        # echo "Installing npm packages for /mail"
-        #     docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-api_1 bash -c '
-                # cd /app/mail && npm install --loglevel=error'
 
         hollaex dev --database_init
     
@@ -405,11 +383,6 @@ if [[ "$1" == "dev" ]]; then
                 cd /app/plugins && \
                 npm install --loglevel=error && \
                 for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done'
-
-            # echo "Installing npm packages for /mail"
-            # docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-api_1 bash -c '
-            #     cd /app/mail && npm install --loglevel=error'
-
         fi 
 
     else 
@@ -533,7 +506,7 @@ elif [[ "$1" == "setup" ]]; then
     done
 
      # Randomly generates backend passwords
-    if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_INFLUX_PASSWORD" ]]; then
+    if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] ; then
     
         generate_backend_passwords;
 
@@ -669,30 +642,6 @@ elif [[ "$1" == "setup" ]]; then
 
         fi
 
-        if [[ "$ENVIRONMENT_KUBERNETES_RUN_INFLUXDB" == true ]]; then
-
-            if [[ "$ENVIRONMENT_KUBERNETES_INFLUXDB_NODESELECTOR" ]]; then
-
-                generate_nodeselector_values $ENVIRONMENT_KUBERNETES_INFLUXDB_NODESELECTOR influxdb
-
-            fi
-
-            echo "Running InfluxDB."
-            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-influxdb \
-                        --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                        --set setCustomUser.enabled="true" \
-                        --set setCustomUser.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                        --set persistence.size="$ENVIRONMENT_KUBERNETES_INFLUXDB_VOLUMESIZE" \
-                        --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_INFLUXDB_CPU_LIMITS:-200m}" \
-                        --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_INFLUXDB_MEMORY_LIMITS:-400Mi}" \
-                        --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_INFLUXDB_CPU_REQUESTS:-100m}" \
-                        --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_INFLUXDB_MEMORY_REQUESTS:-256Mi}" \
-                        -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb/values.yaml \
-                        -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-influxdb.yaml \
-                        $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb $(kubernetes_set_backend_image_target is_influxdb $ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION)
-
-        fi
-
         echo "Applying ingress on the namespace."
         kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
         
@@ -741,21 +690,6 @@ elif [[ "$1" == "setup" ]]; then
                      --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_STREAM_MEMORY_REQUESTS:-128Mi}" \
                      --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
                      -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
-                     -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
-
-        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-plugins-controller \
-                     --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                     --set DEPLOYMENT_MODE="plugins-controller" \
-                     --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
-                     --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                     --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
-                     --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                     --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_PLUGINS_CPU_LIMITS:-500m}" \
-                     --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_PLUGINS_MEMORY_LIMITS:-512Mi}" \
-                     --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_PLUGINS_CPU_REQUESTS:-10m}" \
-                     --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_PLUGINS_MEMORY_REQUESTS:-128Mi}" \
-                     --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                      -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
         sleep 5;
@@ -1920,20 +1854,6 @@ elif [[ "$1" == "start" ]]; then
         kubectl get nodes
         echo "*********************************************"
 
-        # if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-
-        #     echo "Are you sure you want to start (scale up) $HOLLAEX_CONFIGMAP_API_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) on this cluster? (Y/n)"
-
-        #     read answer
-
-        #     if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-        #         echo "Exiting..."
-        #         exit 0;
-        #     fi
-
-        # fi
-
         #Generating and updating settings
 
         if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
@@ -1976,14 +1896,10 @@ elif [[ "$1" == "start" ]]; then
 
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-db --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-influxdb --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=${ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS:-1} --namespace $ENVIRONMENT_EXCHANGE_NAME
 
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
-            
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-plugins-controller --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
-            
+                        
             echo "Applying Ingress rules..."
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
@@ -2052,19 +1968,6 @@ elif [[ "$1" == "start" ]]; then
             exit 1;
 
         fi
-
-        # if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-        #     echo "Are you sure you want to start $HOLLAEX_CONFIGMAP_API_NAME on your machine? (Y/n)"
-
-        #     read answer
-
-        #     if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-        #         echo "Exiting..."
-        #         exit 0;
-        #     fi
-
-        # fi
 
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
@@ -2612,50 +2515,6 @@ elif [[ "$1" == "prod" ]]; then
 
     hollaex_prod_check_domains_reachability;
 
-    # if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] || [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
-
-    #     # Announcing the domain configuration how-to.
-    #     SYSTEM_PUBLIC_IP=$(curl -s ifconfig.me)
-
-    #     if [[ ! "$SYSTEM_PUBLIC_IP" ]]; then
-    #         printf "\n\033[91mError: Failed to get the system public IP automatically.\033[39m\n"
-    #         echo "You should check it by yourself."
-    #         SYSTEM_PUBLIC_IP="<YOUR_PUBLIC_IP>"
-    #     fi
-
-    #     printf "\n\nYour Public IP: $SYSTEM_PUBLIC_IP.\n\n"
-
-    #     if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]]; then
-
-    #         printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_DOMAIN.\033[39m\n"
-    #         printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN to point $SYSTEM_PUBLIC_IP\033[0m.\n"
-    #         printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
-    #         read -p "Press enter once you configured the DNS."
-    #     fi
-
-    #     if [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
-
-    #         printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_API_HOST.\033[39m\n"
-    #         printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST to point $SYSTEM_PUBLIC_IP\033[0m.\n"
-    #         printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
-    #         read -p "Press enter once you configured the DNS."
-
-    #     fi
-
-    #     printf "\n\033[93mChecking the DNS reachability...\033[39m\n"
-    #     hollaex_prod_check_domains_reachability;
-
-    #     if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] || [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
-
-    #         printf "\n\033[93mWarning: Your domain URLs are still not reachable.\033[39m\n\n"
-    #         printf "It could take \033[1mfew minutes ~ few hours to the DNS gets fully configured\033[0m and functioning.\n"
-    #         printf "Checking the DNS status again...\n"
-    #         hollaex_prod_check_domains_reachability;
-
-    #     fi
-
-    # fi
-
     apply_nginx_user_defined_values;
 
     printf "\n"
@@ -2996,15 +2855,11 @@ elif [[ "$1" == "stop" ]]; then
 
         kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-plugins-controller --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
         echo "Scaling down backend components..."
 
         kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
         kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-db --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-influxdb --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
         hollaex_ascii_exchange_has_been_stopped;
 
@@ -3052,8 +2907,6 @@ elif [[ "$1" == "stop" ]]; then
             exit 1;
         
         fi
-
-        #exit 0;
 
     fi
 
@@ -3342,10 +3195,6 @@ elif [[ "$1" == "restart" ]]; then
         echo "Updating nginx conf file based on user settings"
         apply_nginx_user_defined_values;
 
-        # echo "Restarting containers to apply new changes..."
-        # docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-        # docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
-
         echo "Flushing Redis..."
         IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
         docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/flushRedis.js
@@ -3523,11 +3372,6 @@ elif [[ "$1" == "upgrade" ]]; then
             --api_only)
                 UPGRADE_API_ONLY=true
                 echo "HollaEx CLI will rolling-upgrade API pods on Kubernetes."
-                shift; continue
-                ;;
-            --plugins_only)
-                UPGRADE_PLUGINS_ONLY=true
-                echo "HollaEx CLI will rolling-upgrade plugins pods on Kubernetes."
                 shift; continue
                 ;;
             --skip)
@@ -3809,27 +3653,7 @@ elif [[ "$1" == "upgrade" ]]; then
                         $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
         fi
 
-        if [[ ! "$UPGRADE_API_ONLY" ]] || [[ "$UPGRADE_PLUGINS_ONLY" ]]; then 
-
-        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-plugins-controller \
-                     --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                     --set DEPLOYMENT_MODE="plugins-controller" \
-                     --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
-                     --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                     --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
-                     --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                     --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_PLUGINS_CPU_LIMITS:-1000m}" \
-                     --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_PLUGINS_MEMORY_LIMITS:-1536Mi}" \
-                     --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_PLUGINS_CPU_REQUESTS:-10m}" \
-                     --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_PLUGINS_MEMORY_REQUESTS:-1536Mi}" \
-                     --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
-                     -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
-                     $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
-
-        fi 
-
-        if [[ ! "$UPGRADE_API_ONLY" ]] && [[ ! "$UPGRADE_PLUGINS_ONLY" ]]; then 
+        if [[ ! "$UPGRADE_API_ONLY" ]]; then 
         
             # Running database job for Kubernetes
             kubernetes_database_init upgrade;
@@ -3849,7 +3673,7 @@ elif [[ "$1" == "upgrade" ]]; then
         
         fi
 
-        if [[ ! "$UPGRADE_API_ONLY" ]] && [[ ! "$UPGRADE_PLUGINS_ONLY" ]]; then 
+        if [[ ! "$UPGRADE_API_ONLY" ]]; then 
 
             if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
 
@@ -3937,16 +3761,6 @@ elif [[ "$1" == "upgrade" ]]; then
             echo "Generating Nginx upstream conf"
             generate_nginx_upstream
         
-        fi
-        
-        if [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "true" ]]; then
-
-            generate_nginx_config_for_plugin;
-
-        elif [[ "$ENVIRONMENT_CUSTOM_PLUGINS_AUTOCONFIGURE_ENABLE" == "false" ]]; then
-
-            rm -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/plugins.conf
-
         fi
         
         # Update nginx.conf to apply user own domains
@@ -4095,12 +3909,9 @@ elif [[ "$1" == "terminate" ]]; then
         echo "Removing helm packages on the cluster."
         helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-api
         helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-stream
-        helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-plugins-controller
 
         helm del --purge $ENVIRONMENT_EXCHANGE_NAME-redis 
         helm del --purge $ENVIRONMENT_EXCHANGE_NAME-db
-        helm del --purge $ENVIRONMENT_EXCHANGE_NAME-influxdb
-
         #Remove web server together if it exists on same namespace.
         if command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null ; then
             
@@ -5041,7 +4852,7 @@ elif [[ "$1" == "toolbox" ]]; then
             --upgrade_backends)
                 UPGRADE_BACKENDS=true
                 TOOLBOX_ENABLE=true
-                echo "HollaEx CLI will upgrade your backends (PostgreSQL, Redis, InfluxDB) based on your settings files value."
+                echo "HollaEx CLI will upgrade your backends (PostgreSQL, Redis) based on your settings files value."
                 shift; continue
                 ;;
             --backup)
@@ -5170,22 +4981,11 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "HollaEx CLI will open a direct connection to your PostgreSQL database via redis-client."
                 shift; continue
                 ;;
-             --connect_influxdb)
-                CONNECT_INFLUXDB=true
-                TOOLBOX_ENABLE=true
-                echo "HollaEx CLI will open a direct connection to your PostgreSQL database via influx-client."
-                shift; continue
-                ;;
             --install_cli)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 INSTALL_CLI_ENABLE=true
                 INSTALL_CLI_TARGET=$1
-                TOOLBOX_ENABLE=true
-                shift; continue
-                ;;
-            --influxdb_migration)
-                INFLUXDB_MIGRATION=true
                 TOOLBOX_ENABLE=true
                 shift; continue
                 ;;
@@ -5330,7 +5130,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to upgrade backends (PostgreSQL, Redis, InfluxDB) to latest compatible on this cluster? (y/N)"
+                echo "Are you sure you want to upgrade backends (PostgreSQL, Redis) to latest compatible on this cluster? (y/N)"
 
                 read answer
 
@@ -5380,25 +5180,6 @@ elif [[ "$1" == "toolbox" ]]; then
                         --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_REDIS_MEMORY_REQUESTS:-100Mi}" \
                         $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT)
 
-            fi
-
-            if [[ "$ENVIRONMENT_KUBERNETES_RUN_INFLUXDB" ]]; then
-                
-                echo "Upgrading InfluxDB"
-                generate_nodeselector_values $ENVIRONMENT_KUBERNETES_INFLUXDB_NODESELECTOR influxdb
-
-                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-influxdb \
-                        --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                        --set setCustomUser.enabled="true" \
-                        --set setCustomUser.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                        --set persistence.size="$ENVIRONMENT_KUBERNETES_INFLUXDB_VOLUMESIZE" \
-                        --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_INFLUXDB_CPU_LIMITS:-200m}" \
-                        --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_INFLUXDB_MEMORY_LIMITS:-400Mi}" \
-                        --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_INFLUXDB_CPU_REQUESTS:-100m}" \
-                        --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_INFLUXDB_MEMORY_REQUESTS:-256Mi}" \
-                        -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb/values.yaml \
-                        -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-influxdb.yaml \
-                        $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-influxdb $(kubernetes_set_backend_image_target is_influxdb $ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION)
             fi
 
             echo "Restarting all workload containers..."
@@ -6409,67 +6190,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         fi
 
-    elif [[ "$CONNECT_INFLUXDB" ]]; then
-
-        if ! command influx --version > /dev/null 2>&1; then
-
-            printf "\033[91mHollaEx CLI failed to detect influx-cli at your computer.\033[39m\n"
-            echo "Please install it first, before proceeding."
-            exit 1;
-        
-        fi
-
-        if [[ "$USE_KUBERNETES" ]]; then 
-
-            check_kubernetes_dependencies;
-
-            if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 && command kubectl get pods -n $ENVIRONMENT_EXCHANGE_NAME -l app=$ENVIRONMENT_EXCHANGE_NAME-influxdb > /dev/null 2>&1; then
-
-                echo "Successfully detected the InfluxDB created by HollaEx CLI."
-                echo "Opening kube-proxy tunnel for InfluxDB connection..."
-                
-                echo "Opening local proxy on 8086 port of your machine..."
-                kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-influxdb" -o name | sed 's/pod\///' | head -n 1) 8086:8086 &
-                sleep 5;
-
-                echo "Opening influx-cli shell..."
-                influx -database $HOLLAEX_SECRET_INFLUX_DB -username $HOLLAEX_SECRET_INFLUX_USER -password $HOLLAEX_SECRET_INFLUX_PASSWORD
-
-                echo "Killing the opened proxy tunnel..."
-                kill $(ps -ef | grep "kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME" | awk '{print $2}' | head -n 1)
-
-                exit 0;
-            
-            else
-
-                echo "Failed to detect InfluxDB at your Kubernetes which created by HollaEx CLI."
-                echo "If you setup InfluxDB in a custom way, Please connect to it manually."
-                exit 1;
-            
-            fi
-
-        elif [[ ! "$USE_KUBERNETES" ]]; then
-
-            check_docker_compose_dependencies;
-
-            if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-influxdb > /dev/null 2>&1; then
-
-                echo "Successfully detected the influx-cli created by HollaEx CLI."
-
-                echo "Opening influx-cli shell..."
-                influx -database $HOLLAEX_SECRET_INFLUX_DB -username $HOLLAEX_SECRET_INFLUX_USER -password $HOLLAEX_SECRET_INFLUX_PASSWORD
-
-                exit 0;
-
-            else
-
-                echo "Failed to detect InfluxDB at your machine which created by HollaEx CLI."
-                echo "If you setup InfluxDB in a custom way, Please connect to it manually."
-                exit 1;
-            
-            fi
-
-        fi
+    fi
     
     elif [[ "$INSTALL_CLI_ENABLE" ]]; then
 
@@ -6491,61 +6212,6 @@ elif [[ "$1" == "toolbox" ]]; then
         fi
  
         bash $SCRIPTPATH/install.sh $INSTALL_CLI_TARGET
-
-    elif [[ "$INFLUXDB_MIGRATION" ]]; then
-    
-        if [[ "$USE_KUBERNETES" ]]; then 
-
-            check_kubernetes_dependencies;
-
-            if ! command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
-
-                echo "*********************************************"
-                printf "\033[91mError: HollaEx CLI failed to detect the exchange on your machine.\033[39m\n"
-                printf "\033[91mThis command could only works after the exchange get setup.\033[39m\n\n"
-                echo "Exiting..."
-                echo "*********************************************"
-                exit 1;
-
-            fi
-
-            echo "Running InfluxDB migrations"
-            kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/createInflux.js
-            kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/migrateInflux.js
-            kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
-        
-            echo "Restarting the exchange..."
-            kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
-
-
-        elif [[ ! "$USE_KUBERNETES" ]]; then
-
-            check_docker_compose_dependencies;
-
-            if ! command docker ps -a | grep local_$ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
-
-                echo "*********************************************"
-                printf "\033[91mError: HollaEx CLI failed to detect the exchange on your machine.\033[39m\n"
-                printf "\033[91mThis command could only works after the exchange get setup.\033[39m\n\n"
-                echo "Exiting..."
-                echo "*********************************************"
-                exit 1;
-
-            fi
-
-            IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
-
-            echo "Running InfluxDB migrations"
-            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/createInflux.js
-            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/migrateInflux.js
-            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/initializeInflux.js
-
-            echo "Restarting containers to apply database changes."
-            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
-
-        fi
-        
-    fi
 
 
 elif [[ "$1" == "status" ]]; then
@@ -6733,7 +6399,7 @@ elif [[ "$1" == "logs" ]]; then
 
     function hollaex_log_target_whitelist() {
 
-        local whitelist=("api" "stream" "engine" "db" "redis" "influxdb" "plugins-controller")
+        local whitelist=("api" "stream" "engine" "db" "redis")
 
         if ! command printf '%s\n' ${whitelist[@]} | grep $HOLLAEX_LOGS_TARGET > /dev/null; then
         

@@ -1009,8 +1009,8 @@ spec:
       paths:
       - path: /plugins
         backend:
-          serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller
-          servicePort: 10011
+          serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
+          servicePort: 10010
     
   $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
 
@@ -1084,7 +1084,7 @@ EOL
 function generate_random_values() {
 
   # Runs random.js through docker with latest compatible hollaex core (minimum 1.23.0)
-  docker run --rm --entrypoint node bitholla/hollaex-core:${HOLLAEX_CORE_MAXIMUM_COMPATIBLE:-1.23.0} tools/general/random.js
+  docker run --rm --entrypoint node bitholla/hollaex-core:${HOLLAEX_CORE_MAXIMUM_COMPATIBLE:-1.24.9} tools/general/random.js
   
 }
 
@@ -4571,21 +4571,13 @@ function kubernetes_set_backend_image_target() {
     # $2 image.repo
     # $3 image.tag
 
-    if [[ "$1" == "is_influxdb" ]]; then
-        
-        if [[ "$2" ]] && [[ "$3" ]]; then
-
-        echo "--set image.repo=$2 --set image.tag=$3"
-
-        fi
-
-    else
+  
     
         if [[ "$1" ]] && [[ "$2" ]]; then
             echo "--set imageRegistry=$1 --set dockerTag=$2"
         fi
 
-    fi
+    
 
 }
 
