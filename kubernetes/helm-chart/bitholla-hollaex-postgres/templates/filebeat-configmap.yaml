@@ -1,6 +1,21 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  name: {{.Release.Name}}-initdb-remove-local-nopasswd-access
+  namespace: {{.Release.Namespace}}
+  labels:
+    app: {{.Release.Name}}
+data:
+  remove-local-nopasswd-access.sh: |-
+    #!/bin/bash
+    grep -v "host    all             all             127.0.0.1/32            trust" /var/lib/postgresql/data/pg_hba.conf > /var/lib/postgresql/data/pg_hpba.conf.temp && mv /var/lib/postgresql/data/pg_hpba.conf.temp /var/lib/postgresql/data/pg_hba.conf
+    grep -v "host    all             all             ::1/128                 trust" /var/lib/postgresql/data/pg_hba.conf > /var/lib/postgresql/data/pg_hpba.conf.temp && mv /var/lib/postgresql/data/pg_hpba.conf.temp /var/lib/postgresql/data/pg_hba.conf
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: {{.Release.Name}}-conf
   namespace: {{.Release.Namespace}}
   labels:
