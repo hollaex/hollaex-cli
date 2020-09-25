@@ -6742,7 +6742,7 @@ elif [[ "$1" == "cloud" ]]; then
             --kit_repo)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                HOLLAEX_CLOUD_CUSTOM_KIT_REPO="${1:-'https://github.com/bitholla/hollaex-kit.git'}"
+                HOLLAEX_CLOUD_CUSTOM_KIT_REPO="${1:-https://github.com/bitholla/hollaex-kit.git}"
                 echo "Your Custom HollaEx Kit Git Repository : $HOLLAEX_CLOUD_CUSTOM_KIT_REPO."
                 shift; continue
                 ;;
