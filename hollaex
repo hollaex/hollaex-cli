@@ -1682,11 +1682,15 @@ elif [[ "$1" == "pull" ]]; then
 
     hollaex_pull_and_apply_exchange_data;
 
-    apply_coins_config_to_settings_file;
+    # apply_coins_config_to_settings_file;
 
-    apply_pairs_config_to_settings_file;
+    # apply_pairs_config_to_settings_file;
 
-    if command grep -q "ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN" $CONFIGMAP_FILE_PATH > /dev/null && command grep -q "ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}" $CONFIGMAP_FILE_PATH > /dev/null; then
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
+
+    if [[ ! "$ENVIRONMENT_EXCHANGE_NAME" == "hollaex" ]] && [[ ! "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]]; then
 
         printf "\n\033[92mSuccessfully pulled and applied your exchange data to Hollaex Kit!\033[39m\n\n"
 
