@@ -3909,15 +3909,15 @@ elif [[ "$1" == "terminate" ]]; then
         fi
 
         echo "Removing helm packages on the cluster."
-        helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-api
-        helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-stream
+        helm uninstall $ENVIRONMENT_EXCHANGE_NAME-server-api
+        helm uninstall $ENVIRONMENT_EXCHANGE_NAME-server-stream
 
-        helm del --purge $ENVIRONMENT_EXCHANGE_NAME-redis 
-        helm del --purge $ENVIRONMENT_EXCHANGE_NAME-db
+        helm uninstall $ENVIRONMENT_EXCHANGE_NAME-redis 
+        helm uninstall $ENVIRONMENT_EXCHANGE_NAME-db
         #Remove web server together if it exists on same namespace.
         if command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null ; then
             
-            helm del --purge $ENVIRONMENT_EXCHANGE_NAME-web
+            helm uninstall $ENVIRONMENT_EXCHANGE_NAME-web
 
         fi
 
@@ -4201,7 +4201,7 @@ elif [[ "$1" == "web" ]]; then
                 printf "\n\033[91mFailed to setup the web server on the Kubernetes!\033[39m\n"
                 echo "Please review the logs and try again."
 
-                helm del --purge $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null;
+                helm uninstall $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null;
 
                 exit 1;
 
@@ -4763,7 +4763,7 @@ elif [[ "$1" == "web" ]]; then
             kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
 
             echo "Removing the web server..."
-            if command helm del --purge $ENVIRONMENT_EXCHANGE_NAME-web; then
+            if command helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-web; then
 
                 printf "\n\033[92mWeb server has been successfully terminated.\033[39m\n"
                 echo "Please run 'hollaex web --setup --kube' if you want to set it up again."

@@ -70,22 +70,12 @@ spec:
 {{- if eq .Values.DEPLOYMENT_MODE "api" }}
 
         command: ["/bin/bash"]
-        args: ["-c", "/app/api-binary"]
+        args: ["-c", "node app.js"]
 
 {{- else if eq .Values.DEPLOYMENT_MODE "stream" }}
 
         command: ["/bin/bash"]
-        args: ["-c", "/app/stream-binary"]
-
-{{- else if eq .Values.DEPLOYMENT_MODE "engine" }}
-
-        command: ["/bin/bash"]
-        args: ["-c", "/app/engine-binary"]
-
-{{- else if eq .Values.DEPLOYMENT_MODE "plugins-controller" }}
-
-        command: ["/bin/bash"]
-        args: ["-c", "node plugins/index.js"]
+        args: ["-c", "node ws/index.js"]
 
 {{- end }}
 
@@ -94,8 +84,6 @@ spec:
           containerPort: 10080
         - name: port
           containerPort: 10010
-        - name: plugins-port
-          containerPort: 10011
 
         envFrom:
           - configMapRef:
@@ -128,7 +116,7 @@ spec:
           exec:
             command:
             - curl
-            - http://localhost:10010/v1/health
+            - http://localhost:10010/v2/health
           initialDelaySeconds: 1
           periodSeconds: 15
 {{- end }}
