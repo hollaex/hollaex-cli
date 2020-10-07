@@ -4409,21 +4409,38 @@ function get_hmac_token() {
     echo -e "You could \033[1mprovide the existing token manually\033[0m on the further menu."
     echo -e "If you dont have an existing token, \033[1myou could also revoke the token at the https://dash.bitholla.com.\033[0m\n"
 
-    echo -e "Please \033[1mtype 'Y', if you have an existing token and ready to type.\033[0m"
-    echo -e "Please \033[1mtype 'N', if you want to revoke and issue a new token.\033[0m\n"
+    if [[ ! "$RESET_HMAC_TOKEN" ]]; then 
 
-    echo -e "\033[1mDo you want to continue with the exisitng token manually? (Y/n)\033[0m"
+      echo -e "Please \033[1mtype 'Y', if you have an existing token and ready to type.\033[0m"
+      echo -e "Please \033[1mtype 'N', if you want to revoke and issue a new token.\033[0m\n"
 
-    read tokenAnswer
+      echo -e "\033[1mDo you want to continue with the exisitng token manually? (Y/n)\033[0m"
+
+      read tokenAnswer
+
+    else 
+
+      local tokenAnswer="n"
+
+    fi  
 
     if [[ "$tokenAnswer" = "${tokenAnswer#[Yy]}" ]]; then
 
       echo -e "\nIf you dont have an existing token with you, you could \033[1mrevoke and reissue it.\033[0m"
       echo -e "\n\033[1mRevoking the token can't be undo and would bring down the existing exchange running with the revoked token.\033[0m"
       echo -e "Please \033[1mmake sure that you are not running the exchange already.\033[0m"
-      echo -e "\nDo you want to \033[1mproceed to revoke\033[0m the existing token? (API Key: $BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY) (y/N)"
 
-      read answer
+      if [[ ! "$RESET_HMAC_TOKEN" ]]; then
+       
+        echo -e "\nDo you want to \033[1mproceed to revoke\033[0m the existing token? (API Key: $BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY) (y/N)"
+
+        read answer
+
+      else 
+
+        local answer="y"
+
+      fi 
 
       if [[ "$answer" = "${answer#[Yy]}" ]] ;then
 

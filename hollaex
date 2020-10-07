@@ -4938,8 +4938,8 @@ elif [[ "$1" == "toolbox" ]]; then
                 TOOLBOX_ENABLE=true
                 shift; continue
                 ;;
-            --get_hmac_token)
-                GET_HMAC_TOKEN=true
+            --reset_hmac_token)
+                RESET_HMAC_TOKEN=true
                 TOOLBOX_ENABLE=true
                 echo "Getting the HMAC Token from the bitHolla server."
                 shift; continue
@@ -5881,7 +5881,23 @@ elif [[ "$1" == "toolbox" ]]; then
  
         bash $SCRIPTPATH/install.sh $INSTALL_CLI_TARGET
 
-    elif [[ "$GET_HMAC_TOKEN" ]]; then
+    elif [[ "$RESET_HMAC_TOKEN" ]]; then
+
+        echo -e "\033[91m\nWarning: Running the 'hollaex toolbox --get_hmac_token' will REVOKE your token without any additional confirmation!\033[39m\n"
+
+        if [[ ! "$RUN_WITH_VERIFY" == false ]]; then 
+
+            echo "Are you sure you reset the HMAC token for your exchange? (y/N)"
+            read answer
+
+            if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                echo "Exiting..."
+                exit 0;
+            fi
+
+            unset answer
+        
+        fi 
 
         get_hmac_token;
 
