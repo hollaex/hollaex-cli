@@ -123,7 +123,7 @@ function kubernetes_database_init() {
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
 
       echo "Removing the Kubernetes Job for running database jobs..."
-      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
+      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade --namespace $ENVIRONMENT_EXCHANGE_NAME
 
     else 
 
@@ -132,7 +132,7 @@ function kubernetes_database_init() {
       echo "Displayling logs..."
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
       
-      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
+      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade --namespace $ENVIRONMENT_EXCHANGE_NAME
 
       # Only tries to attempt apply ingress rules from Kubernetes if it doesn't exists.
       if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
@@ -3493,7 +3493,7 @@ EOL
     else 
 
       printf "\033[91mFailed to create Kubernetes Job for updating activation code, Please confirm your input values and try again.\033[39m\n"
-      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-activation-code
+      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-activation-code --namespace $ENVIRONMENT_EXCHANGE_NAME
 
     fi
 
@@ -3503,14 +3503,14 @@ EOL
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-activation-code
 
       echo "Removing created Kubernetes Job for updating the activation code..."
-      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-activation-code
+      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-activation-code --namespace $$ENVIRONMENT_EXCHANGE_NAME
 
     else 
 
       printf "\033[91mFailed to update the activation code! Please try again.\033[39m\n"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-activation-code
-      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-activation-code
+      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-activation-code --namespace $$ENVIRONMENT_EXCHANGE_NAME
 
       exit 1;
 
@@ -3569,7 +3569,7 @@ EOL
     else 
 
       printf "\033[91mFailed to create Kubernetes Job for checkConstants, Please confirm the logs and try again.\033[39m\n"
-      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-check-constants
+      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-check-constants --namespace $ENVIRONMENT_EXCHANGE_NAME
 
     fi
 
@@ -3579,7 +3579,7 @@ EOL
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-check-constants
 
       echo "Removing created Kubernetes Job for setting up the config..."
-      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-check-constants
+      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-check-constants --namespace $ENVIRONMENT_EXCHANGE_NAME
 
       echo "Successfully updated the missing database constants with your local configmap values."
       echo "Make sure to run 'hollaex restart --kube' to fully apply it."
@@ -3589,7 +3589,7 @@ EOL
       printf "\033[91mFailed to update the database constants! Please try again.\033[39m\n"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-check-constants
-      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-check-constants
+      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-check-constants --namespace $ENVIRONMENT_EXCHANGE_NAME
 
       exit 1;
 
@@ -3650,7 +3650,7 @@ EOL
     else 
 
       printf "\033[91mFailed to create Kubernetes Job for setting up the config, Please confirm the logs and try again.\033[39m\n"
-      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-config
+      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-config --namespace $ENVIRONMENT_EXCHANGE_NAME
 
     fi
 
@@ -3660,7 +3660,7 @@ EOL
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-config
 
       echo "Removing created Kubernetes Job for setting up the config..."
-      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-config
+      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-config --namespace $ENVIRONMENT_EXCHANGE_NAME
 
       echo "Successfully updated database constants with your local configmap values."
       echo "Make sure to run 'hollaex restart --kube' to fully apply it."
@@ -3670,7 +3670,7 @@ EOL
       printf "\033[91mFailed to update the database constants! Please try again.\033[39m\n"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-config
-      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-config
+      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-config --namespace $ENVIRONMENT_EXCHANGE_NAME
 
       exit 1;
 
@@ -3857,7 +3857,7 @@ EOL
     else 
 
       printf "\033[91mFailed to create Kubernetes Job for setting up security values. Please confirm the logs and try again.\033[39m\n"
-      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-security
+      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-security --namespace $ENVIRONMENT_EXCHANGE_NAME
 
     fi
 
@@ -3867,7 +3867,7 @@ EOL
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-security
 
       echo "Removing created Kubernetes Job for setting up security values..."
-      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-security
+      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-security --namespace $ENVIRONMENT_EXCHANGE_NAME
 
       echo "Successfully updated security values with your local configmap values."
       echo "Make sure to run 'hollaex restart --kube' to fully apply it."
@@ -3877,7 +3877,7 @@ EOL
       printf "\033[91mFailed to update the database constants! Please try again.\033[39m\n"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-security
-      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-security
+      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-security --namespace $ENVIRONMENT_EXCHANGE_NAME
 
       exit 1;
 
