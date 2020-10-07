@@ -1134,7 +1134,7 @@ EOL
 
     if [[ "$TARGET_AWS_S3_BUCKET" ]]; then 
 
-        if [[ "$ENVIRONMENT_EXCHANGE_NAME" == "hollaex" ]] || [[ "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME" ]] ; then
+        if [[ "$ENVIRONMENT_EXCHANGE_NAME" == "hollaex" ]] && [[ "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME" ]] ; then
 
             echo "Error: Your haven't typed the exchange name yet."
             echo "Please type the registered exchange name."
@@ -1391,7 +1391,7 @@ elif [[ "$1" == "export" ]]; then
 
     if [[ "$TARGET_AWS_S3_BUCKET" ]]; then 
 
-        if [[ "$ENVIRONMENT_EXCHANGE_NAME" == "hollaex" ]] || [[ "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]]; then
+        if [[ "$ENVIRONMENT_EXCHANGE_NAME" == "hollaex" ]] && [[ "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]]; then
 
             echo "Error: Your haven't typed the exchange name yet."
             echo "Please type the registered exchange name."
