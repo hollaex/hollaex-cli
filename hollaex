@@ -1682,10 +1682,6 @@ elif [[ "$1" == "pull" ]]; then
 
     hollaex_pull_and_apply_exchange_data;
 
-    # apply_coins_config_to_settings_file;
-
-    # apply_pairs_config_to_settings_file;
-
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
     done;
@@ -4942,6 +4938,12 @@ elif [[ "$1" == "toolbox" ]]; then
                 TOOLBOX_ENABLE=true
                 shift; continue
                 ;;
+            --get_hmac_token)
+                GET_HMAC_TOKEN=true
+                TOOLBOX_ENABLE=true
+                echo "Getting the HMAC Token from the bitHolla server."
+                shift; continue
+                ;;
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
@@ -5857,8 +5859,6 @@ elif [[ "$1" == "toolbox" ]]; then
             fi
 
         fi
-
-    fi
     
     elif [[ "$INSTALL_CLI_ENABLE" ]]; then
 
@@ -5881,7 +5881,12 @@ elif [[ "$1" == "toolbox" ]]; then
  
         bash $SCRIPTPATH/install.sh $INSTALL_CLI_TARGET
 
+    elif [[ "$GET_HMAC_TOKEN" ]]; then
 
+        get_hmac_token;
+
+    fi
+    
 elif [[ "$1" == "status" ]]; then
 
      while true; do
