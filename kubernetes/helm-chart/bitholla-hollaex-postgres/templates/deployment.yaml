@@ -20,6 +20,10 @@ spec:
         tier: backend
     spec:
       volumes:
+      - name: {{.Release.Name}}-initdb-remove-local-nopasswd-access
+        configMap:
+          defaultMode: 0755
+          name: {{.Release.Name}}-initdb-remove-local-nopasswd-access
       - name: postgres-mount
         persistentVolumeClaim:
           claimName: {{.Values.pvc.name}}
@@ -109,6 +113,9 @@ spec:
           - name: postgres-conf
             mountPath: /etc/postgresql.conf
             subPath: postgresql.conf
+          - name: {{.Release.Name}}-initdb-remove-local-nopasswd-access
+            mountPath: /docker-entrypoint-initdb.d/remove-local-nopasswd-access.sh
+            subPath: remove-local-nopasswd-access.sh
           - name: shared-data
             mountPath: /etc/postgres-logs
 
