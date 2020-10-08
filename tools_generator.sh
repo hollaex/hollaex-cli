@@ -101,7 +101,7 @@ function kubernetes_database_init() {
 
     echo "Running database jobs..."
 
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade \
+    if command helm install $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade \
                 --namespace $ENVIRONMENT_EXCHANGE_NAME \
                 --set DEPLOYMENT_MODE="api" \
                 --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
@@ -3471,7 +3471,7 @@ job:
     activation_code: ${HOLLAEX_SECRET_ACTIVATION_CODE}
 EOL
 
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-set-activation-code \
+    if command helm install $ENVIRONMENT_EXCHANGE_NAME-set-activation-code \
                             --namespace $ENVIRONMENT_EXCHANGE_NAME \
                             --set job.enable="true" \
                             --set job.mode="set_activation_code" \
@@ -3546,7 +3546,7 @@ job:
   mode: check_constants
 EOL
 
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-check-constants \
+    if command helm install $ENVIRONMENT_EXCHANGE_NAME-check-constants \
                             --namespace $ENVIRONMENT_EXCHANGE_NAME \
                             --set job.enable="true" \
                             --set job.mode="check_constants" \
@@ -3628,7 +3628,7 @@ job:
   mode: set_config
 EOL
 
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-set-config \
+    if command helm install $ENVIRONMENT_EXCHANGE_NAME-set-config \
                             --namespace $ENVIRONMENT_EXCHANGE_NAME \
                             --set job.enable="true" \
                             --set job.mode="set_config" \
@@ -3835,7 +3835,7 @@ job:
   mode: set_security
 EOL
 
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-set-security \
+    if command helm install $ENVIRONMENT_EXCHANGE_NAME-set-security \
                 --namespace $ENVIRONMENT_EXCHANGE_NAME \
                 --set job.enable="true" \
                 --set job.mode="set_config" \
