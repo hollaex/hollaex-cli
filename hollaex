@@ -1334,9 +1334,8 @@ elif [[ "$1" == "login" ]]; then
     else 
 
         hollaex_login_form;
-    source $SCRIPTPATH/tools_generator.sh
 
-    hollaex_login_token_validate_and_issue;
+    fi
 
     BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
         --request GET \
@@ -1452,7 +1451,6 @@ elif [[ "$1" == "login" ]]; then
         get_hmac_token;
 
     fi
-
 
 elif [[ "$1" == "logout" ]]; then
 
