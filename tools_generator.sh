@@ -1032,7 +1032,7 @@ spec:
   - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
     http:
       paths:
-      - path: /socket.io
+      - path: /stream
         backend:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-stream
           servicePort: 10080
