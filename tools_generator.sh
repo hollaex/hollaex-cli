@@ -1093,7 +1093,7 @@ EOL
 function generate_random_values() {
 
   # Runs random.js through docker with latest compatible hollaex core (minimum 1.23.0)
-  docker run --rm --entrypoint node bitholla/hollaex-core:${HOLLAEX_CORE_MAXIMUM_COMPATIBLE:-1.24.9} tools/general/random.js
+  docker run --rm --entrypoint node bitholla/hollaex-core:1.24.9 tools/general/random.js
   
 }
 
@@ -1211,14 +1211,11 @@ function override_docker_image_version() {
 
     if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
       CONFIGMAP_FILE_PATH=$i
-      sed -i.bak "s/ENVIRONMENT_DOCKER_IMAGE_VERSION=.*/ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
       sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
     fi
     
   done
-
-  sed -i.bak "s/$(echo $ENVIRONMENT_DOCKER_IMAGE_REGISTRY | cut -f2 -d '/'):.*/$(echo $ENVIRONMENT_DOCKER_IMAGE_REGISTRY | cut -f2 -d '/'):$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $HOLLAEX_CLI_INIT_PATH/Dockerfile
-
+  
   rm $HOLLAEX_CLI_INIT_PATH/Dockerfile.bak
   rm $CONFIGMAP_FILE_PATH.bak
 
@@ -2995,13 +2992,10 @@ function build_user_hollaex_core() {
             echo "Your image name: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION."
             echo "You can later tag and push it by using 'docker tag' and 'docker push' command manually."
 
-            export USER_HOLLAEX_CORE_PUSHED=false
-
           else 
 
-            push_user_hollaex_core;
-            export USER_HOLLAEX_CORE_PUSHED=true
-        
+            push_user_hollaex_core;        
+            
           fi
 
       else 
@@ -3009,7 +3003,6 @@ function build_user_hollaex_core() {
         echo "Pushing the built image to the Docker Registry..."
 
         push_user_hollaex_core;
-        export USER_HOLLAEX_CORE_PUSHED=true
       
       fi
 

@@ -531,6 +531,7 @@ elif [[ "$1" == "setup" ]]; then
 
     load_config_variables;
     
+    export ENVIRONMENT_DOCKER_IMAGE_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')
     export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_DOCKER_IMAGE_VERSION
     override_docker_image_version;
     
@@ -3247,13 +3248,6 @@ elif [[ "$1" == "build" ]]; then
                 echo "Target hollaex docker registry : $ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE."
                 shift; continue
                 ;;
-            --version)
-                shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$1
-                echo "Target hollaex release version : v $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE."
-                shift; continue
-                ;;
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
@@ -3302,13 +3296,10 @@ elif [[ "$1" == "build" ]]; then
     load_config_variables;
 
     # Update the Core version to the user specified version, or use a latest compatible one.
-    export ENVIRONMENT_DOCKER_IMAGE_VERSION=${ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE:-$HOLLAEX_CORE_MAXIMUM_COMPATIBLE}
+    export ENVIRONMENT_DOCKER_IMAGE_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')
+    export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_DOCKER_IMAGE_VERSION
 
-    if [[ -z $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE ]]; then 
-
-        export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=${HOLLAEX_CORE_MAXIMUM_COMPATIBLE}
-
-    fi 
+    echo $ENVIRONMENT_DOCKER_IMAGE_VERSION
 
     override_docker_image_version;
 
@@ -3316,14 +3307,10 @@ elif [[ "$1" == "build" ]]; then
 
     build_user_hollaex_core;
 
-    if [[ "$USER_HOLLAEX_CORE_PUSHED" ]]; then 
-
-        export ENVIRONMENT_USER_REGISTRY_OVERRIDE=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY
-        export HOLLAEX_CORE_USER_APPLY_TAG=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
-        override_user_docker_registry;
-        override_user_docker_tag;
-
-    fi
+    export ENVIRONMENT_USER_REGISTRY_OVERRIDE=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY
+    export HOLLAEX_CORE_USER_APPLY_TAG=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
+    override_user_docker_registry;
+    override_user_docker_tag;
 
     printf "\n\nYou can simply restart the server by running '\033[1mhollaex restart\033[0m' to apply it.\n"
     printf "Notice: The image name should be same as the previous one in this case.\n"
@@ -3356,18 +3343,6 @@ elif [[ "$1" == "upgrade" ]]; then
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 ENVIRONMENT_USER_REGISTRY_OVERRIDE=$1
                 echo "User HollaEx Core image registry and version : $ENVIRONMENT_USER_REGISTRY_OVERRIDE."
-                shift; continue
-                ;;
-            --version)
-                shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$1
-                echo "Target HollaEx Core release version : v$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE."
-                shift; continue
-                ;;
-             --no_image_build)
-                NO_IMAGE_BUILD=true
-                echo "Skipping the new image build."
                 shift; continue
                 ;;
             --ignore_settings)
@@ -3422,7 +3397,7 @@ elif [[ "$1" == "upgrade" ]]; then
 
     if [[ "$UPGRADE_API_ONLY" ]] || [[ "$UPGRADE_PLUGINS_ONLY" ]] && [[ ! "$USE_KUBERNETES" ]]; then
 
-        echo "Error: '--api_only' and '--plugins_only' flags are only available for Kubernetes deployment."
+        echo "Error: '--api_only' flag is only available for the Kubernetes deployment."
         echo "If you are trying to target the Kubernetes cluster, please use '--kube' flag along your command."
 
         exit 1;
@@ -3457,12 +3432,6 @@ elif [[ "$1" == "upgrade" ]]; then
             source $SCRIPTPATH/.master_version_range
             rm $SCRIPTPATH/.master_version_range
 
-            if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
-
-                export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$HOLLAEX_CORE_MAXIMUM_COMPATIBLE
-
-            fi
-
         else 
 
             printf "\n\033[91mError: Failed to read latest version compatibility range from the server.\n\033[39m"
@@ -3477,19 +3446,12 @@ elif [[ "$1" == "upgrade" ]]; then
 
     fi
     
-    # Override target docker image version if user passed it manually with flag / version range available at each CLI releases.  
-    if [[ ! "$NO_IMAGE_BUILD" ]]; then   
 
-        if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
-
-            export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$HOLLAEX_CORE_MAXIMUM_COMPATIBLE
-
-        fi 
-
-        override_docker_image_version;
-        export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+    export ENVIRONMENT_DOCKER_IMAGE_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')
+    export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_DOCKER_IMAGE_VERSION
     
-    fi
+    override_docker_image_version;
+    
 
     if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then
 
@@ -3504,13 +3466,10 @@ elif [[ "$1" == "upgrade" ]]; then
         
     fi
 
-    if [[ ! "$NO_IMAGE_BUILD" ]]; then
+    # Building new HollaEx Core image based on passed (or specified) version.
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION}-$(date +%y%m%d%H%M)"
+    build_user_hollaex_core;
 
-        # Building new HollaEx Core image based on passed (or specified) version.
-        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION}-$(date +%y%m%d%H%M)"
-        build_user_hollaex_core;
-    
-    fi
 
     if [[ "$IGNORE_SETTINGS" ]]; then
 
@@ -5908,6 +5867,10 @@ elif [[ "$1" == "toolbox" ]]; then
         fi 
 
         get_hmac_token;
+
+        echo "To apply the new HMAC Token on your exchange, please run 'hollaex toolbox --set_security (--kube)."
+        echo "Note: The 'hollaex toolbox --set_security' command would also set the security related values to the default."
+        echo "Please make sure that it's all good to rollback the security settings to the default, before proceeding."
 
 elif [[ "$1" == "cloud" ]]; then
 
