@@ -1264,79 +1264,7 @@ elif [[ "$1" == "login" ]]; then
 
     source $SCRIPTPATH/tools_generator.sh
 
-    function hollaex_login_form() {
-
-        echo -e "\033[1mbitHolla Account Email:\033[0m "
-        read email
-
-        echo -e "\033[1mbitHolla Account Password:\033[0m "
-        read -s password
-        printf "\n"
-
-        echo -e "\033[1mOTP Code\033[0m (Enter if you don't have OTP set for your account): "
-        read otp
-
-        BITHOLLA_ACCOUNT_TOKEN=$(curl -s -H "Content-Type: application/json" \
-            --request POST \
-            --data "{\"email\": \"${email}\", \"password\": \"${password}\", \"otp_code\": \"${otp}\", \"service\": \"cli\"}" \
-            https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/login \
-            | jq -r '.token')
-
-        if [[ ! "$BITHOLLA_ACCOUNT_TOKEN" ]] || [[ "$BITHOLLA_ACCOUNT_TOKEN" == "null" ]]; then
-
-            printf "\033[91mFailed to authenticate on bitHolla Server with your passed credentials.\033[39m\n"
-            echo "Please try it again."
-            exit 1;
-
-        else 
-
-            printf "\033[92mSuccessfully authenticated on bitHolla Server.\033[39m\n"
-            # echo "Info: Your authentication will be only available for 24 hours."
-
-            echo $BITHOLLA_ACCOUNT_TOKEN > $HOLLAEX_CLI_INIT_PATH/.token
-
-            if [[ "$HOLLAEX_LOGIN_RENEW" ]]; then 
-
-                exit 0;
-
-            fi 
-
-        fi
-
-    }
-
-    if [[ -f "$HOLLAEX_CLI_INIT_PATH/.token" ]]; then
-
-        echo "Validating the existing access token..."
-        BITHOLLA_ACCOUNT_TOKEN=$(cat $HOLLAEX_CLI_INIT_PATH/.token)
-
-        BITHOLLA_USER_TOKEN_EXPIRY_CHECK=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
-            --request GET \
-            https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange)
-
-        BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
-            --request GET \
-            https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange \
-            | jq '.')
-
-        if [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" ]] || [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" == "200" ]]; then
-
-            printf "\033[91mError: Your access token has been expired!\033[39m\n"
-            printf "Please login again with your bitHolla account to issue a new access token.\n\n"
-            hollaex_login_form;
-
-        else
-
-            echo -e "\033[92mYour existing access token is valid!\033[39m"
-            echo "Info: Delete the ‘.token’ file in your HollaEx Kit to remove the existing token."
-
-        fi
-
-    else 
-
-        hollaex_login_form;
-
-    fi
+    hollaex_login_token_validate_and_issue;
 
     BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
         --request GET \
@@ -5872,6 +5800,8 @@ elif [[ "$1" == "toolbox" ]]; then
         echo "Note: The 'hollaex toolbox --set_security' command would also set the security related values to the default."
         echo "Please make sure that it's all good to rollback the security settings to the default, before proceeding."
 
+    fi
+
 elif [[ "$1" == "cloud" ]]; then
 
     while true; do
@@ -6017,7 +5947,7 @@ elif [[ "$1" == "cloud" ]]; then
     # # # FIGURE OUT THE EXCHANGE ID # # #
     HOLLAEX_CLOUD_GET_EXCHANGE_INFO_REQUEST=$(curl -s -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
           --request GET \
-          https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange)
+          https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange)
 
     HOLLAEX_CLOUD_GET_EXCHANGE_NAME_LIST=$(echo $HOLLAEX_CLOUD_GET_EXCHANGE_INFO_REQUEST | jq -r '.data[].name')
 
@@ -6046,13 +5976,13 @@ elif [[ "$1" == "cloud" ]]; then
         # -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
         # --request POST \
         # --data "{\"exchange_id\": ${HOLLAEX_CLOUD_EXCHANGE_ID}, \"command\": \"start\", \"data\": { \"exchange_name\": \"$HOLLAEX_CONFIGMAP_API_NAME\", \"agent\": \"CLI v$(cat $SCRIPTPATH/version)\" }}" \
-        # https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v1/exchange/cloud) 
+        # https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange/cloud) 
 
         HOLLAEX_CLOUD_START_API_REQUEST=$(curl -s -w "&%{http_code}" -H "Content-Type: application/json" \
         -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
         --request POST \
         --data "{\"exchange_id\": ${HOLLAEX_CLOUD_EXCHANGE_ID}, \"command\": \"start\", \"data\": { \"exchange_name\": \"$HOLLAEX_CONFIGMAP_API_NAME\", \"agent\": \"CLI v$(cat $SCRIPTPATH/version)\" }}" \
-        https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v2/exchange/cloud) 
+        https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange/cloud) 
 
         HOLLAEX_CLOUD_START_API_REQUEST_RESPONSE_PARSE=$(echo $HOLLAEX_CLOUD_START_API_REQUEST | cut -f1 -d "&" | jq -r '.message')
         HOLLAEX_CLOUD_START_API_REQUEST_HTTP_CODE=$(echo $HOLLAEX_CLOUD_START_API_REQUEST | cut -f2 -d "&")
@@ -6097,7 +6027,7 @@ elif [[ "$1" == "cloud" ]]; then
         -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
         --request POST \
         --data "{\"exchange_id\": ${HOLLAEX_CLOUD_EXCHANGE_ID}, \"command\": \"stop\", \"data\": { \"exchange_name\": \"$HOLLAEX_CONFIGMAP_API_NAME\", \"agent\": \"CLI v$(cat $SCRIPTPATH/version)\" }}" \
-        https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v2/exchange/cloud) 
+        https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange/cloud) 
 
         HOLLAEX_CLOUD_STOP_API_REQUEST_RESPONSE_PARSE=$(echo $HOLLAEX_CLOUD_STOP_API_REQUEST | cut -f1 -d "&" | jq -r '.message')
         HOLLAEX_CLOUD_STOP_API_REQUEST_HTTP_CODE=$(echo $HOLLAEX_CLOUD_STOP_API_REQUEST | cut -f2 -d "&")
@@ -6141,7 +6071,7 @@ elif [[ "$1" == "cloud" ]]; then
         -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
         --request POST \
         --data "{\"exchange_id\": ${HOLLAEX_CLOUD_EXCHANGE_ID}, \"command\": \"restart\", \"data\": { \"exchange_name\": \"$HOLLAEX_CONFIGMAP_API_NAME\", \"agent\": \"CLI v$(cat $SCRIPTPATH/version)\" }}" \
-        https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v2/exchange/cloud) 
+        https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange/cloud) 
 
         HOLLAEX_CLOUD_RESTART_API_REQUEST_RESPONSE_PARSE=$(echo $HOLLAEX_CLOUD_RESTART_API_REQUEST | cut -f1 -d "&" | jq -r '.message')
         HOLLAEX_CLOUD_RESTART_API_REQUEST_HTTP_CODE=$(echo $HOLLAEX_CLOUD_RESTART_API_REQUEST | cut -f2 -d "&")
@@ -6191,7 +6121,7 @@ elif [[ "$1" == "cloud" ]]; then
         -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
         --request POST \
         --data "{\"exchange_id\": ${HOLLAEX_CLOUD_EXCHANGE_ID}, \"command\": \"upgrade\", \"data\": { \"kit_repo\": \"$HOLLAEX_CLOUD_CUSTOM_KIT_REPO\", \"kit_branch\": \"$HOLLAEX_CLOUD_CUSTOM_KIT_BRANCH\", \"exchange_name\": \"$HOLLAEX_CONFIGMAP_API_NAME\", \"agent\": \"CLI v$(cat $SCRIPTPATH/version)\"}}" \
-        https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v2/exchange/cloud) 
+        https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange/cloud) 
 
         HOLLAEX_CLOUD_UPGRADE_API_REQUEST_RESPONSE_PARSE=$(echo $HOLLAEX_CLOUD_UPGRADE_API_REQUEST | cut -f1 -d "&" | jq -r '.message')
         HOLLAEX_CLOUD_UPGRADE_API_REQUEST_HTTP_CODE=$(echo $HOLLAEX_CLOUD_UPGRADE_API_REQUEST | cut -f2 -d "&")
@@ -6237,7 +6167,7 @@ elif [[ "$1" == "cloud" ]]; then
         -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
         --request POST \
         --data "{\"exchange_id\": ${HOLLAEX_CLOUD_EXCHANGE_ID}, \"command\": \"terminate\", \"data\": { \"exchange_name\": \"$HOLLAEX_CONFIGMAP_API_NAME\", \"agent\": \"CLI v$(cat $SCRIPTPATH/version)\" }}" \
-        https://$ENVIRONMENT_BRIDGE_TARGET_SERVER/v2/exchange/cloud) 
+        https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange/cloud) 
 
         HOLLAEX_CLOUD_TERMINATE_API_REQUEST_RESPONSE_PARSE=$(echo $HOLLAEX_CLOUD_TERMINATE_API_REQUEST | cut -f1 -d "&" | jq -r '.message')
         HOLLAEX_CLOUD_TERMINATE_API_REQUEST_HTTP_CODE=$(echo $HOLLAEX_CLOUD_TERMINATE_API_REQUEST | cut -f2 -d "&")
@@ -6263,9 +6193,8 @@ elif [[ "$1" == "cloud" ]]; then
     fi
 
     exit 0;
-
-    fi
     
+
 elif [[ "$1" == "status" ]]; then
 
      while true; do
@@ -6641,26 +6570,26 @@ elif [[ "$1" == "logs" ]]; then
 
 elif [[ "$1" == "version" ]]; then
 
-if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
 
-    HOLLAEX_CLI_INIT_PATH=$(pwd)
-    CONFIG_FILE_PATH=$(pwd)/settings/*
-    TEMPLATE_GENERATE_PATH=$(pwd)/templates
-    INIT_PATH_CHECK=$(pwd)/.hollaex
+        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        CONFIG_FILE_PATH=$(pwd)/settings/*
+        TEMPLATE_GENERATE_PATH=$(pwd)/templates
+        INIT_PATH_CHECK=$(pwd)/.hollaex
 
-fi
+    fi
 
-if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
 
-    CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
-    TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
-    INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
-    
-fi
-    
-source $SCRIPTPATH/tools_generator.sh
+        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        
+    fi
+        
+    source $SCRIPTPATH/tools_generator.sh
      
-/bin/cat << EOF
+    /bin/cat << EOF
 
 :tt1   ;tti          LCC:1CC1         ,11tffttt            :tt;  ;tfi.tt1 ,,,
 t@@8   f@@0  ,;ii;.  8@@;L@@f .:i1i:. ;@@@CLCGC;ii; ,iii.  t@@L,C@@L,.CCf,0@@;,
@@ -6691,5 +6620,3 @@ else
 fi
 
 exit 0;
-
-

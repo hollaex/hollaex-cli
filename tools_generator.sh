@@ -1215,7 +1215,7 @@ function override_docker_image_version() {
     fi
     
   done
-  
+
   rm $HOLLAEX_CLI_INIT_PATH/Dockerfile.bak
   rm $CONFIGMAP_FILE_PATH.bak
 
@@ -4630,5 +4630,83 @@ function hollaex_setup_initialization() {
         fi
     
     fi
+
+}
+
+function hollaex_login_form() {
+
+    echo -e "\033[1mbitHolla Account Email:\033[0m "
+    read email
+
+    echo -e "\033[1mbitHolla Account Password:\033[0m "
+    read -s password
+    printf "\n"
+
+    echo -e "\033[1mOTP Code\033[0m (Enter if you don't have OTP set for your account): "
+    read otp
+
+    BITHOLLA_ACCOUNT_TOKEN=$(curl -s -H "Content-Type: application/json" \
+        --request POST \
+        --data "{\"email\": \"${email}\", \"password\": \"${password}\", \"otp_code\": \"${otp}\", \"service\": \"cli\"}" \
+        https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/login \
+        | jq -r '.token')
+
+    if [[ ! "$BITHOLLA_ACCOUNT_TOKEN" ]] || [[ "$BITHOLLA_ACCOUNT_TOKEN" == "null" ]]; then
+
+        printf "\033[91mFailed to authenticate on bitHolla Server with your passed credentials.\033[39m\n"
+        echo "Please try it again."
+        exit 1;
+
+    else 
+
+        printf "\033[92mSuccessfully authenticated on bitHolla Server.\033[39m\n"
+        # echo "Info: Your authentication will be only available for 24 hours."
+
+        echo $BITHOLLA_ACCOUNT_TOKEN > $HOLLAEX_CLI_INIT_PATH/.token
+
+        if [[ "$HOLLAEX_LOGIN_RENEW" ]]; then 
+
+            exit 0;
+
+        fi 
+
+    fi
+
+}
+
+function hollaex_login_token_validate_and_issue() {
+
+  if [[ -f "$HOLLAEX_CLI_INIT_PATH/.token" ]]; then
+
+      echo "Validating the existing access token..."
+      BITHOLLA_ACCOUNT_TOKEN=$(cat $HOLLAEX_CLI_INIT_PATH/.token)
+
+      BITHOLLA_USER_TOKEN_EXPIRY_CHECK=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
+          --request GET \
+          https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange)
+
+      BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
+          --request GET \
+          https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange \
+          | jq '.')
+
+      if [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" ]] || [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" == "200" ]]; then
+
+          printf "\033[91mError: Your access token has been expired!\033[39m\n"
+          printf "Please login again with your bitHolla account to issue a new access token.\n\n"
+          hollaex_login_form;
+
+      else
+
+          echo -e "\033[92mYour existing access token is valid!\033[39m"
+          echo "Info: Delete the ‘.token’ file in your HollaEx Kit to remove the existing token."
+
+      fi
+
+  else 
+
+      hollaex_login_form;
+
+  fi
 
 }
