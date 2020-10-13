@@ -284,9 +284,6 @@ if [[ "$1" == "dev" ]]; then
 
     fi
 
-    #Generating random values for passwords and update config file to contain it;
-    update_random_values_to_config;
-
     if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
         load_config_variables;
@@ -346,6 +343,9 @@ if [[ "$1" == "dev" ]]; then
         export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
 
         build_user_hollaex_core;
+        
+        #Generating random values for passwords and update config file to contain it;
+        update_random_values_to_config;
 
         # Regenerating docker compose file with the new image tag just defined above.
          if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
@@ -486,9 +486,6 @@ elif [[ "$1" == "setup" ]]; then
     
     fi 
 
-    #Generating random values for passwords and update config file to contain it;
-    update_random_values_to_config;
-
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
     done;
@@ -528,8 +525,6 @@ elif [[ "$1" == "setup" ]]; then
      for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
     done;
-
-    load_config_variables;
     
     export ENVIRONMENT_DOCKER_IMAGE_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')
     export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_DOCKER_IMAGE_VERSION
@@ -545,6 +540,11 @@ elif [[ "$1" == "setup" ]]; then
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION}-$(date +%y%m%d%H%M)"
 
     build_user_hollaex_core;
+    
+    #Generating random values for passwords and update config file to contain it;
+    update_random_values_to_config;
+
+    load_config_variables;
 
     if [[ "$USE_KUBERNETES" ]]; then
 
@@ -1729,7 +1729,11 @@ elif [[ "$1" == "start" ]]; then
 
     fi
 
-     source $SCRIPTPATH/tools_generator.sh
+    source $SCRIPTPATH/tools_generator.sh
+
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
 
     # Update random secrets if env generation is enabled.
     if [[ ! "$IGNORE_SETTINGS" ]]; then 
@@ -1738,11 +1742,6 @@ elif [[ "$1" == "start" ]]; then
         update_random_values_to_config;
 
     fi
-
-    for i in ${CONFIG_FILE_PATH[@]}; do
-        source $i
-    done;
-
 
      # Override user HollaEx Core tag if the flag is available.
     if [[ "$HOLLAEX_CORE_USER_APPLY_TAG" ]]; then
@@ -2918,8 +2917,12 @@ elif [[ "$1" == "restart" ]]; then
 
     fi
 
-     source $SCRIPTPATH/tools_generator.sh
-     
+    source $SCRIPTPATH/tools_generator.sh
+
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
+
     # Update random secrets if env generation is enabled.
     if [[ ! "$IGNORE_SETTINGS" ]]; then 
 
@@ -2927,10 +2930,6 @@ elif [[ "$1" == "restart" ]]; then
         update_random_values_to_config;
 
     fi
-
-    for i in ${CONFIG_FILE_PATH[@]}; do
-        source $i
-    done;
 
     # Override user HollaEx Core tag if the flag is available.
     if [[ "$HOLLAEX_CORE_USER_APPLY_TAG" ]]; then
@@ -3335,6 +3334,10 @@ elif [[ "$1" == "upgrade" ]]; then
 
     source $SCRIPTPATH/tools_generator.sh
 
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
+
     # Update random secrets if env generation is enabled.
     if [[ ! "$IGNORE_SETTINGS" ]]; then 
 
@@ -3342,10 +3345,6 @@ elif [[ "$1" == "upgrade" ]]; then
         update_random_values_to_config;
 
     fi
-
-    for i in ${CONFIG_FILE_PATH[@]}; do
-        source $i
-    done;
 
     load_config_variables;
 

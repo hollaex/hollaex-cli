@@ -1093,7 +1093,7 @@ EOL
 function generate_random_values() {
 
   # Runs random.js through docker with latest compatible hollaex core (minimum 1.23.0)
-  docker run --rm --entrypoint node bitholla/hollaex-core:1.24.9 tools/general/random.js
+  docker run --rm --entrypoint node $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION tools/general/random.js
   
 }
 
@@ -1216,7 +1216,6 @@ function override_docker_image_version() {
     
   done
 
-  rm $HOLLAEX_CLI_INIT_PATH/Dockerfile.bak
   rm $CONFIGMAP_FILE_PATH.bak
 
 }
