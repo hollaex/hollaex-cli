@@ -66,9 +66,7 @@ spec:
 
         args:
           - sequelize db:migrate;
-            node tools/dbs/checkConstants.js;
             node tools/dbs/runTriggers.js;
-            node tools/dbs/setActivationCode.js;
             node tools/dbs/checkConfig.js;
 
 {{- end }}
