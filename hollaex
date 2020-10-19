@@ -273,17 +273,6 @@ if [[ "$1" == "dev" ]]; then
 
     fi
 
-    if [[ "$HOLLAEX_DEV_SETUP" ]]; then
-
-        # Randomly generates backend passwords
-        if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] ; then
-        
-            generate_backend_passwords;
-
-        fi
-
-    fi
-
     if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
         load_config_variables;
@@ -346,6 +335,13 @@ if [[ "$1" == "dev" ]]; then
         
         #Generating random values for passwords and update config file to contain it;
         update_random_values_to_config;
+
+        # Randomly generates backend passwords
+        if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] ; then
+        
+            generate_backend_passwords;
+
+        fi
 
         # Regenerating docker compose file with the new image tag just defined above.
          if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
@@ -510,19 +506,12 @@ elif [[ "$1" == "setup" ]]; then
 
     done
 
-     # Randomly generates backend passwords
-    if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] ; then
-    
-        generate_backend_passwords;
-
-    fi
-
     # PRESET env for user initial setup config value selection
     CONTINUE_WITH_PRECONFIGURED_VALUES=false 
 
     hollaex_setup_initialization;
 
-     for i in ${CONFIG_FILE_PATH[@]}; do
+    for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
     done;
     
@@ -540,6 +529,13 @@ elif [[ "$1" == "setup" ]]; then
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION}-$(date +%y%m%d%H%M)"
 
     build_user_hollaex_core;
+
+    # Randomly generates backend passwords
+    if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] ; then
+    
+        generate_backend_passwords;
+
+    fi
     
     #Generating random values for passwords and update config file to contain it;
     update_random_values_to_config;
@@ -1374,6 +1370,10 @@ elif [[ "$1" == "login" ]]; then
         echo "Secret Key: $(echo ${HOLLAEX_SECRET_API_SECRET//?/◼︎}$(echo $HOLLAEX_SECRET_API_SECRET | grep -o '....$'))"
         
         echo -e "\nSkipping to issue a security token..."
+
+    elif [[ "$HOLLAEX_LOGIN_RENEW" ]]; then 
+
+        echo "Skipping to issue (revoke) the HMAC security token, since it's a --renew mode."
 
     else 
 
@@ -4209,7 +4209,7 @@ elif [[ "$1" == "web" ]]; then
             # fi
             
             # Web server installation status checking.
-            if ! command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null 2>&1; then
+            if ! command helm ls --namespace $ENVIRONMENT_EXCHANGE_NAME | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null 2>&1; then
 
                 printf "\033[91mFailed to detect the web server installed on your Kubernetes cluster.\033[39m\n"
                 echo "If you haven't launched the web server yet, Please run 'hollaex web --setup --kube' to set it up first."
@@ -4365,7 +4365,7 @@ elif [[ "$1" == "web" ]]; then
 
         # Web server installation status checking.
         echo "Checking the web installation status on your Kubernetes..."
-        if ! command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null 2>&1; then
+        if ! command helm ls --namespace $ENVIRONMENT_EXCHANGE_NAME | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null 2>&1; then
 
             printf "\033[91mFailed to detect the web server installed on your Kubernetes cluster.\033[39m\n"
             echo "If you haven't launched the web server yet, Please run 'hollaex web --setup --kube' to set it up first."
@@ -5777,11 +5777,27 @@ elif [[ "$1" == "toolbox" ]]; then
 
     elif [[ "$RESET_HMAC_TOKEN" ]]; then
 
-        echo -e "\033[91m\nWarning: Running the 'hollaex toolbox --get_hmac_token' will REVOKE your token without any additional confirmation!\033[39m\n"
+        for i in ${CONFIG_FILE_PATH[@]}; do
+            source $i
+        done;
+
+        load_config_variables;
+
+        for i in ${CONFIG_FILE_PATH[@]}; do
+
+            if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE=" $i > /dev/null ; then
+
+                export SECRET_FILE_PATH=$i
+
+            fi
+
+        done
+
+        echo -e "\033[91m\nWarning: Running this command will REVOKE your existing token without any additional confirmation!\033[39m\n"
 
         if [[ ! "$RUN_WITH_VERIFY" == false ]]; then 
 
-            echo "Are you sure you reset the HMAC token for your exchange? (y/N)"
+            echo "Are you sure you reset (get) the HMAC token for your exchange? (y/N)"
             read answer
 
             if [[ "$answer" = "${answer#[Yy]}" ]]; then
@@ -5792,6 +5808,18 @@ elif [[ "$1" == "toolbox" ]]; then
             unset answer
         
         fi 
+
+        if [[ -f "$HOLLAEX_CLI_INIT_PATH/.token" ]]; then
+
+            export BITHOLLA_ACCOUNT_TOKEN=$(cat $HOLLAEX_CLI_INIT_PATH/.token)
+
+        else 
+
+            printf "\033[91mError: An access token has not been detected.\033[39m\n"
+            printf "Please login with your bitHolla account to issue an access token.\n\n"
+            hollaex login --renew
+
+        fi
 
         get_hmac_token;
 

@@ -4155,6 +4155,10 @@ function generate_backend_passwords() {
     
   fi
 
+  for i in ${CONFIG_FILE_PATH[@]}; do
+      source $i
+  done;
+
 
 }
 
@@ -4408,7 +4412,7 @@ function get_hmac_token() {
             --request GET \
             https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/user/token?active=true | jq '.count')
     
-  if [[ ! $BITHOLLA_HMAC_TOKEN_GET_COUNT == "0" ]]; then 
+  if [[ ! $BITHOLLA_HMAC_TOKEN_GET_COUNT == 0 ]]; then 
 
     BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
             --request GET \
