@@ -346,7 +346,7 @@ services:
 
   ${ENVIRONMENT_EXCHANGE_NAME}-redis:
     image: ${ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY:-redis}:${ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION:-5.0.5-alpine}
-    restart: always
+    restart: unless-stopped
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
     ports:
@@ -359,7 +359,7 @@ services:
 
   ${ENVIRONMENT_EXCHANGE_NAME}-db:
     image: ${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY:-postgres}:${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION:-10.9-alpine}
-    restart: always
+    restart: unless-stopped
     ports:
       - 5432:5432
     environment:
@@ -371,7 +371,7 @@ services:
 
   ${ENVIRONMENT_EXCHANGE_NAME}-influxdb:
     image: ${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_REGISTRY:-influxdb}:${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION:-1.7.8-alpine}
-    restart: always
+    restart: unless-stopped
     ports:
       - 8086:8086
     environment:
@@ -392,7 +392,7 @@ services:
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-api:
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
-    restart: always
+    restart: unless-stopped
     env_file:
       - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
     environment:
@@ -434,7 +434,7 @@ services:
   
   ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
-    restart: always
+    restart: unless-stopped
     env_file:
       - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
     environment:
@@ -476,7 +476,7 @@ services:
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-stream:
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
-    restart: always
+    restart: unless-stopped
     env_file:
       - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
     environment:
@@ -517,7 +517,7 @@ services:
 
   ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
     image: ${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_REGISTRY:-bitholla/nginx-with-certbot}:${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_VERSION:-1.15.8}
-    restart: always
+    restart: unless-stopped
     volumes:
       - ./nginx:/etc/nginx
       - ./logs/nginx:/var/log/nginx
@@ -549,7 +549,7 @@ EOL
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-engine-$TRADE_PARIS_DEPLOYMENT:
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
-    restart: always
+    restart: unless-stopped
     env_file:
       - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
     environment:
@@ -606,7 +606,7 @@ services:
 
   ${ENVIRONMENT_EXCHANGE_NAME}-redis:
     image: ${ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY:-redis}:${ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION:-5.0.5-alpine}
-    restart: always
+    restart: unless-stopped
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
     ports:
@@ -619,7 +619,7 @@ services:
 
   ${ENVIRONMENT_EXCHANGE_NAME}-db:
     image: ${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY:-postgres}:${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION:-10.9-alpine}
-    restart: always
+    restart: unless-stopped
     ports:
       - 5432:5432
     environment:
@@ -631,7 +631,7 @@ services:
 
   ${ENVIRONMENT_EXCHANGE_NAME}-influxdb:
     image: ${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_REGISTRY:-influxdb}:${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION:-1.7.8-alpine}
-    restart: always
+    restart: unless-stopped
     ports:
       - 8086:8086
     environment:
@@ -652,7 +652,7 @@ services:
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-api:
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
-    restart: always
+    restart: unless-stopped
     env_file:
       - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
     entrypoint:
@@ -673,7 +673,7 @@ services:
   
   ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
-    restart: always
+    restart: unless-stopped
     env_file:
       - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
     entrypoint:
@@ -692,7 +692,7 @@ services:
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-stream:
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
-    restart: always
+    restart: unless-stopped
     env_file:
       - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
     entrypoint:
@@ -708,7 +708,7 @@ services:
 
   ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
     image: ${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_REGISTRY:-bitholla/nginx-with-certbot}:${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_VERSION:-1.15.8}
-    restart: always
+    restart: unless-stopped
     volumes:
       - ./nginx:/etc/nginx
       - ./logs/nginx:/var/log/nginx
@@ -741,7 +741,7 @@ EOL
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-engine-$TRADE_PARIS_DEPLOYMENT:
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
-    restart: always
+    restart: unless-stopped
     env_file:
       - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
     environment:
@@ -779,7 +779,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]]; then
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-redis:
     image: ${ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY:-redis}:${ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION:-5.0.5-alpine}
-    restart: always
+    restart: unless-stopped
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
     ports:
@@ -798,7 +798,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-db:
     image: ${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY:-postgres}:${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION:-10.9-alpine}
-    restart: always
+    restart: unless-stopped
     ports:
       - 5432:5432
     env_file:
@@ -815,7 +815,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" == "true" ]]; then
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-influxdb:
     image: ${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_REGISTRY:-influxdb}:${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION:-1.7.8-alpine}
-    restart: always
+    restart: unless-stopped
     ports:
       - 8086:8086
     env_file:
@@ -839,7 +839,7 @@ fi
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
     image: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
-    restart: always
+    restart: unless-stopped
     ports:
       - 10011:10011
     entrypoint:
@@ -866,7 +866,7 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-${i}:
     image: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
-    restart: always
+    restart: unless-stopped
     env_file:
       - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
     entrypoint:
@@ -891,7 +891,7 @@ EOL
 
   ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
     image: ${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_REGISTRY:-bitholla/nginx-with-certbot}:${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_VERSION:-1.15.8}
-    restart: always
+    restart: unless-stopped
     volumes:
       - ./nginx:/etc/nginx
       - ./logs/nginx:/var/log/nginx
@@ -928,7 +928,7 @@ EOL
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-${i}-$TRADE_PARIS_DEPLOYMENT:
     image: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
-    restart: always
+    restart: unless-stopped
     env_file:
       - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
     environment:
@@ -974,7 +974,7 @@ EOL
     build:
       context: ${HOLLAEX_CLI_INIT_PATH}/web/
       dockerfile: ${HOLLAEX_CLI_INIT_PATH}/web/docker/Dockerfile
-    restart: always
+    restart: unless-stopped
     ports:
       - 8080:80
 EOL
