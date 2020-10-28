@@ -3767,6 +3767,14 @@ elif [[ "$1" == "terminate" ]]; then
     
     fi 
 
+    echo -e "\n# # # # # #  \033[1mW A R N I N G\033[0m  # # # # # #\n"
+    echo -e "\033[91mYou are now trying to TERMINATE your exchange!\033[39m"
+    echo -e "Terminating the exchange will \033[91mREMOVE\033[39m all of your \033[91mFUNDS, USER DATA, and EVERYTHING.\033[39m"
+    echo -e "This action \033[91mCANNOT BE UNDO\033[39m, and will make the exchange \033[91mUNRECOVEREABLE for eternally.\033[39m"
+    echo -e "\n# # # # # # # # # # # # # # # # # # # #\n"
+
+    sleep 5
+
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
@@ -3778,6 +3786,8 @@ elif [[ "$1" == "terminate" ]]; then
         echo "*********************************************"
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+            echo -e "\033[91mTHIS IS YOUR LAST CHANCE TO CANCEL IT!\033[39m\n"
 
             echo "Are you sure you want to terminate $HOLLAEX_CONFIGMAP_API_NAME on this cluster? (y/N)"
 
@@ -3797,6 +3807,9 @@ elif [[ "$1" == "terminate" ]]; then
             kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
         fi
+
+        echo "Running a final backup for the exchange database."
+        hollaex toolbox --backup --kube --skip
 
         echo "Removing helm packages on the cluster."
         helm uninstall $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME 
@@ -3843,6 +3856,8 @@ elif [[ "$1" == "terminate" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
+            echo -e "\033[91mTHIS IS YOUR LAST CHANCE TO CANCEL IT!\033[39m\n"
+
             echo "Are you sure you want to terminate $HOLLAEX_CONFIGMAP_API_NAME on your machine? (y/N)"
 
             read answer
@@ -3853,6 +3868,9 @@ elif [[ "$1" == "terminate" ]]; then
             fi
 
         fi
+
+        echo "Running a final backup for the exchange database."
+        hollaex toolbox --backup --skip
 
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml down --remove-orphans -v
 
@@ -5121,14 +5139,14 @@ elif [[ "$1" == "toolbox" ]]; then
             export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
             export PGHOST=localhost
 
-            pg_dumpall > "${HOLLAEX_CLI_INIT_PATH}"/backups/hollaex-db-"$(date +%y%m%d%H%M)".dump
+            pg_dumpall > "${HOLLAEX_CLI_INIT_PATH}"/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-"$(date +%y%m%d%H%M)".dump
             
             unset PGUSER
             unset PGPASSWORD
             unset PGDATABASE
             unset PGHOST
 
-            echo "Dump data is saved as "${HOLLAEX_CLI_INIT_PATH}"/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-$(date +%y%m%d%H%M).dump"
+            echo "Dump data is saved at ${HOLLAEX_CLI_INIT_PATH}/backups folder"
 
             echo "Killing the opened proxy tunnel..."
             kill $(ps -ef | grep "kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME" | awk '{print $2}' | head -n 1)
@@ -5167,7 +5185,7 @@ elif [[ "$1" == "toolbox" ]]; then
             unset PGDATABASE
             unset PGHOST
 
-            echo "Dump data is saved as $HOLLAEX_CLI_INIT_PATH/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-$(date +%y%m%d%H%M).dump"
+            echo "Dump data is saved at ${HOLLAEX_CLI_INIT_PATH}/backups folder"
 
             exit 0;
 
