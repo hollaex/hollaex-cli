@@ -68,6 +68,7 @@ spec:
           - sequelize db:migrate;
             node tools/dbs/runTriggers.js;
             node tools/dbs/checkConfig.js;
+            node tools/dbs/setKitVersion.js;
 
 {{- end }}
 
