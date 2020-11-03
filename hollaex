@@ -96,6 +96,14 @@ Options:
         --influxdb_migration, Migrate InfluxDB data to a new InfluxDB.
         --reset_hmac_token, Reset the exchange API key (HMAC Token).
 
+    dev: Running an exchange in a dev mode.
+        --setup, Setup an exchange in a dev mode.
+        --start, Starting an exchange in a dev mode.
+        --stop, Stopping an exchange in a dev mode.
+        --restart, Restarting an exchange in a dev mode.
+        --terminate, Terminating an exchange in a dev mode.
+        --database_init, Running a database initialization job for a dev mode exchange.
+
     cloud: Operate the exchange running on the HollaCloud.
         --start, Start the stopped exchange exists on the HollaCloud. 
         --stop, Stop the running exchange on the HollaCloud.
@@ -189,15 +197,6 @@ if [[ "$1" == "dev" ]]; then
             --test)
                 LOCAL_CODE_TEST=true
                 echo 'Local mocha code test mode enabled.'
-                shift; continue
-                ;;
-            --core-path)
-                shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                HOLLAEX_DEV_FOR_CORE=true
-                HOLLAEX_CORE_PATH=$1
-                echo "Enabling HollaEx Core development mode."
-                echo "HollaEx Core Path : $HOLLAEX_CORE_PATH."
                 shift; continue
                 ;;
             --skip)
@@ -302,32 +301,15 @@ if [[ "$1" == "dev" ]]; then
         CONTINUE_WITH_PRECONFIGURED_VALUES=false 
 
         hollaex_setup_initialization;
-
-        if [[ "$HOLLAEX_DEV_FOR_CORE" ]] ; then 
-
-            BUILD_HOLLAEX_CORE_VERSION=$(grep version $HOLLAEX_CORE_PATH/package.json | cut -c 15- | rev | cut -c 3- | rev)
-            BUILD_HOLLAEX_CORE_BRANCH=$(git --git-dir $HOLLAEX_CORE_PATH/.git rev-parse --abbrev-ref HEAD)
-            BUILD_HOLLAEX_CORE_DATE="$(echo $(date +%y%m%d%H%M))"
-            
-            BUILD_HOLLAEX_CORE_IMAGE_TAG=${BUILD_HOLLAEX_CORE_VERSION}-${BUILD_HOLLAEX_CORE_BRANCH}-${BUILD_HOLLAEX_CORE_DATE}
-            export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=${BUILD_HOLLAEX_CORE_VERSION}-${BUILD_HOLLAEX_CORE_BRANCH}-${BUILD_HOLLAEX_CORE_DATE}
-
-            docker build -t bitholla/hollaex-core:$BUILD_HOLLAEX_CORE_IMAGE_TAG -f $HOLLAEX_CORE_PATH/tools/Dockerfile.pm2 $HOLLAEX_CORE_PATH
-
-            override_docker_image_version;
-
-        else 
-
-            BUILD_HOLLAEX_CORE_VERSION=$HOLLAEX_CORE_MAXIMUM_COMPATIBLE
-            BUILD_HOLLAEX_CORE_BRANCH=$(git --git-dir $HOLLAEX_CLI_INIT_PATH/.git rev-parse --abbrev-ref HEAD)
-            BUILD_HOLLAEX_CORE_DATE="$(echo $(date +%y%m%d%H%M))"
-
-            BUILD_HOLLAEX_CORE_IMAGE_TAG=${BUILD_HOLLAEX_CORE_VERSION}-${BUILD_HOLLAEX_CORE_BRANCH}-${BUILD_HOLLAEX_CORE_DATE}
-            export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=${BUILD_HOLLAEX_CORE_VERSION}-${BUILD_HOLLAEX_CORE_BRANCH}-${BUILD_HOLLAEX_CORE_DATE}
-
-            override_docker_image_version;
         
-        fi
+        BUILD_HOLLAEX_CORE_VERSION=$HOLLAEX_CONFIGMAP_KIT_VERSION
+        BUILD_HOLLAEX_CORE_BRANCH=$(git --git-dir $HOLLAEX_CLI_INIT_PATH/.git rev-parse --abbrev-ref HEAD)
+        BUILD_HOLLAEX_CORE_DATE="$(echo $(date +%y%m%d%H%M))"
+
+        BUILD_HOLLAEX_CORE_IMAGE_TAG=${BUILD_HOLLAEX_CORE_VERSION}-${BUILD_HOLLAEX_CORE_BRANCH}-${BUILD_HOLLAEX_CORE_DATE}
+        export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=${BUILD_HOLLAEX_CORE_VERSION}-${BUILD_HOLLAEX_CORE_BRANCH}-${BUILD_HOLLAEX_CORE_DATE}
+
+        override_docker_image_version;
 
         export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
 
@@ -460,8 +442,8 @@ elif [[ "$1" == "setup" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         exit 1;
 
     fi
@@ -557,8 +539,6 @@ elif [[ "$1" == "setup" ]]; then
             exit 1;
 
         fi
-
-        # launch_basic_settings_input;
 
         #Creating kubernetes_config directory for generating config for Kubernetes.
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
@@ -843,8 +823,8 @@ elif [[ "$1" == "import" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         exit 1;
 
     fi
@@ -1107,8 +1087,8 @@ elif [[ "$1" == "export" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         exit 1;
 
     fi
@@ -1222,8 +1202,8 @@ elif [[ "$1" == "login" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         exit 1;
 
     fi
@@ -1405,8 +1385,8 @@ elif [[ "$1" == "logout" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         exit 1;
 
     fi
@@ -1478,8 +1458,8 @@ elif [[ "$1" == "pull" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         exit 1;
 
     fi
@@ -1723,8 +1703,8 @@ elif [[ "$1" == "start" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         exit 1;
 
     fi
@@ -2016,8 +1996,8 @@ elif [[ "$1" == "scale" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         exit 1;
 
     fi
@@ -2242,8 +2222,8 @@ elif [[ "$1" == "prod" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         exit 1;
 
     fi
@@ -2732,8 +2712,8 @@ elif [[ "$1" == "stop" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         exit 1;
 
     fi
@@ -2911,8 +2891,8 @@ elif [[ "$1" == "restart" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         exit 1;
 
     fi
@@ -3209,8 +3189,8 @@ elif [[ "$1" == "build" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         exit 1;
 
     fi
@@ -3316,8 +3296,8 @@ elif [[ "$1" == "upgrade" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         exit 1;
 
     fi
@@ -3379,13 +3359,6 @@ elif [[ "$1" == "upgrade" ]]; then
     
     override_docker_image_version;
     
-
-    if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then
-
-        check_core_version_compatibility_range;
-
-    fi
-
     # Override target docker registry if user passed it manually with flag.
     if [[ "$ENVIRONMENT_USER_REGISTRY_OVERRIDE" ]]; then
         
@@ -3747,8 +3720,8 @@ elif [[ "$1" == "terminate" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         exit 1;
 
     fi
@@ -3973,8 +3946,8 @@ elif [[ "$1" == "web" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         exit 1;
 
     fi
@@ -4922,8 +4895,8 @@ elif [[ "$1" == "toolbox" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         exit 1;
 
     fi
@@ -5940,8 +5913,8 @@ elif [[ "$1" == "cloud" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         exit 1;
 
     fi
@@ -6286,8 +6259,8 @@ elif [[ "$1" == "status" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         exit 1;
 
     fi
@@ -6410,8 +6383,8 @@ elif [[ "$1" == "logs" ]]; then
     #Quit if necessary flags are missing
     if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         print_usage;
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
         exit 1;
 
     fi
@@ -6425,7 +6398,7 @@ elif [[ "$1" == "logs" ]]; then
 
     function hollaex_log_target_whitelist() {
 
-        local whitelist=("api" "stream" "engine" "db" "redis")
+        local whitelist=("api" "stream" "db" "redis")
 
         if ! command printf '%s\n' ${whitelist[@]} | grep $HOLLAEX_LOGS_TARGET > /dev/null; then
         
