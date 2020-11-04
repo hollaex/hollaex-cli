@@ -541,8 +541,12 @@ elif [[ "$1" == "setup" ]]; then
         fi
 
         #Creating kubernetes_config directory for generating config for Kubernetes.
-        if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
+
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/kubernetes;
+        fi
+
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
         fi
 
