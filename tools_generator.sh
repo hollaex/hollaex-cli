@@ -944,7 +944,7 @@ spec:
   - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
     http:
       paths:
-      - path: /v1
+      - path: /v2
         backend:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
           servicePort: 10010
@@ -969,7 +969,7 @@ spec:
   - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
     http:
       paths:
-      - path: /v1/order
+      - path: /v2/order
         backend:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
           servicePort: 10010
@@ -991,7 +991,7 @@ spec:
   - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
     http:
       paths:
-      - path: /v1/admin
+      - path: /v2/admin
         backend:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
           servicePort: 10010
@@ -1015,8 +1015,8 @@ spec:
       paths:
       - path: /plugins
         backend:
-          serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller
-          servicePort: 10011
+          serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
+          servicePort: 10010
     
   $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
 ---
