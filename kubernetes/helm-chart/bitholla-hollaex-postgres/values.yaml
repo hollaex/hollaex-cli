@@ -15,7 +15,7 @@ NodePort:
 nodeSelector: {}
 
 imageRegistry: postgres
-dockerTag: 10.9
+dockerTag: 13.0-alpine
 
 resources:
   limits:
