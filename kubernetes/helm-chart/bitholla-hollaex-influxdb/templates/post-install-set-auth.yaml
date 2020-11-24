@@ -68,7 +68,7 @@ spec:
     spec:
       containers:
       - name: {{ include "influxdb.fullname" . }}-set-auth
-        image: "{{ .Values.setDefaultUser.image }}"
+        image: "{{ .Values.setCustomUser.image }}"
         env:
           - name: INFLUXDB_USER
             valueFrom:
