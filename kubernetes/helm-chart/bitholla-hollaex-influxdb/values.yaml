@@ -105,7 +105,7 @@ enterprise:
 setCustomUser:
   enabled: true
   
-  image: appropriate/curl:latest
+  image: curlimages/curl:latest
   activeDeadline: 300
   restartPolicy: OnFailure
   
@@ -121,7 +121,7 @@ setDefaultUser:
   ## Image of the container used for job
   ## Default: appropriate/curl:latest
   ##
-  image: appropriate/curl:latest
+  image: curlimages/curl:latest
 
   ## Deadline for job so it does not retry forever.
   ## Default: activeDeadline: 300
