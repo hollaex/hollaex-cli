@@ -7223,7 +7223,7 @@ elif [[ "$1" == "status" ]]; then
         #Checking Kubernetes dependencies
         check_kubernetes_dependencies;
 
-        kubectl get deployment --namespace $ENVIRONMENT_EXCHANGE_NAME
+        kubectl get pods --namespace $ENVIRONMENT_EXCHANGE_NAME
 
     fi
     
