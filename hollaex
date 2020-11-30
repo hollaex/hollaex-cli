@@ -1583,22 +1583,11 @@ elif [[ "$1" == "start" ]]; then
                 echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
-            --tag)
-                shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                HOLLAEX_CORE_USER_APPLY_TAG=$1
-                shift; continue
-                ;;
             --mode)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 LOCAL_DEPLOYMENT_MODE=$1
                 echo "Your DEPLOYMENT MODE setup : $LOCAL_DEPLOYMENT_MODE."
-                shift; continue
-                ;;
-            --with_backends)
-                WITH_BACKENDS=true
-                echo "Creating backend components. Running backend components such as PostgreSQL or Redis together on this machine."
                 shift; continue
                 ;;
             --ignore_settings)
@@ -2693,14 +2682,6 @@ elif [[ "$1" == "stop" ]]; then
 
         fi
 
-        # Only tries to attempt remove ingress rules from Kubernetes if it exists.
-        if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
-        
-            echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-            kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
-
-        fi
-
         echo "Scaling down containers on the cluster..."
         kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
@@ -2713,8 +2694,6 @@ elif [[ "$1" == "stop" ]]; then
         kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-db --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
         hollaex_ascii_exchange_has_been_stopped;
-
-        # exit 0;
 
     fi
 
@@ -2761,6 +2740,8 @@ elif [[ "$1" == "stop" ]]; then
 
     fi
 
+    exit 0;
+
 elif [[ "$1" == "restart" ]]; then
 
     while true; do
@@ -2786,6 +2767,11 @@ elif [[ "$1" == "restart" ]]; then
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
+                shift; continue
+                ;;
+            --ignore_compatibility_check)
+                IGNORE_COMPATIBILITY_CHECK=true
+                echo "Warning: HollaEx CLI will ignore all compatibility checkes for HollaEx Core and Kit."
                 shift; continue
                 ;;
             --silent)
@@ -3157,16 +3143,18 @@ elif [[ "$1" == "apply" ]]; then
         fi
     
         run_and_upgrade_hollaex_on_kubernetes;
-
+        
     else 
 
         hollaex restart --skip 
 
         local_database_init upgrade
 
-        hollaex restart --silent --skip 
+        hollaex restart --skip 
 
     fi
+
+    hollaex_ascii_exchange_has_been_upgraded;
 
 
 elif [[ "$1" == "upgrade" ]]; then

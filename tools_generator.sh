@@ -1736,8 +1736,8 @@ function hollaex_ascii_exchange_has_been_upgraded() {
           .;tC08@@@@@f..1111: ,1111. ;111i
                 .....
 
-    Exchange has been successfully upgraded!
-    Try to reach $HOLLAEX_CONFIGMAP_API_HOST
+    The new image has been successfully applied on the exchange!
+    Try to reach $HOLLAEX_CONFIGMAP_API_HOST.
 
 EOF
 }
