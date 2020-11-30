@@ -426,6 +426,13 @@ elif [[ "$1" == "setup" ]]; then
                 echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
+            --registry)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE=$1
+                echo "Target hollaex docker registry : $ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE."
+                shift; continue
+                ;;
             --kube)
                 USE_KUBERNETES=true
                 echo "HollaEx CLI will use your Kubernetes cluster as a target."
@@ -526,13 +533,6 @@ elif [[ "$1" == "setup" ]]; then
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
     done;
-    
-    # Building the image
-    hollaex build --kube
-
-    for i in ${CONFIG_FILE_PATH[@]}; do
-        source $i
-    done;
 
     # Randomly generates backend passwords
     if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] ; then
@@ -543,6 +543,10 @@ elif [[ "$1" == "setup" ]]; then
     
     #Generating random values for passwords and update config file to contain it;
     update_random_values_to_config;
+
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
 
     load_config_variables;
 
@@ -595,6 +599,13 @@ elif [[ "$1" == "setup" ]]; then
             fi
 
         fi
+
+        # Building the image
+        hollaex build --registry $ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE --kube
+
+        for i in ${CONFIG_FILE_PATH[@]}; do
+            source $i
+        done;
 
         echo "Generating Kubernetes Configmap."
         generate_kubernetes_configmap;
@@ -692,6 +703,13 @@ elif [[ "$1" == "setup" ]]; then
             exit 1;
 
         fi
+
+         # Building the image
+        hollaex build --registry $ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE
+
+        for i in ${CONFIG_FILE_PATH[@]}; do
+            source $i
+        done;
 
         echo "Generating docker-compose file"
         generate_local_docker_compose
@@ -3545,7 +3563,7 @@ elif [[ "$1" == "web" ]]; then
                 shift; continue
                 ;;
             # Build related
-            --user_image_registry)
+            --registry)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE=$1
