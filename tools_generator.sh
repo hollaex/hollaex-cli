@@ -1639,7 +1639,7 @@ function hollaex_prod_complete() {
 
     Your Exchange has been setup for production!
 
-    Please run 'hollaex restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' and 'hollaex web --restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)'
+    Please run 'hollaex server --restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' and 'hollaex web --restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)'
     to apply the changes you made.
 
     For the web, You should rebuild the Docker image to apply the changes.
@@ -1676,7 +1676,7 @@ function hollaex_ascii_exchange_has_been_stopped() {
 
         Your Exchange has been stopped
   $(if [[ "$IS_HOLLAEX_SETUP" ]]; then echo "Now It's time to bring up the exchange online."; fi)
-    Run 'hollaex start$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to start the exchange.
+    Run 'hollaex server --start$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to start the exchange.
           
 EOF
 
@@ -1707,7 +1707,7 @@ function hollaex_ascii_exchange_has_been_terminated() {
                                         .  .
 
             Your Exchange has been terminated.
-    Run 'hollaex setup$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to setup the exchange from a scratch.
+    Run 'hollaex server --setup$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to setup the exchange from a scratch.
                  
 
 EOF
@@ -1841,7 +1841,7 @@ function build_user_hollaex_core() {
 
       fi 
 
-      override_user_hollaex_core;
+      # override_user_hollaex_core;
 
       docker tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
 
@@ -3481,5 +3481,109 @@ function hollaex_login_token_validate_and_issue() {
       hollaex_login_form;
 
   fi
+
+}
+
+function run_and_upgrade_hollaex_on_kubernetes() {
+
+  if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
+
+      echo "Generating Kubernetes Configmap"
+      generate_kubernetes_configmap;
+
+  fi
+
+  if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]]; then
+
+      echo "Generating Kubernetes Secret"
+      generate_kubernetes_secret;
+
+  fi
+
+
+  if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
+
+      echo "Generating Kubernetes Ingress"
+      generate_kubernetes_ingress;
+
+  fi
+
+  if [[ ! "$IGNORE_SETTINGS" ]]; then 
+
+      echo "Applying latest configmap env on the cluster."
+      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+
+      echo "Applying latest secret on the cluster"
+      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+
+  fi
+
+  # FOR GENERATING NODESELECTOR VALUES
+  generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATEFUL_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateful
+  generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateless
+
+  helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api \
+                    --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                    --set DEPLOYMENT_MODE="api" \
+                    --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                    --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                    --set stable.replicaCount="${ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS:-1}" \
+                    --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_API_HPA_ENABLE:-false}" \
+                    --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_API_HPA_AVGMEMORY:-1300000000}" \
+                    --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_API_HPA_MAXREPLICAS:-4}" \
+                    --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                    --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                    --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_API_CPU_LIMITS:-1000m}" \
+                    --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_API_MEMORY_LIMITS:-1536Mi}" \
+                    --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_API_CPU_REQUESTS:-10m}" \
+                    --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_API_MEMORY_REQUESTS:-1536Mi}" \
+                    --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
+                    -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
+                    -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                    $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+
+  helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream \
+              --namespace $ENVIRONMENT_EXCHANGE_NAME \
+              --set DEPLOYMENT_MODE="stream" \
+              --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+              --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+              --set stable.replicaCount="${ENVIRONMENT_KUBERNETES_STREAM_SERVER_REPLICAS:-1}" \
+              --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_STREAM_HPA_ENABLE:-false}" \
+              --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_STREAM_HPA_AVGMEMORY:-300000000}" \
+              --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_STREAM_HPA_MAXREPLICAS:-4}" \
+              --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+              --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+              --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_STREAM_CPU_LIMITS:-1000m}" \
+              --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_STREAM_MEMORY_LIMITS:-1536Mi}" \
+              --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_STREAM_CPU_REQUESTS:-10m}" \
+              --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_STREAM_MEMORY_REQUESTS:-1536Mi}" \
+              --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
+              -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
+              -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+              $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+
+  if [[ "$HOLLAEX_IS_SETUP" == true ]]; then 
+
+    # Running database job for Kubernetes
+    kubernetes_database_init launch;
+
+  else 
+
+    # Running database job for Kubernetes
+    kubernetes_database_init upgrade;
+
+  fi
+
+  echo "Flushing Redis..."
+  kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/flushRedis.js
+
+  echo "Restarting all containers to apply latest database changes..."
+  kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+
+  echo "Waiting for the containers get fully ready..."
+  sleep 15;
+
+  echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
+  kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
 }

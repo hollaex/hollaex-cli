@@ -393,6 +393,10 @@ elif [[ "$1" == "server" ]]; then
                 hollaex stop ${@:2}
                 break   
                 ;;
+            --restart)
+                hollaex restart ${@:2}
+                break   
+                ;;
             --upgrade)
                 hollaex upgrade ${@:2}
                 break
@@ -404,7 +408,6 @@ elif [[ "$1" == "server" ]]; then
             --*) 
                 print_usage;
                 err_msg "Invalid option: $1"
-                echo happened at server
                 exit 1;
                 ;;
         esac
@@ -433,13 +436,6 @@ elif [[ "$1" == "setup" ]]; then
                 echo "Skipping the command confirmation."
                 shift; continue
                 ;;
-            --user_image_registry)
-                shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE=$1
-                echo "Target hollaex docker registry : $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE."
-                shift; continue
-                ;;
             --ignore_compatibility_check)
                 IGNORE_COMPATIBILITY_CHECK=true
                 echo "Warning: HollaEx CLI will ignore all compatibility checkes for HollaEx Core and Kit."
@@ -453,6 +449,8 @@ elif [[ "$1" == "setup" ]]; then
         esac
         shift
     done
+
+    export HOLLAEX_IS_SETUP=true
 
     if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
 
@@ -529,20 +527,12 @@ elif [[ "$1" == "setup" ]]; then
         source $i
     done;
     
-    export ENVIRONMENT_DOCKER_IMAGE_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')
-    export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_DOCKER_IMAGE_VERSION
-    override_docker_image_version;
-    
-    # export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
-    if [[ "$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE" ]]; then 
+    # Building the image
+    hollaex build --kube
 
-        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE
-    
-    fi
-
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION}-$(date +%y%m%d%H%M)"
-
-    build_user_hollaex_core;
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
 
     # Randomly generates backend passwords
     if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] ; then
@@ -611,9 +601,6 @@ elif [[ "$1" == "setup" ]]; then
 
         echo "Generating Kubernetes Secret."
         generate_kubernetes_secret;
-
-        echo "Generating Kubernetes Ingress."
-        generate_kubernetes_ingress;
         
         echo "Creating namespace on Kubernetes."
         kubectl create ns $ENVIRONMENT_EXCHANGE_NAME
@@ -662,60 +649,10 @@ elif [[ "$1" == "setup" ]]; then
                         $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
 
         fi
-
-        echo "Applying ingress on the namespace."
-        kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
         
         create_kubernetes_docker_registry_secret;
 
-        # FOR GENERATING NODESELECTOR VALUES
-        generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATEFUL_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateful
-        generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateless
-
-        echo "Running $HOLLAEX_CONFIGMAP_API_NAME workload containers."
-
-        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api \
-                     --wait \
-                     --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                     --set DEPLOYMENT_MODE="api" \
-                     --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
-                     --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                     --set stable.replicaCount="${ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS:-1}" \
-                     --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_API_HPA_ENABLE:-false}" \
-                     --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_API_HPA_AVGMEMORY:-1300000000}" \
-                     --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_API_HPA_MAXREPLICAS:-4}" \
-                     --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
-                     --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                     --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_API_CPU_LIMITS:-500m}" \
-                     --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_API_MEMORY_LIMITS:-1024Mi}" \
-                     --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_API_CPU_REQUESTS:-10m}" \
-                     --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_API_MEMORY_REQUESTS:-1024Mi}" \
-                     --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
-                     -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
-
-        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream \
-                     --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                     --set DEPLOYMENT_MODE="stream" \
-                     --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
-                     --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                     --set stable.replicaCount="${ENVIRONMENT_KUBERNETES_STREAM_SERVER_REPLICAS:-1}" \
-                     --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_STREAM_HPA_ENABLE:-false}" \
-                     --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_STREAM_HPA_AVGMEMORY:-300000000}" \
-                     --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_STREAM_HPA_MAXREPLICAS:-4}" \
-                     --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
-                     --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                     --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_STREAM_CPU_LIMITS:-500m}" \
-                     --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_STREAM_MEMORY_LIMITS:-512Mi}" \
-                     --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_STREAM_CPU_REQUESTS:-10m}" \
-                     --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_STREAM_MEMORY_REQUESTS:-128Mi}" \
-                     --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
-                     -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
-
-        sleep 5;
-
-        kubernetes_database_init launch;
+        run_and_upgrade_hollaex_on_kubernetes;
 
         if [[ "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_ACCESSKEY" ]] && [[ "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_SECRETKEY" ]]; then
 
@@ -725,8 +662,6 @@ elif [[ "$1" == "setup" ]]; then
         fi 
 
         hollaex_setup_finalization;
-
-        exit 0;
 
     fi
 
@@ -758,55 +693,32 @@ elif [[ "$1" == "setup" ]]; then
 
         fi
 
-        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
-            mkdir $TEMPLATE_GENERATE_PATH/local;
-        fi
-
-        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx" ]]; then
-            mkdir $TEMPLATE_GENERATE_PATH/local/nginx;
-        fi
-
-        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
-            mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
-        fi
-        
-        echo "Generating env file for docker"
-        generate_local_env;
-        
-        # Generating docker-compose yaml for exchange
         echo "Generating docker-compose file"
         generate_local_docker_compose
-
-        echo "Generating Nginx upstream conf"
-        generate_nginx_upstream;
-        
-        # Update nginx.conf to apply user own domains
-        echo "Updating nginx conf file based on user settings"
-        apply_nginx_user_defined_values;
+        generate_local_env
+        generate_nginx_upstream
+        apply_nginx_user_defined_values
 
         if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d; then
-
-             # Running database init
-            RUN_WITH_VERIFY=false
+            
             local_database_init start;
 
-             # Restarting containers after database init jobs.
-            echo "Restarting containers to apply database changes."
-            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop
-            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d
+            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
+
+            hollaex_setup_finalization;
 
         else 
 
-            printf "\033[91mHollaEx CLI failed to launch containers. Please review your settings and try again.\033[39m\n"
-            exit 1;
-       
-        fi
-        
-        hollaex_setup_finalization;
+            echo "Error: Failed to start the HollaEx server."
+            echo "Please check the logs and try it again."
+            
+            exit 1
 
-        exit 0;
+        fi
 
     fi
+
+    exit 0;
 
 elif [[ "$1" == "import" ]]; then
 
@@ -1908,17 +1820,6 @@ elif [[ "$1" == "start" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
         fi
         
-        LOCAL_COMMAND="up -d"
-
-        #Quit if necessary flags are missing
-        if [[ ! "$LOCAL_COMMAND" ]]; then
-
-            echo "Some necessary flags are missing! Please check agian your command."
-            print_usage;
-            exit 1;
-
-        fi
-
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
             echo "Generating env file for docker"
@@ -1945,7 +1846,7 @@ elif [[ "$1" == "start" ]]; then
         echo "Updating nginx conf file based on user settings"
         apply_nginx_user_defined_values;
 
-        if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml $LOCAL_COMMAND; then
+        if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d; then
 
             hollaex_ascii_exchange_is_up;
         
@@ -1956,9 +1857,9 @@ elif [[ "$1" == "start" ]]; then
         
         fi
 
-        exit 0;
-
     fi
+
+    exit 0;
 
 elif [[ "$1" == "scale" ]]; then
 
@@ -2872,12 +2773,6 @@ elif [[ "$1" == "restart" ]]; then
                 echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
-             --tag)
-                shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                HOLLAEX_CORE_USER_APPLY_TAG=$1
-                shift; continue
-                ;;
             --ignore_settings)
                 IGNORE_SETTINGS=true
                 echo "HollaEx CLI will ignore local settings update on restart."
@@ -2893,9 +2788,9 @@ elif [[ "$1" == "restart" ]]; then
                 echo "Skipping the command confirmation."
                 shift; continue
                 ;;
-            --ignore_compatibility_check)
-                IGNORE_COMPATIBILITY_CHECK=true
-                echo "Warning: HollaEx CLI will ignore all compatibility checkes for HollaEx Core and Kit."
+            --silent)
+                HOLLAEX_SILENT=true
+                echo "Silent mode is enable. Some of the outputs will not be displayed."
                 shift; continue
                 ;;
             --*) 
@@ -2906,7 +2801,7 @@ elif [[ "$1" == "restart" ]]; then
         esac
         shift
     done
-
+    
     if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
 
         HOLLAEX_CLI_INIT_PATH=$(pwd)
@@ -2979,12 +2874,6 @@ elif [[ "$1" == "restart" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
         fi
 
-        if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION"  ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME"  ]] ; then
-            printf "\033[91mError: Please define exchange name and Docker image version on config file before running HollaEx CLI.\033[39m\n"
-            print_usage
-            exit 1;
-        fi
-
         echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
         kubectl get nodes
@@ -3004,73 +2893,9 @@ elif [[ "$1" == "restart" ]]; then
 
         fi
 
-        load_config_variables;
+        hollaex server --stop --skip --kube
 
-        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
-
-            echo "Generating Kubernetes Configmap"
-            generate_kubernetes_configmap;
-
-        fi
-
-        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]]; then
-
-            echo "Generating Kubernetes Secret"
-            generate_kubernetes_secret;
-
-        fi
-
-        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
-
-            echo "Generating Kubernetes Ingress"
-            generate_kubernetes_ingress;
-
-        fi
-
-        # Only tries to attempt remove ingress rules from Kubernetes if it exists.
-        if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
-        
-            echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-            kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
-
-        fi
-
-        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
-
-            echo "Removing ingress for web client on the namespace"
-            kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
-
-        fi
-
-        if [[ ! "$IGNORE_SETTINGS" ]]; then
-
-            echo "Applying latest configmap env on the cluster."
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
-
-            echo "Applying latest secret on the cluster"
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
-
-        fi
-
-        echo "Restarting all exchange containers on cluster"
-        kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
-
-        echo "Flushing Redis..."
-        kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/flushRedis.js
-
-        echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-        kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
-
-        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
-
-            echo "Applying ingress for web client on the namespace"
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
-
-        fi
-
-        hollaex_ascii_exchange_is_up;
-
-        exit 0;
+        hollaex server --start --skip --kube
     
     fi
 
@@ -3118,59 +2943,13 @@ elif [[ "$1" == "restart" ]]; then
 
         fi
 
-        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
+        hollaex server --stop --skip
 
-            echo "Generating env file for docker"
-            load_config_variables;
-            generate_local_env;
-
-        fi
-
-        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
-
-            echo "Generating docker-compose file"
-            generate_local_docker_compose
-
-        fi
-
-        # Generating nginx upstream.conf for exchange
-        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_NGINX_UPSTREAM" == true ]]; then
-
-            echo "Generating Nginx upstream conf"
-            generate_nginx_upstream
-        
-        fi
-        
-        # Update nginx.conf to apply user own domains
-        echo "Updating nginx conf file based on user settings"
-        apply_nginx_user_defined_values;
-
-        echo "Flushing Redis..."
-        IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
-        docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/flushRedis.js
-        
-        if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop; then
-
-            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --remove-orphans; then
-                
-                hollaex_ascii_exchange_is_up;
-
-            else 
-
-                printf "\033[91mFailed to restart exchange! Please review your settings and try again.\033[39m\n"
-                exit 1;
-            fi
-
-        else 
-
-            printf "\033[91mFailed to restart exchange! Please review your settings and try again.\033[39m\n"
-            exit 1;
-        
-        fi
-
-        exit 0;
+        hollaex server --start --skip
 
     fi
+
+    exit 0;
 
 elif [[ "$1" == "build" ]]; then
 
@@ -3184,7 +2963,7 @@ elif [[ "$1" == "build" ]]; then
                 echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
-            --user_image_registry)
+            --registry)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE=$1
@@ -3194,6 +2973,10 @@ elif [[ "$1" == "build" ]]; then
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
+                shift; continue
+                ;;
+            --kube)
+                USE_KUBERNETES=true
                 shift; continue
                 ;;
             --*) 
@@ -3239,24 +3022,151 @@ elif [[ "$1" == "build" ]]; then
     load_config_variables;
 
     # Update the Core version to the user specified version, or use a latest compatible one.
-    export ENVIRONMENT_DOCKER_IMAGE_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')
-    export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_DOCKER_IMAGE_VERSION
-
-    echo $ENVIRONMENT_DOCKER_IMAGE_VERSION
-
-    override_docker_image_version;
-
+    export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(grep version $HOLLAEX_CLI_INIT_PATH/server/package.json | cut -c 14- | rev | cut -c 3- | rev)"
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION}-$(date +%y%m%d%H%M)"
 
     build_user_hollaex_core;
 
+    echo -e "\nPlease run 'hollaex apply --registry $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION' to apply it on the server."
+
+elif [[ "$1" == "apply" ]]; then
+
+    while true; do
+        [[ $# -eq 0 ]] && break
+        case $1 in
+            --path)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_CLI_INIT_PATH=$1
+                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
+                shift; continue
+                ;;
+            --registry)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE=$1
+                echo "Target Docker Image Registry: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE."
+                shift; continue
+                ;;
+            --tag)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$1
+                echo "Target Docker Image tag: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE."
+                shift; continue
+                ;;
+            --skip)
+                RUN_WITH_VERIFY=false
+                echo "Skipping the command confirmation."
+                shift; continue
+                ;;
+            --kube)
+                USE_KUBERNETES=true
+                echo "HollaEx CLI will use your Kubernetes cluster as a target."
+                shift; continue
+                ;;
+            --*) 
+                err_msg "Invalid option: $1"
+                print_usage;
+                exit 1;
+                ;;
+        esac
+        shift
+    done
+
+    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        CONFIG_FILE_PATH=$(pwd)/settings/*
+        TEMPLATE_GENERATE_PATH=$(pwd)/templates
+        INIT_PATH_CHECK=$(pwd)/.hollaex
+
+    fi
+
+    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        
+    fi
+    
+    #Quit if necessary flags are missing
+    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
+
+        print_usage;
+        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
+        exit 1;
+
+    fi
+
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
+    
+    source $SCRIPTPATH/tools_generator.sh
+    load_config_variables;
+
+    if [[ "$IGNORE_SETTINGS" ]]; then
+
+        export ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE=false
+        export ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE=false
+        export ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE=false 
+
+    fi 
+
+    ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
+    ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
+
+    if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+        printf "\033[93mWarning: Exchange service will be unavailable while applying the new image!\033[39m\n"
+        echo "Are you sure you want to apply the $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION image on your exchange? (y/N)"
+
+        read answer
+
+        if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+            echo "Exiting..."
+            exit 0;
+        fi
+
+    fi
+
     export ENVIRONMENT_USER_REGISTRY_OVERRIDE=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY
-    export HOLLAEX_CORE_USER_APPLY_TAG=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
     override_user_docker_registry;
+    
+
+    export HOLLAEX_CORE_USER_APPLY_TAG=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
     override_user_docker_tag;
 
-    printf "\n\nYou can simply restart the server by running '\033[1mhollaex restart\033[0m' to apply it.\n"
-    printf "Notice: The image name should be same as the previous one in this case.\n"
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
+
+    if [[ "$USE_KUBERNETES" ]]; then
+
+        #Checking Kubernetes dependencies
+        check_kubernetes_dependencies;
+
+        # Only tries to attempt remove ingress rules from Kubernetes if it exists.
+        if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+        
+            echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
+            kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+        fi
+    
+        run_and_upgrade_hollaex_on_kubernetes;
+
+    else 
+
+        hollaex restart --skip 
+
+        local_database_init upgrade
+
+        hollaex restart --silent --skip 
+
+    fi
 
 
 elif [[ "$1" == "upgrade" ]]; then
@@ -3281,21 +3191,9 @@ elif [[ "$1" == "upgrade" ]]; then
                 echo "Warning: HollaEx CLI will ignore all compatibility checkes for HollaEx Core and Kit."
                 shift; continue
                 ;;
-            --user_image_registry)
-                shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                ENVIRONMENT_USER_REGISTRY_OVERRIDE=$1
-                echo "User HollaEx Core image registry and version : $ENVIRONMENT_USER_REGISTRY_OVERRIDE."
-                shift; continue
-                ;;
             --ignore_settings)
                 IGNORE_SETTINGS=true
                 echo "HollaEx CLI will ignore local settings update on restart."
-                shift; continue
-                ;;
-            --api_only)
-                UPGRADE_API_ONLY=true
-                echo "HollaEx CLI will rolling-upgrade API pods on Kubernetes."
                 shift; continue
                 ;;
             --skip)
@@ -3338,16 +3236,6 @@ elif [[ "$1" == "upgrade" ]]; then
 
     fi
 
-    if [[ "$UPGRADE_API_ONLY" ]] || [[ "$UPGRADE_PLUGINS_ONLY" ]] && [[ ! "$USE_KUBERNETES" ]]; then
-
-        echo "Error: '--api_only' flag is only available for the Kubernetes deployment."
-        echo "If you are trying to target the Kubernetes cluster, please use '--kube' flag along your command."
-
-        exit 1;
-
-    fi 
-
-
     source $SCRIPTPATH/tools_generator.sh
 
     for i in ${CONFIG_FILE_PATH[@]}; do
@@ -3361,8 +3249,6 @@ elif [[ "$1" == "upgrade" ]]; then
         update_random_values_to_config;
 
     fi
-
-    load_config_variables;
 
     # Update HollaEx CLI to latest if there is newer release available.
     update_hollaex_cli_to_latest;
@@ -3388,24 +3274,20 @@ elif [[ "$1" == "upgrade" ]]; then
         check_kit_version_compatibility_range;
 
     fi
-    
 
-    export ENVIRONMENT_DOCKER_IMAGE_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')
-    export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_DOCKER_IMAGE_VERSION
+    #hollaex build
     
-    override_docker_image_version;
-    
-    # Override target docker registry if user passed it manually with flag.
-    if [[ "$ENVIRONMENT_USER_REGISTRY_OVERRIDE" ]]; then
-        
-        override_user_docker_registry;
-        
-    fi
-
-    # Building new HollaEx Core image based on passed (or specified) version.
+    # Update the Core version to the user specified version, or use a latest compatible one.
+    export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(grep version $HOLLAEX_CLI_INIT_PATH/server/package.json | cut -c 14- | rev | cut -c 3- | rev)"
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION}-$(date +%y%m%d%H%M)"
+
     build_user_hollaex_core;
 
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
+
+    load_config_variables;
 
     if [[ "$IGNORE_SETTINGS" ]]; then
 
@@ -3417,284 +3299,13 @@ elif [[ "$1" == "upgrade" ]]; then
 
     if [[ "$USE_KUBERNETES" ]]; then
 
-        #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
-
-        #Creating kubernetes_config directory for generating config for Kubernetes.
-        if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
-            mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
-        fi
-
-        if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION"  ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME"  ]] ; then
-            printf "\033[91mError: Please define exchange name and Docker image version on config file before running HollaEx CLI.\033[39m\n"
-            print_usage
-            exit 1;
-        fi
-        
-        echo "*********************************************"
-        echo "Verifying current KUBECONFIG on the machine"
-        kubectl get nodes
-        echo "*********************************************"
-
-        if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-            printf "\033[93mWarning: Exchange service will be unavailable during the upgrade!\033[39m\n"
-            echo "Are you sure you want to upgrade $HOLLAEX_CONFIGMAP_API_NAME by using $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION with ${ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS:-1} api containers on this cluster? (y/N)"
-
-            read answer
-
-            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                echo "Exiting..."
-                exit 0;
-            fi
-
-        fi
-
-        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
-
-            echo "Generating Kubernetes Configmap"
-            generate_kubernetes_configmap;
-
-        fi
-
-        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]]; then
-
-            echo "Generating Kubernetes Secret"
-            generate_kubernetes_secret;
-
-        fi
-
-
-        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
-
-            echo "Generating Kubernetes Ingress"
-            generate_kubernetes_ingress;
-
-        fi
-
-        if [[ ! "$UPGRADE_API_ONLY" ]] && [[ ! "$UPGRADE_PLUGINS_ONLY" ]]; then 
-        
-            # Only tries to attempt remove ingress rules from Kubernetes if it exists.
-            if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
-            
-                echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-                kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
-
-            fi
-
-        fi
-
-        if [[ ! "$IGNORE_SETTINGS" ]]; then 
-
-            echo "Applying latest configmap env on the cluster."
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
-
-            echo "Applying latest secret on the cluster"
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
-
-        fi
-
-        if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
-        
-            echo "Applying web client configmap on the namespace"
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-web-configmap.yaml
-
-        fi
-
-        # FOR GENERATING NODESELECTOR VALUES
-        generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATEFUL_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateful
-        generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateless
-
-        echo "Upgrading $HOLLAEX_CONFIGMAP_API_NAME Pods on Kubernetes."
-
-        if [[ ! "$UPGRADE_PLUGINS_ONLY" ]]; then 
-
-        helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api \
-                    --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                    --set DEPLOYMENT_MODE="api" \
-                    --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
-                    --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                    --set stable.replicaCount="${ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS:-1}" \
-                    --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_API_HPA_ENABLE:-false}" \
-                    --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_API_HPA_AVGMEMORY:-1300000000}" \
-                    --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_API_HPA_MAXREPLICAS:-4}" \
-                    --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
-                    --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                    --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_API_CPU_LIMITS:-1000m}" \
-                    --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_API_MEMORY_LIMITS:-1536Mi}" \
-                    --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_API_CPU_REQUESTS:-10m}" \
-                    --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_API_MEMORY_REQUESTS:-1536Mi}" \
-                    --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-                    -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
-                    -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
-                    $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
-
-        fi 
-
-        if [[ ! "$UPGRADE_API_ONLY" ]] && [[ ! "$UPGRADE_PLUGINS_ONLY" ]]; then 
-
-            helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream \
-                        --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                        --set DEPLOYMENT_MODE="stream" \
-                        --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
-                        --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                        --set stable.replicaCount="${ENVIRONMENT_KUBERNETES_STREAM_SERVER_REPLICAS:-1}" \
-                        --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_STREAM_HPA_ENABLE:-false}" \
-                        --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_STREAM_HPA_AVGMEMORY:-300000000}" \
-                        --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_STREAM_HPA_MAXREPLICAS:-4}" \
-                        --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
-                        --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                        --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_STREAM_CPU_LIMITS:-1000m}" \
-                        --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_STREAM_MEMORY_LIMITS:-1536Mi}" \
-                        --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_STREAM_CPU_REQUESTS:-10m}" \
-                        --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_STREAM_MEMORY_REQUESTS:-1536Mi}" \
-                        --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-                        -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
-                        -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
-                        $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
-        fi
-
-        if [[ ! "$UPGRADE_API_ONLY" ]]; then 
-        
-            # Running database job for Kubernetes
-            kubernetes_database_init upgrade;
-
-            echo "Flushing Redis..."
-            kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/flushRedis.js
-
-            echo "Restarting all containers to apply latest database changes..."
-            kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
-
-            echo "Waiting for the containers get fully ready..."
-            sleep 15;
-        
-
-            echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
-        
-        fi
-
-        if [[ ! "$UPGRADE_API_ONLY" ]]; then 
-
-            if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then
-
-                echo "Applying ingress for web client on the namespace"
-                kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
-
-            fi
-
-        fi
-
-        hollaex_ascii_exchange_has_been_upgraded;
-
-        exit 0;
+        hollaex apply --registry $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE --kube
     
     fi
 
     if [[ ! "$USE_KUBERNETES" ]]; then
 
-        # Checking docker-compose is installed on this machine.
-        if command docker-compose version > /dev/null 2>&1; then
-
-            echo "*********************************************"
-            echo "docker-compose detected"
-            echo "version: $(docker-compose version)"
-            echo "*********************************************"
-
-        else
-
-            echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
-            exit 1;
-
-        fi
-
-        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
-            mkdir $TEMPLATE_GENERATE_PATH/local;
-        fi
-
-        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx" ]]; then
-            mkdir $TEMPLATE_GENERATE_PATH/local/nginx;
-        fi
-
-        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
-            mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
-        fi
-
-        if [[ "$RUN_WITH_VERIFY" == true ]]; then
-            
-            printf "\033[93mWarning: Exchange service will be unavailable during the upgrade!\033[39m\n"
-            echo "Are you sure you want to upgrade $HOLLAEX_CONFIGMAP_API_NAME on your machine? (y/N)"
-
-            read answer
-
-            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                echo "Exiting..."
-                exit 0;
-            fi
-
-        fi
-
-        # Override target docker image version If user passed it manually with flag.
-        if [[ "$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE" ]]; then
-            
-            override_docker_image_version;
-            ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
-            
-        fi
-
-        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
-
-            echo "Generating env file for docker"
-            generate_local_env;
-
-        fi
-
-        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
-            
-            echo "Generating docker-compose file"
-            generate_local_docker_compose
-
-        fi
-
-        # Generating nginx upstream.conf for exchange
-        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_NGINX_UPSTREAM" == true ]]; then
-
-            echo "Generating Nginx upstream conf"
-            generate_nginx_upstream
-        
-        fi
-        
-        # Update nginx.conf to apply user own domains
-        echo "Updating nginx conf file based on user settings"
-        apply_nginx_user_defined_values;
-
-        echo "Restarting containers to apply new changes..."
-        if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d --build; then
-
-            RUN_WITH_VERIFY=false
-            local_database_init upgrade;
-
-            echo "Flushing Redis..."
-            IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
-            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/flushRedis.js
-
-            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart; then
-
-                hollaex_ascii_exchange_has_been_upgraded;
-            
-            else 
-
-                printf "\033[91mFailed to upgrade exchange! Please review your settings and try again.\033[39m\n"
-                exit 1;
-
-            fi
-
-        else
-
-            printf "\033[91mFailed to upgrade exchange! Please review your settings and try again.\033[39m\n"
-            exit 1;
-
-        fi
+        hollaex apply --registry $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
 
         exit 0;
 
