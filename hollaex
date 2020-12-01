@@ -544,6 +544,10 @@ elif [[ "$1" == "setup" ]]; then
         hollaex build --registry $ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE --is_hollaex_setup
 
     fi 
+
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
     
     # Randomly generates backend passwords
     if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] ; then
