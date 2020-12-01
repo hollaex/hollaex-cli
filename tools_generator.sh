@@ -85,7 +85,7 @@ function kubernetes_database_init() {
      # Checks the api container(s) get ready enough to run database upgrade jobs.
     while ! kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- echo "API is ready!" > /dev/null 2>&1;
         do echo "API container is not ready! Retrying..."
-        sleep 10;
+        sleep 20;
     done;
 
     echo "API container become ready to run Database initialization jobs!"
@@ -3528,7 +3528,6 @@ function run_and_upgrade_hollaex_on_kubernetes() {
 
   helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api \
                     --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                    --wait \
                     --set DEPLOYMENT_MODE="api" \
                     --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                     --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
@@ -3550,7 +3549,6 @@ function run_and_upgrade_hollaex_on_kubernetes() {
   helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream \
               --namespace $ENVIRONMENT_EXCHANGE_NAME \
               --set DEPLOYMENT_MODE="stream" \
-              --wait \
               --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
               --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
               --set stable.replicaCount="${ENVIRONMENT_KUBERNETES_STREAM_SERVER_REPLICAS:-1}" \

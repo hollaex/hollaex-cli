@@ -3194,6 +3194,20 @@ elif [[ "$1" == "upgrade" ]]; then
                 echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
+            --registry)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE=$1
+                echo "Target Docker Image Registry: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE."
+                shift; continue
+                ;;
+            --tag)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$1
+                echo "Target Docker Image tag: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE."
+                shift; continue
+                ;;
             --kube)
                 USE_KUBERNETES=true
                 echo "HollaEx CLI will use your Kubernetes cluster as a target."
@@ -3292,7 +3306,9 @@ elif [[ "$1" == "upgrade" ]]; then
     
     # Update the Core version to the user specified version, or use a latest compatible one.
     export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(grep version $HOLLAEX_CLI_INIT_PATH/server/package.json | cut -c 14- | rev | cut -c 3- | rev)"
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION}-$(date +%y%m%d%H%M)"
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE}-$(date +%y%m%d%H%M)"
+    
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
 
     build_user_hollaex_core;
 
@@ -3312,15 +3328,27 @@ elif [[ "$1" == "upgrade" ]]; then
 
     if [[ "$USE_KUBERNETES" ]]; then
 
-        hollaex apply --registry $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE --kube
-    
-    fi
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then 
 
-    if [[ ! "$USE_KUBERNETES" ]]; then
+            hollaex apply --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE --kube
 
-        hollaex apply --registry $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
+        else 
 
-        exit 0;
+            hollaex apply --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE --kube --skip
+
+        fi
+
+    else
+
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then 
+
+            hollaex apply --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE 
+
+        else 
+
+            hollaex apply --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE --skip
+
+        fi
 
     fi
 
