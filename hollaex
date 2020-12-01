@@ -534,6 +534,17 @@ elif [[ "$1" == "setup" ]]; then
         source $i
     done;
 
+    # Building the image
+    if [[ "$USE_KUBERNETES" ]]; then
+
+        hollaex build --registry $ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE --kube --is_hollaex_setup
+
+    else 
+
+        hollaex build --registry $ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE --is_hollaex_setup
+
+    fi 
+    
     # Randomly generates backend passwords
     if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] ; then
     
@@ -599,13 +610,6 @@ elif [[ "$1" == "setup" ]]; then
             fi
 
         fi
-
-        # Building the image
-        hollaex build --registry $ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE --kube
-
-        for i in ${CONFIG_FILE_PATH[@]}; do
-            source $i
-        done;
 
         echo "Generating Kubernetes Configmap."
         generate_kubernetes_configmap;
@@ -703,13 +707,6 @@ elif [[ "$1" == "setup" ]]; then
             exit 1;
 
         fi
-
-         # Building the image
-        hollaex build --registry $ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE
-
-        for i in ${CONFIG_FILE_PATH[@]}; do
-            source $i
-        done;
 
         echo "Generating docker-compose file"
         generate_local_docker_compose
@@ -2967,11 +2964,15 @@ elif [[ "$1" == "build" ]]; then
                 echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
+            --is_hollaex_setup)
+                IS_HOLLAEX_SETUP=true
+                shift; continue
+                ;;
             --registry)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE=$1
-                echo "Target hollaex docker registry : $ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE."
+                ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE=$1
+                echo "Target hollaex docker registry : $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE."
                 shift; continue
                 ;;
             --skip)
@@ -3025,9 +3026,11 @@ elif [[ "$1" == "build" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE
+
     # Update the Core version to the user specified version, or use a latest compatible one.
     export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(grep version $HOLLAEX_CLI_INIT_PATH/server/package.json | cut -c 14- | rev | cut -c 3- | rev)"
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION}-$(date +%y%m%d%H%M)"
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE}-$(date +%y%m%d%H%M)"
 
     build_user_hollaex_core;
 

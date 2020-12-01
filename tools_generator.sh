@@ -1841,7 +1841,11 @@ function build_user_hollaex_core() {
 
       fi 
 
-      # override_user_hollaex_core;
+      if [[ "$IS_HOLLAEX_SETUP" ]]; then
+
+        override_user_hollaex_core;
+      
+      fi
 
       docker tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
 
