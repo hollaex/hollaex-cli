@@ -1975,7 +1975,11 @@ function build_user_hollaex_web() {
 
       fi 
 
-      override_user_hollaex_web;
+      if [[ "$IS_HOLLAEX_WEB_SETUP" ]]; then 
+
+        override_user_hollaex_web;
+      
+      fi
 
       docker tag ${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION} ${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE}:${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE}
 

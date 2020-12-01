@@ -3038,7 +3038,7 @@ elif [[ "$1" == "build" ]]; then
 
     build_user_hollaex_core;
 
-    echo -e "\nPlease run 'hollaex apply --registry $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION' to apply it on the server."
+    echo -e "\nPlease run 'hollaex apply --registry $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION $(if [[ "$USE_KUBERNETES" ]]; then echo "--kube"; fi)' to apply it on the server."
 
 elif [[ "$1" == "apply" ]]; then
 
@@ -3593,6 +3593,10 @@ elif [[ "$1" == "web" ]]; then
                 WEB_CLIENT_REBUILD=true
                 shift; continue
                 ;;
+            --apply)
+                WEB_CLIENT_APPLY=true
+                shift; continue
+                ;;
             --terminate)
                 WEB_CLIENT_TERMINATE=true
                 shift; continue
@@ -3602,7 +3606,14 @@ elif [[ "$1" == "web" ]]; then
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE=$1
-                echo "Target hollaex docker registry : $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE."
+                echo "Target hollaex web image registry : $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE."
+                shift; continue
+                ;;
+            --tag)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE=$1
+                echo "Target hollaex web image tag : $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE."
                 shift; continue
                 ;;
             --*) 
@@ -3675,6 +3686,8 @@ elif [[ "$1" == "web" ]]; then
 
     # hollaex web --setup
     if [[ "$WEB_CLIENT_SETUP" ]]; then
+
+        export IS_HOLLAEX_WEB_SETUP=true
 
         if [[ "$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE" ]]; then 
         
@@ -4125,43 +4138,43 @@ elif [[ "$1" == "web" ]]; then
 
     if [[ "$WEB_CLIENT_RESTART" ]]; then
 
-        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+        # if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            if command docker images | grep $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY > /dev/null && command docker images | grep $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION > /dev/null; then
+        #     if command docker images | grep $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY > /dev/null && command docker images | grep $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION > /dev/null; then
 
-                printf "\nPre-built image for web server has been detected on your system.\n"
-                echo "You should build the image again if you made code changes for web."
-                echo "Plase input 'Y' to skip the build, 'N' to build the image again."
-                echo "Do you want to proceed with the pre-built image? (Y/n)"
-                read answer 
+        #         printf "\nPre-built image for web server has been detected on your system.\n"
+        #         echo "You should build the image again if you made code changes for web."
+        #         echo "Plase input 'Y' to skip the build, 'N' to build the image again."
+        #         echo "Do you want to proceed with the pre-built image? (Y/n)"
+        #         read answer 
 
-                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+        #         if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
 
-                    export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat version)-$(date +%y%m%d%H%M)"
-                    echo "Building the web server image..."
-                    build_user_hollaex_web;
+        #             export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat version)-$(date +%y%m%d%H%M)"
+        #             echo "Building the web server image..."
+        #             build_user_hollaex_web;
                 
-                else 
+        #         else 
 
-                    echo "Proceeding..."
+        #             echo "Proceeding..."
                 
-                fi
+        #         fi
             
-            else 
+        #     else 
 
-                export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat version)-$(date +%y%m%d%H%M)"
-                echo "Building the web server image..."
-                build_user_hollaex_web;
+        #         export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat version)-$(date +%y%m%d%H%M)"
+        #         echo "Building the web server image..."
+        #         build_user_hollaex_web;
 
-            fi
+        #     fi
 
-        else 
+        # else 
 
-            export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat version)-$(date +%y%m%d%H%M)"
-            echo "Building the web server image..."
-            build_user_hollaex_web;
+        #     export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat version)-$(date +%y%m%d%H%M)"
+        #     echo "Building the web server image..."
+        #     build_user_hollaex_web;
 
-        fi
+        # fi
 
         if [[ "$USE_KUBERNETES" ]]; then
 
@@ -4298,7 +4311,46 @@ elif [[ "$1" == "web" ]]; then
         export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat version)-$(date +%y%m%d%H%M)"
         build_user_hollaex_web;
 
+        echo -e "\nPlease run 'hollaex web --apply --registry $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY --tag $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION $(if [[ "$USE_KUBERNETES" ]]; then echo "--kube"; fi)' to apply it on the server."
+
         exit 0;
+
+    fi
+
+    if [[ "$WEB_CLIENT_APPLY" ]];  then
+
+        ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE_PARSED=${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY}
+        ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE=${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION}
+        
+        if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+            printf "\033[93mWarning: Exchange web service will be unavailable while applying the new image!\033[39m\n"
+            echo "Are you sure you want to apply the $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE_PARSED:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE image on your exchange web? (y/N)"
+
+            read answer
+
+            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+                echo "Exiting..."
+                exit 0;
+            fi
+
+        fi
+
+        override_user_hollaex_web
+
+        for i in ${CONFIG_FILE_PATH[@]}; do
+            source $i
+        done;
+
+        if [[ "$USE_KUBERNETES" ]]; then
+
+                hollaex web --restart --kube --skip
+
+        else 
+
+                hollaex web --restart --skip
+
+        fi
 
     fi
 
