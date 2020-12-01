@@ -1975,7 +1975,7 @@ function build_user_hollaex_web() {
 
       fi 
 
-      if [[ "$IS_HOLLAEX_WEB_SETUP" ]]; then 
+      if [[ "$OVERRIDE_THE_WEB_IMAGE_TAG" ]]; then 
 
         override_user_hollaex_web;
       
