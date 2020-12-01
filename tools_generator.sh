@@ -3490,6 +3490,12 @@ function hollaex_login_token_validate_and_issue() {
 
 function run_and_upgrade_hollaex_on_kubernetes() {
 
+  #Creating kubernetes_config directory for generating config for Kubernetes.
+  if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
+      mkdir $TEMPLATE_GENERATE_PATH/kubernetes;
+      mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
+  fi
+
   if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
 
       echo "Generating Kubernetes Configmap"
