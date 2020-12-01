@@ -82,10 +82,12 @@ function kubernetes_database_init() {
 
   if [[ "$1" == "launch" ]]; then
 
+    sleep 30
+
      # Checks the api container(s) get ready enough to run database upgrade jobs.
     while ! kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- echo "API is ready!" > /dev/null 2>&1;
         do echo "API container is not ready! Retrying..."
-        sleep 20;
+        sleep 15;
     done;
 
     echo "API container become ready to run Database initialization jobs!"
