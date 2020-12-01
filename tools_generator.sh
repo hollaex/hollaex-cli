@@ -3156,6 +3156,8 @@ function issue_new_hmac_token() {
 
   if [[ ! "$BITHOLLA_HMAC_TOKEN_ISSUE_POST_HTTP_CODE" == "200" ]]; then
 
+    echo -e "\n$BITHOLLA_HMAC_TOKEN_ISSUE_POST_RESPOND\n"
+    
     echo -e "\nFailed to issue a security token!"
 
     echo -e "\nPlease check your internet connectivity, and try it again."

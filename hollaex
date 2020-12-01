@@ -655,6 +655,7 @@ elif [[ "$1" == "setup" ]]; then
 
             helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db \
                         --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                        --wait \
                         --set pvc.create=true \
                         --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" \
                         --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" \
