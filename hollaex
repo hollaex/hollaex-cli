@@ -4314,6 +4314,7 @@ elif [[ "$1" == "web" ]]; then
         
         export OVERRIDE_THE_WEB_IMAGE_TAG=true 
 
+        export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY=${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY}
         export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat version)-$(date +%y%m%d%H%M)"
         build_user_hollaex_web;
 

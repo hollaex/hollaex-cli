@@ -1927,7 +1927,7 @@ function build_user_hollaex_web() {
 
   if [[ ! "$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY" ]] || [[ ! "$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION" ]]; then
 
-    echo "Error: Your 'ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY' or 'ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION' is missing!"
+    echo "Error: Your 'ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY' or 'ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION' is missing!"
     echo "Please make sure you got latest HollaEx Kit first, and check your Configmap file at HollaEx Kit directory."
     exit 1;
   
