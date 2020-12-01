@@ -3528,6 +3528,7 @@ function run_and_upgrade_hollaex_on_kubernetes() {
 
   helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api \
                     --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                    --wait \
                     --set DEPLOYMENT_MODE="api" \
                     --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                     --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
@@ -3549,6 +3550,7 @@ function run_and_upgrade_hollaex_on_kubernetes() {
   helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream \
               --namespace $ENVIRONMENT_EXCHANGE_NAME \
               --set DEPLOYMENT_MODE="stream" \
+              --wait \
               --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
               --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
               --set stable.replicaCount="${ENVIRONMENT_KUBERNETES_STREAM_SERVER_REPLICAS:-1}" \
