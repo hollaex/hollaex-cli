@@ -537,11 +537,11 @@ elif [[ "$1" == "setup" ]]; then
     # Building the image
     if [[ "$USE_KUBERNETES" ]]; then
 
-        hollaex build --registry $ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE --kube --is_hollaex_setup
+        hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --kube --is_hollaex_setup
 
     else 
 
-        hollaex build --registry $ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE --is_hollaex_setup
+        hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --is_hollaex_setup
 
     fi 
 
