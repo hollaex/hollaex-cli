@@ -3471,7 +3471,26 @@ elif [[ "$1" == "terminate" ]]; then
         fi
 
         echo "Running a final backup for the exchange database."
-        hollaex toolbox --backup --kube --skip
+        if ! command hollaex toolbox --backup --kube --skip; then 
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                printf "\033[91mWarning: HollaEx CLI failed to make a final DB backup!\n"
+                echo "Do you want to continue without a DB backup? (y/N)"
+
+                if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                    echo "Exiting..."
+                    exit 0;
+                fi
+
+            else 
+
+                printf "\033[91mWarning: HollaEx CLI failed to make a final DB backup!\n"
+                echo "Proceeding without a backup..."
+
+            fi
+            
+        fi
 
         echo "Removing helm packages on the cluster."
         helm uninstall $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME 
@@ -3532,7 +3551,26 @@ elif [[ "$1" == "terminate" ]]; then
         fi
 
         echo "Running a final backup for the exchange database."
-        hollaex toolbox --backup --skip
+        if ! command hollaex toolbox --backup --skip; then 
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                printf "\033[91mWarning: HollaEx CLI failed to make a final DB backup!\n"
+                echo "Do you want to continue without a DB backup? (y/N)"
+
+                if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                    echo "Exiting..."
+                    exit 0;
+                fi
+
+            else 
+
+                printf "\033[91mWarning: HollaEx CLI failed to make a final DB backup!\n"
+                echo "Proceeding without a backup..."
+
+            fi
+            
+        fi
 
         docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml down --remove-orphans -v
 
