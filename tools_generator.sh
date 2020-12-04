@@ -2826,7 +2826,7 @@ function hollaex_pull_and_apply_exchange_data() {
   local HOLLAEX_CONFIGMAP_LOGO_IMAGE_OVERRIDE="${ORIGINAL_CHARACTER_FOR_LOGO_PATH//\//\\/}"
   
   # Set the default HollaEx Core version as the maximum compatible version of the current release of CLI.
-  local ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(grep version $HOLLAEX_CLI_INIT_PATH/server/package.json | cut -c 14- | rev | cut -c 3- | rev)"
+  local ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
 
     
   # CONFIGMAP 

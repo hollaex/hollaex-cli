@@ -3034,7 +3034,7 @@ elif [[ "$1" == "build" ]]; then
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE
 
     # Update the Core version to the user specified version, or use a latest compatible one.
-    export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(grep version $HOLLAEX_CLI_INIT_PATH/server/package.json | cut -c 14- | rev | cut -c 3- | rev)"
+    export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE}-$(date +%y%m%d%H%M)"
 
     build_user_hollaex_core;
@@ -3306,7 +3306,7 @@ elif [[ "$1" == "upgrade" ]]; then
     #hollaex build
     
     # Update the Core version to the user specified version, or use a latest compatible one.
-    export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(grep version $HOLLAEX_CLI_INIT_PATH/server/package.json | cut -c 14- | rev | cut -c 3- | rev)"
+    export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE}-$(date +%y%m%d%H%M)"
     
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
