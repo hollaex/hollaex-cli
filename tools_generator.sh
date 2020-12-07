@@ -295,7 +295,7 @@ function generate_nginx_upstream_for_web(){
   cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-web.conf <<EOL
 
   upstream web {
-    server host.access:8080;
+    server ${ENVIRONMENT_EXCHANGE_NAME}-web:80;
   }
 EOL
 
@@ -853,8 +853,15 @@ EOL
       context: ${HOLLAEX_CLI_INIT_PATH}/web/
       dockerfile: ${HOLLAEX_CLI_INIT_PATH}/web/docker/Dockerfile
     restart: always
-    ports:
-      - 8080:80
+    $(if [[ ! "$WEB_CLIENT_SCALE" ]]; then echo "ports:"; fi) 
+      $(if [[ ! "$WEB_CLIENT_SCALE" ]]; then echo "- 8080:80"; fi) 
+    networks:
+      - local_${ENVIRONMENT_EXCHANGE_NAME}-network
+
+networks:
+  local_${ENVIRONMENT_EXCHANGE_NAME}-network:
+    external: true
+
 EOL
 
 }

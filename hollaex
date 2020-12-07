@@ -397,6 +397,10 @@ elif [[ "$1" == "server" ]]; then
                 hollaex restart ${@:2}
                 break   
                 ;;
+            --scale)
+                hollaex scale ${@:2}
+                break   
+                ;;
             --upgrade)
                 hollaex upgrade ${@:2}
                 break
@@ -3659,6 +3663,18 @@ elif [[ "$1" == "web" ]]; then
                 echo "Target hollaex web image tag : $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE."
                 shift; continue
                 ;;
+            # Scale related
+            --scale)
+                WEB_CLIENT_SCALE=true
+                shift; continue
+                ;;
+            --replicas)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_WEB_SCALE_TARGET_REPLICAS=$1
+                echo "Target Replicas: $HOLLAEX_WEB_SCALE_TARGET_REPLICAS."
+                shift; continue
+                ;;
             --*) 
                 err_msg "Invalid option: $1"
                 print_usage;
@@ -4145,22 +4161,22 @@ elif [[ "$1" == "web" ]]; then
             echo "Generating web docker-compose file"
             generate_local_docker_compose_for_web
 
-            echo "Cleaning up the web Nginx configuration..."
-            cp -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf
-            rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
+            # echo "Cleaning up the web Nginx configuration..."
+            # cp -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf
+            # rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
 
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client stop; then
 
-                echo "Reloading Nginx..."
-                if command docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload; then
+                # echo "Reloading Nginx..."
+                # if command docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload; then
                 
-                    printf "\n\033[92mSuccessfully reloaded the Nginx\033[39m\n"
+                #     printf "\n\033[92mSuccessfully reloaded the Nginx\033[39m\n"
         
-                else
+                # else
 
-                    printf "\033[93mFailed to reload Nginx. Please make sure to start the exchange API server first.\033[39m\n"
+                #     printf "\033[93mFailed to reload Nginx. Please make sure to start the exchange API server first.\033[39m\n"
 
-                fi
+                # fi
 
                 printf "\n\033[92mSuccessfully stopped the web server.\033[39m\n"
                 echo "To bring it up, Please run 'hollaex web --start' command".
@@ -4523,6 +4539,80 @@ elif [[ "$1" == "web" ]]; then
 
         fi
     fi
+
+    if [[ "$WEB_CLIENT_SCALE" ]]; then
+
+        if [[ ! "$HOLLAEX_WEB_SCALE_TARGET_REPLICAS" ]]; then
+
+            echo -e "\nError: Target replicas number is not specified."
+            echo -e "Please use --replicas flag to specify the replicas number.\n"
+
+            exit 1;
+
+        fi
+
+        if [[ "$USE_KUBERNETES" ]]; then
+
+            #Checking Kubernetes dependencies
+            check_kubernetes_dependencies;
+
+            echo "*********************************************"
+            echo "Verifying current KUBECONFIG on the machine"
+            kubectl get nodes
+            echo "*********************************************"
+
+            # For scaling up exisitng Exchange on Kubernetes
+            if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+
+                echo "Scaling up containers on the cluster..."
+                kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-web --replicas=$HOLLAEX_WEB_SCALE_TARGET_REPLICAS --namespace $ENVIRONMENT_EXCHANGE_NAME
+                
+                for i in ${CONFIG_FILE_PATH[@]}; do
+
+                    # Update exchange name
+                    if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+                        CONFIGMAP_FILE_PATH=$i
+                        sed -i.bak "s/$ENVIRONMENT_KUBERNETES_WEB_SERVER_REPLICAS=.*/$ENVIRONMENT_KUBERNETES_WEB_SERVER_REPLICAS=$HOLLAEX_WEB_SCALE_TARGET_REPLICAS/" $CONFIGMAP_FILE_PATH
+                        rm $CONFIGMAP_FILE_PATH.bak
+                    fi
+                    
+                done
+
+                printf "\033[92m\nWeb server has been successfully scaled to $HOLLAEX_WEB_SCALE_TARGET_REPLICAS.\033[39m\n"
+
+            else 
+
+                printf "\033[91mFailed to scale the target $HOLLAEX_WEB_SCALE_TARGET_REPLICAS! Please review your settings and try again.\033[39m\n"
+                exit 1;
+
+            fi
+
+        else
+
+            generate_local_docker_compose_for_web;
+
+            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client down
+
+            # Running docker-compose scale command.
+            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client up -d --no-recreate --scale $ENVIRONMENT_EXCHANGE_NAME-web=$HOLLAEX_WEB_SCALE_TARGET_REPLICAS; then
+                
+                # Nginx Reload
+                # docker exec -it $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
+
+                printf "\033[92m\nWeb server has been successfully scaled to $HOLLAEX_WEB_SCALE_TARGET_REPLICAS.\033[39m\n"
+            
+            else 
+
+                printf "\033[91mFailed to scale the web server! Please review your settings and try again.\033[39m\n"
+                exit 1;
+            
+            fi
+
+        fi
+
+    fi
+
+    exit 0
 
 elif [[ "$1" == "toolbox" ]]; then
 
