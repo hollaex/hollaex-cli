@@ -125,21 +125,12 @@ Usage :
     hollaex [ dev ] (--flags)
 
 General Flags :
-    --core-path, Manually pointing HollaEx Core path. Should be always an absolute path.
     --skip, Run command without user's double confirmation.
 
 Options:
     --command: Run Docker-Compose commands. (up, down, stop, --build)
 
     --database_init: Run database initialization scripts.
-
-    --add_coin: Add coin(s) on dev HollaEx environment.
-    
-    --remove_coin: Remove coin(s) on dev HollaEx environment.
-    
-    --add_trading_pair: Add trading pair(s) on dev HollaEx environment.
-
-    --remove_trading_pair: Remove trading pair(s) on dev HollaEx environment.
 
 EOF
 }
@@ -403,6 +394,14 @@ elif [[ "$1" == "server" ]]; then
                 ;;
             --upgrade)
                 hollaex upgrade ${@:2}
+                break
+                ;;
+            --build)
+                hollaex build ${@:2}
+                break
+                ;;
+            --apply)
+                hollaex apply ${@:2}
                 break
                 ;;
             --terminate)
