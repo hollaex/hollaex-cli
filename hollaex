@@ -148,32 +148,38 @@ if [[ "$1" == "dev" ]]; then
                 echo "Your docker-compose command : $LOCAL_COMMAND."
                 shift; continue
                 ;;
+            --server)
+                HOLLAEX_DEV_TARGET="server"
+                shift; continue
+                ;;
+            --web)
+                HOLLAEX_DEV_TARGET="web"
+                shift; continue
+                ;;
             --setup)
-                shift 
                 HOLLAEX_DEV_SETUP=true
                 shift; continue
                 ;;
             --start)
-                shift 
-                LOCAL_COMMAND="start"
-                echo "Your docker-compose command : $LOCAL_COMMAND."
+                HOLLAEX_DEV_START=true
                 shift; continue
                 ;;
             --stop)
-                shift 
-                LOCAL_COMMAND="stop"
-                echo "Your docker-compose command : $LOCAL_COMMAND."
+ 
+                HOLLAEX_DEV_STOP=true
+              
                 shift; continue
                 ;;
             --restart)
-                shift 
+
                 HOLLAEX_DEV_RESTART=true
+
                 shift; continue
                 ;;
             --terminate)
-                shift 
-                LOCAL_COMMAND="down --remove-orphans"
-                echo "Your docker-compose command : $LOCAL_COMMAND."
+
+                HOLLAEX_DEV_TERMINATE=true
+         
                 shift; continue
                 ;;
             --database_init)
@@ -283,87 +289,102 @@ if [[ "$1" == "dev" ]]; then
 
     generate_nginx_upstream;
 
-    if [[ "$HOLLAEX_DEV_SETUP" ]]; then
+    if [[ "$HOLLAEX_DEV_TARGET" == "server" ]]; then 
 
-        CONTINUE_WITH_PRECONFIGURED_VALUES=false 
+        if [[ "$HOLLAEX_DEV_SETUP" ]]; then
 
-        hollaex_setup_initialization;
-        
-        BUILD_HOLLAEX_CORE_VERSION=$HOLLAEX_CONFIGMAP_KIT_VERSION
-        BUILD_HOLLAEX_CORE_BRANCH=$(git --git-dir $HOLLAEX_CLI_INIT_PATH/.git rev-parse --abbrev-ref HEAD)
-        BUILD_HOLLAEX_CORE_DATE="$(echo $(date +%y%m%d%H%M))"
+            CONTINUE_WITH_PRECONFIGURED_VALUES=false 
 
-        BUILD_HOLLAEX_CORE_IMAGE_TAG=${BUILD_HOLLAEX_CORE_VERSION}-${BUILD_HOLLAEX_CORE_BRANCH}-${BUILD_HOLLAEX_CORE_DATE}
-        export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=${BUILD_HOLLAEX_CORE_VERSION}-${BUILD_HOLLAEX_CORE_BRANCH}-${BUILD_HOLLAEX_CORE_DATE}
+            hollaex_setup_initialization;
+            
+            BUILD_HOLLAEX_CORE_VERSION=$HOLLAEX_CONFIGMAP_KIT_VERSION
+            BUILD_HOLLAEX_CORE_BRANCH=$(git --git-dir $HOLLAEX_CLI_INIT_PATH/.git rev-parse --abbrev-ref HEAD)
+            BUILD_HOLLAEX_CORE_DATE="$(echo $(date +%y%m%d%H%M))"
 
-        override_docker_image_version;
+            BUILD_HOLLAEX_CORE_IMAGE_TAG=${BUILD_HOLLAEX_CORE_VERSION}-${BUILD_HOLLAEX_CORE_BRANCH}-${BUILD_HOLLAEX_CORE_DATE}
+            export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE=${BUILD_HOLLAEX_CORE_VERSION}-${BUILD_HOLLAEX_CORE_BRANCH}-${BUILD_HOLLAEX_CORE_DATE}
 
-        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+            override_docker_image_version;
 
-        build_user_hollaex_core;
-        
-        #Generating random values for passwords and update config file to contain it;
-        update_random_values_to_config;
+            export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
 
-        # Randomly generates backend passwords
-        if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] ; then
-        
-            generate_backend_passwords;
+            build_user_hollaex_core;
+            
+            #Generating random values for passwords and update config file to contain it;
+            update_random_values_to_config;
 
-        fi
-
-        # Regenerating docker compose file with the new image tag just defined above.
-         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
-    
-            if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
-                
-                generate_local_docker_compose_for_core_dev;
-
-            else    
-
-                generate_local_docker_compose_for_dev;
+            # Randomly generates backend passwords
+            if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] ; then
+            
+                generate_backend_passwords;
 
             fi
 
-        fi
-
-        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml up -d  
+            # Regenerating docker compose file with the new image tag just defined above.
+            if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
         
-        echo "Installing npm packages for /plugins"
-        docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-api_1 bash -c '
-            cd /app/plugins && \
-            npm install --loglevel=error && \
-            for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done'
+                if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
+                    
+                    generate_local_docker_compose_for_core_dev;
 
-        hollaex dev --database_init
-    
-        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml restart
+                else    
 
-        hollaex_setup_finalization;
+                    generate_local_docker_compose_for_dev;
 
-        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml restart
-        
-        
-    elif [[ "$HOLLAEX_DEV_RESTART" ]]; then
+                fi
 
-        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml stop
-        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml up -d
+            fi
 
-        if [[ ! "$HOLLAEX_DEV_SETUP" ]]; then
-
+            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml up -d  
+            
             echo "Installing npm packages for /plugins"
             docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-api_1 bash -c '
                 cd /app/plugins && \
                 npm install --loglevel=error && \
                 for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done'
-        fi 
 
-    else 
+            hollaex dev --database_init
+        
+            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml restart
 
-        docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml $LOCAL_COMMAND
+            hollaex_setup_finalization;
+
+            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml restart
+            
+            
+        elif [[ "$HOLLAEX_DEV_RESTART" ]]; then
+
+            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml stop
+            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml up -d
+
+            if [[ ! "$HOLLAEX_DEV_SETUP" ]]; then
+
+                echo "Installing npm packages for /plugins"
+                docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-api_1 bash -c '
+                    cd /app/plugins && \
+                    npm install --loglevel=error && \
+                    for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done'
+            fi 
+
+        else 
+
+            docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml $LOCAL_COMMAND
+
+        fi
+
+        # WEB
+
+    elif [[ "$HOLLAEX_DEV_TARGET" == "web" ]]; then 
+        
+        if [[ "$HOLLAEX_DEV_SETUP" ]]; then
+            
+            cd web
+            npm install
+            npm run start
+
+        fi
 
     fi
-
 
     exit 0;
 
