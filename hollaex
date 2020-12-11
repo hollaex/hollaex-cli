@@ -229,19 +229,6 @@ if [[ "$1" == "dev" ]]; then
 
     done
 
-    # Checking docker-compose is installed on this machine.
-    if command docker-compose version > /dev/null 2>&1; then
-        echo "*********************************************"
-        echo "docker-compose detected"
-        echo "version: $(docker-compose version)"
-        echo "*********************************************"
-
-    else
-        echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
-        exit 1;
-
-    fi
-
     if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
         mkdir $TEMPLATE_GENERATE_PATH/local;
     fi
@@ -289,7 +276,32 @@ if [[ "$1" == "dev" ]]; then
 
     generate_nginx_upstream;
 
+    # Gives warning if the target has not been specified.
+    if [[ ! "$HOLLAEX_DEV_TARGET" ]]; then
+
+        echo -e "\nWarning: You didn't specify the dev command target!"
+        echo "You should specify the targer by using '--server' or '--web'."
+
+        echo -e "\nAutomatically setting up the target as '--server'...\n"
+
+        export HOLLAEX_DEV_TARGET=server
+
+    fi 
+
     if [[ "$HOLLAEX_DEV_TARGET" == "server" ]]; then 
+
+        # Checking docker-compose is installed on this machine.
+        if command docker-compose version > /dev/null 2>&1; then
+            echo "*********************************************"
+            echo "docker-compose detected"
+            echo "version: $(docker-compose version)"
+            echo "*********************************************"
+
+        else
+            echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
+            exit 1;
+
+        fi
 
         if [[ "$HOLLAEX_DEV_SETUP" ]]; then
 
@@ -375,12 +387,24 @@ if [[ "$1" == "dev" ]]; then
         # WEB
 
     elif [[ "$HOLLAEX_DEV_TARGET" == "web" ]]; then 
+
+        generate_hollaex_web_local_env
+
+        cd web
         
         if [[ "$HOLLAEX_DEV_SETUP" ]]; then
             
-            cd web
             npm install
             npm run start
+
+        elif [[ "$HOLLAEX_DEV_START" ]]; then
+
+            npm run start
+
+        else 
+
+            echo -e "\nError: Invalid Command."
+            echo -e "Supported commands for the web: '--setup', '--start'.\n"
 
         fi
 
