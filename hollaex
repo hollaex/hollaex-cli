@@ -162,24 +162,25 @@ if [[ "$1" == "dev" ]]; then
                 ;;
             --start)
                 HOLLAEX_DEV_START=true
+                LOCAL_COMMAND=start
                 shift; continue
                 ;;
             --stop)
  
                 HOLLAEX_DEV_STOP=true
-              
+                LOCAL_COMMAND=stop
                 shift; continue
                 ;;
             --restart)
 
                 HOLLAEX_DEV_RESTART=true
-
+    
                 shift; continue
                 ;;
             --terminate)
 
                 HOLLAEX_DEV_TERMINATE=true
-         
+                LOCAL_COMMAND=down
                 shift; continue
                 ;;
             --database_init)
@@ -321,7 +322,7 @@ if [[ "$1" == "dev" ]]; then
             export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
 
             build_user_hollaex_core;
-            
+                    
             #Generating random values for passwords and update config file to contain it;
             update_random_values_to_config;
 
@@ -331,6 +332,12 @@ if [[ "$1" == "dev" ]]; then
                 generate_backend_passwords;
 
             fi
+
+            for i in ${CONFIG_FILE_PATH[@]}; do
+                source $i
+            done;
+
+            load_config_variables;
 
             # Regenerating docker compose file with the new image tag just defined above.
             if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
@@ -384,8 +391,7 @@ if [[ "$1" == "dev" ]]; then
 
         fi
 
-        # WEB
-
+    # WEB
     elif [[ "$HOLLAEX_DEV_TARGET" == "web" ]]; then 
 
         generate_hollaex_web_local_env
