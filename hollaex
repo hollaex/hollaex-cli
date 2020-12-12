@@ -253,30 +253,6 @@ if [[ "$1" == "dev" ]]; then
 
     fi
 
-    if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
-
-        load_config_variables;
-
-        generate_local_env;
-
-    fi
-
-    if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
-    
-        if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
-            
-            generate_local_docker_compose_for_core_dev;
-
-        else    
-
-            generate_local_docker_compose_for_dev;
-
-        fi
-
-    fi
-
-    generate_nginx_upstream;
-
     # Gives warning if the target has not been specified.
     if [[ ! "$HOLLAEX_DEV_TARGET" ]]; then
 
@@ -290,6 +266,28 @@ if [[ "$1" == "dev" ]]; then
     fi 
 
     if [[ "$HOLLAEX_DEV_TARGET" == "server" ]]; then 
+
+        # if [[ "$HOLLAEX_DEV_SETUP" ]]; then 
+
+        # #     hollaex_setup_initialization;
+
+        # # fi
+
+        # if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
+    
+        #     if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
+                
+        #         generate_local_docker_compose_for_core_dev;
+
+        #     else    
+
+        #         generate_local_docker_compose_for_dev;
+
+        #     fi
+
+        # fi
+
+        generate_nginx_upstream;
 
         # Checking docker-compose is installed on this machine.
         if command docker-compose version > /dev/null 2>&1; then
@@ -306,10 +304,8 @@ if [[ "$1" == "dev" ]]; then
 
         if [[ "$HOLLAEX_DEV_SETUP" ]]; then
 
-            CONTINUE_WITH_PRECONFIGURED_VALUES=false 
+            CONTINUE_WITH_PRECONFIGURED_VALUES=false         
 
-            hollaex_setup_initialization;
-            
             BUILD_HOLLAEX_CORE_VERSION=$HOLLAEX_CONFIGMAP_KIT_VERSION
             BUILD_HOLLAEX_CORE_BRANCH=$(git --git-dir $HOLLAEX_CLI_INIT_PATH/.git rev-parse --abbrev-ref HEAD)
             BUILD_HOLLAEX_CORE_DATE="$(echo $(date +%y%m%d%H%M))"
@@ -322,7 +318,23 @@ if [[ "$1" == "dev" ]]; then
             export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
 
             build_user_hollaex_core;
+
+            hollaex_setup_initialization;
+
+            if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
+    
+                if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
                     
+                    generate_local_docker_compose_for_core_dev;
+
+                else    
+
+                    generate_local_docker_compose_for_dev;
+
+                fi
+
+            fi
+                        
             #Generating random values for passwords and update config file to contain it;
             update_random_values_to_config;
 
@@ -338,6 +350,8 @@ if [[ "$1" == "dev" ]]; then
             done;
 
             load_config_variables;
+
+            generate_local_env;
 
             # Regenerating docker compose file with the new image tag just defined above.
             if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
