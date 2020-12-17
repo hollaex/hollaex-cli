@@ -516,6 +516,20 @@ elif [[ "$1" == "setup" ]]; then
                 echo "Warning: HollaEx CLI will ignore all compatibility checkes for HollaEx Core and Kit."
                 shift; continue
                 ;;
+            --arch)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                if [[ "$1" == "amd64" ]] || [[ "$1" == "arm64v8" ]] || [[ "$1" == "s390x" ]]; then
+                    export ENVIORNMENT_HOLLAEX_CPU_ARCH=$1
+                    echo "Target CPU Arch: $ENVIORNMENT_HOLLAEX_CPU_ARCH."
+                else 
+                    echo -e "\n\033[91mError: Not supported CPU arch!\033[39m"
+                    echo "Supported Arches: amd64, arm64v8, s390x."
+                    echo -e "Please try it again with the supported arch name.\n"
+                    exit 1;
+                fi
+                shift; continue
+                ;;
             --*) 
                 print_usage;
                 err_msg "Invalid option: $1"
@@ -3048,6 +3062,20 @@ elif [[ "$1" == "build" ]]; then
                 echo "Target hollaex docker registry : $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE."
                 shift; continue
                 ;;
+            --arch)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                if [[ "$1" == "amd64" ]] || [[ "$1" == "arm64v8" ]] || [[ "$1" == "s390x" ]]; then
+                    export ENVIORNMENT_HOLLAEX_CPU_ARCH=$1
+                    echo "Target CPU Arch: $ENVIORNMENT_HOLLAEX_CPU_ARCH."
+                else 
+                    echo -e "\n\033[91mError: Not supported CPU arch!\033[39m"
+                    echo "Supported Arches: amd64, arm64v8, s390x."
+                    echo -e "Please try it again with the supported arch name.\n"
+                    exit 1;
+                fi
+                shift; continue
+                ;;
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
@@ -3100,9 +3128,19 @@ elif [[ "$1" == "build" ]]; then
     load_config_variables;
 
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE
+    
+    if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
 
-    # Update the Core version to the user specified version, or use a latest compatible one.
-    export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
+        export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')-${ENVIORNMENT_HOLLAEX_CPU_ARCH}"
+    
+    else 
+
+        export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
+
+    fi 
+    
+    override_docker_image_version;
+
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE}-$(date +%y%m%d%H%M)"
 
     build_user_hollaex_core;
@@ -3133,6 +3171,20 @@ elif [[ "$1" == "apply" ]]; then
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$1
                 echo "Target Docker Image tag: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE."
+                shift; continue
+                ;;
+            --arch)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                if [[ "$1" == "amd64" ]] || [[ "$1" == "arm64v8" ]] || [[ "$1" == "s390x" ]]; then
+                    export ENVIORNMENT_HOLLAEX_CPU_ARCH=$1
+                    echo "Target CPU Arch: $ENVIORNMENT_HOLLAEX_CPU_ARCH."
+                else 
+                    echo -e "\n\033[91mError: Not supported CPU arch!\033[39m"
+                    echo "Supported Arches: amd64, arm64v8, s390x."
+                    echo -e "Please try it again with the supported arch name.\n"
+                    exit 1;
+                fi
                 shift; continue
                 ;;
             --skip)
@@ -3312,7 +3364,7 @@ elif [[ "$1" == "upgrade" ]]; then
         CONFIG_FILE_PATH=$(pwd)/settings/*
         TEMPLATE_GENERATE_PATH=$(pwd)/templates
         INIT_PATH_CHECK=$(pwd)/.hollaex
-
+        
     fi
 
     if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
@@ -3372,9 +3424,21 @@ elif [[ "$1" == "upgrade" ]]; then
     fi
 
     #hollaex build
-    
-    # Update the Core version to the user specified version, or use a latest compatible one.
-    export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
+
+    override_docker_image_version;
+    export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
+
+    if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
+                
+            export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"-${ENVIORNMENT_HOLLAEX_CPU_ARCH}
+
+        else 
+
+            export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
+
+        fi 
+    fi 
+
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE}-$(date +%y%m%d%H%M)"
     
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
@@ -6245,7 +6309,7 @@ elif [[ "$1" == "status" ]]; then
         #Checking Kubernetes dependencies
         check_kubernetes_dependencies;
 
-        kubectl get deployment --namespace $ENVIRONMENT_EXCHANGE_NAME
+        kubectl get pods --namespace $ENVIRONMENT_EXCHANGE_NAME
 
     fi
     
