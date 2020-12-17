@@ -795,6 +795,18 @@ elif [[ "$1" == "setup" ]]; then
 
         fi
 
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local;
+        fi
+
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local/nginx;
+        fi
+
+        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
+            mkdir $TEMPLATE_GENERATE_PATH/local/nginx/conf.d;
+        fi
+
         echo "Generating docker-compose file"
         generate_local_docker_compose
         generate_local_env
@@ -3402,7 +3414,7 @@ elif [[ "$1" == "upgrade" ]]; then
     if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then
 
         echo "Checking the version compatibility between the latest HollaEx CLI and your local Kit..."
-        if command curl -s -f https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version_range > $SCRIPTPATH/.master_version_range; then 
+        if command curl -s -f https://raw.githubusercontent.com/bitholla/hollaex-cli/2.0.0/version_range > $SCRIPTPATH/.master_version_range; then 
 
             source $SCRIPTPATH/.master_version_range
             rm $SCRIPTPATH/.master_version_range
