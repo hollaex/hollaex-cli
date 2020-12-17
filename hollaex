@@ -2197,7 +2197,6 @@ elif [[ "$1" == "scale" ]]; then
 
     exit 0;
 
-
 elif [[ "$1" == "prod" ]]; then
 
     while true; do
@@ -2670,6 +2669,7 @@ elif [[ "$1" == "prod" ]]; then
     hollaex_prod_complete;
 
     exit 0;
+
 
 elif [[ "$1" == "stop" ]]; then
 
@@ -3364,7 +3364,7 @@ elif [[ "$1" == "upgrade" ]]; then
         CONFIG_FILE_PATH=$(pwd)/settings/*
         TEMPLATE_GENERATE_PATH=$(pwd)/templates
         INIT_PATH_CHECK=$(pwd)/.hollaex
-        
+
     fi
 
     if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
@@ -3424,21 +3424,9 @@ elif [[ "$1" == "upgrade" ]]; then
     fi
 
     #hollaex build
-
-    override_docker_image_version;
-    export ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
-
-    if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
-                
-            export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"-${ENVIORNMENT_HOLLAEX_CPU_ARCH}
-
-        else 
-
-            export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
-
-        fi 
-    fi 
-
+    
+    # Update the Core version to the user specified version, or use a latest compatible one.
+    export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE}-$(date +%y%m%d%H%M)"
     
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
