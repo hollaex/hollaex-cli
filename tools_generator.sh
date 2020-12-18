@@ -270,8 +270,6 @@ IFS=',' read -ra LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE <<< "$ENVIRONMENT_EX
 
 for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
   
-  if [[ "$i" == "api" ]]; then 
-
   # Generate local nginx conf
   cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
   upstream api {
@@ -282,11 +280,9 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
     server ${ENVIRONMENT_EXCHANGE_NAME}-server-stream:10080;
   }
   upstream plugins {
-    server ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:10011;
+    server ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins:10011;
   }
 EOL
-
-  fi
 
 done
 
@@ -413,7 +409,7 @@ services:
       - ${ENVIRONMENT_EXCHANGE_NAME}-redis
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
   
-  ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins:
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
     restart: unless-stopped
     env_file:
@@ -690,7 +686,7 @@ services:
       - ${ENVIRONMENT_EXCHANGE_NAME}-redis
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
 
-  ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins:
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
     restart: always
     environment:
@@ -1055,7 +1051,7 @@ spec:
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
-  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-plugins-controller
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-plugins
   namespace: ${ENVIRONMENT_EXCHANGE_NAME}
   annotations:
     kubernetes.io/ingress.class: "nginx"
@@ -1069,7 +1065,7 @@ spec:
       paths:
       - path: /plugins
         backend:
-          serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller
+          serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins
           servicePort: 10011
     
   $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
@@ -1237,7 +1233,7 @@ EOL
 # apiVersion: networking.k8s.io/v1
 # kind: Ingress
 # metadata:
-#   name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-plugins-controller
+#   name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-plugins
 #   namespace: ${ENVIRONMENT_EXCHANGE_NAME}
 #   annotations:
 #     kubernetes.io/ingress.class: "nginx"
@@ -3627,9 +3623,9 @@ function run_and_upgrade_hollaex_on_kubernetes() {
               -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
               $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
-  helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-plugins-controller \
+  helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-plugins \
                      --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                     --set DEPLOYMENT_MODE="plugins-controller" \
+                     --set DEPLOYMENT_MODE="plugins" \
                      --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                      --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
                      --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
