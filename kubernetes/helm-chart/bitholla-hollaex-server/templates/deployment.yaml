@@ -77,6 +77,11 @@ spec:
         command: ["/bin/bash"]
         args: ["-c", "node ws/index.js"]
 
+{{- else if eq .Values.DEPLOYMENT_MODE "plugins-controller" }}
+
+        command: ["/bin/bash"]
+        args: ["-c", "node plugins.js"]
+
 {{- end }}
 
         ports:
@@ -84,6 +89,8 @@ spec:
           containerPort: 10080
         - name: port
           containerPort: 10010
+        - name: plugins-port
+          containerPort: 10011
 
         envFrom:
           - configMapRef:

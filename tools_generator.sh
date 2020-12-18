@@ -1024,8 +1024,8 @@ spec:
       paths:
       - path: /plugins
         backend:
-          serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
-          servicePort: 10010
+          serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller
+          servicePort: 10011
     
   $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
 ---
@@ -3581,6 +3581,21 @@ function run_and_upgrade_hollaex_on_kubernetes() {
               -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
               -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
               $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+
+  helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-plugins-controller \
+                     --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                     --set DEPLOYMENT_MODE="plugins-controller" \
+                     --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                     --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                     --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                     --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                     --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_PLUGINS_CPU_LIMITS:-500m}" \
+                     --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_PLUGINS_MEMORY_LIMITS:-512Mi}" \
+                     --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_PLUGINS_CPU_REQUESTS:-10m}" \
+                     --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_PLUGINS_MEMORY_REQUESTS:-128Mi}" \
+                     --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
+                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
+                     -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
   if [[ "$HOLLAEX_IS_SETUP" == true ]]; then 
 

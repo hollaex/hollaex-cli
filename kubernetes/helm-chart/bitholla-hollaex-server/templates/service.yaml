@@ -16,6 +16,9 @@ spec:
   - name: websocket-port
     port: 10080
     targetPort: 10080
+  - name: plugins-port
+    port: 10011
+    targetPort: 10011
   selector:
     app: {{.Release.Name}}
 
