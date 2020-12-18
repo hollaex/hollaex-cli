@@ -281,6 +281,9 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
     ip_hash;
     server ${ENVIRONMENT_EXCHANGE_NAME}-server-stream:10080;
   }
+  upstream plugins {
+    server ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:10011;
+  }
 EOL
 
   fi
@@ -681,6 +684,46 @@ services:
       - ${HOLLAEX_CLI_INIT_PATH}/server/init.js:/app/init.js
     ports:
       - 10080:10080
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+    depends_on:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-redis
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins-controller:
+    image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
+    restart: always
+    environment:
+      - DEPLOYMENT_MODE=plugins
+    env_file:
+      - ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    entrypoint:
+      - pm2-runtime
+      - start
+      - ecosystem.config.js
+      - --env
+      - development
+    volumes:
+      - ${HOLLAEX_CLI_INIT_PATH}/server/plugins:/app/plugins
+      - ${HOLLAEX_CLI_INIT_PATH}/server/api:/app/api
+      - ${HOLLAEX_CLI_INIT_PATH}/server/config:/app/config
+      - ${HOLLAEX_CLI_INIT_PATH}/server/db:/app/db
+      - ${HOLLAEX_CLI_INIT_PATH}/server/db/migrations:/app/db/migrations
+      - ${HOLLAEX_CLI_INIT_PATH}/server/db/models:/app/db/models
+      - ${HOLLAEX_CLI_INIT_PATH}/server/db/seeders:/app/db/seeders
+      - ${HOLLAEX_CLI_INIT_PATH}/server/mail:/app/mail
+      - ${HOLLAEX_CLI_INIT_PATH}/server/ws:/app/ws
+      - ${HOLLAEX_CLI_INIT_PATH}/server/server.js:/app/server.js
+      - ${HOLLAEX_CLI_INIT_PATH}/server/ecosystem.config.js:/app/ecosystem.config.js
+      - ${HOLLAEX_CLI_INIT_PATH}/server/constants.js:/app/constants.js
+      - ${HOLLAEX_CLI_INIT_PATH}/server/messages.js:/app/messages.js
+      - ${HOLLAEX_CLI_INIT_PATH}/server/logs:/app/logs
+      - ${HOLLAEX_CLI_INIT_PATH}/server/test:/app/test
+      - ${HOLLAEX_CLI_INIT_PATH}/server/tools:/app/tools
+      - ${HOLLAEX_CLI_INIT_PATH}/server/utils:/app/utils
+      - ${HOLLAEX_CLI_INIT_PATH}/server/init.js:/app/init.js
+    ports:
+      - 10011:10011
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     depends_on:
