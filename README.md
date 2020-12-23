@@ -75,7 +75,7 @@ In this section, you will see the usage and examples of each commands.
       <a href="#overriding-security-configuration">Overridng Security Configuration</a>
     </li>
     <li>
-      <a href="#overriding-activation-code-&-api-key">Overriding Activation Code & API Key</a>
+      <a href="#overriding-activation-code--api-key">Overriding Activation Code & API Key</a>
     </li>
     <li>
       <a href="#connecting-to-database">Connecting to Database</a>
