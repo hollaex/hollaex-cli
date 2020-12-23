@@ -66,11 +66,36 @@ In this section, you will see the usage and examples of each commands.
       <a href="#getting-a-backup-and-restore">Getting a backup and restore</a>
     </li>
     <li>
+      <a href="#flushing-redis">Flushing Redis</a>
+    </li>
+    <li>
+      <a href="#overriding-config">Overriding Config</a>
+    </li>
+    <li>
+      <a href="#overriding-security-configuration">Overridng Security Configuration</a>
+    </li>
+    <li>
+      <a href="#overriding-activation-code-&-api-key">Overriding Activation Code & API Key</a>
+    </li>
+    <li>
+      <a href="#connecting-to-database">Connecting to Database</a>
+    </li>
+    <li>
+      <a href="#connecting-to-redis">Connecting to Redis</a>
+    </li>
+    <li>
+      <a href="#installing-specific-version-of-cli">Installing specific version of CLI</a>
+    </li>
+    <li>
+      <a href="#running-influxdb-migration">Running InfluxDB Migration</a>
+    </li>
+    <li>
       <a href="#terminating-the-exchange">Terminating the exchange</a>
     </li>
   </ol>
 </details>
 
+### Common 
 ### Setting up the exchange
 
 ```
@@ -266,6 +291,7 @@ Getting the exchange server status on Kubernetes.
 
 ---
 
+### Advanced 
 ### Getting a backup and restore
 
 ```
@@ -274,7 +300,124 @@ hollaex toolbox --backup
 
 Getting a exchange database backup. The backup (dump) file will be saved at the `/backups` folder at your HollaEx Kit.
 
+```
+hollaex toolbox --backup --kube
+```
+
+Getting a exchange database backup on Kubernetes.
+
+```
+hollaex toolbox --set_backup_cronjob --kube
+```
+
+Setting up a database backup cronjob on Kubernetes. The cronjob will perodically backup the database and push the dumped file on AWS S3.
+
 To restore the backup, please check the [docs](https://docs.bitholla.com/hollaex-kit/advanced/backup-and-restore#restore).
+
+### Flushing Redis
+
+```
+hollaex toolbox --flush_redis
+```
+
+Flushing the Redis for the exchange server. The exchange server itself should be restarted after the flush. This command would be useful to clean up the Redis data and make the enviornment fresh. 
+
+```
+hollaex toolbox --flush_redis --kube
+```
+
+Flushing the Redis for the exchange server on Kubernetes.
+
+### Overriding Config
+
+```
+hollaex toolbox --set_config
+```
+
+Overriding the exchange configuration based on your HollaEx Kit settings. The command would be useful to override the wrongly configured data on your exchange.
+
+```
+hollaex toolbox --set_config --kube
+```
+
+Overriding the exchange configuration based on your HollaEx Kit settings on Kubernetes.
+
+### Overriding Security Configuration
+
+```
+hollaex toolbox --set_security
+```
+
+Overriding security configuration (IP whitelist, trusted domain, and Google reCaptcha credentials) based on your HollaEx Kit settings. If you somehow locked up yourself by doing a misconfiguration, this is the way out.
+
+```
+hollaex toolbox --set_security --kube
+```
+
+Overriding security configuration on Kubernetes.
+
+### Overriding Activation Code & API Key
+
+```
+hollaex toolbox --set_activation_code
+```
+
+Overriding the exchange activation code and exchange API key based on your HollaEx Kit settings. If your activation code or exchange API key has been changed, you should run this command to apply on your existing exchange.
+
+```
+hollaex toolbox --set_activation_code --kube
+```
+
+Overriding the exchange activation code and exchange API key on Kubernetes.
+
+### Connecting to database
+
+```
+hollaex toolbox --connect_database
+```
+
+Opening a interactive shell to your exchange database.
+
+```
+hollaex toolbox --connect_database --kube
+``` 
+
+Opening a interactive shell to your exchange database on Kubernetes.
+
+### Connecting to Redis
+
+```
+hollaex toolbox --connect_redis
+```
+
+Opening a interactive shell to your exchange Redis.
+
+```
+hollaex toolbox --connect_redis --kube
+``` 
+
+Opening a interactive shell to your exchange Redis on Kubernetes.
+
+### Installing specific version of CLI
+
+```
+hollaex toolbox --install_cli <VERSION_NUMBER>
+```
+
+Installing a specific version of HollaEx CLI. For example, to install 2.0.0 version of HollaEx CLI, run `hollaex toolbox --install_cli 2.0.0`.
+
+### Running InfluxDB Migration
+
+```
+hollaex toolbox --influxdb_migration
+```
+
+Running InfluxDB migration job. InfluxDB for HollaEx Kit exchange is being used for displaying trading charts on the web. If the charts are not displaying correctly, please run this command to fix it.
+
+```
+hollaex toolbox --influxdb_migration --kube
+```
+Running InfluxDB migration job on Kubernetes.
 
 ### Terminating the exchange
 
