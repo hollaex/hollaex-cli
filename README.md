@@ -31,6 +31,18 @@ HollaEx CLI is a command-line tool for operating [HollaEx Kit](https://github.co
 curl -L https://raw.githubusercontent.com/bitholla/hollaex-cli/master/install.sh | bash
 ```
 
+### Version Upgrade
+
+```
+curl -L https://raw.githubusercontent.com/bitholla/hollaex-cli/master/install.sh | bash
+```
+
+### Uninstallation
+
+```
+curl -L https://raw.githubusercontent.com/bitholla/hollaex-cli/master/uninstall.sh | bash
+```
+
 Enjoy :)
 
 <!-- USAGE EXAMPLES -->
