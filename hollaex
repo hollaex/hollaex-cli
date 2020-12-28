@@ -3601,17 +3601,17 @@ elif [[ "$1" == "build" ]]; then
 
     if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
 
-        export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(echo ${ENVIRONMENT_DOCKER_IMAGE_VERSION} | cut -f1 -d "-")-${ENVIORNMENT_HOLLAEX_CPU_ARCH}"
+        export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(echo ${ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE:-$ENVIRONMENT_DOCKER_IMAGE_VERSION} | cut -f1 -d "-")-${ENVIORNMENT_HOLLAEX_CPU_ARCH}"
     
     else 
 
-        export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(echo ${ENVIRONMENT_DOCKER_IMAGE_VERSION} | cut -f1 -d "-")"
+        export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(echo ${ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE:-$ENVIRONMENT_DOCKER_IMAGE_VERSION} | cut -f1 -d "-")"
 
     fi 
     
     override_docker_image_version;
 
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION}-$(date +%y%m%d%H%M)"
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-core-${ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE}-$(date +%y%m%d%H%M)"
 
     build_user_hollaex_core;
 
@@ -3624,7 +3624,7 @@ elif [[ "$1" == "build" ]]; then
 
     fi
 
-    printf "\n\nYou can apply the new image by running '\033[1mhollaex upgrade\033[0m'.\n"
+    printf "\nYou can apply the new image by running '\033[1mhollaex upgrade\033[0m'.\n"
 
 elif [[ "$1" == "upgrade" ]]; then
 
