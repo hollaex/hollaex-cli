@@ -77,7 +77,7 @@ spec:
         command: ["/bin/bash"]
         args: ["-c", "node ws/index.js"]
 
-{{- else if eq .Values.DEPLOYMENT_MODE "plugins-controller" }}
+{{- else if eq .Values.DEPLOYMENT_MODE "plugins" }}
 
         command: ["/bin/bash"]
         args: ["-c", "node plugins.js"]
