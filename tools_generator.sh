@@ -3114,11 +3114,11 @@ function system_dependencies_check() {
 
       if [[ "$IS_HELM_INSTALLED" ]]; then
 
-          printf "\033[92mHelm v2: Installed\033[39m\n"
+          printf "\033[92mHelm v3: Installed\033[39m\n"
 
       else 
 
-          printf "\033[91mHelm v2: Not Installed\033[39m\n"
+          printf "\033[91mHelm v3: Not Installed\033[39m\n"
 
       fi
 
