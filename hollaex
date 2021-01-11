@@ -5932,7 +5932,12 @@ elif [[ "$1" == "toolbox" ]]; then
 
             printf "\033[91mError: An access token has not been detected.\033[39m\n"
             printf "Please login with your bitHolla account to issue an access token.\n\n"
-            hollaex login --renew
+            
+            if ! command hollaex login --renew; then 
+
+                exit 1;
+            fi
+
 
         fi
 
