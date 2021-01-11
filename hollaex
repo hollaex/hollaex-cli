@@ -1673,18 +1673,23 @@ elif [[ "$1" == "pull" ]]; then
         exit 1;
 
     fi
+    
+    # Avoid running multiple setup
+    if [[ "$HOLLAEX_IS_SETUP" ]]; then 
 
-    if [[ $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].is_setup") == true ]]; then
+        if [[ $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].is_setup") == true ]]; then
 
-        printf "\n\033[91mError: Your exchange has been already setup!\033[39m\n"
-        printf "You can't run 'hollaex setup' multiple times for the same exchange.\n\n"
-        printf "Please create a new exchange at https://dash.bitholla.com, and try it again.\n\n"
+            printf "\n\033[91mError: Your exchange has been already setup!\033[39m\n"
+            printf "You can't run 'hollaex setup' multiple times for the same exchange.\n\n"
+            printf "Please create a new exchange at https://dash.bitholla.com, and try it again.\n\n"
 
-        printf "If you fully understand what you are doing, you can use 'hollaex setup --force' flag to run a force setup.\n"
+            printf "If you fully understand what you are doing, you can use 'hollaex setup --force' flag to run a force setup.\n"
 
-        exit 1;
+            exit 1;
 
-    fi
+        fi
+
+    fi 
 
     hollaex_pull_and_apply_exchange_data;
 
