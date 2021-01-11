@@ -3385,79 +3385,51 @@ function hollaex_setup_initialization() {
 
   if [[ "$RUN_WITH_VERIFY" == true ]]; then 
 
-        # Check that settings files are already configured.
-        if [[ ! "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]] && [[ $HOLLAEX_SECRET_ACTIVATION_CODE ]] && [[ $HOLLAEX_SECRET_API_KEY ]] && [[ $HOLLAEX_SECRET_API_SECRET ]]; then
+      printf "\nWelcome to HollaEx Setup!\n\n"
 
-            echo "HollaEx CLI detected the preconfigured values on your HollaEx Kit."
-            echo "Do you want to proceed with these preconfigured values? (Y/n)"
-            read answer
+      echo -e "You need to \033[1msetup your exchange\033[0m with the configurations."
+      echo -e "You can follow the \033[1mexchange setup wizard\033[0m on \033[1mhttps://dash.bitholla.com\033[0m before you do this process. (Recommended)"
+      echo -e "\033[1mHave you already setup your exchange on bitHolla Dashboard? (Y/n)\033[0m"
+      read answer
 
-            if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
-                
-                export CONTINUE_WITH_PRECONFIGURED_VALUES=false
-            
-            else 
+      if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
 
-                export CONTINUE_WITH_PRECONFIGURED_VALUES=true
+          printf "\nWe recommend you to setup your exchange on \033[1mbitHolla dashboard (dash.bitholla.com)\033[0m before you proceed.\n"
+          printf "Select \033[1m'Y'\033[0m to \033[1mquit the CLI\033[0m in order to first setup your exchange on the dashboard,\n" 
+          printf "Select \033[1m'N'\033[0m to proceed \033[1mmanual\033[0m CLI exchange setup wizard.\n" 
+          echo "Do you want to quit the CLI setup? (Y/n)"
+          read answer
 
-            fi
+          if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+              
+              echo "Proceeding to a CLI exchange wizard..."
+              launch_basic_settings_input;
+          
+          else 
 
-        fi
+              printf "\n\nPlease visit \033[1mdash.bitholla.com\033[0m and setup your exchange there first.\n"
+              printf "Once your exchange is configured on the dashboard, please start the procedure by using \033[1m'hollaex setup'\033[0m.\n\n"
+              exit 1;
+          
+          fi
+      
+      else 
+
+          if ! command hollaex login; then
+
+              exit 1;
+
+          fi
+
+          if ! command hollaex pull --skip; then
+
+              exit 1;
+
+          fi
+
+      fi
     
-    else 
-
-        echo "Proceeding with the preconfigured values..."
-        export CONTINUE_WITH_PRECONFIGURED_VALUES=true
-
-    fi
-
-    if [[ "$CONTINUE_WITH_PRECONFIGURED_VALUES" == false ]]; then
-
-        printf "\nWelcome to HollaEx Setup!\n\n"
-
-        echo -e "You need to \033[1msetup your exchange\033[0m with the configurations."
-        echo -e "You can follow the \033[1mexchange setup wizard\033[0m on \033[1mhttps://dash.bitholla.com\033[0m before you do this process. (Recommended)"
-        echo -e "\033[1mHave you already setup your exchange on bitHolla Dashboard? (Y/n)\033[0m"
-        read answer
-
-        if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
-
-            printf "\nWe recommend you to setup your exchange on \033[1mbitHolla dashboard (dash.bitholla.com)\033[0m before you proceed.\n"
-            printf "Select \033[1m'Y'\033[0m to \033[1mquit the CLI\033[0m in order to first setup your exchange on the dashboard,\n" 
-            printf "Select \033[1m'N'\033[0m to proceed \033[1mmanual\033[0m CLI exchange setup wizard.\n" 
-            echo "Do you want to quit the CLI setup? (Y/n)"
-            read answer
-
-            if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
-                
-                echo "Proceeding to a CLI exchange wizard..."
-                launch_basic_settings_input;
-            
-            else 
-
-                printf "\n\nPlease visit \033[1mdash.bitholla.com\033[0m and setup your exchange there first.\n"
-                printf "Once your exchange is configured on the dashboard, please start the procedure by using \033[1m'hollaex setup'\033[0m.\n\n"
-                exit 1;
-            
-            fi
-        
-        else 
-
-            if ! command hollaex login; then
-
-                exit 1;
-
-            fi
-
-            if ! command hollaex pull --skip; then
-
-                exit 1;
-
-            fi
-
-        fi
-    
-    fi
+  fi
 
 }
 
