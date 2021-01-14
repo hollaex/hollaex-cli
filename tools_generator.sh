@@ -1691,7 +1691,7 @@ function hollaex_prod_complete() {
 
     Your Exchange has been setup for production!
 
-    Please run 'hollaex server --restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' and 'hollaex web --restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)'
+    Please run 'hollaex server --restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' and 'hollaex web --build' with 'hollaex web --apply --tag <YOUR_TAG>'
     to apply the changes you made.
 
     For the web, You should rebuild the Docker image to apply the changes.
