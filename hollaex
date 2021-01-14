@@ -506,6 +506,10 @@ elif [[ "$1" == "setup" ]]; then
                 echo "HollaEx CLI will use your Kubernetes cluster as a target."
                 shift; continue
                 ;;
+            --force)
+                export HOLLAEX_SETUP_FORCE=true
+                shift; continue
+                ;;
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
@@ -540,6 +544,12 @@ elif [[ "$1" == "setup" ]]; then
     done
 
     export HOLLAEX_IS_SETUP=true
+
+    if [[ "$HOLLAEX_SETUP_FORCE" ]]; then
+
+        export HOLLAEX_SETUP_FORCE=true
+
+    fi
 
     if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
 
@@ -1675,7 +1685,7 @@ elif [[ "$1" == "pull" ]]; then
     fi
     
     # Avoid running multiple setup
-    if [[ "$HOLLAEX_IS_SETUP" ]]; then 
+    if [[ "$HOLLAEX_IS_SETUP" ]] && [[ ! "$HOLLAEX_SETUP_FORCE" ]]; then 
 
         if [[ $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].is_setup") == true ]]; then
 
