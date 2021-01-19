@@ -3,19 +3,6 @@ SCRIPTPATH=$HOME/.hollaex-cli
 
 function local_database_init() {
 
-    # if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-    #     echo "Are you sure you want to run database init jobs for your local $ENVIRONMENT_EXCHANGE_NAME db? (y/N)"
-
-    #     read answer
-
-    #   if [[ "$answer" = "${answer#[Yy]}" ]]; then
-    #     echo "Exiting..."
-    #     exit 0;
-    #   fi
-
-    # fi
-
     echo "Preparing to initialize exchange database..."
     sleep 10;
     
@@ -57,24 +44,6 @@ function local_database_init() {
       echo "Setting up the version number based on the current Kit."
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/setKitVersion.js
     
-    # elif [[ "$1" == 'dev' ]]; then
-
-    #   IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
-
-    #   echo "Running sequelize db:migrate"
-    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:migrate
-
-    #   echo "Running database triggers"
-    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/runTriggers.js
-
-    #   echo "Running sequelize db:seed:all"
-    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:seed:all
-
-    #   echo "Running InfluxDB migrations"
-    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/createInflux.js
-    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/migrateInflux.js
-    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/initializeInflux.js
-
     fi
 }
 
@@ -1330,7 +1299,7 @@ EOL
 
 function generate_random_values() {
 
-  # Runs random.js through docker with latest compatible hollaex core (minimum 1.23.0)
+  # Runs random.js through docker with latest compatible HollaEx Server (minimum 1.23.0)
   docker run --rm --entrypoint node $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION tools/general/random.js
   
 }
@@ -1847,12 +1816,12 @@ function hollaex_setup_finalization() {
 
 function build_user_hollaex_core() {
 
-  # Preparing HollaEx Core image with custom mail configurations
-  echo "Building the user HollaEx Core image with user custom Kit setups."
+  # Preparing HollaEx Server image with custom mail configurations
+  echo "Building the user HollaEx Server image with user custom Kit setups."
 
   if command docker build -t $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION -f $HOLLAEX_CLI_INIT_PATH/Dockerfile $HOLLAEX_CLI_INIT_PATH; then
 
-      echo "Your custom HollaEx Core image has been successfully built."
+      echo "Your custom HollaEx Server image has been successfully built."
 
       if [[ "$USE_KUBERNETES" ]]; then
 
@@ -1962,7 +1931,7 @@ function push_user_hollaex_core() {
   
       else
 
-          printf "\033[93mHollaEx Kit deployment for Kubernetes requires user's HollaEx Core image pushed at Docker Registry.\033[39m\n"
+          printf "\033[93mHollaEx Kit deployment for Kubernetes requires user's HollaEx Server image pushed at Docker Registry.\033[39m\n"
           echo "Plesae try again after you confirm the image name is correct, and got proper Docker Registry access."
           exit 1;
 
@@ -1974,7 +1943,7 @@ function push_user_hollaex_core() {
 
 function build_user_hollaex_web() {
 
-  # Preparing HollaEx Core image with custom mail configurations
+  # Preparing HollaEx Server image with custom mail configurations
   echo "Building the user HollaEx Web image."
 
   if [[ ! "$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY" ]] || [[ ! "$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION" ]]; then
@@ -2097,7 +2066,7 @@ function push_user_hollaex_web() {
   
       else
 
-          echo "HollaEx Kit deployment for Kubernetes requires user's HollaEx Core image pushed at Docker Registry."
+          echo "HollaEx Kit deployment for Kubernetes requires user's HollaEx Server image pushed at Docker Registry."
           echo "Plesae try again after you confirm the image name is correct, and got proper Docker Registry access."
           exit 1;
 
@@ -2875,7 +2844,7 @@ function hollaex_pull_and_apply_exchange_data() {
   local ORIGINAL_CHARACTER_FOR_LOGO_IMAGE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.LOGO_IMAGE";)
   local HOLLAEX_CONFIGMAP_LOGO_IMAGE_OVERRIDE="${ORIGINAL_CHARACTER_FOR_LOGO_PATH//\//\\/}"
   
-  # Set the default HollaEx Core version as the maximum compatible version of the current release of CLI.
+  # Set the default HollaEx Server version as the maximum compatible version of the current release of CLI.
   local ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
 
     
