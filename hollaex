@@ -12,7 +12,28 @@ GENERATE_PASSWORDS=false
 
 DOCKER_COMPOSE_NAME_PREFIX='local'
 
-ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER='api.testnet.hollaex.network'
+INIT_PATH_CHECK=$(pwd)/.hollaex
+
+if [[ ! -f "$INIT_PATH_CHECK" ]]; then 
+
+    echo -e "\n\033[91mFailed to detect the HollaEx Kit."
+    echo -e "Every HollaEx commands should be run at the HollaEx Kit path.\033[39m" 
+    echo -e "Please check your current path and try it again.\n"
+    exit 1;
+
+fi 
+
+source $(pwd)/.hollaex
+
+if [[ "$ENVIRONMENT_HOLLAEX_KIT_NETWORK" == "testnet" ]]; then 
+
+    ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER='api.testnet.hollaex.network'
+
+else 
+
+    ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER='api.hollaex.network'
+
+fi
 
 source $SCRIPTPATH/version_range
 
@@ -6723,7 +6744,47 @@ elif [[ "$1" == "logs" ]]; then
     fi
 
     exit 0;
- 
+
+elif [[ "$1" == "mode" ]]; then
+
+    while true; do
+        [[ $# -eq 0 ]] && break
+        case $1 in
+            --testnet)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                echo "Updating the CLI mode to testnet..."
+                HOLLAEX_UPDATE_MODE=testnet
+                shift; continue
+                ;;
+            --mainnet)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                echo "Updating the CLI mode to mainnet..."
+                HOLLAEX_UPDATE_MODE=mainnet
+                shift; continue
+                ;;
+            --*) 
+                err_msg "Invalid option: $1"
+                print_usage;
+                exit 1;
+                ;;
+        esac
+        shift
+     done
+
+
+    if [[ "$HOLLAEX_UPDATE_MODE" == "testnet" ]]; then 
+
+        echo "ENVIRONMENT_HOLLAEX_KIT_NETWORK=testnet" > $(pwd)/.hollaex
+    
+    elif [[ "$HOLLAEX_UPDATE_MODE" == "mainnet" ]]; then 
+
+        echo "ENVIRONMENT_HOLLAEX_KIT_NETWORK=mainnet" > $(pwd)/.hollaex
+    
+    fi
+
+    exit 0
 
 elif [[ "$1" == "version" ]]; then
 
