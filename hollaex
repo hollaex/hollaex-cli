@@ -6764,7 +6764,7 @@ elif [[ "$1" == "mode" ]]; then
                 HOLLAEX_UPDATE_MODE=mainnet
                 shift; continue
                 ;;
-            *) 
+            --*) 
                 err_msg "Invalid option: $1"
                 print_usage;
                 exit 1;
@@ -6782,7 +6782,13 @@ elif [[ "$1" == "mode" ]]; then
 
         echo "ENVIRONMENT_HOLLAEX_KIT_NETWORK=mainnet" > $(pwd)/.hollaex
     
-    fi
+    else 
+    
+        echo -e "\nError: Mode selector has not been defined."
+        echo -e "Plesae use either '--testnet' flag or '--mainnet' flag.\n"
+        exit 1;
+
+    fi 
 
     exit 0
 
