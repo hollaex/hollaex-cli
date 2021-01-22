@@ -132,6 +132,10 @@ Options:
 
     logs: Show overview of logs from the exchange server. 
 
+    mode: Mode selector between the testnet and mainnet. Only use it for testing purposes.
+        --testnet, Setting the mode to testnet.
+        --mainnet, Setitng the mode to mainnet (default).
+
     version: Print out current installed version of HollaEx CLI.
 
 EOF
@@ -6751,20 +6755,16 @@ elif [[ "$1" == "mode" ]]; then
         [[ $# -eq 0 ]] && break
         case $1 in
             --testnet)
-                shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 echo "Updating the CLI mode to testnet..."
                 HOLLAEX_UPDATE_MODE=testnet
                 shift; continue
                 ;;
             --mainnet)
-                shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 echo "Updating the CLI mode to mainnet..."
                 HOLLAEX_UPDATE_MODE=mainnet
                 shift; continue
                 ;;
-            --*) 
+            *) 
                 err_msg "Invalid option: $1"
                 print_usage;
                 exit 1;
