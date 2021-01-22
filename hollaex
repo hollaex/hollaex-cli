@@ -6773,14 +6773,32 @@ elif [[ "$1" == "mode" ]]; then
         shift
      done
 
+    # Get the configmap file path.
+
+    CONFIG_FILE_PATH=$(pwd)/settings/*
+
+    for i in ${CONFIG_FILE_PATH[@]}; do
+
+        if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+            
+            CONFIGMAP_FILE_PATH=$i
+
+        fi
+
+    done
 
     if [[ "$HOLLAEX_UPDATE_MODE" == "testnet" ]]; then 
 
         echo "ENVIRONMENT_HOLLAEX_KIT_NETWORK=testnet" > $(pwd)/.hollaex
+        sed -i.bak "s/HOLLAEX_CONFIGMAP_NETWORK=.*/HOLLAEX_CONFIGMAP_NETWORK=testnet/" $CONFIGMAP_FILE_PATH
+        rm $CONFIGMAP_FILE_PATH.bak
+
     
     elif [[ "$HOLLAEX_UPDATE_MODE" == "mainnet" ]]; then 
 
         echo "ENVIRONMENT_HOLLAEX_KIT_NETWORK=mainnet" > $(pwd)/.hollaex
+        sed -i.bak "s/HOLLAEX_CONFIGMAP_NETWORK=.*/HOLLAEX_CONFIGMAP_NETWORK=mainnet/" $CONFIGMAP_FILE_PATH
+        rm $CONFIGMAP_FILE_PATH.bak
     
     else 
     
