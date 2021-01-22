@@ -6779,9 +6779,9 @@ elif [[ "$1" == "mode" ]]; then
 
     for i in ${CONFIG_FILE_PATH[@]}; do
 
-        if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+        if command grep -q "ENVIRONMENT_EXCHANGE_NAME=" $i > /dev/null ; then
             
-            CONFIGMAP_FILE_PATH=$i
+            export CONFIGMAP_FILE_PATH=$i
 
         fi
 
