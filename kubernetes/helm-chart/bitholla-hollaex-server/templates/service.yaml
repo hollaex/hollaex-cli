@@ -13,12 +13,12 @@ spec:
   - name: port
     port: 10010
     targetPort: 10010
-  - name: plugins-port
-    port: 10011
-    targetPort: 10011
   - name: websocket-port
     port: 10080
     targetPort: 10080
+  - name: plugins-port
+    port: 10011
+    targetPort: 10011
   selector:
     app: {{.Release.Name}}
 
