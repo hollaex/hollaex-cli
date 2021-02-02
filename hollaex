@@ -99,6 +99,7 @@ Options:
 
     toolbox: Toolbox for advanced features which could be helpful for your exchange operations.
         --backup, Run the full backup with 'pg_dumpall' for exchange's PostgreSQL database.
+        --restore, Apply the database dump to the database.
         --set_backup_cronjob, Set the Kubernetes Cronjob for periodical database backup.
         --flush_redis, Run the full flush of Redis stored data.
         --issue_ssl, Issue SSL certificate on local Nginx by using Let's Encrypt.
@@ -5271,7 +5272,7 @@ elif [[ "$1" == "toolbox" ]]; then
             export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
             export PGHOST=localhost
 
-            pg_dumpall > "${HOLLAEX_CLI_INIT_PATH}"/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-"$(date +%y%m%d%H%M)".dump
+            pg_dumpall -c > "${HOLLAEX_CLI_INIT_PATH}"/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-"$(date +%y%m%d%H%M)".dump
             
             unset PGUSER
             unset PGPASSWORD
@@ -5310,7 +5311,7 @@ elif [[ "$1" == "toolbox" ]]; then
             export PGPASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
             export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
             export PGHOST=localhost
-            pg_dumpall > $HOLLAEX_CLI_INIT_PATH/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-$(date +%y%m%d%H%M).dump
+            pg_dumpall -c > $HOLLAEX_CLI_INIT_PATH/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-$(date +%y%m%d%H%M).dump
             
             unset PGUSER
             unset PGPASSWORD
