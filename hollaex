@@ -98,7 +98,7 @@ Options:
         --terminate, Terminate the web server. THIS COMMAND WILL COMPLETELY REMOVE YOUR WEB CLIENT AND CAN'T BE UNDO.
 
     toolbox: Toolbox for advanced features which could be helpful for your exchange operations.
-        --backup, Run the full backup with 'pg_dumpall' for exchange's PostgreSQL database.
+        --backup, Run the full backup with 'pg_dump' for exchange's PostgreSQL database.
         --restore, Apply the database dump to the database.
         --set_backup_cronjob, Set the Kubernetes Cronjob for periodical database backup.
         --flush_redis, Run the full flush of Redis stored data.
@@ -3706,22 +3706,17 @@ elif [[ "$1" == "terminate" ]]; then
         echo "Running a final backup for the exchange database."
         if ! command hollaex toolbox --backup --kube --skip; then 
 
-            if [[ "$RUN_WITH_VERIFY" == true ]]; then
-
-                printf "\033[91mWarning: HollaEx CLI failed to make a final DB backup!\n"
+                printf "\033[91mWarning: HollaEx CLI failed to make a final DB backup!\033[39m\n"
                 echo "Do you want to continue without a DB backup? (y/N)"
+                read answer
 
                 if [[ "$answer" = "${answer#[Yy]}" ]]; then
                     echo "Exiting..."
                     exit 0;
                 fi
 
-            else 
-
                 printf "\033[91mWarning: HollaEx CLI failed to make a final DB backup!\n"
                 echo "Proceeding without a backup..."
-
-            fi
             
         fi
 
@@ -3768,40 +3763,33 @@ elif [[ "$1" == "terminate" ]]; then
 
         fi
 
-        if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo -e "\033[91mTHIS IS YOUR LAST CHANCE TO CANCEL IT!\033[39m\n"
+        echo -e "\033[91mTHIS IS YOUR LAST CHANCE TO CANCEL IT!\033[39m\n"
 
-            echo "Are you sure you want to terminate $HOLLAEX_CONFIGMAP_API_NAME on your machine? (y/N)"
+        echo "Are you sure you want to terminate $HOLLAEX_CONFIGMAP_API_NAME on your machine? (y/N)"
 
-            read answer
+        read answer
 
-            if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-                echo "Exiting..."
-                exit 0;
-            fi
-
+        if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+            echo "Exiting..."
+            exit 0;
         fi
 
         echo "Running a final backup for the exchange database."
         if ! command hollaex toolbox --backup --skip; then 
 
-            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+            printf "\033[91mWarning: HollaEx CLI failed to make a final DB backup!\033[39m\n"
+            echo "Do you want to continue without a DB backup? (y/N)"
+            read answer
 
-                printf "\033[91mWarning: HollaEx CLI failed to make a final DB backup!\n"
-                echo "Do you want to continue without a DB backup? (y/N)"
-
-                if [[ "$answer" = "${answer#[Yy]}" ]]; then
-                    echo "Exiting..."
-                    exit 0;
-                fi
-
-            else 
-
-                printf "\033[91mWarning: HollaEx CLI failed to make a final DB backup!\n"
-                echo "Proceeding without a backup..."
-
+            if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                echo "Exiting..."
+                exit 0;
             fi
+
+            printf "\033[91mWarning: HollaEx CLI failed to make a final DB backup!\033[39m\n"
+            echo "Proceeding without a backup..."
+
             
         fi
 
@@ -4904,6 +4892,14 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "HollaEx CLI will run PostgreSQL database dump on your initialized exchange folder."
                 shift; continue
                 ;;
+            --restore)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                RESTORE_POSTGRESQL=true
+                RESTORE_POSTGRES_DUMP_PATH=$1
+                TOOLBOX_ENABLE=true
+                shift; continue
+                ;;
             --set_backup_cronjob)
                 KUBERNETES_SET_BACKUP_POSTGRESQL_CRONJOB=true
                 TOOLBOX_ENABLE=true
@@ -5219,13 +5215,119 @@ elif [[ "$1" == "toolbox" ]]; then
 
         fi
 
-    elif [[ "$BACKUP_POSTGRESQL" ]]; then
+    elif [[ "$RESTORE_POSTGRESQL" ]]; then
 
         # Check pg_dump is available on your local
-        if command pg_dumpall --version > /dev/null 2>&1; then
+        if command pg_restore --version > /dev/null 2>&1; then
+
+            echo "pg_restore detected on your machine!"
+            pg_restore --version
+
+        else 
+
+            echo "HollaEx CLI failed to detect pg_restore on your machine"
+            echo "Please make sure that you already installed pg_restore."
+
+            exit 1;
+
+        fi 
+
+        if [[ ! $RESTORE_POSTGRES_DUMP_PATH ]]; then
+
+            echo "Error: Dump file path to restore has not been defined."
+            echo "Please define a dump file path along the command."
+            exit 1;
+
+        fi
+
+        if [[ "$USE_KUBERNETES" ]] && [[ "$ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB" ]]; then
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "Are you sure you want to restore the PostgreSQL database with your dump file on this cluster? (Y/n)"
+
+                read answer
+
+                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+                    echo "Exiting..."
+                    exit 0;
+                fi
+
+            fi
+
+            echo "HollaEx CLI will open proxy tunnel between your machine and remote proxy with kubectl proxy."
+
+            echo "Opening local proxy on 5432 port of your machine..."
+            kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-db" -o name | sed 's/pod\///' | head -n 1) 5432:5432 &
+
+            echo "Waiting for the proxy tunnel get fully ready..."
+            sleep 10;
+            
+            echo "Applying the db dump through pg_restore..."
+            export PGUSER=$HOLLAEX_SECRET_DB_USERNAME
+            export PGPASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
+            export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
+            export PGHOST=localhost
+            
+            pg_restore --verbose --clean -d $PGDATABASE $RESTORE_POSTGRES_DUMP_PATH
+            
+            unset PGUSER
+            unset PGPASSWORD
+            unset PGDATABASE
+            unset PGHOST
+
+            echo -e "\nDump data has been applied on your database."
+            echo -e "Please run 'hollaex server --restart --kube' to fully apply the changes.\n"
+
+            echo "Killing the opened proxy tunnel..."
+            kill $(ps -ef | grep "kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME" | awk '{print $2}' | head -n 1)
+
+            exit 0;
+
+        fi
+
+        if [[ ! "$USE_KUBERNETES" ]] && [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" ]]; then
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                echo "Are you sure you want to restore the PostgreSQL database with your dump file? (Y/n)"
+                read answer
+
+                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+                    echo "Exiting..."
+                    exit 0;
+                fi
+
+            fi
+
+            echo "Applying the db dump through pg_restore..."
+            
+            export PGUSER=$HOLLAEX_SECRET_DB_USERNAME
+            export PGPASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
+            export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
+            export PGHOST=localhost
+
+            pg_restore --verbose --clean -d $PGDATABASE $RESTORE_POSTGRES_DUMP_PATH
+            
+            unset PGUSER
+            unset PGPASSWORD
+            unset PGDATABASE
+            unset PGHOST
+
+            echo -e "\nDump data has been applied on your database."
+            echo -e "Please run 'hollaex server --restart' to fully apply the changes.\n"
+
+            exit 0;
+
+        fi
+    
+    elif [[ "$BACKUP_POSTGRESQL" ]]; then
+
+    # Check pg_dump is available on your local
+        if command pg_dump --version > /dev/null 2>&1; then
 
             echo "pg_dump detected on your machine!"
-            pg_dumpall --version
+            pg_dump --version
 
         else 
 
@@ -5247,7 +5349,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to run full PostgreSQL database backup (pg_dumpall) on this cluster? (Y/n)"
+                echo "Are you sure you want to run full PostgreSQL database backup (pg_dump) on this cluster? (Y/n)"
 
                 read answer
 
@@ -5266,13 +5368,19 @@ elif [[ "$1" == "toolbox" ]]; then
             echo "Waiting for the proxy tunnel get fully ready..."
             sleep 10;
             
-            echo "Running pg_dumpall..."
+            echo "Running pg_dump..."
             export PGUSER=$HOLLAEX_SECRET_DB_USERNAME
             export PGPASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
             export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
             export PGHOST=localhost
 
-            pg_dumpall -c > "${HOLLAEX_CLI_INIT_PATH}"/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-"$(date +%y%m%d%H%M)".dump
+            if ! command pg_dump -Fc  > "${HOLLAEX_CLI_INIT_PATH}"/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-"$(date +%y%m%d%H%M)".dump; then 
+
+                echo "Error: Failed to run pg_dump for your Database."
+                echo "Please check the logs and try again."
+                exit 1;
+            
+            fi
             
             unset PGUSER
             unset PGPASSWORD
@@ -5292,7 +5400,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-                echo "Are you sure you want to run full PostgreSQL database backup (pg_dumpall) on this machine? (Y/n)"
+                echo "Are you sure you want to run full PostgreSQL database backup (pg_dump) on this machine? (Y/n)"
 
                 read answer
 
@@ -5305,13 +5413,20 @@ elif [[ "$1" == "toolbox" ]]; then
 
             echo "HollaEx CLI will backup your local PostgreSQL DB."
 
-            echo "Running pg_dumpall..."
+            echo "Running pg_dump..."
             
             export PGUSER=$HOLLAEX_SECRET_DB_USERNAME
             export PGPASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
             export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
             export PGHOST=localhost
-            pg_dumpall -c > $HOLLAEX_CLI_INIT_PATH/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-$(date +%y%m%d%H%M).dump
+            
+            if ! command pg_dump -Fc > $HOLLAEX_CLI_INIT_PATH/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-$(date +%y%m%d%H%M).dump; then 
+            
+                echo "Error: Failed to run pg_dump for your Database."
+                echo "Please check the logs and try again."
+                exit 1;
+            
+            fi
             
             unset PGUSER
             unset PGPASSWORD
@@ -5372,6 +5487,7 @@ elif [[ "$1" == "toolbox" ]]; then
             exit 1;
 
         fi
+        
         
     elif [[ "$FLUSH_REDIS" ]]; then
 
@@ -5979,8 +6095,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         get_hmac_token;
 
-        echo "To apply the new HMAC Token on your exchange, please run 'hollaex toolbox --set_security (--kube)."
-        echo "Note: The 'hollaex toolbox --set_security' command would also set the security related values to the default."
+        echo "To apply the new HMAC Token on your exchange, please run 'hollaex toolbox --set_activation_code (--kube)."
         echo "Please make sure that it's all good to rollback the security settings to the default, before proceeding."
 
     fi
