@@ -94,8 +94,7 @@ spec:
         {{- if .Values.filebeat }}
         {{- if .Values.filebeat.create }}
 
-        command: ["/bin/bash"]
-        args: ["-c", "postgres -c config_file=/etc/postgresql.conf"]
+        args: ["-c", "config_file=/etc/postgresql.conf"]
 
         securityContext:
           runAsUser: 999
