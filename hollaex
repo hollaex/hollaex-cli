@@ -1709,6 +1709,24 @@ elif [[ "$1" == "pull" ]]; then
         exit 1;
 
     fi
+
+    # Avoid running cloud exchange as DIY
+    if [[ "$HOLLAEX_IS_SETUP" ]] && [[ ! "$HOLLAEX_SETUP_FORCE" ]]; then 
+
+        if [[ ! $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].type") == "DIY" ]]; then
+
+            printf "\n\033[91mError: Your exchange is not a DIY exchange!\033[39m\n"
+            printf "To manage cloud exchange, you should visit https://dash.bitholla.com.\n\n"
+            printf "Note: If you are trying to run your cloud exchange as DIY for development purpose, you should create a new exchange for that.\n\n"
+        
+            printf "If you fully understand what you are doing, you can use 'hollaex setup --force' flag to run a force setup.\n"
+            echo -e "Warning: Force proceed would potentially break your exchange settings!\n"
+
+            exit 1;
+
+        fi
+
+    fi
     
     # Avoid running multiple setup
     if [[ "$HOLLAEX_IS_SETUP" ]] && [[ ! "$HOLLAEX_SETUP_FORCE" ]]; then 
@@ -1720,6 +1738,7 @@ elif [[ "$1" == "pull" ]]; then
             printf "Please create a new exchange at https://dash.bitholla.com, and try it again.\n\n"
 
             printf "If you fully understand what you are doing, you can use 'hollaex setup --force' flag to run a force setup.\n"
+            echo -e "Warning: Force proceed would potentially break your exchange settings!\n"
 
             exit 1;
 
