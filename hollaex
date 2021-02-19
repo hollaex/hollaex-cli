@@ -3726,30 +3726,21 @@ elif [[ "$1" == "terminate" ]]; then
         if ! command hollaex toolbox --backup --kube --skip; then 
 
                 printf "\033[91mWarning: HollaEx CLI failed to make a final DB backup!\033[39m\n"
-                echo "Do you want to continue without a DB backup? (y/N)"
-                read answer
 
-                if [[ "$answer" = "${answer#[Yy]}" ]]; then
-                    echo "Exiting..."
-                    exit 0;
+                if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                    echo "Do you want to continue without a DB backup? (y/N)"
+                    read answer
+
+                    if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                        echo "Exiting..."
+                        exit 0;
+                    fi
+                
                 fi
 
-                printf "\033[91mWarning: HollaEx CLI failed to make a final DB backup!\n"
                 echo "Proceeding without a backup..."
             
-        fi
-
-        echo "Removing helm packages on the cluster."
-        helm uninstall $ENVIRONMENT_EXCHANGE_NAME-server-api --namespace $ENVIRONMENT_EXCHANGE_NAME 
-        helm uninstall $ENVIRONMENT_EXCHANGE_NAME-server-stream --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-        helm uninstall $ENVIRONMENT_EXCHANGE_NAME-redis --namespace $ENVIRONMENT_EXCHANGE_NAME
-        helm uninstall $ENVIRONMENT_EXCHANGE_NAME-db --namespace $ENVIRONMENT_EXCHANGE_NAME
-        #Remove web server together if it exists on same namespace.
-        if command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null ; then
-            
-            helm uninstall $ENVIRONMENT_EXCHANGE_NAME-web --namespace $ENVIRONMENT_EXCHANGE_NAME
-
         fi
 
         echo "Removing $HOLLAEX_CONFIGMAP_API_NAME namespace."
