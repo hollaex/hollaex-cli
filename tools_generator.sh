@@ -3561,6 +3561,48 @@ function run_and_upgrade_hollaex_on_kubernetes() {
 
   fi
 
+  # Running & Upgrading Databases
+  if [[ "$ENVIRONMENT_KUBERNETES_RUN_REDIS" == true ]]; then
+
+      generate_nodeselector_values $ENVIRONMENT_KUBERNETES_REDIS_NODESELECTOR redis
+
+      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-redis \
+                  --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                  --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                  --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_REDIS_CPU_LIMITS:-100m}" \
+                  --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_REDIS_MEMORY_LIMITS:-200Mi}" \
+                  --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_REDIS_CPU_REQUESTS:-10m}" \
+                  --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_REDIS_MEMORY_REQUESTS:-100Mi}" \
+                  -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis/values.yaml \
+                  -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-redis.yaml \
+                  $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT)
+  
+  fi
+
+  if [[ "$ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB" == true ]]; then
+
+      generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
+
+      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db \
+                  --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                  --wait \
+                  --set pvc.create=true \
+                  --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" \
+                  --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" \
+                  --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                  --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_POSTGRESQL_CPU_LIMITS:-100m}" \
+                  --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_POSTGRESQL_MEMORY_LIMITS:-200Mi}" \
+                  --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_POSTGRESQL_CPU_REQUESTS:-10m}" \
+                  --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_POSTGRESQL_MEMORY_REQUESTS:-100Mi}" \
+                  -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml \
+                  -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml \
+                  $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
+
+                  echo "Waiting until the database to be fully initialized"
+                  sleep 60
+
+  fi
+        
   # FOR GENERATING NODESELECTOR VALUES
   generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATEFUL_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateful
   generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateless
