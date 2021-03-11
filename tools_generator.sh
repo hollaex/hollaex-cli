@@ -963,7 +963,7 @@ spec:
   - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
     http:
       paths:
-      - path: /v2
+      - path: /
         backend:
           serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
           servicePort: 10010
