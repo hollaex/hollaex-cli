@@ -1712,7 +1712,7 @@ elif [[ "$1" == "pull" ]]; then
         source $i
     done;
 
-    if [[ ! "$ENVIRONMENT_EXCHANGE_NAME" == "hollaex" ]] && [[ ! "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]]; then
+    if [[ ! "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]]; then
 
         printf "\n\033[92mSuccessfully pulled and applied your exchange data to Hollaex Kit!\033[39m\n\n"
 
