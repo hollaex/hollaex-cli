@@ -1617,10 +1617,14 @@ elif [[ "$1" == "pull" ]]; then
             --request GET \
             https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange)
 
+    echo $BITHOLLA_ACCOUNT_TOKEN
+
     BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
         --request GET \
         https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange \
        | jq '.')
+
+    echo $BITHOLLA_USER_EXCHANGE_LIST
 
     if [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" ]] || [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" == "200" ]]; then
 
@@ -6209,6 +6213,12 @@ elif [[ "$1" == "cloud" ]]; then
     HOLLAEX_CLOUD_EXCHANGE_ID=$(echo $HOLLAEX_CLOUD_GET_EXCHANGE_INFO_REQUEST | jq -r ".data[$EXCHANGE_ARRAY_ORDER].id")
     
     # # # END # # # 
+
+    BITHOLLA_USER_EXCHANGE_LIST=$(echo $HOLLAEX_CLOUD_GET_EXCHANGE_INFO_REQUEST | jq '.')
+
+    BITHOLLA_USER_EXCHANGE_ORDER=EXCHANGE_ARRAY_ORDER
+
+    hollaex_pull_and_apply_exchange_data;
 
     if [[ "$HOLLAEX_CLOUD_START" ]]; then 
 
