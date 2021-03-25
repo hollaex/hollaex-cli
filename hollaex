@@ -1617,14 +1617,12 @@ elif [[ "$1" == "pull" ]]; then
             --request GET \
             https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange)
 
-    echo $BITHOLLA_ACCOUNT_TOKEN
 
     BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
         --request GET \
         https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange \
        | jq '.')
 
-    echo $BITHOLLA_USER_EXCHANGE_LIST
 
     if [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" ]] || [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" == "200" ]]; then
 
