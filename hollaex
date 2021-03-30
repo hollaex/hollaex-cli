@@ -3356,6 +3356,16 @@ elif [[ "$1" == "apply" ]]; then
             kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
         fi
+        
+        # DROP OLD INGRESS RULES IF IT EXISTS ON THE CLUSTER
+        if command kubectl get ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+        
+            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order
+            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-admin
+            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-explorer
+            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-docs
+
+        fi
     
         run_and_upgrade_hollaex_on_kubernetes;
         
@@ -3681,6 +3691,16 @@ elif [[ "$1" == "terminate" ]]; then
         
             echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
             kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+        fi
+
+        # DROP OLD INGRESS RULES IF IT EXISTS ON THE CLUSTER
+        if command kubectl get ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+        
+            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order
+            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-admin
+            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-explorer
+            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-docs
 
         fi
 
@@ -5111,6 +5131,16 @@ elif [[ "$1" == "toolbox" ]]; then
 
             echo "Deleting Ingress rules for the exchange..."
             kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+            # DROP OLD INGRESS RULES IF IT EXISTS ON THE CLUSTER
+            if command kubectl get ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+            
+                kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order
+                kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-admin
+                kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-explorer
+                kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-docs
+
+            fi
 
             
             if [[ "$ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB" ]]; then
