@@ -1617,10 +1617,12 @@ elif [[ "$1" == "pull" ]]; then
             --request GET \
             https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange)
 
+
     BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
         --request GET \
         https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange \
        | jq '.')
+
 
     if [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" ]] || [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" == "200" ]]; then
 
@@ -3354,6 +3356,16 @@ elif [[ "$1" == "apply" ]]; then
             kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
         fi
+        
+        # DROP OLD INGRESS RULES IF IT EXISTS ON THE CLUSTER
+        if command kubectl get ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+        
+            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order
+            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-admin
+            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-explorer
+            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-docs
+
+        fi
     
         run_and_upgrade_hollaex_on_kubernetes;
         
@@ -3679,6 +3691,16 @@ elif [[ "$1" == "terminate" ]]; then
         
             echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
             kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+        fi
+
+        # DROP OLD INGRESS RULES IF IT EXISTS ON THE CLUSTER
+        if command kubectl get ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+        
+            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order
+            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-admin
+            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-explorer
+            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-docs
 
         fi
 
@@ -5110,6 +5132,16 @@ elif [[ "$1" == "toolbox" ]]; then
             echo "Deleting Ingress rules for the exchange..."
             kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
+            # DROP OLD INGRESS RULES IF IT EXISTS ON THE CLUSTER
+            if command kubectl get ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+            
+                kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order
+                kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-admin
+                kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-explorer
+                kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-docs
+
+            fi
+
             
             if [[ "$ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB" ]]; then
 
@@ -6209,6 +6241,8 @@ elif [[ "$1" == "cloud" ]]; then
     HOLLAEX_CLOUD_EXCHANGE_ID=$(echo $HOLLAEX_CLOUD_GET_EXCHANGE_INFO_REQUEST | jq -r ".data[$EXCHANGE_ARRAY_ORDER].id")
     
     # # # END # # # 
+
+    hollaex pull --skip
 
     if [[ "$HOLLAEX_CLOUD_START" ]]; then 
 

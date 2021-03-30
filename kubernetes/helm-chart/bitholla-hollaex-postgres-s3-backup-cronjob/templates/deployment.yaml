@@ -13,7 +13,7 @@ spec:
         spec:
           containers:
           - name: postgres-backup-to-s3
-            image: bitholla/postgres-s3-backup-cronjob:psql12.4-awscli
+            image: bitholla/postgres-s3-backup-cronjob:psql12.6-awscli
             env:
             - name: AWS_BUCKET
               value: {{.Values.awsBucket}}
