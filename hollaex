@@ -6242,11 +6242,7 @@ elif [[ "$1" == "cloud" ]]; then
     
     # # # END # # # 
 
-    BITHOLLA_USER_EXCHANGE_LIST=$(echo $HOLLAEX_CLOUD_GET_EXCHANGE_INFO_REQUEST | jq '.')
-
-    BITHOLLA_USER_EXCHANGE_ORDER=EXCHANGE_ARRAY_ORDER
-
-    hollaex_pull_and_apply_exchange_data;
+    hollaex pull --skip
 
     if [[ "$HOLLAEX_CLOUD_START" ]]; then 
 
