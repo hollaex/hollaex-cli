@@ -3968,11 +3968,9 @@ elif [[ "$1" == "web" ]]; then
 
     if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
 
-        ENVIRONMENT_WEB_NODE_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/web/docker/Dockerfile | grep "FROM.*node:" | cut -f2 -d ":")
         ENVIRONMENT_WEB_NGINX_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/web/docker/Dockerfile | grep "FROM.*nginx:" | cut -f2 -d ":")
 
         # Overriding the base image with the env value
-        sed -i.bak "s/FROM .*node.*/FROM ${ENVIORNMENT_HOLLAEX_CPU_ARCH}\/node:${ENVIRONMENT_WEB_NODE_VERSION}/" $HOLLAEX_CLI_INIT_PATH/web/docker/Dockerfile
         sed -i.bak "s/FROM .*nginx.*/FROM ${ENVIORNMENT_HOLLAEX_CPU_ARCH}\/nginx:${ENVIRONMENT_WEB_NGINX_VERSION}/" $HOLLAEX_CLI_INIT_PATH/web/docker/Dockerfile
 
         rm $HOLLAEX_CLI_INIT_PATH/web/docker/Dockerfile.bak
