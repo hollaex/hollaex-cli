@@ -2,7 +2,7 @@ secretName:
 
 cronRule: "0 1 * * *" 
 
-timeZone: UTC-9
+timeZone: UTC
 
 awsRegion:
 awsBucket:
