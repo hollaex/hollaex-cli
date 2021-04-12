@@ -4557,6 +4557,13 @@ elif [[ "$1" == "web" ]]; then
             echo "Generating web .env file"
             generate_hollaex_web_local_env
 
+            if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-web.conf" ]]; then
+
+                echo "Generating web Nginx upstream file"
+                generate_nginx_upstream_for_web
+
+            fi 
+
             if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
 
                 echo "Generating web Nginx configuration file"

@@ -93,6 +93,19 @@ steps:
       from_secret: webhook_url
   when:
     status: [ success, failure ]
+
+- name: notify_to_discord_releases
+  image: bitholla/devops-tools:drone_partymaker-0.1.5
+  channel: deployment
+  settings:
+    target: discord
+    release_name: hollaex-cli
+  environment:
+    WEBHOOK_URL:
+      from_secret: discord_webhook_url
+  when:
+    status: [ success, failure ]
+    branch: master
   
 trigger:
   branch: 
@@ -203,7 +216,7 @@ steps:
       from_secret: slack_webhook
   when:
     status: [ success, failure ]
-    
+
 volumes:
   - name: docker
     host:
