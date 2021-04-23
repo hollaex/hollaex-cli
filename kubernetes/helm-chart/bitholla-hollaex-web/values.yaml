@@ -22,10 +22,10 @@ podRestart_webhook_url:
   
 resources:
   limits:
-    cpu: "1000m"
-    memory: "1536Mi"
+    cpu: "100m"
+    memory: "100Mi"
   requests:
     cpu: "10m"
-    memory: "256Mi"   
+    memory: "100Mi"   
   
 
