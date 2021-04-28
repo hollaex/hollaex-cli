@@ -4057,10 +4057,10 @@ elif [[ "$1" == "web" ]]; then
                         --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_WEB_HPA_ENABLE:-false}" \
                         --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_WEB_HPA_AVGMEMORY:-500000000}" \
                         --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_WEB_HPA_MAXREPLICAS:-4}" \
-                        --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_WEB_CPU_LIMITS:-1000m}" \
-                        --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_WEB_MEMORY_LIMITS:-1024Mi}" \
-                        --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_WEB_CPU_REQUESTS:-2m}" \
-                        --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_WEB_MEMORY_REQUESTS:-100Mi}" \
+                        --set resources.limits.cpu="${ENVIRONMENT_WEB_CPU_LIMITS:-1000m}" \
+                        --set resources.limits.memory="${ENVIRONMENT_WEB_MEMORY_LIMITS:-1024Mi}" \
+                        --set resources.requests.cpu="${ENVIRONMENT_WEB_CPU_REQUESTS:-2m}" \
+                        --set resources.requests.memory="${ENVIRONMENT_WEB_MEMORY_REQUESTS:-100Mi}" \
                         --set envName="$ENVIRONMENT_EXCHANGE_NAME-web-env" \
                         -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
                         -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web; then
@@ -4512,10 +4512,10 @@ elif [[ "$1" == "web" ]]; then
                         --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_WEB_HPA_AVGMEMORY:-500000000}" \
                         --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_WEB_HPA_MAXREPLICAS:-4}" \
                         --set envName="$ENVIRONMENT_EXCHANGE_NAME-web-env" \
-                        --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_WEB_CPU_LIMITS:-1000m}" \
-                        --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_WEB_MEMORY_LIMITS:-1024Mi}" \
-                        --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_WEB_CPU_REQUESTS:-2m}" \
-                        --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_WEB_MEMORY_REQUESTS:-100Mi}" \
+                        --set resources.limits.cpu="${ENVIRONMENT_WEB_CPU_LIMITS:-1000m}" \
+                        --set resources.limits.memory="${ENVIRONMENT_WEB_MEMORY_LIMITS:-1024Mi}" \
+                        --set resources.requests.cpu="${ENVIRONMENT_WEB_CPU_REQUESTS:-2m}" \
+                        --set resources.requests.memory="${ENVIRONMENT_WEB_MEMORY_REQUESTS:-100Mi}" \
                         -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
                         -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web; then
 
@@ -5159,10 +5159,10 @@ elif [[ "$1" == "toolbox" ]]; then
                         --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" \
                         --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" \
                         --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                        --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_POSTGRESQL_CPU_LIMITS:-100m}" \
-                        --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_POSTGRESQL_MEMORY_LIMITS:-200Mi}" \
-                        --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_POSTGRESQL_CPU_REQUESTS:-10m}" \
-                        --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_POSTGRESQL_MEMORY_REQUESTS:-100Mi}" \
+                        --set resources.limits.cpu="${ENVIRONMENT_POSTGRESQL_CPU_LIMITS:-100m}" \
+                        --set resources.limits.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_LIMITS:-200Mi}" \
+                        --set resources.requests.cpu="${ENVIRONMENT_POSTGRESQL_CPU_REQUESTS:-10m}" \
+                        --set resources.requests.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_REQUESTS:-100Mi}" \
                         -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml \
                         -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml \
                         $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
@@ -5177,10 +5177,10 @@ elif [[ "$1" == "toolbox" ]]; then
                 helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-redis \
                         --namespace $ENVIRONMENT_EXCHANGE_NAME \
                         --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                        --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_REDIS_CPU_LIMITS:-100m}" \
-                        --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_REDIS_MEMORY_LIMITS:-200Mi}" \
-                        --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_REDIS_CPU_REQUESTS:-10m}" \
-                        --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_REDIS_MEMORY_REQUESTS:-100Mi}" \
+                        --set resources.limits.cpu="${ENVIRONMENT_REDIS_CPU_LIMITS:-100m}" \
+                        --set resources.limits.memory="${ENVIRONMENT_REDIS_MEMORY_LIMITS:-200Mi}" \
+                        --set resources.requests.cpu="${ENVIRONMENT_REDIS_CPU_REQUESTS:-10m}" \
+                        --set resources.requests.memory="${ENVIRONMENT_REDIS_MEMORY_REQUESTS:-100Mi}" \
                         $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT)
 
             fi
