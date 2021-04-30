@@ -750,6 +750,14 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]]; then
     env_file:
       - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
     command : ["sh", "-c", "redis-server --requirepass \$\${REDIS_PASSWORD}"]
+    deploy:
+      resources:
+        limits:
+          cpus: "${ENVIRONMENT_REDIS_CPU_LIMITS:-0.1}"
+          $(echo memory: "${ENVIRONMENT_REDIS_MEMORY_LIMITS:-100M}" | sed 's/i//g')
+        reservations:
+          cpus: "${ENVIRONMENT_REDIS_CPU_REQUESTS:-0.1}"
+          $(echo memory: "${ENVIRONMENT_REDIS_MEMORY_REQUESTS:-100M}" | sed 's/i//g')
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
 EOL
@@ -766,6 +774,14 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
       - 5432:5432
     env_file:
       - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    deploy:
+      resources:
+        limits:
+          cpus: "${ENVIRONMENT_POSTGRESQL_CPU_LIMITS:-0.1}"
+          $(echo memory: "${ENVIRONMENT_POSTGRESQL_MEMORY_LIMITS:-100M}" | sed 's/i//g')
+        reservations:
+          cpus: "${ENVIRONMENT_POSTGRESQL_CPU_REQUESTS:-0.1}"
+          $(echo memory: "${ENVIRONMENT_POSTGRESQL_MEMORY_REQUESTS:-100M}" | sed 's/i//g')
     command : ["sh", "-c", "export POSTGRES_DB=\$\${DB_NAME} && export POSTGRES_USER=\$\${DB_USERNAME} && export POSTGRES_PASSWORD=\$\${DB_PASSWORD} && ./docker-entrypoint.sh postgres"]
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
@@ -789,6 +805,26 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
       - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
     entrypoint:
       - node
+    deploy:
+      resources:
+        limits:
+          # CPU LIMIT
+          $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: "${ENVIRONMENT_API_CPU_LIMITS:-0.1}""; fi) 
+          $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: "${ENVIRONMENT_STREAM_CPU_LIMITS:-0.1}""; fi) 
+          $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: "${ENVIRONMENT_PLUGINS_CPU_LIMITS:-0.1}""; fi) 
+          # MEMORY LIMIT
+          $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_API_MEMORY_LIMITS:-512M}" | sed 's/i//g' ; fi) 
+          $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_STREAM_MEMORY_LIMITS:-256M}" | sed 's/i//g' ; fi) 
+          $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_PLUGINS_MEMORY_LIMITS:-512M}" | sed 's/i//g' ; fi) 
+        reservations:
+          # CPU REQUEST
+          $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: "${ENVIRONMENT_API_CPU_REQUESTS:-0.05}""; fi) 
+          $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: "${ENVIRONMENT_STREAM_CPU_REQUESTS:-0.05}""; fi) 
+          $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: "${ENVIRONMENT_PLUGINS_CPU_REQUESTS:-0.05}""; fi) 
+          # MEMORY REQUEST
+          $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_API_MEMORY_REQUESTS:-512M}" | sed 's/i//g' ; fi) 
+          $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_STREAM_MEMORY_REQUESTS:-256M}" | sed 's/i//g' ; fi) 
+          $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_PLUGINS_MEMORY_REQUESTS:-256M}" | sed 's/i//g' ; fi) 
     command:
       $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- app.js"; fi) 
       $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- ws/index.js"; fi) 
@@ -863,6 +899,14 @@ EOL
       context: ${HOLLAEX_CLI_INIT_PATH}/web/
       dockerfile: ${HOLLAEX_CLI_INIT_PATH}/web/docker/Dockerfile
     restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "${ENVIRONMENT_WEB_CPU_LIMITS:-0.05}"
+          $(echo memory: "${ENVIRONMENT_WEB_MEMORY_LIMITS:-128M}" | sed 's/i//g')
+        reservations:
+          cpus: "${ENVIRONMENT_WEB_CPU_LIMITS:-0.01}"
+          $(echo memory: "${ENVIRONMENT_WEB_MEMORY_REQUESTS:-128M}" | sed 's/i//g')
     $(if [[ ! "$WEB_CLIENT_SCALE" ]]; then echo "ports:"; fi) 
       $(if [[ ! "$WEB_CLIENT_SCALE" ]]; then echo "- 8080:80"; fi) 
     networks:
@@ -3305,33 +3349,19 @@ function hollaex_setup_initialization() {
 
   if [[ "$RUN_WITH_VERIFY" == true ]]; then 
 
-      printf "\nWelcome to HollaEx Setup!\n\n"
+      printf "\nWelcome to HollaEx Server Setup!\n\n"
 
       echo -e "You need to \033[1msetup your exchange\033[0m with the configurations."
-      echo -e "You can follow the \033[1mexchange setup wizard\033[0m on \033[1mhttps://dash.bitholla.com\033[0m before you do this process. (Recommended)"
+      echo -e "You can follow the \033[1mexchange setup wizard\033[0m on \033[1mhttps://dash.bitholla.com\033[0m before you do this process."
       echo -e "\033[1mHave you already setup your exchange on bitHolla Dashboard? (Y/n)\033[0m"
       read answer
 
       if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
 
-          printf "\nWe recommend you to setup your exchange on \033[1mbitHolla dashboard (dash.bitholla.com)\033[0m before you proceed.\n"
-          printf "Select \033[1m'Y'\033[0m to \033[1mquit the CLI\033[0m in order to first setup your exchange on the dashboard,\n" 
-          printf "Select \033[1m'N'\033[0m to proceed \033[1mmanual\033[0m CLI exchange setup wizard.\n" 
-          echo "Do you want to quit the CLI setup? (Y/n)"
-          read answer
-
-          if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
-              
-              echo "Proceeding to a CLI exchange wizard..."
-              launch_basic_settings_input;
-          
-          else 
-
-              printf "\n\nPlease visit \033[1mdash.bitholla.com\033[0m and setup your exchange there first.\n"
-              printf "Once your exchange is configured on the dashboard, please start the procedure by using \033[1m'hollaex setup'\033[0m.\n\n"
-              exit 1;
-          
-          fi
+        printf "\n\nPlease visit \033[1mhttps://dash.bitholla.com\033[0m and setup your exchange there first.\n"
+        printf "Once your exchange is configured on the dashboard, please start the procedure by using \033[1m'hollaex server --setup'\033[0m.\n\n"
+        echo -e "See you soon!\n"
+        exit 1;
       
       else 
 
@@ -3479,10 +3509,10 @@ function run_and_upgrade_hollaex_on_kubernetes() {
       helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-redis \
                   --namespace $ENVIRONMENT_EXCHANGE_NAME \
                   --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                  --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_REDIS_CPU_LIMITS:-100m}" \
-                  --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_REDIS_MEMORY_LIMITS:-200Mi}" \
-                  --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_REDIS_CPU_REQUESTS:-10m}" \
-                  --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_REDIS_MEMORY_REQUESTS:-100Mi}" \
+                  --set resources.limits.cpu="${ENVIRONMENT_REDIS_CPU_LIMITS:-100m}" \
+                  --set resources.limits.memory="${ENVIRONMENT_REDIS_MEMORY_LIMITS:-200Mi}" \
+                  --set resources.requests.cpu="${ENVIRONMENT_REDIS_CPU_REQUESTS:-10m}" \
+                  --set resources.requests.memory="${ENVIRONMENT_REDIS_MEMORY_REQUESTS:-100Mi}" \
                   -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis/values.yaml \
                   -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-redis.yaml \
                   $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT)
@@ -3500,10 +3530,10 @@ function run_and_upgrade_hollaex_on_kubernetes() {
                   --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" \
                   --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" \
                   --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                  --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_POSTGRESQL_CPU_LIMITS:-100m}" \
-                  --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_POSTGRESQL_MEMORY_LIMITS:-200Mi}" \
-                  --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_POSTGRESQL_CPU_REQUESTS:-10m}" \
-                  --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_POSTGRESQL_MEMORY_REQUESTS:-100Mi}" \
+                  --set resources.limits.cpu="${ENVIRONMENT_POSTGRESQL_CPU_LIMITS:-100m}" \
+                  --set resources.limits.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_LIMITS:-200Mi}" \
+                  --set resources.requests.cpu="${ENVIRONMENT_POSTGRESQL_CPU_REQUESTS:-10m}" \
+                  --set resources.requests.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_REQUESTS:-100Mi}" \
                   -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml \
                   -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml \
                   $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
@@ -3528,10 +3558,10 @@ function run_and_upgrade_hollaex_on_kubernetes() {
                     --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_API_HPA_MAXREPLICAS:-4}" \
                     --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                     --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                    --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_API_CPU_LIMITS:-1000m}" \
-                    --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_API_MEMORY_LIMITS:-1536Mi}" \
-                    --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_API_CPU_REQUESTS:-10m}" \
-                    --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_API_MEMORY_REQUESTS:-1536Mi}" \
+                    --set resources.limits.cpu="${ENVIRONMENT_API_CPU_LIMITS:-1000m}" \
+                    --set resources.limits.memory="${ENVIRONMENT_API_MEMORY_LIMITS:-1536Mi}" \
+                    --set resources.requests.cpu="${ENVIRONMENT_API_CPU_REQUESTS:-10m}" \
+                    --set resources.requests.memory="${ENVIRONMENT_API_MEMORY_REQUESTS:-1536Mi}" \
                     --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
                     -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
@@ -3548,10 +3578,10 @@ function run_and_upgrade_hollaex_on_kubernetes() {
               --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_STREAM_HPA_MAXREPLICAS:-4}" \
               --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
               --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-              --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_STREAM_CPU_LIMITS:-1000m}" \
-              --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_STREAM_MEMORY_LIMITS:-1536Mi}" \
-              --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_STREAM_CPU_REQUESTS:-10m}" \
-              --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_STREAM_MEMORY_REQUESTS:-1536Mi}" \
+              --set resources.limits.cpu="${ENVIRONMENT_STREAM_CPU_LIMITS:-1000m}" \
+              --set resources.limits.memory="${ENVIRONMENT_STREAM_MEMORY_LIMITS:-1536Mi}" \
+              --set resources.requests.cpu="${ENVIRONMENT_STREAM_CPU_REQUESTS:-10m}" \
+              --set resources.requests.memory="${ENVIRONMENT_STREAM_MEMORY_REQUESTS:-1536Mi}" \
               --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
               -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
               -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
@@ -3564,10 +3594,10 @@ function run_and_upgrade_hollaex_on_kubernetes() {
                      --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
                      --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                      --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                     --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_PLUGINS_CPU_LIMITS:-500m}" \
-                     --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_PLUGINS_MEMORY_LIMITS:-512Mi}" \
-                     --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_PLUGINS_CPU_REQUESTS:-10m}" \
-                     --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_PLUGINS_MEMORY_REQUESTS:-128Mi}" \
+                     --set resources.limits.cpu="${ENVIRONMENT_PLUGINS_CPU_LIMITS:-500m}" \
+                     --set resources.limits.memory="${ENVIRONMENT_PLUGINS_MEMORY_LIMITS:-512Mi}" \
+                     --set resources.requests.cpu="${ENVIRONMENT_PLUGINS_CPU_REQUESTS:-10m}" \
+                     --set resources.requests.memory="${ENVIRONMENT_PLUGINS_MEMORY_REQUESTS:-128Mi}" \
                      --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
                      -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                      -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
