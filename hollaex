@@ -6707,7 +6707,7 @@ elif [[ "$1" == "logs" ]]; then
 
             if [[ "$HOLLAEX_LOGS_TARGET" ]]; then
 
-                local POD_ID=$(kubectl get pods --namespace $ENVIRONMENT_EXCHANGE_NAME | grep $ENVIRONMENT_EXCHANGE_NAME | grep $ENVIRONMENT_EXCHANGE_NAME-*-$HOLLAEX_LOGS_TARGET | cut -f1 -d " ")
+                local POD_ID=$(kubectl get pods --namespace $ENVIRONMENT_EXCHANGE_NAME | grep $ENVIRONMENT_EXCHANGE_NAME | grep $HOLLAEX_LOGS_TARGET | cut -f1 -d " ")
 
             else 
                 

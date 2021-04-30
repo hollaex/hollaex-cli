@@ -809,18 +809,18 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
       resources:
         limits:
           # CPU LIMIT
-          $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: "${ENVIRONMENT_API_CPU_LIMITS:-0.1}""; fi) 
-          $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: "${ENVIRONMENT_STREAM_CPU_LIMITS:-0.1}""; fi) 
-          $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: "${ENVIRONMENT_PLUGINS_CPU_LIMITS:-0.1}""; fi) 
+          $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: \"${ENVIRONMENT_API_CPU_LIMITS:-0.1}\""; fi) 
+          $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: \"${ENVIRONMENT_STREAM_CPU_LIMITS:-0.1}\""; fi) 
+          $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: \"${ENVIRONMENT_PLUGINS_CPU_LIMITS:-0.1}\""; fi) 
           # MEMORY LIMIT
           $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_API_MEMORY_LIMITS:-512M}" | sed 's/i//g' ; fi) 
           $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_STREAM_MEMORY_LIMITS:-256M}" | sed 's/i//g' ; fi) 
           $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_PLUGINS_MEMORY_LIMITS:-512M}" | sed 's/i//g' ; fi) 
         reservations:
           # CPU REQUEST
-          $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: "${ENVIRONMENT_API_CPU_REQUESTS:-0.05}""; fi) 
-          $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: "${ENVIRONMENT_STREAM_CPU_REQUESTS:-0.05}""; fi) 
-          $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: "${ENVIRONMENT_PLUGINS_CPU_REQUESTS:-0.05}""; fi) 
+          $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: \"${ENVIRONMENT_API_CPU_REQUESTS:-0.05}\""; fi) 
+          $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: \"${ENVIRONMENT_STREAM_CPU_REQUESTS:-0.05}\""; fi) 
+          $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: \"${ENVIRONMENT_PLUGINS_CPU_REQUESTS:-0.05}\""; fi) 
           # MEMORY REQUEST
           $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_API_MEMORY_REQUESTS:-512M}" | sed 's/i//g' ; fi) 
           $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_STREAM_MEMORY_REQUESTS:-256M}" | sed 's/i//g' ; fi) 
