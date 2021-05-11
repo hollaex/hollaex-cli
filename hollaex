@@ -603,9 +603,6 @@ elif [[ "$1" == "setup" ]]; then
 
     fi
 
-    echo "Setting the Kit /settings folder as 'assumed-unchanged' state."
-    git --git-dir=$HOLLAEX_CLI_INIT_PATH/.git update-index --assume-unchanged ./settings/*
-
     source $SCRIPTPATH/tools_generator.sh
 
     system_dependencies_check;
