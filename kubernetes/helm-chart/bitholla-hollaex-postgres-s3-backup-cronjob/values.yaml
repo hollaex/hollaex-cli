@@ -4,6 +4,8 @@ cronRule: "0 1 * * *"
 
 timeZone: UTC
 
+pgdumpMode: pg_dump
+
 awsRegion:
 awsBucket:
 awsAccessKey: 
