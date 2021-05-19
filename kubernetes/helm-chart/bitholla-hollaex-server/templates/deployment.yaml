@@ -6,7 +6,6 @@ metadata:
   labels:
     app: {{.Release.Name}}
     role: {{.Release.Namespace}}
-    deployment_mode: {{.Values.DEPLOYMENT_MODE}}
   name: {{.Release.Name}}
   namespace: {{.Release.Namespace}}
 spec:
@@ -36,7 +35,6 @@ spec:
     matchLabels:
       app: {{.Release.Name}}
       role: {{.Release.Namespace}}
-      deployment_mode: {{.Values.DEPLOYMENT_MODE}}
       tier: backend
   template:
     metadata:
@@ -45,7 +43,6 @@ spec:
       labels:
         app: {{.Release.Name}}
         role: {{.Release.Namespace}}
-        deployment_mode: {{.Values.DEPLOYMENT_MODE}}
         tier: backend
     spec:
 
