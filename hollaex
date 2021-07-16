@@ -85,6 +85,7 @@ Options:
         --restart, Restart the web server while applying new changes (If it's available).
         --build, Build the web server docker image. This command would not affect the existing web server before restart.
         --terminate, Terminate the web server. THIS COMMAND WILL COMPLETELY REMOVE YOUR WEB CLIENT AND CAN'T BE UNDO.
+        --arch, Specify a CPU arch to run the HollaEx. Default is amd64. 
 
     toolbox: Toolbox for advanced features which could be helpful for your exchange operations.
         --backup, Run the full backup with 'pg_dumpall' for exchange's PostgreSQL database.
@@ -4390,6 +4391,20 @@ elif [[ "$1" == "web" ]]; then
                 echo "Target hollaex docker registry : $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE."
                 shift; continue
                 ;;
+            --arch)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                if [[ "$1" == "amd64" ]] || [[ "$1" == "arm64v8" ]] || [[ "$1" == "s390x" ]]; then
+                    export ENVIORNMENT_HOLLAEX_CPU_ARCH=$1
+                    echo "Target CPU Arch: $ENVIORNMENT_HOLLAEX_CPU_ARCH."
+                else 
+                    echo -e "\n\033[91mError: Not supported CPU arch!\033[39m"
+                    echo "Supported Arches: amd64, arm64v8, s390x."
+                    echo -e "Please try it again with the supported arch name.\n"
+                    exit 1;
+                fi
+                shift; continue
+                ;;
             --*) 
                 err_msg "Invalid option: $1"
                 print_usage;
@@ -4455,6 +4470,21 @@ elif [[ "$1" == "web" ]]; then
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
         fi
+
+    fi
+    
+    # Multi arch build support
+    if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
+
+        ENVIRONMENT_WEB_NODE_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/web/docker/Dockerfile | grep "FROM.*node:" | cut -f2 -d ":")
+        ENVIRONMENT_WEB_NGINX_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/web/docker/Dockerfile | grep "FROM.*nginx:" | cut -f2 -d ":")
+
+        # Overriding the base image with the env value
+        sed -i.bak "s/FROM .*node.*/FROM amd64\/node:${ENVIRONMENT_WEB_NODE_VERSION}/" $HOLLAEX_CLI_INIT_PATH/web/docker/Dockerfile
+
+        sed -i.bak "s/FROM .*nginx.*/FROM ${ENVIORNMENT_HOLLAEX_CPU_ARCH}\/nginx:${ENVIRONMENT_WEB_NGINX_VERSION}/" $HOLLAEX_CLI_INIT_PATH/web/docker/Dockerfile
+
+        rm $HOLLAEX_CLI_INIT_PATH/web/docker/Dockerfile.bak*
 
     fi
 
