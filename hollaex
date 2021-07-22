@@ -3494,7 +3494,7 @@ elif [[ "$1" == "upgrade" ]]; then
     if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then
 
         echo "Checking the version compatibility between the latest HollaEx CLI and your local Kit..."
-        if command curl -s -f https://raw.githubusercontent.com/bitholla/hollaex-cli/2.0.0/version_range > $SCRIPTPATH/.master_version_range; then 
+        if command curl -s -f https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version_range > $SCRIPTPATH/.master_version_range; then 
 
             source $SCRIPTPATH/.master_version_range
             rm $SCRIPTPATH/.master_version_range
