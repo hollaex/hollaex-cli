@@ -4979,6 +4979,35 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "Getting the HMAC Token from the bitHolla server."
                 shift; continue
                 ;;
+            --enable_maintenance_mode)
+                ENABLE_MAINTENANCE_MODE=true
+                TOOLBOX_ENABLE=true
+                echo "Enabling the maintenance mode with IP whitelists."
+                shift; continue
+                ;;
+            --disable_maintenance_mode)
+                DISABLE_MAINTENANCE_MODE=true
+                TOOLBOX_ENABLE=true
+                echo "Disabling the maintenance mode."
+                shift; continue
+                ;;
+            --whitelist-ip)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_MAINTENANCE_MODE_WHITELIST_IP=$1
+                TOOLBOX_ENABLE=true
+                
+
+                if [[ "$HOLLAEX_MAINTENANCE_MODE_WHITELIST_IP" == "* *" ]]; then 
+
+                    echo "Error: The whitelisted IPs should be comma separated with no space."
+                    echo "Please try it again"
+                    exit 1;
+
+                fi 
+
+                shift; continue
+                ;;
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
@@ -6075,6 +6104,80 @@ elif [[ "$1" == "toolbox" ]]; then
 
         echo "To apply the new HMAC Token on your exchange, please run 'hollaex toolbox --set_activation_code (--kube)."
         echo "Please make sure that it's all good to rollback the security settings to the default, before proceeding."
+
+    elif [[ "$ENABLE_MAINTENANCE_MODE" ]]; then
+
+        if [[ ! "$HOLLAEX_MAINTENANCE_MODE_WHITELIST_IP" ]]; then 
+
+            echo "Error: There is not whitelist IP defined for the maintenance mode."
+            echo "Please pass the list of IPs you want to set as a whitelist while the maintenance mode is enabled."
+            echo "Example: 'hollaex toolbox --enable_maintenance_mode --whitelist-ip 1.2.3.4,5.6.7.8'"
+
+            exit 1;
+        
+        fi 
+
+        if [[ "$USE_KUBERNETES" ]]; then
+
+            if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
+
+                echo "Generating Kubernetes Ingress"
+                generate_kubernetes_ingress;
+
+            fi
+
+            if command cat $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml | grep whitelist-source-range > /dev/null 2>&1; then 
+
+                sed -i.bak "s/\#nginx.ingress.kubernetes.io\/whitelist-source-range.*/nginx.ingress.kubernetes.io\/whitelist-source-range\: \"$HOLLAEX_MAINTENANCE_MODE_WHITELIST_IP\"/" $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml
+                rm $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml.bak
+
+            else 
+
+                echo "Error: Cannot found 'whitelist-source-range' annotation in your Ingress file."
+                echo "If you are using a custom Ingress template, please make sure you to set '#nginx.ingress.kubernetes.io/whitelist-source-range: ""' annoation first."
+
+                exit 1;
+            
+            fi 
+        
+        else 
+
+            echo "Error: The maintenance mode only works for Kubernetes environment at the moment."
+            echo "Please add '--kube' flag behind of the command."
+
+            exit 1;
+
+
+        fi 
+
+
+    elif [[ "$DISABLE_MAINTENANCE_MODE" ]]; then
+
+        if [[ "$USE_KUBERNETES" ]]; then
+
+            if command cat $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml | grep whitelist-source-range > /dev/null 2>&1; then 
+
+                sed -i.bak "s/nginx.ingress.kubernetes.io\/whitelist-source-range.*/\#nginx.ingress.kubernetes.io\/whitelist-source-range\: \"\"/" $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml
+                rm $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml.bak
+
+            else 
+
+                echo "Error: Cannot found 'whitelist-source-range' annotation in your Ingress file."
+                echo "If you are using a custom Ingress template, please make sure you to set '#nginx.ingress.kubernetes.io/whitelist-source-range: ""' annoation first."
+
+                exit 1;
+            
+            fi
+        
+        else 
+
+            echo "Error: The maintenance mode only works for Kubernetes environment atm."
+            echo "Please add '--kube' flag behind of the command."
+
+            exit 1;
+
+        fi
+        
 
     fi
 
