@@ -25,11 +25,15 @@ fi
 
 source $(pwd)/.hollaex
 
-if [[ "$ENVIRONMENT_HOLLAEX_KIT_NETWORK" == "testnet" ]]; then 
+if [[ "$HOLLAEX_CONFIGMAP_NETWORK_URL" ]]; then 
+
+    export ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER=$HOLLAEX_CONFIGMAP_NETWORK_URL
+
+elif [[ ! "$HOLLAEX_CONFIGMAP_NETWORK_URL" ]] && [[ "$ENVIRONMENT_HOLLAEX_KIT_NETWORK" == "testnet" ]]; then 
 
     ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER='api.testnet.hollaex.network'
 
-else 
+else
 
     ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER='api.hollaex.network'
 
@@ -462,6 +466,13 @@ if [[ "$1" == "dev" ]]; then
 
 elif [[ "$1" == "init" ]]; then
 
+    HOLLAEX_CLI_INIT_PATH=$(pwd)
+    CONFIG_FILE_PATH=$(pwd)/settings/*
+    TEMPLATE_GENERATE_PATH=$(pwd)/templates
+    INIT_PATH_CHECK=$(pwd)/.hollaex
+
+    source $SCRIPTPATH/tools_generator.sh
+
     printf "\n\033[1mSelect the network\033[0m\n\n"
 
     echo -e "Before you continue, You need to \033[1mselect the network\033[0m that you want to use with the exchange."
@@ -489,14 +500,28 @@ elif [[ "$1" == "init" ]]; then
         
     fi
 
+    export HOLLAEX_CONFIGMAP_NETWORK_URL=${hollaexAPIURL:-api.hollaex.network}
+
     printf "\n"
-    echo "${hollaexAPIURL:-api.hollaex.network} ✔"
+    echo "${HOLLAEX_CONFIGMAP_NETWORK_URL} ✔"
     printf "\n"
 
-    ###
-    HollaEx Network Sign Up Part
-    TBA
-    ###
+    printf "\n\033[1mCreating an admin account\033[0m\n\n"
+    echo -e "Please type your email addr and password that you are going to use for an admin account.\n"
+    echo "Email: "
+    read hollaexAdminEmail
+    echo "Password: "
+    read hollaexAdminPassword
+
+     while true;
+        do if [[ ! "$hollaexAdminEmail" == "*@*" ]]; then 
+            printf "\nInvalid email address. Please type it again.\n"
+            echo "Email: "
+            read hollaexAdminEmail
+        else
+            break;
+        fi
+    done
 
     printf "\n\033[1mNew exchange name\033[0m\n\n"
 
@@ -505,18 +530,11 @@ elif [[ "$1" == "init" ]]; then
     read hollaexExchangeName
 
     while true;
-        do if [[ ! "$hollaexExchangeName" =~ ^[A-Za-z0-9_-]+$ ]] && [[ "$IS_AVAILABLE_hollaexExchangeName" ]]; then 
+        do if [[ ! "$hollaexExchangeName" =~ ^[A-Za-z0-9_-]+$ ]]; then 
             printf "\nInvalid Exchange Name. Make sure to input Alphanumeric, Dash (-), Underscore Only (_).\n"
             echo "New Exchange Name: "
             read hollaexExchangeName
         else
-            echo "Checking on the network that the name you provided is available..."
-            if ! command CURL SOMETHING; then 
-
-                IS_AVAILABLE_hollaexExchangeName=false
-                echo "Sorry, But the name is already occupied!"
-            
-            fi
             break;
         fi
     done
@@ -525,15 +543,59 @@ elif [[ "$1" == "init" ]]; then
     echo "$hollaexExchangeName ✔"
     printf "\n"
 
+    HOLLAEX_INIT_REQUEST=$(curl -s -H "Content-Type: application/json" \
+        -w ";%{http_code}" \
+        --request POST \
+        --data "{\"email\": \"${hollaexAdminEmail}\", \"password\": \"${hollaexAdminPassword}\", \"exchange_name\": \"${hollaexExchangeName}\"}" \
+        https://$HOLLAEX_CONFIGMAP_NETWORK_URL/v2/network/exchange)
+
+    HOLLAEX_INIT_REQUEST_RESPONSE=$(echo $HOLLAEX_INIT_REQUEST | cut -f1 -d ";")
+    HOLLAEX_INIT_REQUEST_HTTP_CODE=$(echo $HOLLAEX_INIT_REQUEST | cut -f2 -d ";")
+
+    # Creating an admin account with exchange
+    if [[ ! "$HOLLAEX_INIT_REQUEST_HTTP_CODE" == "200" ]]; then
+    
+        echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.message'
+
+        echo -e "\nError: Failed to create an account on HollaEx Network."
+        echo "Please review the logs and try it again."
+        exit 1;
+    
+    fi
+
+    export HOLLAEX_SECRET_API_KEY=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.token.apiKey')
+    export HOLLAEX_SECRET_API_SECRET=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.token.secret')
+    export HOLLAEX_SECRET_ACTIVATION_CODE=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.exchange.activation_code')
+
+    # Test
+    echo $HOLLAEX_INIT_REQUEST_RESPONSE
+    
+
     # Update settings files with provided values
     for i in ${CONFIG_FILE_PATH[@]}; do
         if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
             CONFIGMAP_FILE_PATH=$i
             sed -i.bak "s/ENVIRONMENT_EXCHANGE_NAME=.*/ENVIRONMENT_EXCHANGE_NAME=$hollaexExchangeName/" $CONFIGMAP_FILE_PATH
-            sed -i.bak "s/HOLLAEX_CONFIGMAP_NETWORK_URL=.*/HOLLAEX_CONFIGMAP_NETWORK_URL=$hollaexAPIURL/" $CONFIGMAP_FILE_PATH
+            sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=.*/HOLLAEX_CONFIGMAP_API_NAME=$hollaexExchangeName/" $CONFIGMAP_FILE_PATH
+            sed -i.bak "s/HOLLAEX_CONFIGMAP_NETWORK_URL=.*/HOLLAEX_CONFIGMAP_NETWORK_URL=$HOLLAEX_CONFIGMAP_NETWORK_URL/" $CONFIGMAP_FILE_PATH
             rm $CONFIGMAP_FILE_PATH.bak
         fi
+        if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE" $i > /dev/null ; then
+            SECRET_FILE_PATH=$i
+            sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=.*/HOLLAEX_SECRET_ACTIVATION_CODE=$HOLLAEX_SECRET_ACTIVATION_CODE/" $SECRET_FILE_PATH
+            sed -i.bak "s/HOLLAEX_SECRET_API_KEY=.*/HOLLAEX_SECRET_API_KEY=$HOLLAEX_SECRET_API_KEY/" $SECRET_FILE_PATH
+            sed -i.bak "s/HOLLAEX_SECRET_API_SECRET=.*/HOLLAEX_SECRET_API_SECRET=$HOLLAEX_SECRET_API_SECRET/" $SECRET_FILE_PATH
+            rm $SECRET_FILE_PATH.bak
+        fi
     done
+
+    echo $HOLLAEX_CONFIGMAP_NETWORK_URL > $INIT_PATH_CHECK
+
+    echo -e "\nSuccessfully initialized the exchange $hollaexExchangeName and the account $hollaexAdminEmail."
+    echo "Please run 'hollaex server --setup' command to set up the exchange."
+    echo "Have fun!"
+
+    exit 0;
 
 elif [[ "$1" == "server" ]]; then
     while true; do
@@ -719,7 +781,7 @@ elif [[ "$1" == "setup" ]]; then
     # PRESET env for user initial setup config value selection
     CONTINUE_WITH_PRECONFIGURED_VALUES=false 
 
-    hollaex_setup_initialization;
+    # hollaex_setup_initialization;
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
