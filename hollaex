@@ -514,7 +514,7 @@ elif [[ "$1" == "init" ]]; then
     read hollaexAdminPassword
 
      while true;
-        do if [[ ! "$hollaexAdminEmail" == "*@*" ]]; then 
+        do if [[ ! "$hollaexAdminEmail" == *"@"* ]]; then 
             printf "\nInvalid email address. Please type it again.\n"
             echo "Email: "
             read hollaexAdminEmail
