@@ -1,0 +1,111 @@
+{{- if .Values.job.enable }}
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app: {{.Release.Name}}
+    role: {{.Release.Namespace}}
+  name: {{.Release.Name}}
+  namespace: {{.Release.Namespace}}
+spec:
+  template:
+    spec:
+
+{{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+{{- end }}
+
+      containers:
+      - name: {{.Release.Name}}
+        image: {{.Values.imageRegistry}}:{{.Values.dockerTag}}
+        command: ["/bin/bash", "-c"]
+
+{{- if eq .Values.job.mode "add_coin" }}
+
+        args:
+          - node tools/dbs/activateCoin.js;
+
+{{- else if eq .Values.job.mode "remove_coin" }}
+
+        args:
+          - node tools/dbs/removeCoin.js;
+
+{{- else if eq .Values.job.mode "add_pair" }}
+
+        args:
+          - node tools/dbs/activatePair.js;
+
+{{- else if eq .Values.job.mode "remove_pair" }}
+
+        args:
+          - node tools/dbs/removePair.js;
+
+{{- else if eq .Values.job.mode "run_triggers" }}
+
+        args:
+          - sequelize db:migrate;
+            node tools/dbs/runTriggers.js;
+            node tools/dbs/initializeInflux.js;
+
+{{- end }}
+
+        envFrom:
+          - configMapRef:
+              name: {{.Values.envName}}
+          - secretRef:
+              name: {{.Values.secretName}}
+        
+        env:
+
+{{- if eq .Values.job.mode "add_coin" }}
+
+          - name: COIN_CODE
+            value: {{.Values.job.env.coin_code}}
+
+{{- else if eq .Values.job.mode "remove_coin" }}
+
+          - name: COIN_CODE
+            value: {{.Values.job.env.coin_code}}
+
+{{- else if eq .Values.job.mode "add_pair" }}
+
+          - name: PAIR_CODE
+            value: {{.Values.job.env.pair_code}}
+
+{{- else if eq .Values.job.mode "remove_pair" }}
+
+          - name: PAIR_CODE
+            value: {{.Values.job.env.pair_code}}
+
+{{- end }}
+
+          - name: CURRENCIES
+            valueFrom:
+              configMapKeyRef:
+                name: {{.Values.envCoinsName}}
+                key: CURRENCIES
+
+          - name: PAIRS
+            valueFrom:
+              configMapKeyRef:
+                name: {{.Values.envPairsName}}
+                key: PAIRS
+
+        resources:
+          limits:
+            memory: "300Mi"
+            cpu: "100m"
+          requests:
+            memory: "50Mi"
+            cpu: "15m"
+
+{{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 8 }}
+{{- end }}
+      restartPolicy: Never
+  backoffLimit: 0
+
+{{- end }}

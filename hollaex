@@ -464,6 +464,52 @@ if [[ "$1" == "dev" ]]; then
 
     exit 0;
 
+elif [[ "$1" == "network" ]]; then
+
+    while true; do
+        [[ $# -eq 0 ]] && break
+        case $1 in
+            --setup)
+                HOLLAEX_NETWORK_SETUP=true
+                hollaex setup ${@:2}
+                shift; continue
+                ;;
+            --start)
+                HOLLAEX_NETWORK_START=true
+                hollaex start ${@:2}
+                shift; continue
+                ;;
+            --stop)
+                HOLLAEX_NETWORK_STOP=true
+                hollaex stop ${@:2}
+                shift; continue
+                ;;
+            --restart)
+                HOLLAEX_NETWORK_RESTART=true
+                hollaex restart ${@:2}
+                shift; continue
+                ;;
+            --terminate)
+                HOLLAEX_NETWORK_TERMINATE=true
+                hollaex terminate ${@:2}
+                shift; continue
+                ;;
+            --skip)
+                RUN_WITH_VERIFY=false
+                echo 'Skipping the command confirmation.'
+                shift; continue
+                ;;
+            --*) 
+                err_msg "Invalid option: $1"
+                dev_print_usage;
+                exit 1;
+                ;;
+        esac
+        shift
+    done
+
+    exit 0;
+
 elif [[ "$1" == "init" ]]; then
 
     HOLLAEX_CLI_INIT_PATH=$(pwd)
@@ -787,31 +833,35 @@ elif [[ "$1" == "setup" ]]; then
         source $i
     done;
 
-    if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
+    if [[ ! "$HOLLAEX_NETWORK_SETUP" ]]; then 
 
-        if [[ "$USE_KUBERNETES" ]]; then
+        if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
 
-            hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --kube --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+            if [[ "$USE_KUBERNETES" ]]; then
 
-        else 
+                hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --kube --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
 
-            hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+            else 
 
-        fi
+                hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
 
-    else 
-
-        if [[ "$USE_KUBERNETES" ]]; then
-
-            hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --kube --is_hollaex_setup 
+            fi
 
         else 
 
-            hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --is_hollaex_setup 
+            if [[ "$USE_KUBERNETES" ]]; then
+
+                hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --kube --is_hollaex_setup 
+
+            else 
+
+                hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --is_hollaex_setup 
+
+            fi
 
         fi
-
-    fi
+    
+    fi 
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
