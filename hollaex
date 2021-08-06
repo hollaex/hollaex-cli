@@ -14,7 +14,19 @@ DOCKER_COMPOSE_NAME_PREFIX='local'
 
 INIT_PATH_CHECK=$(pwd)/.hollaex
 
-if [[ ! -f "$INIT_PATH_CHECK" ]]; then 
+if [[ "$1" == "network" ]]; then 
+
+    export HOLLAEX_NETWORK_OPERATION=true
+
+fi 
+
+if [[ "$2" == "--setup" ]]; then 
+
+    export HOLLAEX_NETWORK_SETUP=true
+
+fi 
+
+if [[ ! -f "$INIT_PATH_CHECK" ]] && [[ ! "$HOLLAEX_NETWORK_OPERATION" ]]; then 
 
     echo -e "\n\033[91mFailed to detect the HollaEx Kit."
     echo -e "Every HollaEx commands should be run at the HollaEx Kit path.\033[39m" 
@@ -23,23 +35,42 @@ if [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
 fi 
 
-source $(pwd)/.hollaex
+if [[ "$HOLLAEX_NETWORK_OPERATION" ]] && [[ ! "$HOLLAEX_NETWORK_SETUP" ]]; then 
 
-if [[ "$HOLLAEX_CONFIGMAP_NETWORK_URL" ]]; then 
+    INIT_PATH_CHECK=$(pwd)/.hollaex-network
 
-    export ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER=$HOLLAEX_CONFIGMAP_NETWORK_URL
+    if [[ ! -f "$INIT_PATH_CHECK" ]]; then
 
-elif [[ ! "$HOLLAEX_CONFIGMAP_NETWORK_URL" ]] && [[ "$ENVIRONMENT_HOLLAEX_KIT_NETWORK" == "testnet" ]]; then 
+        echo -e "\n\033[91mFailed to detect the HollaEx Network Home."
+        echo -e "Every HollaEx commands should be run at the HollaEx Network Home Patch.\033[39m" 
+        echo -e "Please check your current path and try it again.\n"
+        exit 1;
 
-    ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER='api.testnet.hollaex.network'
-
-else
-
-    ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER='api.hollaex.network'
+    fi 
 
 fi
 
-source $SCRIPTPATH/version_range
+if [[ ! "$HOLLAEX_NETWORK_OPERATION" ]]; then 
+
+    source $(pwd)/.hollaex
+
+    if [[ "$HOLLAEX_CONFIGMAP_NETWORK_URL" ]]; then 
+
+        export ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER=$HOLLAEX_CONFIGMAP_NETWORK_URL
+
+    elif [[ ! "$HOLLAEX_CONFIGMAP_NETWORK_URL" ]] && [[ "$ENVIRONMENT_HOLLAEX_KIT_NETWORK" == "testnet" ]]; then 
+
+        ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER='api.testnet.hollaex.network'
+
+    else
+
+        ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER='api.hollaex.network'
+
+    fi
+
+    source $SCRIPTPATH/version_range
+
+fi
 
 err_msg() { echo "$@" ;} >&2
 err_msg_a() { err_msg "-a option argument required" ;}
@@ -531,25 +562,67 @@ elif [[ "$1" == "init" ]]; then
     if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
 
         echo "***************************************************************"
-        printf "\nPlease type the URL of your custom network. (Example: api.hollaex.network)\n"
+        printf "\nPlease type the URL of your custom network, including 'http' or 'https'. (Example: https://api.hollaex.network)\n"
         read hollaexAPIURL
 
         while true;
-            do if [[ ! "$hollaexAPIURL" == *"."* ]]; then
-                printf "\nPlease confirm that you typed in a correct url.\n"
+            do if [[ ! "$hollaexAPIURL" == *"http"* ]]; then
+                printf "\nPlease confirm that you typed in a correct url, including 'http' or 'https'.\n"
                 echo  "Custom Network API URL: "
                 read hollaexAPIURL
-            else
+            elif [[ "$hollaexAPIURL" == *"localhost"* ]]; then
+
+                echo -e "\n\033[1m### Enabling a localhost mode ###\033[0m\n"
+                echo -e "Localhost mode sets the HollaEx Network URL to \033[1mhttp://localhost:8081\033[0m,"
+                echo -e "and disables host port access for API, Stream, and Plugin containers to avoid internal port conflicts.\n"
+
+                echo -e "Please make sure that your HollaEx Network is running on local, with '--localhost' flag.\n"
+
+                echo -e "Proceeding...\n"
+
+                sleep 2;
+
+                export HOLLAEX_INIT_LOCALHOST_MODE=true
+                export hollaexAPIURL=http://localhost:8081
+
+                break;
+
+            else 
                 break;
             fi
         done
         
+    else 
+
+        export hollaexAPIURL=https://api.hollaex.network
+
+    fi 
+
+    if [[ "$HOLLAEX_INIT_LOCALHOST_MODE" ]]; then 
+
+        export HOLLAEX_INIT_LOCALHOST_MODE_INTERNAL_URL="http://network-dev-nginx"
+        export HOLLAEX_CONFIGMAP_NETWORK_URL=${HOLLAEX_INIT_LOCALHOST_MODE_INTERNAL_URL//\//\\/}
+
+    else
+    
+        export HOLLAEX_CONFIGMAP_NETWORK_URL=${hollaexAPIURL//\//\\/}
+
     fi
 
-    export HOLLAEX_CONFIGMAP_NETWORK_URL=${hollaexAPIURL:-api.hollaex.network}
+    # Network URL health check
+    while true;
+        do if command curl $hollaexAPIURL/v2/health; then
+            printf "\n\033[92mSuccessfully reached to the network health page.\033[39m\n"
+            break;
+        else 
+            printf "\033[91m\nNetwork health page is not responding.\033[39m\n"
+            echo "Please try it again after you check the URL."
+            exit 1;
+        fi
+    done
 
     printf "\n"
-    echo "${HOLLAEX_CONFIGMAP_NETWORK_URL} ✔"
+    echo "${hollaexAPIURL} ✔"
     printf "\n"
 
     printf "\n\033[1mCreating an admin account\033[0m\n\n"
@@ -593,7 +666,7 @@ elif [[ "$1" == "init" ]]; then
         -w ";%{http_code}" \
         --request POST \
         --data "{\"email\": \"${hollaexAdminEmail}\", \"password\": \"${hollaexAdminPassword}\", \"exchange_name\": \"${hollaexExchangeName}\"}" \
-        https://$HOLLAEX_CONFIGMAP_NETWORK_URL/v2/network/exchange)
+        $hollaexAPIURL/v2/network/exchange)
 
     HOLLAEX_INIT_REQUEST_RESPONSE=$(echo $HOLLAEX_INIT_REQUEST | cut -f1 -d ";")
     HOLLAEX_INIT_REQUEST_HTTP_CODE=$(echo $HOLLAEX_INIT_REQUEST | cut -f2 -d ";")
@@ -611,11 +684,7 @@ elif [[ "$1" == "init" ]]; then
 
     export HOLLAEX_SECRET_API_KEY=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.token.apiKey')
     export HOLLAEX_SECRET_API_SECRET=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.token.secret')
-    export HOLLAEX_SECRET_ACTIVATION_CODE=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.exchange.activation_code')
-
-    # Test
-    echo $HOLLAEX_INIT_REQUEST_RESPONSE
-    
+    export HOLLAEX_SECRET_ACTIVATION_CODE=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.exchange.activation_code')    
 
     # Update settings files with provided values
     for i in ${CONFIG_FILE_PATH[@]}; do
@@ -635,7 +704,8 @@ elif [[ "$1" == "init" ]]; then
         fi
     done
 
-    echo $HOLLAEX_CONFIGMAP_NETWORK_URL > $INIT_PATH_CHECK
+    echo "HOLLAEX_CONFIGMAP_NETWORK_URL=$HOLLAEX_CONFIGMAP_NETWORK_URL" > $INIT_PATH_CHECK
+    echo "HOLLAEX_INIT_LOCALHOST_MODE=true" >> $INIT_PATH_CHECK
 
     echo -e "\nSuccessfully initialized the exchange $hollaexExchangeName and the account $hollaexAdminEmail."
     echo "Please run 'hollaex server --setup' command to set up the exchange."
@@ -761,12 +831,79 @@ elif [[ "$1" == "setup" ]]; then
 
     fi
 
+    source $SCRIPTPATH/tools_generator.sh
+
+    # HollaEx Network Home folder initialization.
+    if [[ "$HOLLAEX_NETWORK_SETUP" ]]; then 
+        
+        INIT_PATH_CHECK=$(pwd)/.hollaex-network
+
+        if [[ -f "$INIT_PATH_CHECK" ]]; then 
+
+            echo "Successfully detected the existing HollaEx Network Home folder."
+            echo "Proceeding without creating a new Network Home."
+            echo "Your Hollaex Network Home folder: $(pwd)/hollaex-network-home."
+        
+        else
+
+            echo -e "\n### HollaEx Network Setup Initialization ###\n"
+
+            echo "Generating the HollaEx Network Home folder under your current directory..."
+            echo -e "Your HollaEx Network Home folder will be created at: $(pwd)/hollaex-network-home\n"
+
+            if [[ -d "$(pwd)/hollaex-network-home" ]]; then 
+
+                echo "Error: The folder already exists at $(pwd)/hollaex-network-home."
+                echo "Please move to another directory, or remove the existing folder if it's not being used."
+                exit 1;
+
+            fi 
+
+            mkdir $(pwd)/hollaex-network-home
+            cd $(pwd)/hollaex-network-home
+
+            echo "Current directory is: $(pwd)."
+
+            mkdir settings
+            touch settings/configmap
+            touch settings/secret
+            mkdir templates
+            touch .hollaex-network
+
+            printf "\nDo you want to run HollaEx Network for local testing purpose? (y/N)\n"
+            printf "HollaEx CLI will set your network to a localhost mode.\n"
+            read answer
+
+            if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                echo "Proceeding without setting up a localhost mode..."
+            else 
+                echo "Setting up a localhost mode..."
+                export HOLLAEX_NETWORK_LOCALHOST_MODE=true
+            fi
+
+            # Settings up the initial envs for HollaEx Network.
+            hollaex_kit_setup_initial_envs;
+
+            CONFIGMAP_FILE_PATH=$(pwd)/settings/configmap
+            SECRET_FILE_PATH=$(pwd)/settings/secret
+
+            echo "Your HollaEx Network Home folder is all set and ready."
+        
+        fi
+
+    fi 
+
     if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
 
         HOLLAEX_CLI_INIT_PATH=$(pwd)
         CONFIG_FILE_PATH=$(pwd)/settings/*
         TEMPLATE_GENERATE_PATH=$(pwd)/templates
-        INIT_PATH_CHECK=$(pwd)/.hollaex
+
+        if [[ "$HOLLAEX_NETWORK_SETUP" ]]; then 
+            INIT_PATH_CHECK=$(pwd)/.hollaex-network
+        else
+            INIT_PATH_CHECK=$(pwd)/.hollaex
+        fi 
 
     fi
 
@@ -774,7 +911,11 @@ elif [[ "$1" == "setup" ]]; then
 
         CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
         TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
-        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        if [[ "$HOLLAEX_NETWORK_SETUP" ]]; then 
+            INIT_PATH_CHECK=$(pwd)/.hollaex-network
+        else
+            INIT_PATH_CHECK=$(pwd)/.hollaex
+        fi 
         
     fi
     
@@ -787,53 +928,51 @@ elif [[ "$1" == "setup" ]]; then
 
     fi
 
-    source $SCRIPTPATH/tools_generator.sh
-
     system_dependencies_check;
 
     check_docker_daemon_status;
 
-    if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
-
-        # Check Kit version compatibility range.
-        check_kit_version_compatibility_range;
-    
-    fi 
-
-    for i in ${CONFIG_FILE_PATH[@]}; do
-        source $i
-    done;
-
-    for i in ${CONFIG_FILE_PATH[@]}; do
-
-        if command grep -q "HOLLAEX_CONFIGMAP_API_NAME=" $i > /dev/null ; then
-
-            export CONFIGMAP_FILE_PATH=$i
-
-        fi
-
-    done
-
-    for i in ${CONFIG_FILE_PATH[@]}; do
-
-        if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE=" $i > /dev/null ; then
-
-            export SECRET_FILE_PATH=$i
-
-        fi
-
-    done
-
-    # PRESET env for user initial setup config value selection
-    CONTINUE_WITH_PRECONFIGURED_VALUES=false 
-
-    # hollaex_setup_initialization;
-
-    for i in ${CONFIG_FILE_PATH[@]}; do
-        source $i
-    done;
-
     if [[ ! "$HOLLAEX_NETWORK_SETUP" ]]; then 
+
+        if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
+
+            # Check Kit version compatibility range.
+            check_kit_version_compatibility_range;
+        
+        fi 
+
+        for i in ${CONFIG_FILE_PATH[@]}; do
+            source $i
+        done;
+
+        for i in ${CONFIG_FILE_PATH[@]}; do
+
+            if command grep -q "HOLLAEX_CONFIGMAP_API_NAME=" $i > /dev/null ; then
+
+                export CONFIGMAP_FILE_PATH=$i
+
+            fi
+
+        done
+
+        for i in ${CONFIG_FILE_PATH[@]}; do
+
+            if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE=" $i > /dev/null ; then
+
+                export SECRET_FILE_PATH=$i
+
+            fi
+
+        done
+
+        # PRESET env for user initial setup config value selection
+        CONTINUE_WITH_PRECONFIGURED_VALUES=false 
+
+        # hollaex_setup_initialization;
+
+        for i in ${CONFIG_FILE_PATH[@]}; do
+            source $i
+        done;
 
         if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
 
@@ -860,7 +999,7 @@ elif [[ "$1" == "setup" ]]; then
             fi
 
         fi
-    
+
     fi 
 
     for i in ${CONFIG_FILE_PATH[@]}; do
@@ -1004,7 +1143,16 @@ elif [[ "$1" == "setup" ]]; then
         fi
 
         echo "Generating docker-compose file"
-        generate_local_docker_compose
+
+        if [[ "$HOLLAEX_NETWORK_SETUP" ]]; then
+
+            generate_local_docker_compose_for_network
+
+        else 
+
+            generate_local_docker_compose
+
+        fi 
         generate_local_env
         generate_nginx_upstream
         apply_nginx_user_defined_values
@@ -3998,7 +4146,14 @@ elif [[ "$1" == "terminate" ]]; then
         if [[ -f "$TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml" ]] ; then
 
             docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client down 
+
         fi
+
+        if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-web.conf" ]]; then 
+
+            rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-web.conf
+        
+        fi 
 
         hollaex_ascii_exchange_has_been_terminated;
 

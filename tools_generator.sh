@@ -759,6 +759,161 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]]; then
           cpus: "${ENVIRONMENT_REDIS_CPU_REQUESTS:-0.1}"
           $(echo memory: "${ENVIRONMENT_REDIS_MEMORY_REQUESTS:-100M}" | sed 's/i//g')
     networks:
+      - $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "hollaex-network_hollaex-network-local-network"; else echo "${ENVIRONMENT_EXCHANGE_NAME}-network"; fi)
+EOL
+
+fi
+
+if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then 
+  # Generate docker-compose
+  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+  ${ENVIRONMENT_EXCHANGE_NAME}-db:
+    image: ${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY:-postgres}:${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION:-10.9}
+    restart: unless-stopped
+    ports:
+      - 5432:5432
+    env_file:
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    deploy:
+      resources:
+        limits:
+          cpus: "${ENVIRONMENT_POSTGRESQL_CPU_LIMITS:-0.1}"
+          $(echo memory: "${ENVIRONMENT_POSTGRESQL_MEMORY_LIMITS:-100M}" | sed 's/i//g')
+        reservations:
+          cpus: "${ENVIRONMENT_POSTGRESQL_CPU_REQUESTS:-0.1}"
+          $(echo memory: "${ENVIRONMENT_POSTGRESQL_MEMORY_REQUESTS:-100M}" | sed 's/i//g')
+    command : ["sh", "-c", "export POSTGRES_DB=\$\${DB_NAME} && export POSTGRES_USER=\$\${DB_USERNAME} && export POSTGRES_PASSWORD=\$\${DB_PASSWORD} && ./docker-entrypoint.sh postgres"]
+    networks:
+      - $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "hollaex-network_hollaex-network-local-network"; else echo "${ENVIRONMENT_EXCHANGE_NAME}-network"; fi)
+EOL
+
+fi
+
+#LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE=$ENVIRONMENT_EXCHANGE_RUN_MODE
+
+IFS=',' read -ra LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE <<< "$ENVIRONMENT_EXCHANGE_RUN_MODE"
+
+for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
+
+  # Generate docker-compose
+  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-server-${i}:
+    image: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
+    restart: unless-stopped
+    env_file:
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    entrypoint:
+      - node
+    deploy:
+      resources:
+        limits:
+          # CPU LIMIT
+          $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: \"${ENVIRONMENT_API_CPU_LIMITS:-0.1}\""; fi) 
+          $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: \"${ENVIRONMENT_STREAM_CPU_LIMITS:-0.1}\""; fi) 
+          $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: \"${ENVIRONMENT_PLUGINS_CPU_LIMITS:-0.1}\""; fi) 
+          # MEMORY LIMIT
+          $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_API_MEMORY_LIMITS:-512M}" | sed 's/i//g' ; fi) 
+          $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_STREAM_MEMORY_LIMITS:-256M}" | sed 's/i//g' ; fi) 
+          $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_PLUGINS_MEMORY_LIMITS:-512M}" | sed 's/i//g' ; fi) 
+        reservations:
+          # CPU REQUEST
+          $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: \"${ENVIRONMENT_API_CPU_REQUESTS:-0.05}\""; fi) 
+          $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: \"${ENVIRONMENT_STREAM_CPU_REQUESTS:-0.05}\""; fi) 
+          $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: \"${ENVIRONMENT_PLUGINS_CPU_REQUESTS:-0.05}\""; fi) 
+          # MEMORY REQUEST
+          $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_API_MEMORY_REQUESTS:-512M}" | sed 's/i//g' ; fi) 
+          $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_STREAM_MEMORY_REQUESTS:-256M}" | sed 's/i//g' ; fi) 
+          $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_PLUGINS_MEMORY_REQUESTS:-256M}" | sed 's/i//g' ; fi) 
+    command:
+      $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- app.js"; fi) 
+      $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- ws/index.js"; fi) 
+      $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- plugins.js"; fi) 
+    $(if [[ "${i}" == "api" ]] || [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "ports:"; fi)
+      $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- 10010:10010"; fi) 
+      $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- 10080:10080"; fi)
+      $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- 10011:10011"; fi)
+    networks:
+      - $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "hollaex-network_hollaex-network-local-network"; else echo "${ENVIRONMENT_EXCHANGE_NAME}-network"; fi)
+    $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" ]] || [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" ]] || [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" ]]; then echo "depends_on:"; fi)
+      $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-redis"; fi)
+      $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-db"; fi)
+
+EOL
+
+  if [[ "$i" == "api" ]]; then
+  # Generate docker-compose
+  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+
+  ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
+    image: ${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_REGISTRY:-bitholla/nginx-with-certbot}:${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_VERSION:-1.15.8}
+    restart: unless-stopped
+    volumes:
+      - ./nginx:/etc/nginx
+      - ./logs/nginx:/var/log/nginx
+      - ./nginx/static/:/usr/share/nginx/html
+      - ./letsencrypt:/etc/letsencrypt
+    ports:
+      - ${ENVIRONMENT_LOCAL_NGINX_HTTP_PORT:-80}:80
+      - ${ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT:-443}:443
+    environment:
+      - NGINX_PORT=80
+    entrypoint: 
+      - /bin/sh
+      - -c 
+      - ip -4 route list match 0/0 | awk '{print \$\$3 " host.access"}' >> /etc/hosts && nginx -g "daemon off;"
+    depends_on:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-server-${i}
+      $(if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-web"; fi)
+    networks:
+      - $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "hollaex-network_hollaex-network-local-network"; else echo "${ENVIRONMENT_EXCHANGE_NAME}-network"; fi)
+      
+EOL
+
+  fi
+
+done
+
+# Generate docker-compose
+cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+networks:
+  $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "hollaex-network_hollaex-network-local-network:"; else echo "${ENVIRONMENT_EXCHANGE_NAME}-network:"; fi)
+    $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "external: true"; fi)
+EOL
+
+}
+
+function generate_local_docker_compose_for_network() {
+
+# Generate docker-compose
+cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+version: '3'
+services:
+EOL
+
+if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]]; then 
+
+  # Generate docker-compose
+  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+  ${ENVIRONMENT_EXCHANGE_NAME}-redis:
+    image: ${ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY:-redis}:${ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION:-6.0.9-alpine}
+    restart: unless-stopped
+    depends_on:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-db
+    ports:
+      - 6379:6379
+    env_file:
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    command : ["sh", "-c", "redis-server --requirepass \$\${REDIS_PASSWORD}"]
+    deploy:
+      resources:
+        limits:
+          cpus: "${ENVIRONMENT_REDIS_CPU_LIMITS:-0.1}"
+          $(echo memory: "${ENVIRONMENT_REDIS_MEMORY_LIMITS:-100M}" | sed 's/i//g')
+        reservations:
+          cpus: "${ENVIRONMENT_REDIS_CPU_REQUESTS:-0.1}"
+          $(echo memory: "${ENVIRONMENT_REDIS_MEMORY_REQUESTS:-100M}" | sed 's/i//g')
+    networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
 EOL
 
@@ -811,24 +966,24 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
           # CPU LIMIT
           $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: \"${ENVIRONMENT_API_CPU_LIMITS:-0.1}\""; fi) 
           $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: \"${ENVIRONMENT_STREAM_CPU_LIMITS:-0.1}\""; fi) 
-          $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: \"${ENVIRONMENT_PLUGINS_CPU_LIMITS:-0.1}\""; fi) 
+          $(if [[ "${i}" == "engine" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: \"${ENVIRONMENT_PLUGINS_CPU_LIMITS:-0.1}\""; fi) 
           # MEMORY LIMIT
           $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_API_MEMORY_LIMITS:-512M}" | sed 's/i//g' ; fi) 
           $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_STREAM_MEMORY_LIMITS:-256M}" | sed 's/i//g' ; fi) 
-          $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_PLUGINS_MEMORY_LIMITS:-512M}" | sed 's/i//g' ; fi) 
+          $(if [[ "${i}" == "engine" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_PLUGINS_MEMORY_LIMITS:-512M}" | sed 's/i//g' ; fi) 
         reservations:
           # CPU REQUEST
           $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: \"${ENVIRONMENT_API_CPU_REQUESTS:-0.05}\""; fi) 
           $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: \"${ENVIRONMENT_STREAM_CPU_REQUESTS:-0.05}\""; fi) 
-          $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: \"${ENVIRONMENT_PLUGINS_CPU_REQUESTS:-0.05}\""; fi) 
+          $(if [[ "${i}" == "engine" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: \"${ENVIRONMENT_PLUGINS_CPU_REQUESTS:-0.05}\""; fi) 
           # MEMORY REQUEST
           $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_API_MEMORY_REQUESTS:-512M}" | sed 's/i//g' ; fi) 
           $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_STREAM_MEMORY_REQUESTS:-256M}" | sed 's/i//g' ; fi) 
-          $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_PLUGINS_MEMORY_REQUESTS:-256M}" | sed 's/i//g' ; fi) 
-    command:
-      $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- app.js"; fi) 
-      $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- ws/index.js"; fi) 
-      $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- plugins.js"; fi) 
+          $(if [[ "${i}" == "engine" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_PLUGINS_MEMORY_REQUESTS:-256M}" | sed 's/i//g' ; fi) 
+    entrypoint:
+      $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- /app/api-binary"; fi) 
+      $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- /app/stream-binary"; fi) 
+      $(if [[ "${i}" == "engine" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- /app/engine-binary.js"; fi) 
     $(if [[ "${i}" == "api" ]] || [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "ports:"; fi)
       $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- 10010:10010"; fi) 
       $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- 10080:10080"; fi)
@@ -877,8 +1032,8 @@ done
 # Generate docker-compose
 cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
 networks:
-  ${ENVIRONMENT_EXCHANGE_NAME}-network:
-  
+  ${ENVIRONMENT_EXCHANGE_NAME}-network
+
 EOL
 
 }
@@ -910,11 +1065,11 @@ EOL
     $(if [[ ! "$WEB_CLIENT_SCALE" ]]; then echo "ports:"; fi) 
       $(if [[ ! "$WEB_CLIENT_SCALE" ]]; then echo "- 8080:80"; fi) 
     networks:
-      - local_${ENVIRONMENT_EXCHANGE_NAME}-network
+      - $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "hollaex-network_hollaex-network-local-network"; else echo "local_${ENVIRONMENT_EXCHANGE_NAME}-network"; fi)
 
 networks:
-  local_${ENVIRONMENT_EXCHANGE_NAME}-network:
-    external: true
+  $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "hollaex-network_hollaex-network-local-network:"; else echo "local_${ENVIRONMENT_EXCHANGE_NAME}-network:"; fi)
+    $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "external: true"; fi)
 
 EOL
 
@@ -3625,5 +3780,163 @@ function run_and_upgrade_hollaex_on_kubernetes() {
 
   echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
   kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+}
+
+function hollaex_kit_setup_initial_envs() {
+
+    echo "Settings up the initial envs on your HollaEx Network home's settings directory."
+
+    # Generate local nginx conf
+    cat > $(pwd)/settings/configmap <<EOL
+
+ENVIRONMENT_EXCHANGE_NAME=hollaex-network
+
+HOLLAEX_CONFIGMAP_DB_DIALECT=postgres
+HOLLAEX_CONFIGMAP_DB_SSL=false
+
+HOLLAEX_CONFIGMAP_API_HOST=localhost
+
+HOLLAEX_CONFIGMAP_CURRENCIES=xht,usdt
+HOLLAEX_CONFIGMAP_PAIRS=xht-usdt
+
+INDEPENDENT=true
+
+ENVIRONMENT_HOLLAEX_NETWORK_IMAGE_REGISTRY=bitholla/hollaex-network-core
+ENVIRONMENT_HOLLAEX_NETWORK_VERSION=latest
+
+$(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "HOLLAEX_NETWORK_LOCALHOST_MODE=true"; fi)
+
+####################################################
+
+HOLLAEX_CONFIGMAP_NODE_ENV=production
+HOLLAEX_CONFIGMAP_PORT=10010
+HOLLAEX_CONFIGMAP_WEBSOCKET_PORT=10080
+
+HOLLAEX_CONFIGMAP_SEND_EMAIL_TO_SUPPORT=true
+
+HOLLAEX_CONFIGMAP_VAULT_NAME=
+
+HOLLAEX_CONFIGMAP_DB_SSL=false
+
+HOLLAEX_CONFIGMAP_LOG_LEVEL=verbose
+
+ENVIRONMENT_EXCHANGE_RUN_MODE=api,stream,job,engine
+
+ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB=true
+ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS=true
+
+ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB=true
+ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE=25Gi
+
+ENVIRONMENT_KUBERNETES_RUN_REDIS=true
+
+ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR="{}"
+ENVIRONMENT_KUBERNETES_REDIS_NODESELECTOR="{}"
+ENVIRONMENT_KUBERNETES_INFLUXDB_NODESELECTOR="{}"
+ENVIRONMENT_KUBERNETES_EXCHANGE_STATEFUL_NODESELECTOR="{}"
+ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR="{}"
+
+ENVIRONMENT_DOCKER_IMAGE_VERSION=2.0.0
+
+ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY=postgres
+ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION=10.9-alpine
+
+ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY=redis
+ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION=6.0.9-alpine
+
+ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_REGISTRY=influxdb
+ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION=1.8.3
+
+ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_REGISTRY=bitholla/nginx-with-certbot
+ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_VERSION=1.15.8
+
+ENVIRONMENT_LOCAL_NGINX_HTTP_PORT=80
+ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT=443
+
+ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS=1
+
+ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE=true
+ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE=true
+ENVIRONMENT_DOCKER_COMPOSE_GENERATE_NGINX_UPSTREAM=true
+
+ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE=true
+ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE=true
+ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE=true
+
+ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER=
+
+ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS=false
+ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT=40000
+
+ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS=false
+ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT=40001
+
+ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL=
+
+ENVIRONMENT_API_CPU_LIMITS=0.1
+ENVIRONMENT_API_MEMORY_LIMITS=512Mi
+ENVIRONMENT_API_CPU_REQUESTS=0.05
+ENVIRONMENT_API_MEMORY_REQUESTS=512Mi
+
+ENVIRONMENT_STREAM_CPU_LIMITS=0.1
+ENVIRONMENT_STREAM_MEMORY_LIMITS=256Mi
+ENVIRONMENT_STREAM_CPU_REQUESTS=0.05
+ENVIRONMENT_STREAM_MEMORY_REQUESTS=256Mi
+
+ENVIRONMENT_PLUGINS_CPU_LIMITS=0.1
+ENVIRONMENT_PLUGINS_MEMORY_LIMITS=512Mi
+ENVIRONMENT_PLUGINS_CPU_REQUESTS=0.05
+ENVIRONMENT_PLUGINS_MEMORY_REQUESTS=256Mi
+
+ENVIRONMENT_POSTGRESQL_CPU_LIMITS=0.1
+ENVIRONMENT_POSTGRESQL_MEMORY_LIMITS=100Mi
+ENVIRONMENT_POSTGRESQL_CPU_REQUESTS=0.1
+ENVIRONMENT_POSTGRESQL_MEMORY_REQUESTS=100Mi
+
+ENVIRONMENT_REDIS_CPU_LIMITS=0.1
+ENVIRONMENT_REDIS_MEMORY_LIMITS=100Mi
+ENVIRONMENT_REDIS_CPU_REQUESTS=0.1
+ENVIRONMENT_REDIS_MEMORY_REQUESTS=100Mi
+
+ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_RULE='0 1 * * *'
+ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_REGION=
+ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_BUCKET=
+ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_TIMEZONE=UTC
+
+ENVIRONMENT_KUBERNETES_STREAM_SERVER_REPLICAS=1
+
+ENVIRONMENT_KUBERNETES_API_HPA_ENABLE=false
+ENVIRONMENT_KUBERNETES_STREAM_HPA_ENABLE=false
+ENVIRONMENT_KUBERNETES_API_HPA_AVGMEMORY=1300000000
+ENVIRONMENT_KUBERNETES_STREAM_HPA_AVGMEMORY=300000000
+
+ENVIRONMENT_KUBERNETES_API_HPA_MAXREPLICAS=4
+ENVIRONMENT_KUBERNETES_STREAM_HPA_MAXREPLICAS=4
+
+EOL
+
+# Generate local nginx conf
+    cat > $(pwd)/settings/secret <<EOL
+
+HOLLAEX_SECRET_PUBSUB_HOST=hollaex-network-redis
+HOLLAEX_SECRET_PUBSUB_PORT=6379
+HOLLAEX_SECRET_REDIS_HOST=hollaex-network-redis
+HOLLAEX_SECRET_REDIS_PORT=6379
+
+HOLLAEX_SECRET_DB_HOST=hollaex-network-db
+HOLLAEX_SECRET_DB_NAME=network
+HOLLAEX_SECRET_DB_PASSWORD=network
+HOLLAEX_SECRET_DB_PORT=5432
+HOLLAEX_SECRET_DB_USERNAME=network
+
+HOLLAEX_SECRET_INFLUX_DB=network
+HOLLAEX_SECRET_INFLUX_HOST=hollaex-network-influxdb
+HOLLAEX_SECRET_INFLUX_PASSWORD=network
+HOLLAEX_SECRET_INFLUX_PORT=8086
+HOLLAEX_SECRET_INFLUX_USER=network
+
+EOL
+
 
 }
