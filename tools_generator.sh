@@ -988,7 +988,7 @@ fi
 
 # Generate Kubernetes Secret
 cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml <<EOL
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-api
@@ -1016,13 +1016,16 @@ spec:
   - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
     http:
       paths:
-      - path: /
+      - pathType: Prefix
+        path: /
         backend:
-          serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
-          servicePort: 10010
+          service:
+            name: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
+            port:
+              number: 10010
   $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
 ---
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-plugins
@@ -1046,14 +1049,17 @@ spec:
   - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
     http:
       paths:
-      - path: /plugins
+      - pathType: Prefix
+        path: /plugins
         backend:
-          serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins
-          servicePort: 10011
+          service:
+            name: ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins
+            port:
+              number: 10011
     
   $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
 ---
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-stream
@@ -1078,10 +1084,13 @@ spec:
   - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
     http:
       paths:
-      - path: /stream
+      - pathType: Prefix
+        path: /stream
         backend:
-          serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-server-stream
-          servicePort: 10080
+          service:
+            name: ${ENVIRONMENT_EXCHANGE_NAME}-server-stream
+            port:
+              number: 10080
   
   $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
 EOL
@@ -1098,7 +1107,7 @@ fi
 
   # Generate Kubernetes Secret
 cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress-web.yaml <<EOL
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-web
@@ -1121,10 +1130,13 @@ spec:
   - host: $(echo ${HOLLAEX_CONFIGMAP_DOMAIN} | cut -f3 -d "/")
     http:
       paths:
-      - path: /
+      - pathType: Prefix
+        path: /
         backend:
-          serviceName: ${ENVIRONMENT_EXCHANGE_NAME}-web
-          servicePort: 80
+          service:
+            name: ${ENVIRONMENT_EXCHANGE_NAME}-web
+            port:
+              number: 80
   
   $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB" == true ]];then ingress_web_tls_snippets $HOLLAEX_CONFIGMAP_DOMAIN; fi)
 EOL

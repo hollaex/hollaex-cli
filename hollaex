@@ -113,6 +113,9 @@ Options:
         --install_cli, Install specific version of HollaEx CLI.
         --influxdb_migration, Migrate InfluxDB data to a new InfluxDB.
         --reset_hmac_token, Reset the exchange API key (HMAC Token).
+        --enable_maintenance_mode, Maintenance mode. Giving HTTP 503 for non-whitelisted IPs.
+        --whitelist-ip, List of whitelist IPs for the maintenance mode. Comma separated, no spaces.
+        --disable_maintenance_mode, Disabling maintenance mode.
 
     dev: Running an exchange in a dev mode.
         --setup, Setup an exchange in a dev mode.
