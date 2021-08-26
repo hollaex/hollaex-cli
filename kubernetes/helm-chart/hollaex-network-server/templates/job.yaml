@@ -42,6 +42,27 @@ spec:
         args:
           - node tools/dbs/removePair.js;
 
+{{- else if eq .Values.job.mode "activate_coin" }}
+
+        args:
+          - node tools/dbs/activateCoin.js;
+
+
+{{- else if eq .Values.job.mode "activate_pair" }}
+
+        args:
+          - node tools/dbs/activatePair.js;
+
+{{- else if eq .Values.job.mode "change_coin_owner" }}
+
+        args:
+          - node tools/dbs/changeCoinOwner.js;
+  
+{{- else if eq .Values.job.mode "change_pair_owner" }}
+
+        args:
+          - node tools/dbs/changePairOwner.js;
+
 {{- else if eq .Values.job.mode "run_triggers" }}
 
         args:

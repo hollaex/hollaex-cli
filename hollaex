@@ -14,14 +14,15 @@ DOCKER_COMPOSE_NAME_PREFIX='local'
 
 INIT_PATH_CHECK=$(pwd)/.hollaex
 
+# Setting the mode to hollaex network operation
 if [[ "$1" == "network" ]]; then 
 
     export HOLLAEX_NETWORK_OPERATION=true
 
-fi 
+fi
 
-if [[ "$2" == "--setup" ]]; then 
-
+if [[ "$1" == "network" ]] && [[ "$2" == "--setup" ]]; then
+    
     export HOLLAEX_NETWORK_SETUP=true
 
 fi 
@@ -194,6 +195,21 @@ Options:
     --command: Run Docker-Compose commands. (up, down, stop, --build)
 
     --database_init: Run database initialization scripts.
+
+EOF
+}
+
+function print_network_usage() {
+/bin/cat << EOF
+
+# All 'hollaex network' commands should be run at HollaEx Network Home.
+
+Usage : 
+    hollaex network [ setup ] [ start ] [ stop ] [ restart ] [ upgrade ] [ terminate ] [ add_coin / add_trading_pair ] [ change_coin_owner / change_trading_pair_owner ] [ activate_coin / activate_trading_pair ] (--flags)
+
+General Flags :
+    --skip, Run command without user's double confirmation.
+    --kube, Set HollaEx CLI to target Kubernetes. Make sure to setup your local kubectl before using it.
 
 EOF
 }
@@ -501,28 +517,112 @@ elif [[ "$1" == "network" ]]; then
         [[ $# -eq 0 ]] && break
         case $1 in
             --setup)
-                HOLLAEX_NETWORK_SETUP=true
+                export HOLLAEX_NETWORK_SETUP=true
                 hollaex setup ${@:2}
+                exit 0;
                 shift; continue
                 ;;
             --start)
-                HOLLAEX_NETWORK_START=true
+                export HOLLAEX_NETWORK_START=true
                 hollaex start ${@:2}
+                exit 0;
                 shift; continue
                 ;;
             --stop)
-                HOLLAEX_NETWORK_STOP=true
+                export HOLLAEX_NETWORK_STOP=true
                 hollaex stop ${@:2}
+                exit 0;
                 shift; continue
                 ;;
             --restart)
-                HOLLAEX_NETWORK_RESTART=true
+                export HOLLAEX_NETWORK_RESTART=true
                 hollaex restart ${@:2}
+                exit 0;
+                shift; continue
+                ;;
+            --upgrade)
+                export HOLLAEX_NETWORK_UPGRADE=true
+                hollaex apply ${@:2}
+                exit 0;
                 shift; continue
                 ;;
             --terminate)
-                HOLLAEX_NETWORK_TERMINATE=true
+                export HOLLAEX_NETWORK_TERMINATE=true
                 hollaex terminate ${@:2}
+                exit 0;
+                shift; continue
+                ;;
+             --status)
+                export HOLLAEX_NETWORK_STATUS=true
+                hollaex status ${@:2}
+                exit 0;
+                shift; continue
+                ;;
+            --add_coin)
+                ADD_COIN=true
+                TOOLBOX_ENABLE=true
+                echo "HollaEx CLI will proceed to add new coin on your existing HollaEx Network."
+                shift; continue
+                ;;
+            --add_trading_pair)
+                ADD_TRADING_PAIR=true
+                TOOLBOX_ENABLE=true
+                echo "HollaEx CLI will proceed to add new trading pair on your existing HollaEx Network."
+                shift; continue
+                ;;
+            --remove_coin)
+                REMOVE_COIN=true
+                TOOLBOX_ENABLE=true
+                echo "HollaEx CLI will proceed to remove coin on your existing HollaEx Network."
+                shift; continue
+                ;;
+            --remove_trading_pair)
+                REMOVE_TRADING_PAIR=true
+                TOOLBOX_ENABLE=true
+                echo "HollaEx CLI will proceed to remove trading pair on your existing HollaEx Network."
+                shift; continue
+                ;;
+            --change_coin_owner)
+                CHANGE_COIN_OWNER=true
+                TOOLBOX_ENABLE=true
+                shift; continue
+                ;;
+            --change_trading_pair_owner)
+                CHANGE_PAIR_OWNER=true
+                TOOLBOX_ENABLE=true
+                shift; continue
+                ;;
+            --activate_coin)
+                ACTIVATE_COIN=true
+                TOOLBOX_ENABLE=true
+                shift; continue
+                ;;
+            --activate_trading_pair)
+                ACTIVATE_PAIR=true
+                TOOLBOX_ENABLE=true
+                shift; continue
+                ;;
+            --is_hollaex_setup)
+                IS_HOLLAEX_SETUP=true
+                shift; continue
+                ;;
+            --backup)
+                HOLLAEX_NETWORK_BACKUP=true
+                hollaex toolbox --backup ${@:2}
+                exit 0;
+                shift; continue
+                ;;
+            --restore)
+                HOLLAEX_NETWORK_RESTORE=true
+                hollaex toolbox --restore ${@:2}
+                exit 0;
+                shift; continue
+                ;;
+            --tag)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$1
+                echo "Target Docker Image tag: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE."
                 shift; continue
                 ;;
             --skip)
@@ -532,12 +632,378 @@ elif [[ "$1" == "network" ]]; then
                 ;;
             --*) 
                 err_msg "Invalid option: $1"
-                dev_print_usage;
+                print_network_usage;
                 exit 1;
+                shift; continue
                 ;;
         esac
         shift
     done
+
+    source $SCRIPTPATH/tools_generator.sh
+
+    HOLLAEX_CLI_INIT_PATH=$(pwd)
+    CONFIG_FILE_PATH=$(pwd)/settings/*
+    TEMPLATE_GENERATE_PATH=$(pwd)/templates
+    INIT_PATH_CHECK=$(pwd)/.hollaex-network
+
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
+
+    if [[ "$ADD_COIN" ]]; then
+
+        if [[ "$IS_HOLLAEX_SETUP" ]]; then
+
+            echo "Adding user custom currencies on the exchange..."
+
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
+
+                    export CONFIGMAP_FILE_PATH=$i
+
+                fi
+
+            done
+
+            IFS=',' read -ra CUSTOM_CURRENCIES_TO_ADD <<< "$HOLLAEX_CONFIGMAP_CURRENCIES"
+
+            for j in ${CUSTOM_CURRENCIES_TO_ADD[@]}; do
+
+                if command grep -q $j $CONFIGMAP_FILE_PATH > /dev/null; then
+
+                    export COIN_CODE=$j
+                    export VALUE_IMPORTED_FROM_CONFIGMAP=true
+
+                    if command grep -q "ENVIRONMENT_ADD_COIN_$(echo $j | tr a-z A-Z)_" $CONFIGMAP_FILE_PATH > /dev/null ; then
+
+                        printf "\033[92mCoin configurations for $j has been detected at user's configmap file!\033[39m\n"
+                        echo "Proceeding to add..."
+
+                        add_coin_exec;
+                    
+                    else 
+
+                        printf "\033[91mError: Coin configurations for $j doesn't exists at user's configmap file.\033[39m\n"
+                        echo "Skipping to add..."
+
+                    fi
+                
+                fi
+            
+            done
+
+            if [[ "$USE_KUBERNETES" ]]; then
+
+                kubernetes_database_init upgrade;
+
+            else 
+
+                echo "Running database triggers"
+                docker exec --env "CURRENCIES=${HOLLAEX_CONFIGMAP_CURRENCIES}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null;
+            
+            fi
+             
+        elif [[ "$IS_COIN_CODE_PASSED" ]]; then
+
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
+
+                    export CONFIGMAP_FILE_PATH=$i
+
+                fi
+
+            done
+
+            IFS=',' read -ra CUSTOM_CURRENCIES_TO_ADD <<< "$PASSED_COIN_CODE"
+
+            for j in ${CUSTOM_CURRENCIES_TO_ADD[@]}; do
+                
+                for i in ${CONFIG_FILE_PATH[@]}; do
+                    source $i
+                done;
+
+                if [[ $(echo $j | grep $HOLLAEX_CONFIGMAP_CURRENCIES) ]]; then
+
+                    echo "Error: Coin $j is already exists on your exchange."
+                    exit 1;
+
+                fi
+                
+                COIN_CODE=$j
+                COIN_FULLNAME=$(echo $j | tr a-z A-Z)
+                COIN_ALLOW_DEPOSIT=true
+                COIN_ALLOW_WITHDRAWAL=true
+                COIN_WITHDRAWAL_FEE=0.01
+                COIN_MIN=0.01
+                COIN_MAX=10000
+                COIN_INCREMENT_UNIT=0.001
+                COIN_ACTIVE=true
+                
+                add_coin_exec;
+                   
+            done
+
+        else 
+
+            printf "\033[93mWarning: Adding new coin requires full restart of the exchange!\033[39m\n"
+            echo "Please double confirm that you are good to proceed"
+            
+            add_coin_input;
+
+            add_coin_exec;
+        
+        fi
+        
+    elif [[ "$REMOVE_COIN" ]]; then
+
+        printf "\033[93mWarning: Removing new coin requires full restart of the exchange!\033[39m\n"
+        echo "Please double confirm that you are good to proceed"
+
+        if [[ "$IS_COIN_CODE_PASSED" ]]; then
+
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
+
+                    export CONFIGMAP_FILE_PATH=$i
+
+                fi
+
+            done
+
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
+
+                    export CONFIGMAP_FILE_PATH=$i
+
+                fi
+
+            done
+
+            IFS=',' read -ra CUSTOM_CURRENCIES_TO_REMOVE <<< "$PASSED_COIN_CODE"
+
+            for j in ${CUSTOM_CURRENCIES_TO_REMOVE[@]}; do
+
+                for i in ${CONFIG_FILE_PATH[@]}; do
+                    source $i
+                done;
+
+                if [[ ! $(echo $HOLLAEX_CONFIGMAP_CURRENCIES | grep $j) ]]; then
+
+                    echo "Error: Coin $j doesn't exists on your exchange."
+                    exit 1;
+
+                fi
+                
+                COIN_CODE=$j
+
+                remove_coin_exec;
+                   
+            done
+
+        else 
+            
+            remove_coin_input;
+
+            remove_coin_exec;
+        
+        fi
+    
+    elif [[ "$ADD_TRADING_PAIR" ]]; then
+
+        if [[ "$IS_HOLLAEX_SETUP" ]]; then
+
+            echo "Adding user custom trading pairs on the exchange..."
+
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
+
+                    export CONFIGMAP_FILE_PATH=$i
+
+                fi
+
+            done
+
+            IFS=',' read -ra CUSTOM_PAIRS_TO_ADD <<< "$HOLLAEX_CONFIGMAP_PAIRS"
+
+            for j in ${CUSTOM_PAIRS_TO_ADD[@]}; do
+
+                if command grep -q $j $CONFIGMAP_FILE_PATH > /dev/null; then
+
+                    export PAIR_CODE=$j
+                    export PAIR_BASE=$(echo $j | cut -f1 -d "-")
+                    export PAIR_2=$(echo $j | cut -f2 -d "-")
+                    export PAIR_PREFIX=$(echo $PAIR_BASE | tr a-z A-Z)_$(echo $PAIR_2 | tr a-z A-Z)
+     
+                    export VALUE_IMPORTED_FROM_CONFIGMAP=true
+
+                    if command grep -q "ENVIRONMENT_ADD_PAIR_$(echo $PAIR_PREFIX)_" $CONFIGMAP_FILE_PATH > /dev/null ; then
+
+                        printf "\033[92mTrading pair configurations for $j has been detected at user's configmap file!\033[39m\n"
+                        echo "Proceeding to add..."
+
+                        add_pair_exec;
+                    
+                    else 
+
+                        printf "\033[91mError: Trading pair configurations for $j doesn't exists at user's configmap file.\033[39m\n"
+                        echo "Skipping to add..."
+                    
+                    fi
+                
+                fi
+            
+            done
+
+            if [[ "$USE_KUBERNETES" ]]; then
+
+                kubernetes_database_init upgrade;
+
+            else 
+
+                echo "Running database triggers"
+                docker exec --env "PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null;
+            
+            fi
+
+        elif [[ "$IS_PAIR_CODE_PASSED" ]]; then
+
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
+
+                    export CONFIGMAP_FILE_PATH=$i
+
+                fi
+
+            done
+
+            IFS=',' read -ra CUSTOM_PAIRS_TO_ADD <<< "$PASSED_PAIR_CODE"
+
+            for j in ${CUSTOM_PAIRS_TO_ADD[@]}; do
+
+                for i in ${CONFIG_FILE_PATH[@]}; do
+                    source $i
+                done;
+
+                if [[ $(echo $j | grep $HOLLAEX_CONFIGMAP_PAIRS) ]]; then
+
+                    echo "Error: Pair $j is already exists on your exchange."
+                    exit 1;
+
+                fi
+                
+                PAIR_CODE=$j
+                PAIR_BASE=$(echo $PAIR_CODE | cut -f1 -d '-')
+                PAIR_2=$(echo $PAIR_CODE | cut -f2 -d '-')
+                MIN_SIZE=0.00001
+                MAX_SIZE=10000000
+                MIN_PRICE=0.000001
+                MAX_PRICE=1000000
+                INCREMENT_SIZE=0.001
+                INCREMENT_PRICE=0.001
+                PAIR_ACTIVE=true
+                TAKER_FEES=$(join_array_to_json $(for ((i=1;i<=$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER;i++)); do echo -n "$i " ; done;))
+                MAKER_FEES=$(join_array_to_json $(for ((i=1;i<=$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER;i++)); do echo -n "$i " ; done;))
+                
+                add_pair_exec;
+                   
+            done
+
+        else 
+
+            printf "\033[93mWarning: Adding new pair requires full restart of the exchange!\033[39m\n"
+            echo "Please double confirm that you are good to proceed"
+            
+            add_pair_input;
+
+            add_pair_exec;
+        
+        fi
+
+    elif [[ "$REMOVE_TRADING_PAIR" ]]; then
+
+        printf "\033[93mWarning: Removing new pair requires full restart of the exchange!\033[39m\n"
+        echo "Please double confirm that you are good to proceed"
+
+        if [[ "$IS_PAIR_CODE_PASSED" ]]; then
+
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
+
+                    export CONFIGMAP_FILE_PATH=$i
+
+                fi
+
+            done 
+
+            IFS=',' read -ra CUSTOM_PAIRS_TO_REMOVE <<< "$PASSED_PAIR_CODE"
+
+            for j in ${CUSTOM_PAIRS_TO_REMOVE[@]}; do
+
+                for i in ${CONFIG_FILE_PATH[@]}; do
+                    source $i
+                done;
+
+                if [[ ! $(echo $HOLLAEX_CONFIGMAP_PAIRS | grep $j) ]]; then
+
+                    echo "Error: Pair $j doesn't exists on your exchange."
+                    exit 1;
+
+                fi
+                
+                PAIR_CODE=$j
+                PAIR_BASE=$(echo $PAIR_CODE | cut -f1 -d '-')
+                PAIR_2=$(echo $PAIR_CODE | cut -f2 -d '-')
+                
+                remove_pair_exec;
+                   
+            done
+        else 
+        
+            remove_pair_input;
+
+            remove_pair_exec;
+        
+        fi 
+
+    elif [[ "$CHANGE_COIN_OWNER" ]]; then
+            
+        change_coin_owner_input;
+
+        change_coin_owner_exec;
+    
+    elif [[ "$CHANGE_PAIR_OWNER" ]]; then
+
+        change_pair_owner_input;
+
+        change_pair_owner_exec;
+
+    elif [[ "$ACTIVATE_COIN" ]]; then
+
+        activate_coin_input;
+
+        activate_coin_exec;
+    
+    elif [[ "$ACTIVATE_PAIR" ]]; then
+
+        activate_pair_input;
+
+        activate_pair_exec;
+
+    else 
+
+        print_network_usage;
+
+        exit 1;
+
+    fi
 
     exit 0;
 
@@ -600,7 +1066,7 @@ elif [[ "$1" == "init" ]]; then
 
     if [[ "$HOLLAEX_INIT_LOCALHOST_MODE" ]]; then 
 
-        export HOLLAEX_INIT_LOCALHOST_MODE_INTERNAL_URL="http://network-dev-nginx"
+        export HOLLAEX_INIT_LOCALHOST_MODE_INTERNAL_URL="http://hollaex-network-nginx"
         export HOLLAEX_CONFIGMAP_NETWORK_URL=${HOLLAEX_INIT_LOCALHOST_MODE_INTERNAL_URL//\//\\/}
 
     else
@@ -685,6 +1151,7 @@ elif [[ "$1" == "init" ]]; then
     export HOLLAEX_SECRET_API_KEY=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.token.apiKey')
     export HOLLAEX_SECRET_API_SECRET=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.token.secret')
     export HOLLAEX_SECRET_ACTIVATION_CODE=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.exchange.activation_code')    
+    export HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.user.id')
 
     # Update settings files with provided values
     for i in ${CONFIG_FILE_PATH[@]}; do
@@ -693,6 +1160,7 @@ elif [[ "$1" == "init" ]]; then
             sed -i.bak "s/ENVIRONMENT_EXCHANGE_NAME=.*/ENVIRONMENT_EXCHANGE_NAME=$hollaexExchangeName/" $CONFIGMAP_FILE_PATH
             sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=.*/HOLLAEX_CONFIGMAP_API_NAME=$hollaexExchangeName/" $CONFIGMAP_FILE_PATH
             sed -i.bak "s/HOLLAEX_CONFIGMAP_NETWORK_URL=.*/HOLLAEX_CONFIGMAP_NETWORK_URL=$HOLLAEX_CONFIGMAP_NETWORK_URL/" $CONFIGMAP_FILE_PATH
+
             rm $CONFIGMAP_FILE_PATH.bak
         fi
         if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE" $i > /dev/null ; then
@@ -706,6 +1174,11 @@ elif [[ "$1" == "init" ]]; then
 
     echo "HOLLAEX_CONFIGMAP_NETWORK_URL=$HOLLAEX_CONFIGMAP_NETWORK_URL" > $INIT_PATH_CHECK
     echo "HOLLAEX_INIT_LOCALHOST_MODE=true" >> $INIT_PATH_CHECK
+
+    # Store Network ID, Admin email and password to a temporary file
+    echo "HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID=$HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID" > $(pwd)/settings/temp
+    echo "HOLLAEX_CONFIGMAP_ADMIN_EMAIL=$hollaexAdminEmail" >> $(pwd)/settings/temp
+    echo "HOLLAEX_CONFIGMAP_ADMIN_PASSWORD=$hollaexAdminPassword" >> $(pwd)/settings/temp
 
     echo -e "\nSuccessfully initialized the exchange $hollaexExchangeName and the account $hollaexAdminEmail."
     echo "Please run 'hollaex server --setup' command to set up the exchange."
@@ -882,7 +1355,7 @@ elif [[ "$1" == "setup" ]]; then
             fi
 
             # Settings up the initial envs for HollaEx Network.
-            hollaex_kit_setup_initial_envs;
+            hollaex_network_setup_initial_envs;
 
             CONFIGMAP_FILE_PATH=$(pwd)/settings/configmap
             SECRET_FILE_PATH=$(pwd)/settings/secret
@@ -891,12 +1364,26 @@ elif [[ "$1" == "setup" ]]; then
         
         fi
 
-    fi 
+    else 
+
+        if [[ ! "$RUN_WITH_VERIFY" == false ]]; then 
+
+            hollaex_setup_initialization;
+        
+        else
+
+            echo -e "\nWarning: Skipping the exchange initialization steps."
+            echo -e "Please make sure that what you are doing exactly with the '--skip' flag.\n"
+
+        fi 
+
+    fi  
 
     if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
 
         HOLLAEX_CLI_INIT_PATH=$(pwd)
         CONFIG_FILE_PATH=$(pwd)/settings/*
+        TEMP_CONFIG_FILE=$(pwd)/settings/temp
         TEMPLATE_GENERATE_PATH=$(pwd)/templates
 
         if [[ "$HOLLAEX_NETWORK_SETUP" ]]; then 
@@ -910,6 +1397,7 @@ elif [[ "$1" == "setup" ]]; then
     if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
 
         CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        TEMP_CONFIG_FILE=$HOLLAEX_CLI_INIT_PATH/settings/temp
         TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
         if [[ "$HOLLAEX_NETWORK_SETUP" ]]; then 
             INIT_PATH_CHECK=$(pwd)/.hollaex-network
@@ -919,14 +1407,7 @@ elif [[ "$1" == "setup" ]]; then
         
     fi
     
-    #Quit if necessary flags are missing
-    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
-
-        print_usage;
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
-        exit 1;
-
-    fi
+    
 
     system_dependencies_check;
 
@@ -1098,7 +1579,11 @@ elif [[ "$1" == "setup" ]]; then
 
         fi 
 
-        hollaex_setup_finalization;
+        if [[ ! "$HOLLAEX_NETWORK_SETUP" ]]; then
+
+            hollaex_setup_finalization;
+
+        fi
 
     fi
 
@@ -1119,6 +1604,7 @@ elif [[ "$1" == "setup" ]]; then
 
         fi
 
+
         if command docker ps -a | grep local_$ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
             echo "*********************************************"
@@ -1135,7 +1621,10 @@ elif [[ "$1" == "setup" ]]; then
         fi
 
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx" ]]; then
-            mkdir $TEMPLATE_GENERATE_PATH/local/nginx;
+
+            mv $HOME/.hollaex-cli/local/nginx $TEMPLATE_GENERATE_PATH/local/nginx
+            # mkdir $TEMPLATE_GENERATE_PATH/local/nginx;
+
         fi
 
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d" ]]; then
@@ -1153,17 +1642,44 @@ elif [[ "$1" == "setup" ]]; then
             generate_local_docker_compose
 
         fi 
+
         generate_local_env
-        generate_nginx_upstream
+
+        if [[ "$HOLLAEX_NETWORK_SETUP" ]]; then
+
+            generate_nginx_upstream_for_network
+        
+        else 
+
+            generate_nginx_upstream
+
+        fi 
+
         apply_nginx_user_defined_values
 
         if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d; then
-            
-            local_database_init start;
+
+            if [[ "$HOLLAEX_NETWORK_SETUP" ]]; then
+
+                local_hollaex_network_database_init start;
+
+            else 
+
+                local_database_init start;
+
+            fi
 
             docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
 
-            hollaex_setup_finalization;
+            if [[ "$HOLLAEX_NETWORK_SETUP" ]]; then
+
+                hollaex_network_setup_finalization;
+
+            else 
+
+                hollaex_setup_finalization;
+
+            fi 
 
         else 
 
@@ -1174,7 +1690,14 @@ elif [[ "$1" == "setup" ]]; then
 
         fi
 
-    fi
+    fi 
+
+    # Drop temp settings file for setup
+    if [[ -f $TEMP_CONFIG_FILE ]]; then 
+
+        rm $TEMP_CONFIG_FILE
+    
+    fi 
 
     exit 0;
 
@@ -1226,14 +1749,7 @@ elif [[ "$1" == "import" ]]; then
         
     fi
     
-    #Quit if necessary flags are missing
-    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
-
-        print_usage;
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
-        exit 1;
-
-    fi
+    
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
@@ -1490,14 +2006,7 @@ elif [[ "$1" == "export" ]]; then
         
     fi
     
-    #Quit if necessary flags are missing
-    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
-
-        print_usage;
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
-        exit 1;
-
-    fi
+    
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
@@ -1627,14 +2136,7 @@ elif [[ "$1" == "login" ]]; then
         
     fi
 
-    #Quit if necessary flags are missing
-    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
-
-        print_usage;
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
-        exit 1;
-
-    fi
+    
 
     # Returns error If 'jq' doesn't exists.
     if ! command jq --version > /dev/null 2>&1; then
@@ -1810,14 +2312,7 @@ elif [[ "$1" == "logout" ]]; then
         
     fi
 
-    #Quit if necessary flags are missing
-    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
-
-        print_usage;
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
-        exit 1;
-
-    fi
+    
 
     printf "\nAre you sure you want to \033[1mlogout\033[0m from bitHolla? (y/N)\n"
     printf "This command \033[1mwould not affect\033[0m your exchange data.\n"
@@ -1883,14 +2378,7 @@ elif [[ "$1" == "pull" ]]; then
         
     fi
 
-    #Quit if necessary flags are missing
-    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
-
-        print_usage;
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
-        exit 1;
-
-    fi
+    
 
     # Returns error If 'jq' doesn't exists.
     if ! command jq --version > /dev/null 2>&1; then
@@ -2155,14 +2643,7 @@ elif [[ "$1" == "start" ]]; then
     fi
 
 
-    #Quit if necessary flags are missing
-    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
-
-        print_usage;
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
-        exit 1;
-
-    fi
+    
 
     source $SCRIPTPATH/tools_generator.sh
 
@@ -2189,8 +2670,12 @@ elif [[ "$1" == "start" ]]; then
 
     if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
 
-        # Check Kit version compatibility range.
-        check_kit_version_compatibility_range;
+        if [[ ! "$HOLLAEX_NETWORK_START" ]]; then 
+
+            # Check Kit version compatibility range.
+            check_kit_version_compatibility_range;
+        
+        fi 
     
     fi 
 
@@ -2277,7 +2762,15 @@ elif [[ "$1" == "start" ]]; then
             echo "All done!"
             echo "Containers successfully scaled up"
 
-            hollaex_ascii_exchange_is_up;
+            if [[ "$HOLLAEX_NETWORK_START" ]]; then 
+
+                hollaex_ascii_network_is_up;
+
+            else 
+
+                hollaex_ascii_exchange_is_up;
+            
+            fi 
 
             exit 0;
 
@@ -2338,16 +2831,34 @@ elif [[ "$1" == "start" ]]; then
         
         # Generating docker-compose yaml for exchange
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
-            
+        
             echo "Generating docker-compose file"
-            generate_local_docker_compose
+
+            if [[ "$HOLLAEX_NETWORK_START" ]]; then 
+
+                generate_local_docker_compose_for_network
+
+            else
+
+                generate_local_docker_compose
+
+            fi 
 
         fi
         
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_NGINX_UPSTREAM" == true ]]; then
 
             echo "Generating Nginx upstream conf"
-            generate_nginx_upstream;
+            
+            if [[ "$HOLLAEX_NETWORK_START" ]]; then
+
+                generate_nginx_upstream_for_network
+            
+            else 
+
+                generate_nginx_upstream
+
+            fi 
         
         fi
 
@@ -2357,7 +2868,15 @@ elif [[ "$1" == "start" ]]; then
 
         if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d; then
 
-            hollaex_ascii_exchange_is_up;
+            if [[ "$HOLLAEX_NETWORK_START" ]]; then 
+
+                hollaex_ascii_network_is_up;
+
+            else 
+
+                hollaex_ascii_exchange_is_up;
+            
+            fi 
         
         else 
 
@@ -2439,14 +2958,7 @@ elif [[ "$1" == "scale" ]]; then
         
     fi
 
-    #Quit if necessary flags are missing
-    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
-
-        print_usage;
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
-        exit 1;
-
-    fi
+    
 
      source $SCRIPTPATH/tools_generator.sh
 
@@ -2664,14 +3176,7 @@ elif [[ "$1" == "prod" ]]; then
     fi
 
 
-    #Quit if necessary flags are missing
-    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
-
-        print_usage;
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
-        exit 1;
-
-    fi
+    
 
     # for i in ${CONFIG_FILE_PATH[@]}; do
     #     source $i
@@ -3155,14 +3660,7 @@ elif [[ "$1" == "stop" ]]; then
         
     fi
 
-    #Quit if necessary flags are missing
-    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
-
-        print_usage;
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
-        exit 1;
-
-    fi
+    
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
@@ -3173,8 +3671,12 @@ elif [[ "$1" == "stop" ]]; then
 
     if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
 
-        # Check Kit version compatibility range.
-        check_kit_version_compatibility_range;
+        if [[ ! "$HOLLAEX_NETWORK_STOP" ]]; then 
+
+            # Check Kit version compatibility range.
+            check_kit_version_compatibility_range;
+        
+        fi 
     
     fi 
 
@@ -3215,7 +3717,15 @@ elif [[ "$1" == "stop" ]]; then
 
         kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-db --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-        hollaex_ascii_exchange_has_been_stopped;
+        if [[ "$HOLLAEX_NETWORK_STOP" ]]; then 
+
+            hollaex_ascii_network_has_been_stopped;
+
+        else 
+
+            hollaex_ascii_exchange_has_been_stopped;
+
+        fi 
 
     fi
 
@@ -3251,7 +3761,15 @@ elif [[ "$1" == "stop" ]]; then
 
         if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml stop; then
 
-            hollaex_ascii_exchange_has_been_stopped;
+            if [[ "$HOLLAEX_NETWORK_STOP" ]]; then 
+
+                hollaex_ascii_network_has_been_stopped;
+
+            else 
+
+                hollaex_ascii_exchange_has_been_stopped;
+
+            fi
 
         else 
 
@@ -3327,14 +3845,7 @@ elif [[ "$1" == "restart" ]]; then
         
     fi
     
-    #Quit if necessary flags are missing
-    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
-
-        print_usage;
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
-        exit 1;
-
-    fi
+    
 
     source $SCRIPTPATH/tools_generator.sh
 
@@ -3358,9 +3869,13 @@ elif [[ "$1" == "restart" ]]; then
     fi
 
      if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
+        
+        if [[ ! "$HOLLAEX_NETWORK_RESTART" ]]; then 
 
-        # Check Kit version compatibility range.
-        check_kit_version_compatibility_range;
+            # Check Kit version compatibility range.
+            check_kit_version_compatibility_range;
+
+        fi 
     
     fi 
 
@@ -3451,9 +3966,20 @@ elif [[ "$1" == "restart" ]]; then
 
         fi
 
-        hollaex server --stop --skip
+        if [[ "$HOLLAEX_NETWORK_RESTART" ]]; then 
 
-        hollaex server --start --skip
+            hollaex network --stop --skip
+
+            hollaex network --start --skip
+
+
+        else 
+
+            hollaex server --stop --skip
+
+            hollaex server --start --skip
+        
+        fi 
 
     fi
 
@@ -3531,14 +4057,7 @@ elif [[ "$1" == "build" ]]; then
         
     fi
     
-    #Quit if necessary flags are missing
-    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
-
-        print_usage;
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
-        exit 1;
-
-    fi
+    
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
@@ -3647,14 +4166,7 @@ elif [[ "$1" == "apply" ]]; then
         
     fi
     
-    #Quit if necessary flags are missing
-    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
-
-        print_usage;
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
-        exit 1;
-
-    fi
+    
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
@@ -3677,7 +4189,7 @@ elif [[ "$1" == "apply" ]]; then
     if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
         printf "\033[93mWarning: Exchange service will be unavailable while applying the new image!\033[39m\n"
-        echo "Are you sure you want to apply the $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION image on your exchange? (y/N)"
+        echo "Are you sure you want to apply the $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION image on your server? (y/N)"
 
         read answer
 
@@ -3721,20 +4233,50 @@ elif [[ "$1" == "apply" ]]; then
             kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-docs
 
         fi
+
+        if [[ "$HOLLAEX_NETWORK_UPGRADE" ]]; then 
+
+            run_and_upgrade_hollaex_network_on_kubernetes;
+        
+        else 
+
+            run_and_upgrade_hollaex_on_kubernetes;
     
-        run_and_upgrade_hollaex_on_kubernetes;
+        fi
         
     else 
 
-        hollaex restart --skip 
+        if [[ "$HOLLAEX_NETWORK_UPGRADE" ]]; then 
 
-        local_database_init upgrade
+            hollaex network --restart --skip 
 
-        hollaex restart --skip 
+            local_hollaex_network_database_init upgrade
+
+            hollaex network --restart --skip
+        
+        else 
+
+            hollaex restart --skip 
+
+            local_database_init upgrade
+
+            hollaex restart --skip
+
+        fi
 
     fi
 
-    hollaex_ascii_exchange_has_been_upgraded;
+    if [[ "$HOLLAEX_NETWORK_UPGRADE" ]]; then 
+
+        hollaex_ascii_network_has_been_upgraded;
+    
+    else 
+
+        hollaex_ascii_exchange_has_been_upgraded;
+
+    fi 
+
+    exit 0
 
 
 elif [[ "$1" == "upgrade" ]]; then
@@ -3823,14 +4365,7 @@ elif [[ "$1" == "upgrade" ]]; then
         
     fi
     
-    #Quit if necessary flags are missing
-    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
-
-        print_usage;
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
-        exit 1;
-
-    fi
+    
 
     source $SCRIPTPATH/tools_generator.sh
 
@@ -3985,14 +4520,7 @@ elif [[ "$1" == "terminate" ]]; then
         
     fi
 
-    #Quit if necessary flags are missing
-    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
-
-        print_usage;
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
-        exit 1;
-
-    fi
+    
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
@@ -4003,8 +4531,12 @@ elif [[ "$1" == "terminate" ]]; then
 
     if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
 
-        # Check Kit version compatibility range.
-        check_kit_version_compatibility_range;
+        if [[ ! "$HOLLAEX_NETWORK_TERMINATE" ]]; then 
+
+            # Check Kit version compatibility range.
+            check_kit_version_compatibility_range;
+        
+        fi
     
     fi 
 
@@ -4122,8 +4654,28 @@ elif [[ "$1" == "terminate" ]]; then
             exit 0;
         fi
 
-        echo "Running a final backup for the exchange database."
-        if ! command hollaex toolbox --backup --skip; then 
+
+        echo "Running a final backup for the database."
+
+        if [[ "$HOLLAEX_NETWORK_BACKUP" ]]; then 
+
+            if command hollaex network --backup --skip; then 
+
+                IS_BACKUP_SUCCESS=true
+            
+            fi 
+        
+        else 
+
+            if command hollaex toolbox --backup --skip; then 
+
+                IS_BACKUP_SUCCESS=true
+
+            fi 
+
+        fi 
+
+        if [[ ! "$IS_BACKUP_SUCCESS" ]]; then 
 
             printf "\033[91mWarning: HollaEx CLI failed to make a final DB backup!\033[39m\n"
             echo "Do you want to continue without a DB backup? (y/N)"
@@ -4140,8 +4692,6 @@ elif [[ "$1" == "terminate" ]]; then
             
         fi
 
-        docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml down --remove-orphans -v
-
         # Remove web server together if it exists.
         if [[ -f "$TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml" ]] ; then
 
@@ -4155,7 +4705,35 @@ elif [[ "$1" == "terminate" ]]; then
         
         fi 
 
-        hollaex_ascii_exchange_has_been_terminated;
+        if [[ "$HOLLAEX_NETWORK_TERMINATE" ]]; then 
+
+            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml down --remove-orphans -v
+
+            hollaex_ascii_network_has_been_terminated;
+
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                if command grep -q "HOLLAEX_CONFIGMAP_API_NAME=" $i > /dev/null ; then
+
+                    export CONFIGMAP_FILE_PATH=$i
+
+                fi
+
+            done
+
+            sed -i.bak "s/HOLLAEX_CONFIGMAP_CURRENCIES=.*/HOLLAEX_CONFIGMAP_CURRENCIES=xht,usdt/" $CONFIGMAP_FILE_PATH;
+            sed -i.bak "s/HOLLAEX_CONFIGMAP_PAIRS=.*/HOLLAEX_CONFIGMAP_PAIRS=xht-usdt/" $CONFIGMAP_FILE_PATH;
+            rm $CONFIGMAP_FILE_PATH.bak
+
+
+        else 
+
+            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml down -v
+
+            hollaex_ascii_exchange_has_been_terminated;
+        
+        fi 
+
 
         echo "$HOLLAEX_CONFIGMAP_API_NAME ($HOLLAEX_CONFIGMAP_API_HOST) has been successfully terminated."
         echo "If there's an issue, please review the logs and try it again."
@@ -4286,14 +4864,7 @@ elif [[ "$1" == "web" ]]; then
         
     fi
 
-    #Quit if necessary flags are missing
-    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
-
-        print_usage;
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
-        exit 1;
-
-    fi
+    
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
@@ -5407,14 +5978,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
     fi
     
-    #Quit if necessary flags are missing
-    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
-
-        print_usage;
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
-        exit 1;
-
-    fi
+    
 
     if [[ ! "$TOOLBOX_ENABLE" ]]; then
     
@@ -5646,7 +6210,16 @@ elif [[ "$1" == "toolbox" ]]; then
             unset PGHOST
 
             echo -e "\nDump data has been applied on your database."
-            echo -e "Please run 'hollaex server --restart --kube' to fully apply the changes.\n"
+
+            if [[ "$HOLLAEX_NETWORK_RESTORE" ]]; then 
+
+                echo -e "Please run 'hollaex network --restart --kube' to fully apply the changes.\n"
+            
+            else 
+
+                echo -e "Please run 'hollaex server --restart --kube' to fully apply the changes.\n"
+
+            fi 
 
             echo "Killing the opened proxy tunnel..."
             kill $(ps -ef | grep "kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME" | awk '{print $2}' | head -n 1)
@@ -5676,15 +6249,31 @@ elif [[ "$1" == "toolbox" ]]; then
             export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
             export PGHOST=localhost
 
+            if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then 
+
+                export PGPORT=5433
+
+            fi
+
             pg_restore --verbose --clean -d $PGDATABASE $RESTORE_POSTGRES_DUMP_PATH
             
             unset PGUSER
             unset PGPASSWORD
             unset PGDATABASE
             unset PGHOST
+            unset PGPORT
 
             echo -e "\nDump data has been applied on your database."
-            echo -e "Please run 'hollaex server --restart' to fully apply the changes.\n"
+
+            if [[ "$HOLLAEX_NETWORK_RESTORE" ]]; then 
+
+                echo -e "Please run 'hollaex network --restart' to fully apply the changes.\n"
+            
+            else 
+
+                echo -e "Please run 'hollaex server --restart' to fully apply the changes.\n"
+
+            fi 
 
             exit 0;
 
@@ -5762,6 +6351,12 @@ elif [[ "$1" == "toolbox" ]]; then
             export PGPASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
             export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
             export PGHOST=localhost
+
+            if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then 
+
+                export PGPORT=5433
+
+            fi 
             
             if ! command pg_dump -Fc > $HOLLAEX_CLI_INIT_PATH/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-$(date +%y%m%d%H%M).dump; then 
             
@@ -5775,6 +6370,7 @@ elif [[ "$1" == "toolbox" ]]; then
             unset PGPASSWORD
             unset PGDATABASE
             unset PGHOST
+            unset PGPORT
 
             echo "Dump data is saved at ${HOLLAEX_CLI_INIT_PATH}/backups folder"
 
@@ -6533,14 +7129,7 @@ elif [[ "$1" == "cloud" ]]; then
         
     fi
 
-    #Quit if necessary flags are missing
-    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
-
-        print_usage;
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
-        exit 1;
-
-    fi
+    
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
@@ -6675,10 +7264,10 @@ elif [[ "$1" == "cloud" ]]; then
         HOLLAEX_CLOUD_STOP_API_REQUEST_RESPONSE_PARSE=$(echo $HOLLAEX_CLOUD_STOP_API_REQUEST | cut -f1 -d "&" | jq -r '.message')
         HOLLAEX_CLOUD_STOP_API_REQUEST_HTTP_CODE=$(echo $HOLLAEX_CLOUD_STOP_API_REQUEST | cut -f2 -d "&")
         
-        if [[ "$HOLLAEX_CLOUD_STOP_API_REQUEST_HTTP_CODE" == "200" ]]; then 
+        if [[ "$HOLLAEX_CLOUD_STOP_API_REQUEST_HTTP_CODE" == "200" ]]; then
 
             echo -e "\n\033[92mSuccessfully sent the request to the HollaCloud to stop your exchange.\033[39m\n"
-            echo "The job would take around 10~20 minutes."
+            echo "The job would take around 10 ~ 20 minutes."
             echo -e "We will inform you through the email once it's done!\n"
 
             exit 0;
@@ -6881,14 +7470,7 @@ elif [[ "$1" == "status" ]]; then
         
     fi
 
-    #Quit if necessary flags are missing
-    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
-
-        print_usage;
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
-        exit 1;
-
-    fi
+    
     
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
@@ -6920,15 +7502,21 @@ elif [[ "$1" == "status" ]]; then
 
     fi
 
+    if [[ "$HOLLAEX_NETWORK_STATUS" ]] && [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then 
+
+        HOLLAEX_CONFIGMAP_API_HOST="localhost:8081"
+
+    fi
+
     printf "\nCalling the exchange health page ($HOLLAEX_CONFIGMAP_API_HOST/v2/health) ...\n"
 
     if command curl $HOLLAEX_CONFIGMAP_API_HOST/v2/health; then 
 
-        printf "\n\033[92mSuccessfully reached to the exchange health page.\033[39m\n"
+        printf "\n\033[92mSuccessfully reached to the health page.\033[39m\n"
 
     else 
 
-        printf "\033[91m\nExchange health page is not responding. Please check the exchange is up.\033[39m\n"
+        printf "\033[91m\nThe health page is not responding. Please check the exchange is up.\033[39m\n"
 
     fi
 
@@ -7005,14 +7593,7 @@ elif [[ "$1" == "logs" ]]; then
         
     fi
 
-    #Quit if necessary flags are missing
-    if [[ ! "$CONFIG_FILE_PATH" ]] || [[ ! -f "$INIT_PATH_CHECK" ]]; then
-
-        print_usage;
-        printf "\033[91mFailed to detect HollaEx Kit directory! Please re-check your path.\033[39m\n"
-        exit 1;
-
-    fi
+    
     
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
