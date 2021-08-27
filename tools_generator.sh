@@ -1223,7 +1223,7 @@ spec:
     http:
       paths:
       - pathType: Prefix
-        path: /socket.io
+        path: /
         backend:
           service:
             name: ${ENVIRONMENT_EXCHANGE_NAME}-web
