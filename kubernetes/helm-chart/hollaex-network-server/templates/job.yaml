@@ -25,7 +25,7 @@ spec:
 {{- if eq .Values.job.mode "add_coin" }}
 
         args:
-          - node tools/dbs/activateCoin.js;
+          - node tools/dbs/addCoin.js;
 
 {{- else if eq .Values.job.mode "remove_coin" }}
 
@@ -35,7 +35,7 @@ spec:
 {{- else if eq .Values.job.mode "add_pair" }}
 
         args:
-          - node tools/dbs/activatePair.js;
+          - node tools/dbs/addPair.js;
 
 {{- else if eq .Values.job.mode "remove_pair" }}
 
@@ -83,17 +83,75 @@ spec:
 {{- if eq .Values.job.mode "add_coin" }}
 
           - name: COIN_CODE
+            value: "{{.Values.job.env.coin_code}}"
+          - name: COIN_FULLNAME
+            value: "{{.Values.job.env.coin_fullname}}"
+          - name: COIN_ALLOW_DEPOSIT
+            value: "{{.Values.job.env.coin_allow_deposit}}"
+          - name: COIN_ALLOW_WITHDRAWAL
+            value: "{{.Values.job.env.coin_allow_withdrawal}}"
+          - name: COIN_WITHDRAWAL_FEE
+            value: "{{.Values.job.env.coin_withdrawal_fee}}"
+          - name: COIN_MIN
+            value: "{{.Values.job.env.coin_min}}"
+          - name: COIN_MAX
+            value: "{{.Values.job.env.coin_max}}"
+          - name: COIN_INCREMENT_UNIT
+            value: "{{.Values.job.env.coin_increment_unit}}"
+          - name: COIN_ACTIVE
+            value: "{{.Values.job.env.coin_active}}"
+
+{{- else if eq .Values.job.mode "change_coin_owner" }}
+
+          - name: COIN_CODE
             value: {{.Values.job.env.coin_code}}
+          - name: COIN_OWNER_ID
+            value: "{{.Values.job.env.coin_owner_id}}"
 
 {{- else if eq .Values.job.mode "remove_coin" }}
 
           - name: COIN_CODE
             value: {{.Values.job.env.coin_code}}
 
-{{- else if eq .Values.job.mode "add_pair" }}
+{{- else if eq .Values.job.mode "activate_coin" }}
+
+          - name: COIN_CODE
+            value: {{.Values.job.env.coin_code}}
+
+{{- else if eq .Values.job.mode "activate_pair" }}
 
           - name: PAIR_CODE
             value: {{.Values.job.env.pair_code}}
+
+{{- else if eq .Values.job.mode "change_pair_owner" }}
+
+          - name: PAIR_CODE
+            value: {{.Values.job.env.pair_code}}
+          - name: PAIR_OWNER_ID
+            value: "{{.Values.job.env.pair_owner_id}}"
+
+{{- else if eq .Values.job.mode "add_pair" }}
+
+          - name: PAIR_CODE
+            value: "{{.Values.job.env.pair_code}}"
+          - name: PAIR_BASE
+            value: "{{.Values.job.env.pair_base}}"
+          - name: PAIR_2
+            value: "{{.Values.job.env.pair_2}}"
+          - name: MIN_SIZE
+            value: "{{.Values.job.env.min_size}}"
+          - name: MAX_SIZE
+            value: "{{.Values.job.env.max_size}}"
+          - name: MIN_PRICE
+            value: "{{.Values.job.env.min_price}}"
+          - name: MAX_PRICE
+            value: "{{.Values.job.env.max_price}}"
+          - name: INCREMENT_SIZE
+            value: "{{.Values.job.env.increment_size}}"
+          - name: INCREMENT_PRICE
+            value: "{{.Values.job.env.increment_price}}"
+          - name: PAIR_ACTIVE
+            value: "{{.Values.job.env.pair_active}}"
 
 {{- else if eq .Values.job.mode "remove_pair" }}
 

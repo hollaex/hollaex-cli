@@ -174,6 +174,88 @@ function kubernetes_database_init() {
 
 }
 
+function kubernetes_hollaex_network_database_init() {
+
+  if [[ "$1" == "launch" ]]; then
+
+    sleep 30
+
+     # Checks the api container(s) get ready enough to run database upgrade jobs.
+    while ! kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- echo "API is ready!" > /dev/null 2>&1;
+        do echo "API container is not ready! Retrying..."
+        sleep 15;
+    done;
+
+    echo "API container become ready to run Database initialization jobs!"
+    sleep 10;
+
+    echo "Running sequelize db:migrate"
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:migrate 
+
+    echo "Running Database Triggers"
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/runTriggers.js
+
+    echo "Running sequelize db:seed:all"
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:seed:all 
+
+    echo "Running InfluxDB initialization jobs"
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/createInflux.js
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/migrateInflux.js
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
+    
+  elif [[ "$1" == "upgrade" ]]; then
+
+    echo "Running database jobs..."
+
+    if command helm install $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade \
+                --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                --set DEPLOYMENT_MODE="api" \
+                --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                --set job.enable=true \
+                --set job.mode=run_triggers \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
+                -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server/values.yaml \
+                $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server; then
+
+      while ! [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]] ;
+          do echo "Waiting for the database job gets done..."
+          sleep 10;
+      done;
+
+      echo "Successfully ran the database jobs!"
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
+
+      echo "Removing the Kubernetes Job for running database jobs..."
+      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+    else 
+
+      printf "\033[91mFailed to create Kubernetes Job for running database jobs, Please confirm your input values and try again.\033[39m\n"
+
+      echo "Displayling logs..."
+      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
+      
+      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+      # Only tries to attempt apply ingress rules from Kubernetes if it doesn't exists.
+      if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+      
+          echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
+          kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+      fi
+
+      exit 1;
+
+    fi
+
+  fi
+
+}
+
 function local_code_test() {
 
     echo "Running mocha code test"
@@ -1251,6 +1333,35 @@ EOL
 
 }
 
+function generate_hollaex_network_kubernetes_env_coins() {
+
+# Generate Kubernetes Configmap
+cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-env-coins.yaml <<EOL
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-env-coins
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+data:
+  CURRENCIES: ${HOLLAEX_CONFIGMAP_CURRENCIES}
+EOL
+
+}
+
+function generate_hollaex_network_kubernetes_env_pairs() {
+
+# Generate Kubernetes Configmap
+cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-env-pairs.yaml <<EOL
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-env-pairs
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+data:
+  PAIRS: ${HOLLAEX_CONFIGMAP_PAIRS}
+EOL
+
+}
 
 function generate_kubernetes_configmap() {
 
@@ -1702,6 +1813,53 @@ EOL
 # `helm_dynamic_trading_paris run` for running paris based on config file definition.
 # `helm_dynamic_trading_paris terminate` for terminating installed paris on kubernetes.
 
+function helm_dynamic_trading_paris() {
+
+  IFS=',' read -ra PAIRS <<< "$HOLLAEX_CONFIGMAP_PAIRS"    #Convert string to array
+
+  for i in "${PAIRS[@]}"; do
+    TRADE_PARIS_DEPLOYMENT=$(echo $i | cut -f1 -d ",")
+    TRADE_PARIS_DEPLOYMENT_NAME=${TRADE_PARIS_DEPLOYMENT//-/}
+
+    if [[ "$1" == "run" ]]; then
+
+      #Running and Upgrading
+      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME \
+                   --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                   --set DEPLOYMENT_MODE="engine" \
+                   --set PAIR="$TRADE_PARIS_DEPLOYMENT" \
+                   --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                   --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                   --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                   --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                   --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_ENGINE_CPU_LIMITS:-500m}" \
+                   --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_ENGINE_MEMORY_LIMITS:-1024Mi}" \
+                   --set resources.requests.cpu="${ENVIRONMENT_KUBERNETES_ENGINE_CPU_REQUESTS:-10m}" \
+                   --set resources.requests.memory="${ENVIRONMENT_KUBERNETES_ENGINE_MEMORY_REQUESTS:-128Mi}" \
+                   --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
+                   -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
+                   -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server
+
+    elif [[ "$1" == "scaleup" ]]; then
+      
+      #Scaling down queue deployments on Kubernetes
+      kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+    elif [[ "$1" == "scaledown" ]]; then
+      
+      #Scaling down queue deployments on Kubernetes
+      kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+    elif [[ "$1" == "terminate" ]]; then
+
+      #Terminating
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME
+
+    fi
+
+  done
+
+}
 
 function override_user_hollaex_core() {
 
@@ -1957,7 +2115,7 @@ function hollaex_ascii_network_is_up() {
             Your Network is up!
     Try to reach ${HOLLAEX_CONFIGMAP_API_HOST}/v2/health
 
-    You can easily check the network status with 'hollaex status'.
+    You can easily check the network status with 'hollaex network --status'.
 
 EOF
 
@@ -2049,6 +2207,44 @@ function hollaex_network_prod_complete() {
 EOF
 
 }
+
+function hollaex_network_prod_complete() {
+
+  /bin/cat << EOF
+
+                      ......
+                .;1LG088@@880GL1;.
+            ,tC8@@@@@@@@@@@@@@@@8Ct,
+          ;C@@@@GtL@@@8;;8@@@Lf0@@@@C;
+        ,C@@@0t: ,8@@8:  :8@@0, :t8@@@L,
+        i@@@0i   .8@@8,    :8@@0    18@@8;
+      1@@@8t;;iiL@@@C;iiii;C@@@fii;;t@@@@i
+      :@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,
+      C@@@LfffffG@@@GffffffffG@@@CfffffL@@@L
+    .8@@G      f@@@;        ;@@@t      0@@0.
+    ,@@@L .  . L@@@: .    . ;@@@L .  . C@@@,
+    .8@@G      f@@@:        ;@@@t      G@@8.
+      C@@@LfffffG@@@GffffffffG@@@CfffffL@@@L
+      :@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,
+      1@@@81;;iiL@@@L;iiii;C@@@Lii;;t8@@@i
+        i@@@0i   .8@@8,    ,8@@0    10@@8i
+        :C@@@0t, ,8@@8:  :8@@8, :t0@@@C,
+          iC@@@@GtL@@@8:;8@@@LtG@@@@C;
+            :tG@@@@@@@@@@@@@@@@@@Gt,
+                ,itLG088@@880GLt;.
+                      ..,,..
+
+    Your Network has been setup for production!
+
+    Please run 'hollaex network --restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)'
+    to apply the changes you made.
+
+    Have fun <3!
+
+EOF
+
+}
+
 
 function hollaex_prod_complete() {
 
@@ -2308,63 +2504,63 @@ function hollaex_network_setup_finalization() {
   echo "*********************************************"
   printf "\n"
   echo "Your exchange is all set!"
-  echo "You can proceed to add your own currencies, trading pairs right away from now on."
+  # echo "You can proceed to add your own currencies, trading pairs right away from now on."
 
-  echo "Attempting to add user custom currencies automatically..."
+  # echo "Attempting to add user custom currencies automatically..."
 
-  if [[ "$USE_KUBERNETES" ]]; then
+  # if [[ "$USE_KUBERNETES" ]]; then
 
-      if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
+  #     if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
 
-        hollaex network --add_coin --kube --is_hollaex_setup
+  #       hollaex network --add_coin --kube --is_hollaex_setup
 
-      else
+  #     else
 
-        hollaex network --add_coin --kube --is_hollaex_setup 
+  #       hollaex network --add_coin --kube --is_hollaex_setup 
 
-      fi
+  #     fi
   
-  elif [[ ! "$USE_KUBERNETES" ]]; then
+  # elif [[ ! "$USE_KUBERNETES" ]]; then
 
-       if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
+  #      if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
 
-        hollaex network --add_coin --is_hollaex_setup
+  #       hollaex network --add_coin --is_hollaex_setup
 
-      else
+  #     else
 
-        hollaex network --add_coin --is_hollaex_setup 
+  #       hollaex network --add_coin --is_hollaex_setup 
 
-      fi
+  #     fi
 
-  fi
+  # fi
 
-  echo "Attempting to add user custom trading pairs automatically..."
+  # echo "Attempting to add user custom trading pairs automatically..."
 
-  if [[ "$USE_KUBERNETES" ]]; then
+  # if [[ "$USE_KUBERNETES" ]]; then
 
-      if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
+  #     if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
 
-        hollaex network --add_trading_pair --kube --is_hollaex_setup
+  #       hollaex network --add_trading_pair --kube --is_hollaex_setup
 
-      else 
+  #     else 
 
-        hollaex network --add_trading_pair --kube --is_hollaex_setup
+  #       hollaex network --add_trading_pair --kube --is_hollaex_setup
 
-      fi
+  #     fi
 
-  elif [[ ! "$USE_KUBERNETES" ]]; then
+  # elif [[ ! "$USE_KUBERNETES" ]]; then
 
-      if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
+  #     if [[ "$HOLLAEX_DEV_FOR_CORE" ]]; then
 
-        hollaex network --add_trading_pair --is_hollaex_setup
+  #       hollaex network --add_trading_pair --is_hollaex_setup
 
-      else 
+  #     else 
 
-        hollaex network --add_trading_pair --is_hollaex_setup
+  #       hollaex network --add_trading_pair --is_hollaex_setup
 
-      fi
+  #     fi
 
-  fi
+  # fi
 
   if [[ ! "$HOLLAEX_DEV_SETUP" ]]; then
 
@@ -2832,7 +3028,7 @@ function hollaex_ascii_coin_has_been_added() {
                       .;tLCCCCLfi:.
 
           Coin $COIN_CODE has been successfully added
-          Please run 'hollaex restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to activate it.
+          Please run 'hollaex network --restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to activate it.
 
 EOF
 
@@ -2861,7 +3057,7 @@ function hollaex_ascii_pair_has_been_added() {
               .:i1tt11;,               ,:ii1ii;,
 
       Trading Pair ${PAIR_CODE} has been successfully added
-      Please run 'hollaex restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to activate it.
+      Please run 'hollaex network --restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to activate it.
 
 EOF
 }
@@ -3529,18 +3725,22 @@ function generate_backend_passwords() {
   export HOLLAEX_SECRET_REDIS_PASSWORD=$(generate_random_values)
   export HOLLAEX_SECRET_DB_PASSWORD=$(generate_random_values)
 
-  if command grep -q "HOLLAEX_SECRET_DB_PASSWORD" $i > /dev/null ; then
+  for i in ${CONFIG_FILE_PATH[@]}; do
 
-    SECRET_FILE_PATH=$i
+    if command grep -q "HOLLAEX_SECRET_REDIS_PASSWORD" $i > /dev/null ; then
 
-    sed -i.bak "s/HOLLAEX_SECRET_REDIS_PASSWORD=.*/HOLLAEX_SECRET_REDIS_PASSWORD=$HOLLAEX_SECRET_REDIS_PASSWORD/" $SECRET_FILE_PATH
-    sed -i.bak "s/HOLLAEX_SECRET_PUBSUB_PASSWORD=.*/HOLLAEX_SECRET_PUBSUB_PASSWORD=$HOLLAEX_SECRET_REDIS_PASSWORD/" $SECRET_FILE_PATH
+      SECRET_FILE_PATH=$i
 
-    sed -i.bak "s/HOLLAEX_SECRET_DB_PASSWORD=.*/HOLLAEX_SECRET_DB_PASSWORD=$HOLLAEX_SECRET_DB_PASSWORD/" $SECRET_FILE_PATH
+    fi 
 
-    rm $SECRET_FILE_PATH.bak
-    
-  fi
+  done
+
+  sed -i.bak "s/HOLLAEX_SECRET_REDIS_PASSWORD=.*/HOLLAEX_SECRET_REDIS_PASSWORD=$HOLLAEX_SECRET_REDIS_PASSWORD/" $SECRET_FILE_PATH
+  sed -i.bak "s/HOLLAEX_SECRET_PUBSUB_PASSWORD=.*/HOLLAEX_SECRET_PUBSUB_PASSWORD=$HOLLAEX_SECRET_REDIS_PASSWORD/" $SECRET_FILE_PATH
+
+  sed -i.bak "s/HOLLAEX_SECRET_DB_PASSWORD=.*/HOLLAEX_SECRET_DB_PASSWORD=$HOLLAEX_SECRET_DB_PASSWORD/" $SECRET_FILE_PATH
+
+  rm $SECRET_FILE_PATH.bak
 
   for i in ${CONFIG_FILE_PATH[@]}; do
       source $i
@@ -4202,6 +4402,199 @@ function run_and_upgrade_hollaex_on_kubernetes() {
 
 }
 
+function run_and_upgrade_hollaex_network_on_kubernetes() {
+
+  #Creating kubernetes_config directory for generating config for Kubernetes.
+  if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
+      mkdir $TEMPLATE_GENERATE_PATH/kubernetes;
+      mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
+  fi
+
+  if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
+
+      echo "Generating Kubernetes Configmap"
+      generate_kubernetes_configmap;
+
+  fi
+
+  if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]]; then
+
+      echo "Generating Kubernetes Secret"
+      generate_kubernetes_secret;
+
+  fi
+
+
+  if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
+
+      echo "Generating Kubernetes Ingress"
+      generate_kubernetes_ingress;
+
+  fi
+
+  if [[ ! "$IGNORE_SETTINGS" ]]; then 
+
+      echo "Applying latest configmap env on the cluster."
+      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+
+      echo "Applying latest secret on the cluster"
+      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+
+  fi
+
+  # Running & Upgrading Databases
+  if [[ "$ENVIRONMENT_KUBERNETES_RUN_REDIS" == true ]]; then
+
+      generate_nodeselector_values $ENVIRONMENT_KUBERNETES_REDIS_NODESELECTOR redis
+
+      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-redis \
+                  --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                  --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                  --set resources.limits.cpu="${ENVIRONMENT_REDIS_CPU_LIMITS:-100m}" \
+                  --set resources.limits.memory="${ENVIRONMENT_REDIS_MEMORY_LIMITS:-200Mi}" \
+                  --set resources.requests.cpu="${ENVIRONMENT_REDIS_CPU_REQUESTS:-10m}" \
+                  --set resources.requests.memory="${ENVIRONMENT_REDIS_MEMORY_REQUESTS:-100Mi}" \
+                  -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis/values.yaml \
+                  -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-redis.yaml \
+                  $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT)
+  
+  fi
+
+  if [[ "$ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB" == true ]]; then
+
+      generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
+
+      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db \
+                  --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                  --wait \
+                  --set pvc.create=true \
+                  --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" \
+                  --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" \
+                  --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                  --set resources.limits.cpu="${ENVIRONMENT_POSTGRESQL_CPU_LIMITS:-100m}" \
+                  --set resources.limits.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_LIMITS:-200Mi}" \
+                  --set resources.requests.cpu="${ENVIRONMENT_POSTGRESQL_CPU_REQUESTS:-10m}" \
+                  --set resources.requests.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_REQUESTS:-100Mi}" \
+                  -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml \
+                  -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml \
+                  $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
+
+                  echo "Waiting until the database to be fully initialized"
+                  sleep 60
+
+  fi
+
+  if [[ "$ENVIRONMENT_KUBERNETES_RUN_INFLUXDB" == true ]]; then
+
+      generate_nodeselector_values $ENVIRONMENT_KUBERNETES_INFLUXDB_NODESELECTOR influxdb
+
+      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-influxdb \
+                  --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                  --wait \
+                  --set pvc.create=true \
+                  --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-influxdb-volume" \
+                  --set pvc.size="${ENVIRONMENT_KUBERNETES_INFLUXDB_VOLUMESIZE:-30Gi}" \
+                  --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                  --set resources.limits.cpu="${ENVIRONMENT_INFLUXDB_CPU_LIMITS:-100m}" \
+                  --set resources.limits.memory="${ENVIRONMENT_INFLUXDB_MEMORY_LIMITS:-200Mi}" \
+                  --set resources.requests.cpu="${ENVIRONMENT_INFLUXDB_CPU_REQUESTS:-10m}" \
+                  --set resources.requests.memory="${ENVIRONMENT_INFLUXDB_MEMORY_REQUESTS:-100Mi}" \
+                  -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-influxdb/values.yaml \
+                  -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-influxdb.yaml \
+                  $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-influxdb $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_INFLUXDB_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_INFLUXDB_DB_ACCESS_PORT)
+
+                  echo "Waiting until the database to be fully initialized"
+                  sleep 60
+
+  fi
+        
+  # FOR GENERATING NODESELECTOR VALUES
+  generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATEFUL_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateful
+  generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateless
+
+  helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api \
+                    --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                    --set DEPLOYMENT_MODE="api" \
+                    --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                    --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                    --set stable.replicaCount="${ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS:-1}" \
+                    --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_API_HPA_ENABLE:-false}" \
+                    --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_API_HPA_AVGMEMORY:-1300000000}" \
+                    --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_API_HPA_MAXREPLICAS:-4}" \
+                    --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                    --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                    --set resources.limits.cpu="${ENVIRONMENT_API_CPU_LIMITS:-1000m}" \
+                    --set resources.limits.memory="${ENVIRONMENT_API_MEMORY_LIMITS:-1536Mi}" \
+                    --set resources.requests.cpu="${ENVIRONMENT_API_CPU_REQUESTS:-10m}" \
+                    --set resources.requests.memory="${ENVIRONMENT_API_MEMORY_REQUESTS:-1536Mi}" \
+                    --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
+                    -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
+                    -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server/values.yaml \
+                    $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server
+
+  helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream \
+              --namespace $ENVIRONMENT_EXCHANGE_NAME \
+              --set DEPLOYMENT_MODE="stream" \
+              --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+              --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+              --set stable.replicaCount="${ENVIRONMENT_KUBERNETES_STREAM_SERVER_REPLICAS:-1}" \
+              --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_STREAM_HPA_ENABLE:-false}" \
+              --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_STREAM_HPA_AVGMEMORY:-300000000}" \
+              --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_STREAM_HPA_MAXREPLICAS:-4}" \
+              --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+              --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+              --set resources.limits.cpu="${ENVIRONMENT_STREAM_CPU_LIMITS:-1000m}" \
+              --set resources.limits.memory="${ENVIRONMENT_STREAM_MEMORY_LIMITS:-1536Mi}" \
+              --set resources.requests.cpu="${ENVIRONMENT_STREAM_CPU_REQUESTS:-10m}" \
+              --set resources.requests.memory="${ENVIRONMENT_STREAM_MEMORY_REQUESTS:-1536Mi}" \
+              --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
+              -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
+              -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server/values.yaml \
+              $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server
+
+  helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-job \
+                     --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                     --set DEPLOYMENT_MODE="job" \
+                     --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                     --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                     --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                     --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                     --set resources.limits.cpu="${ENVIRONMENT_JOB_CPU_LIMITS:-500m}" \
+                     --set resources.limits.memory="${ENVIRONMENT_JOB_MEMORY_LIMITS:-512Mi}" \
+                     --set resources.requests.cpu="${ENVIRONMENT_JOB_CPU_REQUESTS:-10m}" \
+                     --set resources.requests.memory="${ENVIRONMENT_JOB_MEMORY_REQUESTS:-128Mi}" \
+                     --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
+                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
+                     -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server
+                     
+  helm_dynamic_trading_paris run;
+
+  if [[ "$HOLLAEX_NETWORK_SETUP" == true ]]; then 
+
+    # Running database job for Kubernetes
+    kubernetes_hollaex_network_database_init launch;
+
+  else 
+
+    # Running database job for Kubernetes
+    kubernetes_hollaex_network_database_init upgrade;
+
+  fi
+
+  echo "Flushing Redis..."
+  kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/flushRedis.js
+
+  echo "Restarting all containers to apply latest database changes..."
+  kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+
+  echo "Waiting for the containers get fully ready..."
+  sleep 15;
+
+  echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
+  kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+}
+
 function hollaex_network_setup_initial_envs() {
 
     echo "Settings up the initial envs on your HollaEx Network home's settings directory."
@@ -4256,10 +4649,13 @@ ENVIRONMENT_KUBERNETES_INFLUXDB_NODESELECTOR="{}"
 ENVIRONMENT_KUBERNETES_EXCHANGE_STATEFUL_NODESELECTOR="{}"
 ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR="{}"
 
-ENVIRONMENT_DOCKER_IMAGE_VERSION=2.0.0
+ENVIRONMENT_KUBERNETES_RUN_INFLUXDB=true
+ENVIRONMENT_KUBERNETES_INFLUXDB_DB_VOLUMESIZE=20Gi
 
 HOLLAEX_CONFIGMAP_CURRENCIES=xht,usdt
 HOLLAEX_CONFIGMAP_PAIRS='xht-usdt'
+
+ENVIRONMENT_DOCKER_IMAGE_VERSION=2.2.4
 
 ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY=postgres
 ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION=10.9-alpine
@@ -4274,7 +4670,7 @@ ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_REGISTRY=bitholla/nginx-with-certbot
 ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_VERSION=1.15.8
 
 ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=bitholla/hollaex-network
-ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=2.2.1-develop-2108231547
+ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=2.2.4-testnet-2109062205
 
 ENVIRONMENT_LOCAL_NGINX_HTTP_PORT=80
 ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT=443
@@ -4373,6 +4769,14 @@ HOLLAEX_SECRET_INFLUX_HOST=hollaex-network-influxdb
 HOLLAEX_SECRET_INFLUX_PASSWORD=network
 HOLLAEX_SECRET_INFLUX_PORT=8086
 HOLLAEX_SECRET_INFLUX_USER=network
+
+ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_HOST=
+ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME=
+ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD=
+ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL=
+
+ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_ACCESSKEY=
+ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_SECRETKEY=
 
 EOL
 
@@ -4815,7 +5219,7 @@ job:
   enable: true
   mode: add_coin
   env:
-    COIN_CODE: $(echo ${!COIN_CODE_OVERRIDE})
+    coin_code: $(echo ${!COIN_CODE_OVERRIDE})
     coin_fullname: $(echo ${!COIN_FULLNAME_OVERRIDE})
     coin_allow_deposit: $(echo ${!COIN_ALLOW_DEPOSIT_OVERRIDE})
     coin_allow_withdrawal: $(echo ${!COIN_ALLOW_WITHDRAWAL_OVERRIDE})
@@ -4840,7 +5244,7 @@ EOL
 
     echo "Adding new coin $COIN_CODE on Kubernetes"
     
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_CODE \
+    if command helm install $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_CODE \
                             --namespace $ENVIRONMENT_EXCHANGE_NAME \
                             --set job.enable="true" \
                             --set job.mode="add_coin" \
@@ -4850,9 +5254,9 @@ EOL
                             --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                             --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
-                            -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                            -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server/values.yaml \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/add-coin.yaml \
-                            $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+                            $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server; then
 
       echo "Kubernetes Job has been created for adding new coin $COIN_CODE."
 
@@ -4921,7 +5325,7 @@ EOL
         
         # Running database job for Kubernetes
         echo "Applying changes on database..."
-        kubernetes_database_init upgrade;
+        kubernetes_hollaex_network_database_init upgrade;
 
       fi
 
@@ -5534,7 +5938,7 @@ job:
   enable: true
   mode: add_pair
   env:
-    PAIR_CODE: $(echo ${!PAIR_CODE_OVERRIDE})
+    pair_code: $(echo ${!PAIR_CODE_OVERRIDE})
     pair_base: $(echo ${!PAIR_BASE_OVERRIDE})
     pair_2: $(echo ${!PAIR_2_OVERRIDE})
     min_size: $(echo ${!MIN_SIZE_OVERRIDE})
@@ -5560,7 +5964,7 @@ EOL
 
     echo "Adding new pair $PAIR_CODE on Kubernetes"
     
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_CODE \
+    if command helm install $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_CODE \
                 --namespace $ENVIRONMENT_EXCHANGE_NAME \
                 --set job.enable="true" \
                 --set job.mode="add_pair" \
@@ -5570,9 +5974,9 @@ EOL
                 --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
-                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server/values.yaml \
                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/add-pair.yaml \
-                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+                $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server; then
 
       echo "Kubernetes Job has been created for adding new pair $PAIR_CODE."
 
@@ -5642,7 +6046,7 @@ EOL
 
         # Running database job for Kubernetes
         echo "Applying changes on database..."
-        kubernetes_database_init upgrade;
+        kubernetes_hollaex_network_database_init upgrade;
       
       fi
 
@@ -5651,7 +6055,7 @@ EOL
 
         echo "Running $(echo ${!PAIR_CODE_OVERRIDE}) on the Kubernetes."
         helm install --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                    --name $ENVIRONMENT_EXCHANGE_NAME-server-engine-$(echo ${!PAIR_BASE_OVERRIDE})$(echo ${!PAIR_2_OVERRIDE}) \
+                    $ENVIRONMENT_EXCHANGE_NAME-server-engine-$(echo ${!PAIR_BASE_OVERRIDE})$(echo ${!PAIR_2_OVERRIDE}) \
                     --set DEPLOYMENT_MODE="engine" \
                     --set PAIR="$(echo ${!PAIR_CODE_OVERRIDE})" \
                     --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
@@ -5660,7 +6064,7 @@ EOL
                     --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                     --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
-                    -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+                    -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server
       
       fi
 
@@ -6037,7 +6441,7 @@ job:
   mode: change_coin_owner
   env:
     coin_code: $COIN_CODE
-    coin_owner_id: $COIN_OWNER_ID
+    coin_owner_id: "$COIN_OWNER_ID"
 EOL
 
     }
@@ -6046,7 +6450,7 @@ EOL
 
     echo "Changing the ownership of $COIN_CODE on Kubernetes"
     
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-change-coin-owner-$COIN_CODE \
+    if command helm install $ENVIRONMENT_EXCHANGE_NAME-change-coin-owner-$COIN_CODE \
                             --namespace $ENVIRONMENT_EXCHANGE_NAME \
                             --set job.enable="true" \
                             --set job.mode="change_coin_owner" \
@@ -6056,9 +6460,9 @@ EOL
                             --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                             --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
-                            -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                            -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server/values.yaml \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/change-coin-owner.yaml \
-                            $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+                            $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server; then
 
       echo "Kubernetes Job has been created for change the coin ownership of $COIN_CODE."
 
@@ -6170,11 +6574,11 @@ EOL
 
     }
 
-    generate_kubernetes_change_coin_owner_values;
+    generate_kubernetes_activate_coin_values;
 
     echo "Activating $COIN_CODE on Kubernetes"
     
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-activate-coin-$COIN_CODE \
+    if command helm install $ENVIRONMENT_EXCHANGE_NAME-activate-coin-$COIN_CODE \
                             --namespace $ENVIRONMENT_EXCHANGE_NAME \
                             --set job.enable="true" \
                             --set job.mode="activate_coin" \
@@ -6184,9 +6588,9 @@ EOL
                             --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                             --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
-                            -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                            -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server/values.yaml \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/activate-coin.yaml \
-                            $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+                            $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server; then
 
       echo "Kubernetes Job has been created for activating $COIN_CODE."
 
@@ -6309,7 +6713,7 @@ job:
   mode: change_pair_owner
   env:
     pair_code: $PAIR_CODE
-    pair_owner_id: $PAIR_OWNER_ID
+    pair_owner_id: "$PAIR_OWNER_ID"
 EOL
 
     }
@@ -6318,7 +6722,7 @@ EOL
 
     echo "Changing the ownership of $PAIR_CODE on Kubernetes"
     
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-change-pair-owner-$PAIR_CODE \
+    if command helm install $ENVIRONMENT_EXCHANGE_NAME-change-pair-owner-$PAIR_CODE \
                             --namespace $ENVIRONMENT_EXCHANGE_NAME \
                             --set job.enable="true" \
                             --set job.mode="change_pair_owner" \
@@ -6328,9 +6732,9 @@ EOL
                             --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                             --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
-                            -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                            -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server/values.yaml \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/change-pair-owner.yaml \
-                            $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+                            $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server; then
 
       echo "Kubernetes Job has been created for change the pair ownership of $PAIR_CODE."
 
@@ -6441,16 +6845,16 @@ job:
   mode: activate_pair
   env:
     pair_code: $PAIR_CODE
-    pair_owner_id: $PAIR_OWNER_ID
+
 EOL
 
     }
 
-    generate_kubernetes_change_pair_owner_values;
+    generate_kubernetes_activate_pair_values;
 
     echo "Changing the ownership of $PAIR_CODE on Kubernetes"
     
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-change-pair-owner-$PAIR_CODE \
+    if command helm install $ENVIRONMENT_EXCHANGE_NAME-change-pair-owner-$PAIR_CODE \
                             --namespace $ENVIRONMENT_EXCHANGE_NAME \
                             --set job.enable="true" \
                             --set job.mode="activate_pair" \
@@ -6460,9 +6864,9 @@ EOL
                             --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                             --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
-                            -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                            -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server/values.yaml \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/activate-pair.yaml \
-                            $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+                            $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server; then
 
       echo "Kubernetes Job has been created for activating $PAIR_CODE."
 

@@ -5,7 +5,7 @@ imageRegistry: bitholla/hollaex-network
 dockerTag:
   
 imagePullSecrets:
-  - name: bitholla-registry-secret
+  - name: docker-registry-secret
 
 envName: hollaex-network-env
 secretName: hollaex-network-secret

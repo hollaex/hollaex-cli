@@ -552,6 +552,12 @@ elif [[ "$1" == "network" ]]; then
                 exit 0;
                 shift; continue
                 ;;
+            --prod)
+                export HOLLAEX_NETWORK_PROD=true
+                hollaex prod ${@:2}
+                exit 0;
+                shift; continue
+                ;;
              --status)
                 export HOLLAEX_NETWORK_STATUS=true
                 hollaex status ${@:2}
@@ -623,6 +629,10 @@ elif [[ "$1" == "network" ]]; then
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$1
                 echo "Target Docker Image tag: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE."
+                shift; continue
+                ;;
+            --kube)
+                USE_KUBERNETES=true
                 shift; continue
                 ;;
             --skip)
@@ -1173,7 +1183,12 @@ elif [[ "$1" == "init" ]]; then
     done
 
     echo "HOLLAEX_CONFIGMAP_NETWORK_URL=$HOLLAEX_CONFIGMAP_NETWORK_URL" > $INIT_PATH_CHECK
-    echo "HOLLAEX_INIT_LOCALHOST_MODE=true" >> $INIT_PATH_CHECK
+
+    if [[ "$HOLLAEX_INIT_LOCALHOST_MODE" ]]; then 
+
+        echo "HOLLAEX_INIT_LOCALHOST_MODE=true" >> $INIT_PATH_CHECK
+
+    fi 
 
     # Store Network ID, Admin email and password to a temporary file
     echo "HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID=$HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID" > $(pwd)/settings/temp
@@ -1343,16 +1358,20 @@ elif [[ "$1" == "setup" ]]; then
             mkdir templates
             touch .hollaex-network
 
-            printf "\nDo you want to run HollaEx Network for local testing purpose? (y/N)\n"
-            printf "HollaEx CLI will set your network to a localhost mode.\n"
-            read answer
+            if [[ ! "$USE_KUBERNETES" ]]; then 
 
-            if [[ "$answer" = "${answer#[Yy]}" ]]; then
-                echo "Proceeding without setting up a localhost mode..."
-            else 
-                echo "Setting up a localhost mode..."
-                export HOLLAEX_NETWORK_LOCALHOST_MODE=true
-            fi
+                printf "\nDo you want to run HollaEx Network for local testing purpose? (y/N)\n"
+                printf "HollaEx CLI will set your network to a localhost mode.\n"
+                read answer
+
+                if [[ "$answer" = "${answer#[Yy]}" ]]; then
+                    echo "Proceeding without setting up a localhost mode..."
+                else 
+                    echo "Setting up a localhost mode..."
+                    export HOLLAEX_NETWORK_LOCALHOST_MODE=true
+                fi
+            
+            fi 
 
             # Settings up the initial envs for HollaEx Network.
             hollaex_network_setup_initial_envs;
@@ -1438,7 +1457,7 @@ elif [[ "$1" == "setup" ]]; then
 
         for i in ${CONFIG_FILE_PATH[@]}; do
 
-            if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE=" $i > /dev/null ; then
+            if command grep -q "HOLLAEX_SECRET_DB_PASSWORD=" $i > /dev/null ; then
 
                 export SECRET_FILE_PATH=$i
 
@@ -1542,7 +1561,7 @@ elif [[ "$1" == "setup" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
-            echo "Are you sure you want to launch $HOLLAEX_CONFIGMAP_API_NAME v$ENVIRONMENT_DOCKER_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) on this cluster? (Y/n)"
+            echo "Are you sure you want to launch $HOLLAEX_CONFIGMAP_API_NAME v$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION ($HOLLAEX_CONFIGMAP_API_HOST) on this cluster? (Y/n)"
 
             read answer
 
@@ -1552,25 +1571,27 @@ elif [[ "$1" == "setup" ]]; then
             fi
 
         fi
-
-        echo "Generating Kubernetes Configmap."
-        generate_kubernetes_configmap;
-
-        echo "Generating Kubernetes Secret."
-        generate_kubernetes_secret;
         
         echo "Creating namespace on Kubernetes."
         kubectl create ns $ENVIRONMENT_EXCHANGE_NAME
-
-        echo "Applying configmap on the namespace."
-        kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
-        
-        echo "Applying secret on the namespace."
-        kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
         
         create_kubernetes_docker_registry_secret;
 
-        run_and_upgrade_hollaex_on_kubernetes;
+        if [[ "$HOLLAEX_NETWORK_SETUP" ]]; then
+
+            generate_hollaex_network_kubernetes_env_coins
+            generate_hollaex_network_kubernetes_env_pairs
+
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-env-coins.yaml
+            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-env-pairs.yaml
+
+            run_and_upgrade_hollaex_network_on_kubernetes
+
+        else 
+
+            run_and_upgrade_hollaex_on_kubernetes
+
+        fi 
 
         if [[ "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_ACCESSKEY" ]] && [[ "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_SECRETKEY" ]]; then
 
@@ -1579,11 +1600,21 @@ elif [[ "$1" == "setup" ]]; then
 
         fi 
 
-        if [[ ! "$HOLLAEX_NETWORK_SETUP" ]]; then
+        if [[ "$HOLLAEX_NETWORK_SETUP" ]]; then
+
+            hollaex_network_setup_finalization;
+
+            # hollaex_ascii_network_is_up
+
+        else 
 
             hollaex_setup_finalization;
 
-        fi
+            # hollaex_ascii_exchange_is_up
+
+
+
+        fi 
 
     fi
 
@@ -1681,6 +1712,13 @@ elif [[ "$1" == "setup" ]]; then
 
             fi 
 
+            # Drop temp settings file for setup
+            if [[ -f $TEMP_CONFIG_FILE ]]; then 
+
+                rm $TEMP_CONFIG_FILE
+            
+            fi
+
         else 
 
             echo "Error: Failed to start the HollaEx server."
@@ -1690,13 +1728,6 @@ elif [[ "$1" == "setup" ]]; then
 
         fi
 
-    fi 
-
-    # Drop temp settings file for setup
-    if [[ -f $TEMP_CONFIG_FILE ]]; then 
-
-        rm $TEMP_CONFIG_FILE
-    
     fi 
 
     exit 0;
@@ -2750,11 +2781,29 @@ elif [[ "$1" == "start" ]]; then
 
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-db --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
+            if [[ "$HOLLAEX_NETWORK_START" ]]; then 
+
+                kubectl scale statefulset/$ENVIRONMENT_EXCHANGE_NAME-influxdb --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+                kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-job --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+                helm_dynamic_trading_paris scaleup
+
+            else 
+
+                kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-plugins --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+            fi 
+
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=${ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS:-1} --namespace $ENVIRONMENT_EXCHANGE_NAME
 
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-plugins --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+            if [[ "$HOLLAEX_NETWORK_START" ]]; then 
+
+                kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-job --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+            fi 
 
             echo "Applying Ingress rules..."
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
@@ -3312,8 +3361,79 @@ elif [[ "$1" == "prod" ]]; then
 
     }
 
+    function hollaex_network_prod_domain_questions() {
+
+    
+        # API Domain
+        echo "***************************************************************"
+        echo "Exchange Server API Domain"
+        printf "\033[2m- Enter the full domain of your exchange API server, without 'http' or 'https'.\033[22m\n"
+        read answer
+
+        while true;
+            do if [[ "$answer" == *"http"* ]]; then
+                printf "\nValue should be an URL without 'http' or 'https'.\n"
+                echo  "Exchange API Domain: "
+                read answer
+                local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
+            elif [[ -z "$answer" ]]; then
+                printf "\nThe value should not be empty!\n\n"
+                echo  "Exchange API Domain: "
+                read answer
+                local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
+            else
+                break;
+            fi
+        done
+
+        export INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
+
+        printf "\n"
+        echo "${INPUT_HOLLAEX_CONFIGMAP_API_HOST} ✔"
+        printf "\n"
+
+        local INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP="http://${answer}"
+        local PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP//\//\\/}
+
+        export HOLLAEX_CONFIGMAP_API_HOST=$INPUT_HOLLAEX_CONFIGMAP_API_HOST
+
+        printf "\nYour HollaEx Network API Domain: \033[92m$INPUT_HOLLAEX_CONFIGMAP_API_HOST\033[39m\n"
+        echo "Type 'Y' to proceed (Y/n)"
+        read answer
+
+        if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+    
+            hollaex_network_prod_domain_questions;
+
+        else 
+
+            echo "Updating user settings file based on the provided values..."
+
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                # Update exchange name
+                if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+                    CONFIGMAP_FILE_PATH=$i
+                    sed -i.bak "s/HOLLAEX_CONFIGMAP_API_HOST=.*/HOLLAEX_CONFIGMAP_API_HOST=$PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST/" $CONFIGMAP_FILE_PATH
+                    rm $CONFIGMAP_FILE_PATH.bak
+                fi
+                
+            done
+        
+        fi
+
+    }
+
     # Asking for domains questions for production.
-    hollaex_prod_domain_questions;
+    if [[ "$HOLLAEX_NETWORK_PROD" ]]; then 
+
+        hollaex_network_prod_domain_questions
+    
+    else 
+
+        hollaex_prod_domain_questions;
+    
+    fi 
 
     #Checking the domains are reachable
     function hollaex_prod_check_domains_reachability() {
@@ -3377,9 +3497,65 @@ elif [[ "$1" == "prod" ]]; then
         fi
     }
 
-    hollaex_prod_check_domains_reachability;
+    #Checking the domains are reachable
+    function hollaex_network_prod_check_domains_reachability() {
+        
 
-    apply_nginx_user_defined_values;
+        if command nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST > /dev/null; then
+
+            printf "\n\033[92mSuccessfully resolved the exchange API URL ($INPUT_HOLLAEX_CONFIGMAP_API_HOST).\033[39m\n"
+            HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=true
+
+        else
+
+            HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=false
+        
+        fi
+
+        if [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+
+            # Announcing the domain configuration how-to.
+            SYSTEM_PUBLIC_IP=$(curl -s ifconfig.me)
+
+            if [[ ! "$SYSTEM_PUBLIC_IP" ]]; then
+                printf "\n\033[91mError: Failed to get the system public IP automatically.\033[39m\n"
+                echo "You should check it by yourself."
+                SYSTEM_PUBLIC_IP="<YOUR_PUBLIC_IP>"
+            fi
+
+            printf "\n\nYour Public IP: $SYSTEM_PUBLIC_IP.\n\n"
+
+            if [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+
+                printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_API_HOST.\033[39m\n"
+                printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST to point $SYSTEM_PUBLIC_IP\033[0m.\n"
+                printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
+                read -p "Press enter once you configured the DNS."
+
+            fi
+
+            printf "\n\033[93mChecking the DNS reachability...\033[39m\n"
+            echo "Info: You could always quit the DNS checking loop with 'Crtl + C'."
+            hollaex_network_prod_check_domains_reachability;
+
+        fi
+    }
+
+    if [[ "$HOLLAEX_NETWORK_PROD" ]]; then 
+
+        hollaex_network_prod_check_domains_reachability;
+
+    else 
+
+        hollaex_prod_check_domains_reachability;
+
+    fi 
+    
+    if [[ ! "$USE_KUBERNETES" ]]; then 
+
+        apply_nginx_user_defined_values;
+
+    fi 
 
     printf "\n"
 
@@ -3442,20 +3618,28 @@ elif [[ "$1" == "prod" ]]; then
             while true;
                 do if command hollaex toolbox --issue_ssl --skip; then
 
-                    echo "Do you want to issue more SSL cert for different domain? (Y/n)"
-                    read answer
+                    if [[ ! "$HOLLAEX_NETWORK_PROD" ]]; then 
 
-                    if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+                        echo "Do you want to issue more SSL cert for different domain? (Y/n)"
+                        read answer
 
-                        echo "Skipping..."
-                        break;
+                        if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
 
+                            echo "Skipping..."
+                            break;
+
+                        else 
+
+                            hollaex toolbox --issue_ssl --skip;
+                            break;
+
+                        fi
+                    
                     else 
 
-                        hollaex toolbox --issue_ssl --skip;
-                        break;
+                        echo "Successfully issued the SSL certificate for your domain."
 
-                    fi
+                    fi 
                 
                 else 
 
@@ -3522,46 +3706,50 @@ elif [[ "$1" == "prod" ]]; then
             
             fi 
 
-            echo "Do you want to enable cert-manager based SSL for Web server? (Y/n)"
-            read answer
+            if [[ ! "$HOLLAEX_NETWORK_PROD" ]]; then 
 
-            if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
-            
-                echo "Skipping to enable SSL for Web server..."
+                echo "Do you want to enable cert-manager based SSL for Web server? (Y/n)"
+                read answer
 
-                if command grep -q "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB" $CONFIGMAP_FILE_PATH > /dev/null ; then
-            
-                    echo "Updating the existing ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB value..."
-                    sed -i.bak "s/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=.*/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=false/" $CONFIGMAP_FILE_PATH
-                    rm $CONFIGMAP_FILE_PATH.bak
+                if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+                
+                    echo "Skipping to enable SSL for Web server..."
 
-                else 
+                    if command grep -q "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB" $CONFIGMAP_FILE_PATH > /dev/null ; then
+                
+                        echo "Updating the existing ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB value..."
+                        sed -i.bak "s/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=.*/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=false/" $CONFIGMAP_FILE_PATH
+                        rm $CONFIGMAP_FILE_PATH.bak
 
-                    echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB is missing on your settings file. Adding it now..."
-                    echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=false" >> $CONFIGMAP_FILE_PATH
+                    else 
 
-                fi
+                        echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB is missing on your settings file. Adding it now..."
+                        echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=false" >> $CONFIGMAP_FILE_PATH
 
-            else 
-
-                export ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=true
-
-                if command grep -q "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB" $CONFIGMAP_FILE_PATH > /dev/null ; then
-            
-                    echo "Updating the existing ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB value..."
-                    sed -i.bak "s/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=.*/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=true/" $CONFIGMAP_FILE_PATH
-                    rm $CONFIGMAP_FILE_PATH.bak
+                    fi
 
                 else 
 
-                    echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB is missing on your settings file. Adding it now..."
-                    echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=true" >> $CONFIGMAP_FILE_PATH
+                    export ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=true
 
-                fi
+                    if command grep -q "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB" $CONFIGMAP_FILE_PATH > /dev/null ; then
+                
+                        echo "Updating the existing ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB value..."
+                        sed -i.bak "s/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=.*/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=true/" $CONFIGMAP_FILE_PATH
+                        rm $CONFIGMAP_FILE_PATH.bak
 
-                printf "\n"
-                echo "✔"
-                printf "\n"
+                    else 
+
+                        echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB is missing on your settings file. Adding it now..."
+                        echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=true" >> $CONFIGMAP_FILE_PATH
+
+                    fi
+
+                    printf "\n"
+                    echo "✔"
+                    printf "\n"
+                
+                fi 
             
             fi 
         
@@ -3569,8 +3757,12 @@ elif [[ "$1" == "prod" ]]; then
 
         echo "Updating domains on settings files to use 'https' as a prefix..."
 
-        INPUT_HOLLAEX_CONFIGMAP_DOMAIN_WITH_HTTPS="https://${INPUT_HOLLAEX_CONFIGMAP_DOMAIN}"
-        PARSED_INPUT_HOLLAEX_CONFIGMAP_DOMAIN=${INPUT_HOLLAEX_CONFIGMAP_DOMAIN_WITH_HTTPS//\//\\/}
+        if [[ ! "$HOLLAEX_NETWORK_PROD" ]]; then 
+            
+            INPUT_HOLLAEX_CONFIGMAP_DOMAIN_WITH_HTTPS="https://${INPUT_HOLLAEX_CONFIGMAP_DOMAIN}"
+            PARSED_INPUT_HOLLAEX_CONFIGMAP_DOMAIN=${INPUT_HOLLAEX_CONFIGMAP_DOMAIN_WITH_HTTPS//\//\\/}
+        
+        fi 
 
         INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTPS="https://${INPUT_HOLLAEX_CONFIGMAP_API_HOST}"
         PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTPS//\//\\/}
@@ -3580,7 +3772,9 @@ elif [[ "$1" == "prod" ]]; then
             # Update exchange name
             if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
                 CONFIGMAP_FILE_PATH=$i
-                sed -i.bak "s/HOLLAEX_CONFIGMAP_DOMAIN=.*/HOLLAEX_CONFIGMAP_DOMAIN=$PARSED_INPUT_HOLLAEX_CONFIGMAP_DOMAIN/" $CONFIGMAP_FILE_PATH
+                if [[ ! "$HOLLAEX_NETWORK_PROD" ]]; then 
+                    sed -i.bak "s/HOLLAEX_CONFIGMAP_DOMAIN=.*/HOLLAEX_CONFIGMAP_DOMAIN=$PARSED_INPUT_HOLLAEX_CONFIGMAP_DOMAIN/" $CONFIGMAP_FILE_PATH
+                fi 
                 sed -i.bak "s/HOLLAEX_CONFIGMAP_API_HOST=.*/HOLLAEX_CONFIGMAP_API_HOST=$PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST/" $CONFIGMAP_FILE_PATH
                 rm $CONFIGMAP_FILE_PATH.bak
             fi
@@ -3589,7 +3783,15 @@ elif [[ "$1" == "prod" ]]; then
 
     fi
 
-    hollaex_prod_complete;
+    if [[ "$HOLLAEX_NETWORK_PROD" ]]; then 
+
+        hollaex_network_prod_complete;
+
+    else 
+
+        hollaex_prod_complete;
+    
+    fi 
 
     exit 0;
 
@@ -3709,9 +3911,23 @@ elif [[ "$1" == "stop" ]]; then
 
         kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-plugins --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
+        if [[ ! "$HOLLAEX_NETWORK_STOP" ]]; then 
+
+            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-plugins --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+        fi 
 
         echo "Scaling down backend components..."
+        
+        if [[ "$HOLLAEX_NETWORK_STOP" ]]; then 
+
+            kubectl scale statefulset/$ENVIRONMENT_EXCHANGE_NAME-influxdb --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-job --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+            helm_dynamic_trading_paris scaledown
+
+        fi 
 
         kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
@@ -3868,16 +4084,12 @@ elif [[ "$1" == "restart" ]]; then
 
     fi
 
-     if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
-        
-        if [[ ! "$HOLLAEX_NETWORK_RESTART" ]]; then 
+    if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]] && [[ ! "$HOLLAEX_NETWORK_RESTART" ]]; then 
 
             # Check Kit version compatibility range.
             check_kit_version_compatibility_range;
-
-        fi 
     
-    fi 
+    fi
 
     if [[ "$IGNORE_SETTINGS" ]]; then
 
@@ -3916,9 +4128,20 @@ elif [[ "$1" == "restart" ]]; then
 
         fi
 
-        hollaex server --stop --skip --kube
+        if [[ "$HOLLAEX_NETWORK_RESTART" ]]; then 
 
-        hollaex server --start --skip --kube
+            hollaex network --stop --skip --kube
+
+            hollaex network --start --skip --kube
+
+
+        else 
+
+            hollaex server --stop --skip --kube
+
+            hollaex server --start --skip --kube
+        
+        fi 
     
     fi
 
@@ -4615,7 +4838,15 @@ elif [[ "$1" == "terminate" ]]; then
         echo "Removing $HOLLAEX_CONFIGMAP_API_NAME namespace."
         kubectl delete ns $ENVIRONMENT_EXCHANGE_NAME
 
-        hollaex_ascii_exchange_has_been_terminated;
+        if [[ "$HOLLAEX_NETWORK_TERMINATE" ]]; then 
+
+            hollaex_ascii_network_has_been_terminated;
+
+        else 
+
+            hollaex_ascii_exchange_has_been_terminated;
+
+        fi 
 
         echo "$HOLLAEX_CONFIGMAP_API_NAME ($HOLLAEX_CONFIGMAP_API_HOST) has been successfully terminated."
         echo "If there's an issue, please review the logs and try it again."
