@@ -3214,7 +3214,7 @@ function issue_new_hmac_token() {
     echo -e "\nFailed to issue a security token!"
 
     echo -e "\nPlease check your internet connectivity, and try it again."
-    echo -e "You could also check the bitHolla service status at https://status.bitholla.com."
+    echo -e "You could also check the HollaEx service status at https://status.bitholla.com."
 
     exit 1;
 
@@ -3315,7 +3315,7 @@ function get_hmac_token() {
 
       echo -e "Revoking the exisitng token ($BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY)..."
 
-      # Revoking the security token through the bitHolla API.
+      # Revoking the security token through the HollaEx API.
       BITHOLLA_HMAC_TOKEN_REVOKE_CALL=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" -w " HTTP_CODE=%{http_code}" \
           --request DELETE \
           -d "{\"name\": \"kit\", \"token_id\": $BITHOLLA_HMAC_TOKEN_EXISTING_TOKEN_ID}" \
@@ -3399,7 +3399,7 @@ function hollaex_setup_initialization() {
 
       echo -e "You need to \033[1msetup your exchange\033[0m with the configurations."
       echo -e "You can follow the \033[1mexchange setup wizard\033[0m on \033[1mhttps://dash.bitholla.com\033[0m before you do this process."
-      echo -e "\033[1mHave you already setup your exchange on bitHolla Dashboard? (Y/n)\033[0m"
+      echo -e "\033[1mHave you already setup your exchange on HollaEx Dashboard? (Y/n)\033[0m"
       read answer
 
       if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
@@ -3431,10 +3431,10 @@ function hollaex_setup_initialization() {
 
 function hollaex_login_form() {
 
-    echo -e "\033[1mbitHolla Account Email:\033[0m "
+    echo -e "\033[1mHollaEx Account Email:\033[0m "
     read email
 
-    echo -e "\033[1mbitHolla Account Password:\033[0m "
+    echo -e "\033[1mHollaEx Account Password:\033[0m "
     read -s password
     printf "\n"
 
@@ -3449,13 +3449,13 @@ function hollaex_login_form() {
 
     if [[ ! "$BITHOLLA_ACCOUNT_TOKEN" ]] || [[ "$BITHOLLA_ACCOUNT_TOKEN" == "null" ]]; then
 
-        printf "\033[91mFailed to authenticate on bitHolla Server with your passed credentials.\033[39m\n"
+        printf "\033[91mFailed to authenticate on HollaEx Server with your passed credentials.\033[39m\n"
         echo "Please try it again."
         exit 1;
 
     else 
 
-        printf "\033[92mSuccessfully authenticated on bitHolla Server.\033[39m\n"
+        printf "\033[92mSuccessfully authenticated on HollaEx Server.\033[39m\n"
         # echo "Info: Your authentication will be only available for 24 hours."
 
         echo $BITHOLLA_ACCOUNT_TOKEN > $HOLLAEX_CLI_INIT_PATH/.token
@@ -3489,7 +3489,7 @@ function hollaex_login_token_validate_and_issue() {
       if [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" ]] || [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" == "200" ]]; then
 
           printf "\033[91mError: Your access token has been expired!\033[39m\n"
-          printf "Please login again with your bitHolla account to issue a new access token.\n\n"
+          printf "Please login again with your HollaEx account to issue a new access token.\n\n"
           hollaex_login_form;
 
       else
