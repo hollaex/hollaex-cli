@@ -52,7 +52,7 @@ steps:
     SLACK_WEBHOOK:
       from_secret: slack_webhook
   
-  - name: docker_tag_for_release_testnet
+- name: docker_tag_for_release_testnet
   image: alpine
   commands:
   -  export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION-testnet" > .tags
