@@ -81,15 +81,15 @@ spec:
 {{- if eq .Values.DEPLOYMENT_MODE "api" }}
 
         command: ["/bin/bash"]
-        # args: ["-c", "/app/api-binary"]
-        args: ["-c", "node app.js"]
+        args: ["-c", "/app/api-binary"]
+        # args: ["-c", "node app.js"]
 
         
 {{- else if eq .Values.DEPLOYMENT_MODE "stream" }}
 
         command: ["/bin/bash"]
-        # args: ["-c", "/app/stream-binary"]
-        args: ["-c", "node ws/index.js"]
+        args: ["-c", "/app/stream-binary"]
+        # args: ["-c", "node ws/index.js"]
 
 {{- else if eq .Values.DEPLOYMENT_MODE "job" }}
 
@@ -99,8 +99,8 @@ spec:
 {{- else if eq .Values.DEPLOYMENT_MODE "engine" }}
 
         command: ["/bin/bash"]
-        # args: ["-c", "/app/engine-binary"]
-        args: ["-c", "node queue/queue.js"]
+        args: ["-c", "/app/engine-binary"]
+        # args: ["-c", "node queue/queue.js"]
         
 {{- end }}
 

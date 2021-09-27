@@ -1137,6 +1137,35 @@ EOL
 
 fi
 
+if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_MONGODB" == "true" ]]; then 
+  # Generate docker-compose
+  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+  ${ENVIRONMENT_EXCHANGE_NAME}-mongodb:
+    image: ${ENVIRONMENT_DOCKER_IMAGE_MONGODB_REGISTRY:-mongo}:${ENVIRONMENT_DOCKER_IMAGE_MONGODB_VERSION:-4.4.6-bionic}
+    restart: unless-stopped
+  $(if [[ ! "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then 
+    echo "
+    ports:
+      - 27107:27107
+    ";
+  fi)
+    deploy:
+      resources:
+        limits:
+          cpus: "${ENVIRONMENT_MONGODB_CPU_LIMITS:-0.1}"
+          $(echo memory: "${ENVIRONMENT_MONGODB_MEMORY_LIMITS:-100M}" | sed 's/i//g')
+        reservations:
+          cpus: "${ENVIRONMENT_MONGODB_CPU_REQUESTS:-0.1}"
+          $(echo memory: "${ENVIRONMENT_IMONGODB_MEMORY_REQUESTS:-100M}" | sed 's/i//g')
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${HOLLAEX_SECRET_MONGO_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${HOLLAEX_SECRET_MONGO_PASSWORD}
+    networks:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-network
+EOL
+
+fi
+
 #LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE=$ENVIRONMENT_EXCHANGE_RUN_MODE
 
 IFS=',' read -ra LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE <<< "$ENVIRONMENT_EXCHANGE_RUN_MODE"
@@ -2914,9 +2943,9 @@ EOF
 
 }
 
-function create_kubernetes_docker_registry_secret() {
+function docker_registry_login() {
 
-   if [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME" ]] || [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD" ]] || [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL" ]] || [[ "$MANUAL_DOCKER_REGISTRY_SECRET_UPDATE" ]] ; then
+  if [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME" ]] || [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD" ]] || [[ ! "$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL" ]] || [[ "$MANUAL_DOCKER_REGISTRY_SECRET_UPDATE" ]] ; then
 
     echo "Docker registry credentials are not detected on your secret file of HollaEx Kit directory."
     echo "You can provide them now on here."
@@ -2967,6 +2996,12 @@ function create_kubernetes_docker_registry_secret() {
     override_kubernetes_docker_registry_secret;
   
   fi
+
+}
+
+function create_kubernetes_docker_registry_secret() {
+
+  docker_registry_login
 
   echo "Creating Docker registry secret on $ENVIRONMENT_EXCHANGE_NAME namespace."
   kubectl create secret docker-registry docker-registry-secret \
@@ -4507,6 +4542,29 @@ function run_and_upgrade_hollaex_network_on_kubernetes() {
                   sleep 60
 
   fi
+
+  if [[ "$ENVIRONMENT_KUBERNETES_RUN_MONGODB" == true ]]; then
+
+      generate_nodeselector_values $ENVIRONMENT_KUBERNETES_MONGODB_NODESELECTOR mongodb
+
+      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-mongodb \
+                  --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                  --wait \
+                  --set pvc.create=true \
+                  --set pvc.size="${ENVIRONMENT_KUBERNETES_MONGODB_VOLUMESIZE:-20Gi}" \
+                  --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                  --set resources.limits.cpu="${ENVIRONMENT_MONGODB_CPU_LIMITS:-100m}" \
+                  --set resources.limits.memory="${ENVIRONMENT_MONGODB_MEMORY_LIMITS:-200Mi}" \
+                  --set resources.requests.cpu="${ENVIRONMENT_MONGODB_CPU_REQUESTS:-10m}" \
+                  --set resources.requests.memory="${ENVIRONMENT_MONGODB_MEMORY_REQUESTS:-100Mi}" \
+                  -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-mongodb/values.yaml \
+                  -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-mongodb.yaml \
+                  $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-mongodb $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_MONGODB_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_MONGODB_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_MONGODB_DB_ACCESS_PORT)
+
+                  echo "Waiting until the database to be fully initialized"
+                  sleep 30
+
+  fi
         
   # FOR GENERATING NODESELECTOR VALUES
   generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATEFUL_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateful
@@ -4637,6 +4695,7 @@ ENVIRONMENT_EXCHANGE_RUN_MODE=api,stream,job,engine
 ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB=true
 ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS=true
 ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB=true
+ENVIRONMENT_DOCKER_COMPOSE_RUN_MONGODB=true
 
 ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB=true
 ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE=25Gi
@@ -4646,11 +4705,15 @@ ENVIRONMENT_KUBERNETES_RUN_REDIS=true
 ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR="{}"
 ENVIRONMENT_KUBERNETES_REDIS_NODESELECTOR="{}"
 ENVIRONMENT_KUBERNETES_INFLUXDB_NODESELECTOR="{}"
+ENVIRONMENT_KUBERNETES_MONGODB_NODESELECTOR="{}"
 ENVIRONMENT_KUBERNETES_EXCHANGE_STATEFUL_NODESELECTOR="{}"
 ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR="{}"
 
 ENVIRONMENT_KUBERNETES_RUN_INFLUXDB=true
 ENVIRONMENT_KUBERNETES_INFLUXDB_DB_VOLUMESIZE=20Gi
+
+ENVIRONMENT_KUBERNETES_RUN_MONGODB=true
+ENVIRONMENT_KUBERNETES_MONGODB_DB_VOLUMESIZE=20Gi
 
 HOLLAEX_CONFIGMAP_CURRENCIES=xht,usdt
 HOLLAEX_CONFIGMAP_PAIRS='xht-usdt'
@@ -4666,11 +4729,14 @@ ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION=6.0.9-alpine
 ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_REGISTRY=influxdb
 ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION=1.8.3
 
+ENVIRONMENT_DOCKER_IMAGE_MONGODB_REGISTRY=mongo
+ENVIRONMENT_DOCKER_IMAGE_MONGODB_VERSION=4.4.6-bionic
+
 ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_REGISTRY=bitholla/nginx-with-certbot
 ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_VERSION=1.15.8
 
-ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=bitholla/hollaex-network
-ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=2.2.4-testnet-2109062205
+ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=bitholla/hollaex-network-standalone
+ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=
 
 ENVIRONMENT_LOCAL_NGINX_HTTP_PORT=80
 ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT=443
@@ -4769,6 +4835,12 @@ HOLLAEX_SECRET_INFLUX_HOST=hollaex-network-influxdb
 HOLLAEX_SECRET_INFLUX_PASSWORD=network
 HOLLAEX_SECRET_INFLUX_PORT=8086
 HOLLAEX_SECRET_INFLUX_USER=network
+
+HOLLAEX_SECRET_MONGO_DB=network
+HOLLAEX_SECRET_MONGO_URL=hollaex-network-mongodb
+HOLLAEX_SECRET_MONGO_PORT=27017
+HOLLAEX_SECRET_MONGO_USERNAME=network
+HOLLAEX_SECRET_MONGO_PASSWORD=network
 
 ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_HOST=
 ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME=
@@ -6928,5 +7000,12 @@ EOL
       
   fi
 
+
+}
+
+function check_latest_hollaex_network_docker_tag() {
+
+  DOCKER_HUB_BEARER_TOKEN=$(curl -s -H "Content-Type: application/json" -X POST -d '{"username": "'${ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME}'", "password": "'${ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD}'"}' https://hub.docker.com/v2/users/login/ | jq -r .token)
+  curl -s -S -H "Authorization: Bearer $DOCKER_HUB_BEARER_TOKEN" https://registry.hub.docker.com/v2/repositories/bitholla/hollaex-network-standalone/tags?page_size=100 | jq -r '."results"[]["name"]' | sed -n 1p 
 
 }

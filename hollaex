@@ -1376,8 +1376,31 @@ elif [[ "$1" == "setup" ]]; then
             # Settings up the initial envs for HollaEx Network.
             hollaex_network_setup_initial_envs;
 
+            CONFIG_FILE_PATH=$(pwd)/settings/*
             CONFIGMAP_FILE_PATH=$(pwd)/settings/configmap
             SECRET_FILE_PATH=$(pwd)/settings/secret
+
+            echo "Warning: You need to provide your Docker Hub account credentials to proceed."
+            docker_registry_login
+
+            if [[ -z "$(check_latest_hollaex_network_docker_tag)" ]] ; then 
+
+                echo "Error: Unable to get the latest HollaEx Network Docker image."
+                echo "Please confirm that you provided correct Docker Hub credentials, and try again."
+                
+                cd ..
+                rm -r hollaex-network-home
+
+                exit 1;
+
+            else 
+
+                echo "Latest HollaEx Network Version: v$(check_latest_hollaex_network_docker_tag)."
+
+            fi
+
+            sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$(check_latest_hollaex_network_docker_tag)/" $CONFIGMAP_FILE_PATH
+            rm $CONFIGMAP_FILE_PATH.bak
 
             echo "Your HollaEx Network Home folder is all set and ready."
         
@@ -4407,7 +4430,17 @@ elif [[ "$1" == "apply" ]]; then
     fi 
 
     ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
-    ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
+
+    if [[ "$HOLLAEX_NETWORK_UPGRADE" ]]; then 
+        
+        ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$(check_latest_hollaex_network_docker_tag)
+        echo "Latest HollaEx Network Version: v$HOLLAEX_CORE_USER_APPLY_TAG."
+
+    else 
+
+        ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
+
+    fi 
 
     if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
@@ -4426,9 +4459,9 @@ elif [[ "$1" == "apply" ]]; then
     export ENVIRONMENT_USER_REGISTRY_OVERRIDE=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY
     override_user_docker_registry;
     
-
     export HOLLAEX_CORE_USER_APPLY_TAG=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
     override_user_docker_tag;
+
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
