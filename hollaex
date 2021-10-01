@@ -1380,13 +1380,13 @@ elif [[ "$1" == "setup" ]]; then
             CONFIGMAP_FILE_PATH=$(pwd)/settings/configmap
             SECRET_FILE_PATH=$(pwd)/settings/secret
 
-            echo "Warning: You need to provide your Docker Hub account credentials to proceed."
+            echo "Warning: You need to provide the credentials to your Docker Hug account to proceed."
             docker_registry_login
 
             if [[ -z "$(check_latest_hollaex_network_docker_tag)" ]] ; then 
 
-                echo "Error: Unable to get the latest HollaEx Network Docker image."
-                echo "Please confirm that you provided correct Docker Hub credentials, and try again."
+                echo -e "\n\033[91mError: Unable to get the latest HollaEx Network Docker image.\033[39m"
+                echo -e "Please confirm that you provided correct Docker Hub credentials, and try again.\n"
                 
                 cd ..
                 rm -r hollaex-network-home
