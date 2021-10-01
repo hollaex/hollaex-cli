@@ -5011,6 +5011,12 @@ elif [[ "$1" == "toolbox" ]]; then
 
                 shift; continue
                 ;;
+            --get_seo_html)
+                GET_SEO_HTML=true
+                TOOLBOX_ENABLE=true
+                echo "Download custom SEO html file from HollaEx Dashboard."
+                shift; continue
+                ;;
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
@@ -6193,7 +6199,56 @@ elif [[ "$1" == "toolbox" ]]; then
         echo -e "Whitelisted IPs: $HOLLAEX_MAINTENANCE_MODE_WHITELIST_IP\n"
 
         echo -e "To disable the maintenance mode, run 'hollaex toolbox --disable_maintenance_mode (--kube).\n"
+    
+     elif [[ "$GET_SEO_HTML" ]]; then
 
+        echo "Attempting to download the custom SEO settings from HollaEx Dashboard..."
+
+        hollaex_login_token_validate_and_issue;
+
+        HOLLAEX_CLOUD_GET_EXCHANGE_INFO_REQUEST=$(curl -s -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
+          --request GET \
+          https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange)
+
+        HOLLAEX_CLOUD_GET_EXCHANGE_NAME_LIST=$(echo $HOLLAEX_CLOUD_GET_EXCHANGE_INFO_REQUEST | jq -r '.data[].name')
+
+        j=0
+        for i in ${HOLLAEX_CLOUD_GET_EXCHANGE_NAME_LIST[@]}; do 
+
+            if [[ "$i" == "$HOLLAEX_CONFIGMAP_API_NAME" ]]; then
+
+                EXCHANGE_ARRAY_ORDER=$j
+
+            fi
+
+            ((j++))
+
+        done
+
+        HOLLAEX_CLOUD_EXCHANGE_ID=$(echo $HOLLAEX_CLOUD_GET_EXCHANGE_INFO_REQUEST | jq -r ".data[$EXCHANGE_ARRAY_ORDER].id")
+
+        HOLLAEX_CLOUD_SEO_HTML_REQUEST=$(curl -s -w "&%{http_code}" \
+        -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
+        --request GET \
+        https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange/html?exchange_id=$HOLLAEX_CLOUD_EXCHANGE_ID) 
+
+        HOLLAEX_CLOUD_SEO_HTML=$(echo $HOLLAEX_CLOUD_SEO_HTML_REQUEST | cut -f1 -d "&")
+        HOLLAEX_CLOUD_SEO_HTML_CODE=$(echo $HOLLAEX_CLOUD_SEO_HTML_REQUEST | cut -f2 -d "&")
+
+        if [[ "$HOLLAEX_CLOUD_SEO_HTML_CODE" == "200" ]]; then 
+            
+            echo -e "\nSuccessfully downloaded and saved the custom SEO settings."
+
+            curl -s -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
+            --request GET \
+            https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange/html?exchange_id=$HOLLAEX_CLOUD_EXCHANGE_ID > $HOLLAEX_CLI_INIT_PATH/web/public/index.html
+
+        else 
+
+            echo -e "\nError: Failed to download the custom SEO settings."
+            exit 1;
+
+        fi 
 
     elif [[ "$DISABLE_MAINTENANCE_MODE" ]]; then
 
@@ -6244,7 +6299,8 @@ elif [[ "$1" == "toolbox" ]]; then
                 exit 1;
             
             fi
-        
+
+
         else 
 
             echo "Error: The maintenance mode only works for Kubernetes environment atm."
