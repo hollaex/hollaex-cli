@@ -6237,7 +6237,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         if [[ "$HOLLAEX_CLOUD_SEO_HTML_CODE" == "200" ]]; then 
             
-            echo -e "\nSuccessfully downloaded and saved the custom SEO settings."
+            echo -e "\n\033[92mSuccessfully downloaded and saved the custom SEO settings.\033[39m"
 
             curl -s -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
             --request GET \
@@ -6245,7 +6245,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         else 
 
-            echo -e "\nError: Failed to download the custom SEO settings."
+            echo -e "\033[91m\nError: Failed to download the custom SEO settings.\033[39m"
             exit 1;
 
         fi 
