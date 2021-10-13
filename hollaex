@@ -1029,8 +1029,8 @@ elif [[ "$1" == "init" ]]; then
     printf "\n\033[1mSelect the network\033[0m\n\n"
 
     echo -e "Before you continue, You need to \033[1mselect the network\033[0m that you want to use with the exchange."
-    echo -e "HollaEx Kit will be connected to the official HollaEx Network (\033[1mapi.hollaex.network\033[0m) by default." 
-    echo -e "If you want to connect to a different one, please type in an API URL for the custom network.\n"
+    echo -e "HollaEx Kit by default, will be connected to the official public HollaEx Network (\033[1mapi.hollaex.network\033[0m)." 
+    echo -e "If you want to connect to a different network, please type the URL.\n"
     echo -e "Do you want to want to continue with the official HollaEx Network? (Y/n)\n"
     read answer
 
@@ -1038,7 +1038,7 @@ elif [[ "$1" == "init" ]]; then
     if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
 
         echo "***************************************************************"
-        printf "\nPlease type the URL of your custom network, including 'http' or 'https'. (Example: https://api.hollaex.network)\n"
+        printf "\nPlease type the URL of your custom network including 'http' or 'https'. (Example: https://api.hollaex.network)\n"
         read hollaexAPIURL
 
         while true;
@@ -1101,12 +1101,12 @@ elif [[ "$1" == "init" ]]; then
     echo "${hollaexAPIURL} ✔"
     printf "\n"
 
-    printf "\n\033[1mCreating an admin account\033[0m\n\n"
-    echo -e "Please type your email addr and password that you are going to use for an admin account.\n"
+    printf "\n\033[1mCreate Admin\033[0m\n\n"
+    echo -e "Please type your email address and password that you are going to use for your admin account.\n"
     echo "Email: "
     read hollaexAdminEmail
     echo "Password: "
-    read hollaexAdminPassword
+    read -s hollaexAdminPassword
 
      while true;
         do if [[ ! "$hollaexAdminEmail" == *"@"* ]]; then 
@@ -1118,9 +1118,9 @@ elif [[ "$1" == "init" ]]; then
         fi
     done
 
-    printf "\n\033[1mNew exchange name\033[0m\n\n"
+    printf "\n\033[1mCreate Exchange\033[0m\n\n"
 
-    echo -e "The last part here. Please type in the name of your new exchange you going to run."
+    echo -e "Please type in the name of your new exchange."
     printf "\033[2m- Alphanumeric, Dash (-), Underscore Only (_). No space or special character allowed.\033[22m\n" 
     read hollaexExchangeName
 
@@ -1195,9 +1195,15 @@ elif [[ "$1" == "init" ]]; then
     echo "HOLLAEX_CONFIGMAP_ADMIN_EMAIL=$hollaexAdminEmail" >> $(pwd)/settings/temp
     echo "HOLLAEX_CONFIGMAP_ADMIN_PASSWORD=$hollaexAdminPassword" >> $(pwd)/settings/temp
 
-    echo -e "\nSuccessfully initialized the exchange $hollaexExchangeName and the account $hollaexAdminEmail."
-    echo "Please run 'hollaex server --setup' command to set up the exchange."
-    echo "Have fun!"
+    echo -e "\n\033[92mSuccessfully initialized the exchange $hollaexExchangeName and the account $hollaexAdminEmail.\033[39m"
+
+    if [[ ! "$HOLLAEX_IS_SETUP" ]]; then 
+        
+        echo "Please run 'hollaex server --setup' command to set up the exchange."
+    
+    fi 
+
+    echo -e "\nHave fun!"
 
     exit 0;
 
@@ -1380,7 +1386,7 @@ elif [[ "$1" == "setup" ]]; then
             CONFIGMAP_FILE_PATH=$(pwd)/settings/configmap
             SECRET_FILE_PATH=$(pwd)/settings/secret
 
-            echo "Warning: You need to provide the credentials to your Docker Hug account to proceed."
+            echo "Warning: You need to login with your Docker Hub account to proceed."
             docker_registry_login
 
             if [[ -z "$(check_latest_hollaex_network_docker_tag)" ]] ; then 
