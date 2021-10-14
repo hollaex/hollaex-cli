@@ -32,6 +32,7 @@ if [[ ! -f "$INIT_PATH_CHECK" ]] && [[ ! "$HOLLAEX_NETWORK_OPERATION" ]]; then
     echo -e "\n\033[91mFailed to detect the HollaEx Kit."
     echo -e "Every HollaEx commands should be run at the HollaEx Kit path.\033[39m" 
     echo -e "Please check your current path and try it again.\n"
+    echo -e "To download the HollaEx Kit, Please run 'git clone https://github.com/bitholla/hollaex-kit.git'.\n"
     exit 1;
 
 fi 
@@ -1364,27 +1365,14 @@ elif [[ "$1" == "setup" ]]; then
             mkdir templates
             touch .hollaex-network
 
-            if [[ ! "$USE_KUBERNETES" ]]; then 
-
-                printf "\nDo you want to run HollaEx Network for local testing purpose? (y/N)\n"
-                printf "HollaEx CLI will set your network to a localhost mode.\n"
-                read answer
-
-                if [[ "$answer" = "${answer#[Yy]}" ]]; then
-                    echo "Proceeding without setting up a localhost mode..."
-                else 
-                    echo "Setting up a localhost mode..."
-                    export HOLLAEX_NETWORK_LOCALHOST_MODE=true
-                fi
-            
-            fi 
-
             # Settings up the initial envs for HollaEx Network.
             hollaex_network_setup_initial_envs;
 
             CONFIG_FILE_PATH=$(pwd)/settings/*
             CONFIGMAP_FILE_PATH=$(pwd)/settings/configmap
             SECRET_FILE_PATH=$(pwd)/settings/secret
+
+            export ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_HOST=docker.io
 
             echo "Warning: You need to login with your Docker Hub account to proceed."
             docker_registry_login
@@ -1676,14 +1664,27 @@ elif [[ "$1" == "setup" ]]; then
 
         fi
 
+        
+        if command docker ps -a | grep hollaex-network > /dev/null 2>&1; then
+
+            echo -e "Warning: HollaEx CLI detected that HollaEx Network is already running on your system."
+            printf "Setting the system to the localhost mode...\n"
+
+            echo "This job requires the HollaEx Network to be restarted..."
+       
+            export HOLLAEX_NETWORK_LOCALHOST_MODE=true
+
+            hollaex network --restart --skip
+        
+        fi 
+
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local;
         fi
 
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/local/nginx" ]]; then
 
-            mv $HOME/.hollaex-cli/local/nginx $TEMPLATE_GENERATE_PATH/local/nginx
-            # mkdir $TEMPLATE_GENERATE_PATH/local/nginx;
+            cp -r $HOME/.hollaex-cli/local/nginx $TEMPLATE_GENERATE_PATH/local/nginx
 
         fi
 

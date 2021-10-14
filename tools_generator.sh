@@ -1044,12 +1044,8 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]]; then
     restart: unless-stopped
     depends_on:
       - ${ENVIRONMENT_EXCHANGE_NAME}-db
-  $(if [[ ! "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then
-    echo " 
     ports:
-      - 6379:6379
-    ";
-  fi)
+      - 6380:6379
     env_file:
       - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
     command : ["sh", "-c", "redis-server --requirepass \$\${REDIS_PASSWORD}"]
@@ -1073,17 +1069,10 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
   ${ENVIRONMENT_EXCHANGE_NAME}-db:
     image: ${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY:-postgres}:${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION:-10.9}
     restart: unless-stopped
-  $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then 
-    echo "
+
     ports:
       - 5433:5432
-    ";
-  else
-    echo "
-    ports:
-      - 5432:5432
-    ";
-  fi)
+
     env_file:
       - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
     deploy:
@@ -1107,12 +1096,10 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" == "true" ]]; then
   ${ENVIRONMENT_EXCHANGE_NAME}-influxdb:
     image: ${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_REGISTRY:-influxdb}:${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION:-1.8.3}
     restart: unless-stopped
-  $(if [[ ! "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then 
-    echo "
+
     ports:
-      - 8086:8086
-    ";
-  fi)
+      - 8087:8086
+
     deploy:
       resources:
         limits:
@@ -1143,12 +1130,10 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_MONGODB" == "true" ]]; then
   ${ENVIRONMENT_EXCHANGE_NAME}-mongodb:
     image: ${ENVIRONMENT_DOCKER_IMAGE_MONGODB_REGISTRY:-mongo}:${ENVIRONMENT_DOCKER_IMAGE_MONGODB_VERSION:-4.4.6-bionic}
     restart: unless-stopped
-  $(if [[ ! "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then 
-    echo "
+
     ports:
-      - 27107:27107
-    ";
-  fi)
+      - 27108:27107
+
     deploy:
       resources:
         limits:
@@ -1210,12 +1195,11 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
     $(if [[ "${i}" == "job" ]]; then echo "command:"; fi) 
       $(if [[ "${i}" == "job" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- node tools/jobs/job.js"; fi) 
 
-  $(if [[ ! "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then 
     $(if [[ "${i}" == "api" ]] || [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "ports:"; fi)
-      $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- 10010:10010"; fi) 
-      $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- 10080:10080"; fi)
-      $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- 10011:10011"; fi)
-  fi)
+      $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- 10011:10010"; fi) 
+      $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- 10081:10080"; fi)
+      $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- 10012:10011"; fi)
+  
     networks:
       - ${ENVIRONMENT_EXCHANGE_NAME}-network
     $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" ]] || [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" ]] || [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" ]]; then echo "depends_on:"; fi)
@@ -1295,7 +1279,7 @@ EOL
       - ./nginx/static/:/usr/share/nginx/html
       - ./letsencrypt:/etc/letsencrypt
     ports:
-      $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" == true ]]; then echo "- 8081:80"; else "- ${ENVIRONMENT_LOCAL_NGINX_HTTP_PORT:-80}:80"; fi)
+      $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" == true ]]; then echo "- 8081:80"; else echo "- ${ENVIRONMENT_LOCAL_NGINX_HTTP_PORT:-80}:80"; fi)
       $(if [[ ! "$HOLLAEX_NETWORK_LOCALHOST_MODE" == true ]]; then echo "- ${ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT:-443}:443"; fi)
 
     environment:
@@ -2976,19 +2960,29 @@ function docker_registry_login() {
     echo "Email: $ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL_OVERRIDE"
     echo "***************************************************************"
 
+    echo "Are you sure you want to proceed with this credentials? (Y/n)"
+    read answer
+
+    # if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+    #     echo "HollaEx requires docker registry secret for running."
+    #     echo "Please try it again."
+    #     docker_registry_login;
+    # fi
+
+    while true;
+      do if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+        echo "HollaEx requires docker registry secret for running."
+        echo "Please try it again."
+        docker_registry_login
+      else
+        break;
+      fi
+    done
+
     export ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_HOST=$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_HOST_OVERRIDE
     export ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME=$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME_OVERRIDE
     export ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD=$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD_OVERRIDE
     export ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL=$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL_OVERRIDE
-
-    echo "Are you sure you want to proceed with this credentials? (Y/n)"
-    read answer
-
-    if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-        echo "HollaEx Kit on Kubernetes mandatorily requires docker registry secret for running."
-        echo "Please try it again."
-        create_kubernetes_docker_registry_secret;
-    fi
 
     override_kubernetes_docker_registry_secret;
   
@@ -4668,8 +4662,6 @@ HOLLAEX_CONFIGMAP_CURRENCIES=xht,usdt
 HOLLAEX_CONFIGMAP_PAIRS=xht-usdt
 
 INDEPENDENT=true
-
-$(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "HOLLAEX_NETWORK_LOCALHOST_MODE=true"; fi)
 
 ####################################################
 
