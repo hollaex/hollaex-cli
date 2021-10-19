@@ -1295,6 +1295,13 @@ elif [[ "$1" == "setup" ]]; then
                 echo "Warning: HollaEx CLI will ignore all compatibility checkes for HollaEx Core and Kit."
                 shift; continue
                 ;;
+            --tag)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$1
+                echo "Target Docker Image tag: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE."
+                shift; continue
+                ;;
             --arch)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
@@ -1377,25 +1384,35 @@ elif [[ "$1" == "setup" ]]; then
             echo "Warning: You need to login with your Docker Hub account to proceed."
             docker_registry_login
 
-            if [[ -z "$(check_latest_hollaex_network_docker_tag)" ]] ; then 
+            if [[ ! "$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE" ]]; then 
 
-                echo -e "\n\033[91mError: Unable to get the latest HollaEx Network Docker image.\033[39m"
-                echo -e "Please confirm that you provided correct Docker Hub credentials, and try again.\n"
-                
-                cd ..
-                rm -r hollaex-network-home
+                if [[ -z "$(check_latest_hollaex_network_docker_tag)" ]] ; then 
 
-                exit 1;
+                    echo -e "\n\033[91mError: Unable to get the latest HollaEx Network Docker image.\033[39m"
+                    echo -e "Please confirm that you provided correct Docker Hub credentials, and try again.\n"
+                    
+                    cd ..
+                    rm -r hollaex-network-home
+
+                    exit 1;
+
+                else 
+
+                    echo "Latest HollaEx Network Version: v$(check_latest_hollaex_network_docker_tag)."
+
+                fi
+
+                sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$(check_latest_hollaex_network_docker_tag)/" $CONFIGMAP_FILE_PATH
+
 
             else 
 
-                echo "Latest HollaEx Network Version: v$(check_latest_hollaex_network_docker_tag)."
+                echo "Passed HollaEx Network Version: v$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE."
+                sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
-            fi
+            fi 
 
-            sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$(check_latest_hollaex_network_docker_tag)/" $CONFIGMAP_FILE_PATH
             rm $CONFIGMAP_FILE_PATH.bak
-
             echo "Your HollaEx Network Home folder is all set and ready."
         
         fi
