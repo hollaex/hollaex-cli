@@ -1988,7 +1988,8 @@ EOL
 
       done
 
-      if [[ ! -f "$TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml" ]]; then 
+      # if [[ ! -f "$TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml" ]]; then 
+      if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" ]]; then 
 
         echo "Generating Kubernetes Configmap."
         generate_kubernetes_configmap;
@@ -2807,7 +2808,7 @@ EOL
 
       done
 
-      if [[ ! -f "$TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml" ]]; then 
+      if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" ]]; then 
 
         echo "Generating Kubernetes Configmap."
         generate_kubernetes_configmap;
