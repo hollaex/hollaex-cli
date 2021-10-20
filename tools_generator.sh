@@ -984,7 +984,7 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
       $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-db"; fi)
 
 EOL
-
+  
   if [[ "$i" == "api" ]]; then
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
@@ -2092,7 +2092,7 @@ function hollaex_ascii_exchange_is_up() {
     You can easily check the exchange status with 'hollaex status'.
 
     $(if [[ "$USE_KUBERNETES" ]]; then 
-      if ! command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null 2>&1; then 
+      if ! command helm ls --namespace $ENVIRONMENT_EXCHANGE_NAME | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null 2>&1; then 
         echo "You can proceed to setup the web server with 'hollaex web --setup --kube'." 
       fi 
     elif [[ ! "$USE_KUBERNETES" ]]; then 
@@ -3053,7 +3053,7 @@ function hollaex_ascii_coin_has_been_added() {
                     .t8@Cf0@@GfC@@@Gf:
                       .;tLCCCCLfi:.
 
-          Coin $COIN_CODE has been successfully added
+          Coin $COIN_CODE has been successfully added (activated).
           Please run 'hollaex network --restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to activate it.
 
 EOF
@@ -3082,7 +3082,7 @@ function hollaex_ascii_pair_has_been_added() {
             ,;1tfffftffft1i:.       .:;i1111111111;:.
               .:i1tt11;,               ,:ii1ii;,
 
-      Trading Pair ${PAIR_CODE} has been successfully added
+      Trading Pair ${PAIR_CODE} has been successfully added (activated).
       Please run 'hollaex network --restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to activate it.
 
 EOF
@@ -4725,8 +4725,8 @@ ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_VERSION=1.15.8
 ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=bitholla/hollaex-network-standalone
 ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=
 
-ENVIRONMENT_LOCAL_NGINX_HTTP_PORT=80
-ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT=443
+ENVIRONMENT_LOCAL_NGINX_HTTP_PORT=8081
+ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT=8082
 
 ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS=1
 
@@ -6110,7 +6110,7 @@ EOL
       fi
 
       # Run engine container (helm install) if it doesn't exists on the cluster.
-      if ! command helm ls | grep $ENVIRONMENT_EXCHANGE_NAME-server-engine-$(echo ${!PAIR_BASE_OVERRIDE})$(echo ${!PAIR_2_OVERRIDE}); then
+      if ! command helm ls --namespace $ENVIRONMENT_EXCHANGE_NAME | grep $ENVIRONMENT_EXCHANGE_NAME-server-engine-$(echo ${!PAIR_BASE_OVERRIDE})$(echo ${!PAIR_2_OVERRIDE}); then
 
         echo "Running $(echo ${!PAIR_CODE_OVERRIDE}) on the Kubernetes."
         helm install --namespace $ENVIRONMENT_EXCHANGE_NAME \
@@ -6667,11 +6667,40 @@ EOL
 
       echo "Coin $COIN_CODE has been successfully activated!"
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-activate-coin-$COIN_CODE
+      
+      echo "Updating settings file to add new $COIN_CODE."
+      for i in ${CONFIG_FILE_PATH[@]}; do
+
+        if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+
+            CONFIGMAP_FILE_PATH=$i
+            
+            if ! command grep -q "HOLLAEX_CONFIGMAP_CURRENCIES.*${COIN_CODE}.*" $i ; then
+
+              HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE="${HOLLAEX_CONFIGMAP_CURRENCIES},${COIN_CODE}"
+              sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+              rm $CONFIGMAP_FILE_PATH.bak
+
+            else
+
+              HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE=$HOLLAEX_CONFIGMAP_CURRENCIES
+                
+            fi
+
+        fi
+
+      done
 
       echo "Removing created Kubernetes Job..."
       helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-activate-coin-$COIN_CODE
 
-      echo "Please run 'hollaex network --restart --kube' to apply the latest change."
+      # Running database job for Kubernetes
+      echo "Applying changes on database..."
+      kubernetes_hollaex_network_database_init upgrade;
+
+      hollaex_ascii_coin_has_been_added
+
+      echo -e "\nPlease run 'hollaex network --restart --kube' to apply the latest change."
 
     else
 
@@ -6697,6 +6726,38 @@ EOL
 
          
         echo "Successfully activated $COIN_CODE!"
+
+        echo "Updating settings file to add new $COIN_CODE."
+        for i in ${CONFIG_FILE_PATH[@]}; do
+
+          if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+
+              CONFIGMAP_FILE_PATH=$i
+              
+              if ! command grep -q "HOLLAEX_CONFIGMAP_CURRENCIES.*${COIN_CODE}.*" $i ; then
+
+                HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE="${HOLLAEX_CONFIGMAP_CURRENCIES},${COIN_CODE}"
+                sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $CONFIGMAP_FILE_PATH
+                rm $CONFIGMAP_FILE_PATH.bak
+
+              else
+
+                HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE=$HOLLAEX_CONFIGMAP_CURRENCIES
+                  
+              fi
+
+          fi
+
+        done
+
+        if [[ ! "$IS_HOLLAEX_SETUP" ]]; then
+
+            # Running database triggers
+            docker exec  --env "PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
+
+          fi
+
+        hollaex_ascii_coin_has_been_added;
 
         echo -e "\nPlease run 'hollaex network --restart' to apply the latest change.\n"
 
@@ -6911,9 +6972,9 @@ EOL
 
     generate_kubernetes_activate_pair_values;
 
-    echo "Changing the ownership of $PAIR_CODE on Kubernetes"
+    echo "Activating pair $PAIR_CODE on Kubernetes"
     
-    if command helm install $ENVIRONMENT_EXCHANGE_NAME-change-pair-owner-$PAIR_CODE \
+    if command helm install $ENVIRONMENT_EXCHANGE_NAME-activate-pair-$PAIR_CODE \
                             --namespace $ENVIRONMENT_EXCHANGE_NAME \
                             --set job.enable="true" \
                             --set job.mode="activate_pair" \
@@ -6944,10 +7005,54 @@ EOL
       echo "Pair $PAIR_CODE has been successfully activated!"
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-activate-pair-$PAIR_CODE
 
+      for i in ${CONFIG_FILE_PATH[@]}; do
+
+        if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+      
+            CONFIGMAP_FILE_PATH=$i
+
+            if ! command grep -q "HOLLAEX_CONFIGMAP_PAIRS.*${PAIR_CODE}.*" $i ; then
+
+              HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE="${HOLLAEX_CONFIGMAP_PAIRS},${PAIR_CODE}"
+              sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE/" $CONFIGMAP_FILE_PATH
+              rm $CONFIGMAP_FILE_PATH.bak
+
+            else
+
+              HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE=$HOLLAEX_CONFIGMAP_PAIRS
+              
+            fi
+
+        fi
+
+      done
+
       echo "Removing created Kubernetes Job..."
       helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-activate-pair-$PAIR_CODE
 
-      echo "Please run 'hollaex network --restart --kube' to apply the latest change."
+      # Running database job for Kubernetes
+      echo "Applying changes on database..."
+      kubernetes_hollaex_network_database_init upgrade;
+
+      echo "Running pair container $PAIR_CODE..."
+      # Run engine container (helm install) if it doesn't exists on the cluster.
+
+      helm install --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                  $ENVIRONMENT_EXCHANGE_NAME-server-engine-$PAIR_CODE \
+                  --set DEPLOYMENT_MODE="engine" \
+                  --set PAIR=$PAIR_CODE \
+                  --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                  --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                  --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                  --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                  --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
+                  -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
+                  -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server
+
+
+      hollaex_ascii_pair_has_been_added;
+
+      echo -e "\nPlease run 'hollaex network --restart --kube' to apply the latest change."
 
     else
 
@@ -6973,6 +7078,41 @@ EOL
 
          
         echo "Successfully activated $PAIR_CODE!"
+
+        for i in ${CONFIG_FILE_PATH[@]}; do
+
+          if command grep -q "ENVIRONMENT_DOCKER_" $i > /dev/null ; then
+        
+              CONFIGMAP_FILE_PATH=$i
+
+              if ! command grep -q "HOLLAEX_CONFIGMAP_PAIRS.*${PAIR_CODE}.*" $i ; then
+
+                HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE="${HOLLAEX_CONFIGMAP_PAIRS},${PAIR_CODE}"
+                sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE/" $CONFIGMAP_FILE_PATH
+                rm $CONFIGMAP_FILE_PATH.bak
+
+              else
+
+                HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE=$HOLLAEX_CONFIGMAP_PAIRS
+                
+              fi
+
+          fi
+
+        done
+
+        sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE/" $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME.env.local
+        rm $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME.env.local.bak
+
+        export HOLLAEX_CONFIGMAP_PAIRS="$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE"
+        echo "Current Trading Pairs: ${HOLLAEX_CONFIGMAP_PAIRS}"
+        #Regenerating env based on changes of PAIRs
+        generate_local_docker_compose_for_network;
+
+        # Running database triggers
+        docker exec  --env "PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
+
+        hollaex_ascii_pair_has_been_added
 
         echo -e "\nPlease run 'hollaex network --restart' to apply the latest change.\n"
 

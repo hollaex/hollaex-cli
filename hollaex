@@ -1047,23 +1047,6 @@ elif [[ "$1" == "init" ]]; then
                 printf "\nPlease confirm that you typed in a correct url, including 'http' or 'https'.\n"
                 echo  "Custom Network API URL: "
                 read hollaexAPIURL
-            elif [[ "$hollaexAPIURL" == *"localhost"* ]]; then
-
-                echo -e "\n\033[1m### Enabling a localhost mode ###\033[0m\n"
-                echo -e "Localhost mode sets the HollaEx Network URL to \033[1mhttp://localhost:8081\033[0m,"
-                echo -e "and disables host port access for API, Stream, and Plugin containers to avoid internal port conflicts.\n"
-
-                echo -e "Please make sure that your HollaEx Network is running on local, with '--localhost' flag.\n"
-
-                echo -e "Proceeding...\n"
-
-                sleep 2;
-
-                export HOLLAEX_INIT_LOCALHOST_MODE=true
-                export hollaexAPIURL=http://localhost:8081
-
-                break;
-
             else 
                 break;
             fi
@@ -1075,10 +1058,12 @@ elif [[ "$1" == "init" ]]; then
 
     fi 
 
-    if [[ "$HOLLAEX_INIT_LOCALHOST_MODE" ]]; then 
+    if [[ "$hollaexAPIURL" == *"localhost"* ]]; then 
 
         export HOLLAEX_INIT_LOCALHOST_MODE_INTERNAL_URL="http://hollaex-network-nginx"
         export HOLLAEX_CONFIGMAP_NETWORK_URL=${HOLLAEX_INIT_LOCALHOST_MODE_INTERNAL_URL//\//\\/}
+
+        export HOLLAEX_NETWORK_LOCALHOST_MODE=true
 
     else
     
@@ -1184,12 +1169,6 @@ elif [[ "$1" == "init" ]]; then
     done
 
     echo "HOLLAEX_CONFIGMAP_NETWORK_URL=$HOLLAEX_CONFIGMAP_NETWORK_URL" > $INIT_PATH_CHECK
-
-    if [[ "$HOLLAEX_INIT_LOCALHOST_MODE" ]]; then 
-
-        echo "HOLLAEX_INIT_LOCALHOST_MODE=true" >> $INIT_PATH_CHECK
-
-    fi 
 
     # Store Network ID, Admin email and password to a temporary file
     echo "HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID=$HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID" > $(pwd)/settings/temp
@@ -1664,20 +1643,14 @@ elif [[ "$1" == "setup" ]]; then
 
         fi
 
-        
-        if command docker ps -a | grep hollaex-network > /dev/null 2>&1; then
+        if [[ "$HOLLAEX_CONFIGMAP_NETWORK_URL" == *"hollaex-network-nginx"* ]]; then 
 
-            echo -e "Warning: HollaEx CLI detected that HollaEx Network is already running on your system."
-            printf "Setting the system to the localhost mode...\n"
-
-            echo "This job requires the HollaEx Network to be restarted..."
-       
+            echo "Hollaex Network URL: $HOLLAEX_CONFIGMAP_NETWORK_URL"
             export HOLLAEX_NETWORK_LOCALHOST_MODE=true
 
-            hollaex network --restart --skip
-        
-        fi 
+        fi
 
+        
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local;
         fi
@@ -2657,6 +2630,20 @@ elif [[ "$1" == "start" ]]; then
                 echo "Your DEPLOYMENT MODE setup : $LOCAL_DEPLOYMENT_MODE."
                 shift; continue
                 ;;
+            --http_port)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                ENVIRONMENT_LOCAL_NGINX_HTTP_PORT_UPDATE=$1
+                echo "Your new local HTTP port : $ENVIRONMENT_LOCAL_NGINX_HTTP_PORT_UPDATE."
+                shift; continue
+                ;;
+            --https_port)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT_UPDATE=$1
+                echo "Your new local HTTPS port : $ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT_UPDATE."
+                shift; continue
+                ;;
             --ignore_settings)
                 IGNORE_SETTINGS=true
                 echo "HollaEx CLI will ignore local settings update on restart."
@@ -2886,6 +2873,35 @@ elif [[ "$1" == "start" ]]; then
 
             echo "Your ENVIRONMENT_EXCHANGE_RUN_MODE value is missing! Please reconfirm your settings files."
             exit 1;
+
+        fi 
+
+        # Update ports for local network 
+        if [[ "$ENVIRONMENT_LOCAL_NGINX_HTTP_PORT_UPDATE" ]] || [[ "$ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT_UPDATE" ]]; then 
+
+            export ENVIRONMENT_LOCAL_NGINX_HTTP_PORT=${ENVIRONMENT_LOCAL_NGINX_HTTP_PORT_UPDATE:-8081}
+            export ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT=${ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT_UPDATE:-8082}
+
+            for i in ${CONFIG_FILE_PATH[@]}; do
+
+                if command grep -q "HOLLAEX_CONFIGMAP_API_NAME=" $i > /dev/null ; then
+
+                    export CONFIGMAP_FILE_PATH=$i
+
+                fi
+
+            done
+
+            sed -i.bak "s/ENVIRONMENT_LOCAL_NGINX_HTTP_PORT=.*/ENVIRONMENT_LOCAL_NGINX_HTTP_PORT=${ENVIRONMENT_LOCAL_NGINX_HTTP_PORT}/" $CONFIGMAP_FILE_PATH;
+            sed -i.bak "s/ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT=.*/ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT=${ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT}/" $CONFIGMAP_FILE_PATH;
+            rm $CONFIGMAP_FILE_PATH.bak
+
+        fi 
+
+        if [[ "$HOLLAEX_CONFIGMAP_NETWORK_URL" == *"hollaex-network-nginx"* ]]; then 
+
+            echo "Hollaex Network URL: $HOLLAEX_CONFIGMAP_NETWORK_URL"
+            export HOLLAEX_NETWORK_LOCALHOST_MODE=true
 
         fi
 
@@ -4055,6 +4071,20 @@ elif [[ "$1" == "restart" ]]; then
                 echo "Skipping the command confirmation."
                 shift; continue
                 ;;
+            --http_port)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                ENVIRONMENT_LOCAL_NGINX_HTTP_PORT_UPDATE=$1
+                echo "Your new local HTTP port : $ENVIRONMENT_LOCAL_NGINX_HTTP_PORT_UPDATE."
+                shift; continue
+                ;;
+            --https_port)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT_UPDATE=$1
+                echo "Your new local HTTPS port : $ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT_UPDATE."
+                shift; continue
+                ;;
             --ignore_compatibility_check)
                 IGNORE_COMPATIBILITY_CHECK=true
                 echo "Warning: HollaEx CLI will ignore all compatibility checkes for HollaEx Core and Kit."
@@ -4223,7 +4253,15 @@ elif [[ "$1" == "restart" ]]; then
 
             hollaex network --stop --skip
 
-            hollaex network --start --skip
+            if [[ "$ENVIRONMENT_LOCAL_NGINX_HTTP_PORT_UPDATE" ]] || [[ "$ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT_UPDATE" ]]; then 
+
+                hollaex network --start --skip --http_port $ENVIRONMENT_LOCAL_NGINX_HTTP_PORT_UPDATE --https_port $ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT_UPDATE
+            
+            else 
+
+                hollaex network --start --skip
+
+            fi 
 
 
         else 
@@ -5135,11 +5173,17 @@ elif [[ "$1" == "web" ]]; then
         
     fi
 
-    
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
     done;
+
+    if [[ "$HOLLAEX_CONFIGMAP_NETWORK_URL" == *"hollaex-network-nginx"* ]]; then 
+
+        echo "Hollaex Network URL: $HOLLAEX_CONFIGMAP_NETWORK_URL"
+        export HOLLAEX_NETWORK_LOCALHOST_MODE=true
+
+    fi
     
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
@@ -6519,12 +6563,7 @@ elif [[ "$1" == "toolbox" ]]; then
             export PGPASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
             export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
             export PGHOST=localhost
-
-            if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then 
-
-                export PGPORT=5433
-
-            fi
+            export PGPORT=5433
 
             pg_restore --verbose --clean -d $PGDATABASE $RESTORE_POSTGRES_DUMP_PATH
             
@@ -6623,11 +6662,12 @@ elif [[ "$1" == "toolbox" ]]; then
             export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
             export PGHOST=localhost
 
-            if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then 
+            if [[ "$HOLLAEX_NETWORK_BACKUP" ]]; then 
 
                 export PGPORT=5433
 
             fi 
+            
             
             if ! command pg_dump -Fc > $HOLLAEX_CLI_INIT_PATH/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-$(date +%y%m%d%H%M).dump; then 
             
@@ -7771,11 +7811,7 @@ elif [[ "$1" == "status" ]]; then
 
         fi
 
-    fi
-
-    if [[ "$HOLLAEX_NETWORK_STATUS" ]] && [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then 
-
-        HOLLAEX_CONFIGMAP_API_HOST="localhost:8081"
+        export HOLLAEX_CONFIGMAP_API_HOST="localhost:$ENVIRONMENT_LOCAL_NGINX_HTTP_PORT"
 
     fi
 
