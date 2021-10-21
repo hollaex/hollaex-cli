@@ -615,7 +615,7 @@ elif [[ "$1" == "network" ]]; then
                 ;;
             --backup)
                 HOLLAEX_NETWORK_BACKUP=true
-                hollaex toolbox --backup ${@:2}
+                hollaex toolbox --backup --network ${@:2}
                 exit 0;
                 shift; continue
                 ;;
@@ -6247,6 +6247,11 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "Getting the HMAC Token from the bitHolla server."
                 shift; continue
                 ;;
+            --network)
+                IS_NETWORK=true
+                TOOLBOX_ENABLE=true
+                shift; continue
+                ;;
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
@@ -6630,6 +6635,12 @@ elif [[ "$1" == "toolbox" ]]; then
 
         fi
 
+        if [[ "$IS_NETWORK" ]]; then 
+
+            export PGPORT=5433
+
+        fi 
+
         if [[ "$USE_KUBERNETES" ]] && [[ "$ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB" ]]; then
 
             echo "HollaEx CLI will open proxy tunnel between your machine and remote proxy with kubectl proxy."
@@ -6678,13 +6689,6 @@ elif [[ "$1" == "toolbox" ]]; then
             export PGPASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
             export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
             export PGHOST=localhost
-
-            if [[ "$HOLLAEX_NETWORK_BACKUP" ]]; then 
-
-                export PGPORT=5433
-
-            fi 
-            
             
             if ! command pg_dump -Fc > $HOLLAEX_CLI_INIT_PATH/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-$(date +%y%m%d%H%M).dump; then 
             
