@@ -1340,7 +1340,7 @@ EOL
 
 networks:
   $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "local_hollaex-network-network:"; else echo "local_${ENVIRONMENT_EXCHANGE_NAME}-network:"; fi)
-    $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "external: true"; fi)
+    external: true
 
 EOL
 
