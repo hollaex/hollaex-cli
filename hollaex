@@ -8071,8 +8071,6 @@ elif [[ "$1" == "status" ]]; then
 
         fi
 
-        export HOLLAEX_CONFIGMAP_API_HOST="localhost:$ENVIRONMENT_LOCAL_NGINX_HTTP_PORT"
-
     fi
 
     printf "\nCalling the exchange health page ($HOLLAEX_CONFIGMAP_API_HOST/v2/health) ...\n"
