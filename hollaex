@@ -136,6 +136,8 @@ Options:
         --build, Build the web server docker image. This command would not affect the existing web server before restart.
         --terminate, Terminate the web server. THIS COMMAND WILL COMPLETELY REMOVE YOUR WEB CLIENT AND CAN'T BE UNDO.
 
+    trade: Open my exchange's web trading page.
+
     toolbox: Toolbox for advanced features which could be helpful for your exchange operations.
         --backup, Run the full backup with 'pg_dump' for exchange's PostgreSQL database.
         --restore, Apply the database dump to the database.
@@ -180,6 +182,10 @@ Options:
         --mainnet, Setitng the mode to mainnet (default).
 
     discord: Open (join) HollaEx Official Discord Channel.
+    
+    forum: Open Official HollaEx Forum.
+
+    xht-market: Open Official HollaEx Exchange's XHT trading market page.
 
     bug-report: Report a bug you found on HollaEx GitHub.
 
