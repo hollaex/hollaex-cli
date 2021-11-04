@@ -1027,39 +1027,106 @@ elif [[ "$1" == "init" ]]; then
     CONFIG_FILE_PATH=$(pwd)/settings/*
     TEMPLATE_GENERATE_PATH=$(pwd)/templates
     INIT_PATH_CHECK=$(pwd)/.hollaex
+    TEMP_CONFIG_FILE=$(pwd)/settings/temp
 
     source $SCRIPTPATH/tools_generator.sh
+
+    if [[ -f "$TEMP_CONFIG_FILE" ]]; then 
+        
+        source $(pwd)/settings/configmap
+        source $(pwd)/settings/temp
+
+        echo -e "\n\033[93mWarning: HollaEx CLI has detected your existing exchange information.\033[39m\n"
+        echo "Network: $HOLLAEX_CONFIGMAP_NETWORK_URL"
+        echo "Network Exchange ID: $HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID"
+        echo "Exchange Name: $ENVIRONMENT_EXCHANGE_NAME"
+        echo "Admin Email: $HOLLAEX_CONFIGMAP_ADMIN_EMAIL"
+        echo "Admin Password: $(echo ${HOLLAEX_CONFIGMAP_ADMIN_PASSWORD//?/◼︎}$(echo $HOLLAEX_CONFIGMAP_ADMIN_PASSWORD | grep -o '....$'))"
+
+        echo -e "\nDo you want to continue with the existing information? (Y/n)"
+        read answer
+
+        if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+
+            echo "Proceeding to the initialization wizard..."
+        
+        else 
+
+            echo "Skipping the initialization wizard..."
+            exit 0
+                    
+        fi 
+
+    fi 
 
     printf "\n\033[1mSelect the network\033[0m\n\n"
 
     echo -e "Before you continue, You need to \033[1mselect the network\033[0m that you want to use with the exchange."
-    echo -e "HollaEx Kit by default, will be connected to the official public HollaEx Network (\033[1mapi.hollaex.network\033[0m)." 
-    echo -e "If you want to connect to a different network, please type the URL.\n"
-    echo -e "Do you want to want to continue with the official HollaEx Network? (Y/n)\n"
-    read answer
+    echo -e "HollaEx Kit by default, will be connected to the official \033[1mproduction\033[0m HollaEx Network (\033[1mapi.hollaex.network\033[0m)." 
+    echo -e "You can also run HollaEx Kit with official \033[1mtestnet\033[0m HollaEx Network for testing purpose (\033[1mapi.testnet.hollaex.network\033[0m)."
+    echo -e "If you want to connect to a different custom network, you can type the URL.\n"
+    # echo -e "Do you want to want to continue with the official HollaEx Network? (Y/n)\n"
+    # read answer
+
+    PS3='
+Please select the network: '
+    options=("Production HollaEx Network" "Testnet HollaEx Network" "Custom HollaEx Network")
+    select opt in "${options[@]}"
+    do
+        case $opt in
+            "Production HollaEx Network")
+                export hollaexAPIURL=https://api.hollaex.network
+                break
+                ;;
+            "Testnet HollaEx Network")
+                export hollaexAPIURL=https://api.testnet.hollaex.network
+                break
+                ;;
+            "Custom HollaEx Network")
+                echo "***************************************************************"
+                printf "\nPlease type the URL of your custom network including 'http' or 'https'. (Example: https://api.hollaex.network)\n"
+                read hollaexAPIURL
+
+                while true;
+                    do if [[ ! "$hollaexAPIURL" == *"http"* ]]; then
+                        printf "\nPlease confirm that you typed in a correct url, including 'http' or 'https'.\n"
+                        echo  "Custom Network API URL: "
+                        read hollaexAPIURL
+                    else 
+                        break;
+                    fi
+                done
+                break
+                ;;
+            
+            *) echo "Invalid option: $REPLY";;
+        esac
+    done
+
+    # exit 1
 
     # If user selected a custom network option
-    if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+    # if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
 
-        echo "***************************************************************"
-        printf "\nPlease type the URL of your custom network including 'http' or 'https'. (Example: https://api.hollaex.network)\n"
-        read hollaexAPIURL
+    #     echo "***************************************************************"
+    #     printf "\nPlease type the URL of your custom network including 'http' or 'https'. (Example: https://api.hollaex.network)\n"
+    #     read hollaexAPIURL
 
-        while true;
-            do if [[ ! "$hollaexAPIURL" == *"http"* ]]; then
-                printf "\nPlease confirm that you typed in a correct url, including 'http' or 'https'.\n"
-                echo  "Custom Network API URL: "
-                read hollaexAPIURL
-            else 
-                break;
-            fi
-        done
+    #     while true;
+    #         do if [[ ! "$hollaexAPIURL" == *"http"* ]]; then
+    #             printf "\nPlease confirm that you typed in a correct url, including 'http' or 'https'.\n"
+    #             echo  "Custom Network API URL: "
+    #             read hollaexAPIURL
+    #         else 
+    #             break;
+    #         fi
+    #     done
         
-    else 
+    # else 
 
-        export hollaexAPIURL=https://api.hollaex.network
+    #     export hollaexAPIURL=https://api.hollaex.network
 
-    fi 
+    # fi 
 
     if [[ "$hollaexAPIURL" == *"localhost"* ]]; then 
 
