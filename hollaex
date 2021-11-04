@@ -5559,6 +5559,8 @@ elif [[ "$1" == "web" ]]; then
             if command kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-web --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 ; then
 
                 hollaex_ascii_web_server_is_up;
+
+                hollaex trade
             
             else 
 
@@ -5647,6 +5649,8 @@ elif [[ "$1" == "web" ]]; then
                 fi
 
                 hollaex_ascii_web_server_is_up;
+
+                hollaex trade
 
             else 
 
