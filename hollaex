@@ -82,7 +82,7 @@ function print_usage() {
 /bin/cat << EOF
 
 Usage : 
-    hollaex [ server ] [ web ] [ init ] [ prod ] [ import ] [ export ] [ dash ] [ pull ] [ build ] [ dev ] [ toolbox ] [ status ] [ logs ] [ version ] (--flags)
+    hollaex [ server ] [ web ] [ init ] [ prod ] [ import ] [ export ] [ dash ] [ pull ] [ build ] [ dev ] [ toolbox ] [ status ] [ logs ] [ version ] [ discord ] [ bug-report ] (--flags)
 
 General Flags (Except for 'hollaex init', 'hollaex import'):
     --path, Manually pointing HollaEx Kit path. Should be always absolute path.
@@ -178,6 +178,10 @@ Options:
     mode: Mode selector between the testnet and mainnet. Only use it for testing purposes.
         --testnet, Setting the mode to testnet.
         --mainnet, Setitng the mode to mainnet (default).
+
+    discord: Open (join) HollaEx Official Discord Channel.
+
+    bug-report: Report a bug you found on HollaEx GitHub.
 
     version: Print out current installed version of HollaEx CLI.
 
@@ -8483,6 +8487,96 @@ elif [[ "$1" == "mode" ]]; then
     fi 
 
     exit 0
+
+elif [[ "$1" == "docs" ]]; then
+
+    export HOLLAEX_DOCS_URL="https://docs.hollaex.com"
+
+    if [[ "$OSTYPE" == *"darwin"* ]]; then 
+
+        open $HOLLAEX_DOCS_URL
+    
+    else 
+
+        xdg-open $HOLLAEX_DOCS_URL
+
+    fi
+
+elif [[ "$1" == "forum" ]]; then
+
+    export HOLLAEX_FORUM_URL="https://forum.hollaex.com"
+
+    if [[ "$OSTYPE" == *"darwin"* ]]; then 
+
+        open $HOLLAEX_FORUM_URL
+    
+    else 
+
+        xdg-open $HOLLAEX_FORUM_URL
+
+    fi
+
+elif [[ "$1" == "discord" ]]; then
+
+    export HOLLAEX_DISCORD_URL="https://discord.gg/nu8DJUHjBR"
+
+    if [[ "$OSTYPE" == *"darwin"* ]]; then 
+
+        open $HOLLAEX_DISCORD_URL
+    
+    else 
+
+        xdg-open $HOLLAEX_DISCORD_URL
+
+    fi 
+
+elif [[ "$1" == "bug" ]] || [[ "$1" == "bug-report" ]]; then
+
+    export HOLLAEX_GITHUB_ISSUES_NEW_URL="https://github.com/bitholla/hollaex-kit/issues/new"
+
+    if [[ "$OSTYPE" == *"darwin"* ]]; then 
+
+        open $HOLLAEX_GITHUB_ISSUES_NEW_URL
+    
+    else
+
+        xdg-open $HOLLAEX_GITHUB_ISSUES_NEW_URL
+
+    fi 
+
+elif [[ "$1" == "xht-market" ]]; then
+
+    export HOLLAEX_TRADE_XHT_URL="https://pro.hollaex.com/trade/xht-usdt"
+
+    if [[ "$OSTYPE" == *"darwin"* ]]; then 
+
+        open $HOLLAEX_TRADE_XHT_URL
+    
+    else 
+
+        xdg-open $HOLLAEX_TRADE_XHT_URL
+
+    fi
+
+elif [[ "$1" == "trade" ]]; then
+
+    source $(pwd)/settings/configmap
+
+    if [[ "$HOLLAEX_CONFIGMAP_DOMAIN" == *"yourdomain.com"* ]]; then 
+
+        export HOLLAEX_CONFIGMAP_DOMAIN="http://localhost:8080"
+
+    fi
+
+    if [[ "$OSTYPE" == *"darwin"* ]]; then 
+
+        open $HOLLAEX_CONFIGMAP_DOMAIN
+    
+    else 
+
+        xdg-open $HOLLAEX_CONFIGMAP_DOMAIN
+
+    fi
 
 elif [[ "$1" == "version" ]]; then
 
