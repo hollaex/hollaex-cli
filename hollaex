@@ -1072,27 +1072,44 @@ elif [[ "$1" == "init" ]]; then
     printf "\n\033[1mSelect the network\033[0m\n\n"
 
     echo -e "Before you continue, You need to \033[1mselect the network\033[0m that you want to use with the exchange."
-    echo -e "HollaEx Kit by default, will be connected to the official \033[1mproduction\033[0m HollaEx Network (\033[1mapi.hollaex.network\033[0m)." 
+    echo -e "HollaEx Kit by default, will be connected to the official \033[1mmainnet\033[0m HollaEx Network (\033[1mapi.hollaex.network\033[0m)." 
     echo -e "You can also run HollaEx Kit with official \033[1mtestnet\033[0m HollaEx Network for testing purpose (\033[1mapi.testnet.hollaex.network\033[0m)."
     echo -e "If you want to connect to a different custom network, you can type the URL.\n"
     # echo -e "Do you want to want to continue with the official HollaEx Network? (Y/n)\n"
     # read answer
 
-    PS3='
-Please select the network: '
-    options=("Production HollaEx Network" "Testnet HollaEx Network" "Custom HollaEx Network")
-    select opt in "${options[@]}"
+    flag=1
+
+    list=(
+    "1) $(echo -e '\033[1mMainnet\033[0m') HollaEx Network"
+    "2) Testnet HollaEx Network"
+    "3) Custom HollaEx Network
+    "
+    )
+
+    message()
+    {
+        echo
+        printf "%s\n" "${list[@]}"
+        read -p "Please select the network: " networkOption
+        echo
+    }
+    message
+
+
+    while [[ $flag = '1' ]]  
     do
-        case $opt in
-            "Production HollaEx Network")
+    {
+        case $networkOption in
+            1)
                 export hollaexAPIURL=https://api.hollaex.network
-                break
+                flag=0
                 ;;
-            "Testnet HollaEx Network")
+            2)
                 export hollaexAPIURL=https://api.testnet.hollaex.network
-                break
+                flag=0
                 ;;
-            "Custom HollaEx Network")
+            3) 
                 echo "***************************************************************"
                 printf "\nPlease type the URL of your custom network including 'http' or 'https'. (Example: https://api.hollaex.network)\n"
                 read hollaexAPIURL
@@ -1106,37 +1123,17 @@ Please select the network: '
                         break;
                     fi
                 done
-                break
+                flag=0
                 ;;
-            
-            *) echo "Invalid option: $REPLY";;
+            *)
+                echo "Erro: Invalid Option. Please select it again."
+                flag=1
+                message
+                
+                ;;
         esac
+    }
     done
-
-    # exit 1
-
-    # If user selected a custom network option
-    # if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
-
-    #     echo "***************************************************************"
-    #     printf "\nPlease type the URL of your custom network including 'http' or 'https'. (Example: https://api.hollaex.network)\n"
-    #     read hollaexAPIURL
-
-    #     while true;
-    #         do if [[ ! "$hollaexAPIURL" == *"http"* ]]; then
-    #             printf "\nPlease confirm that you typed in a correct url, including 'http' or 'https'.\n"
-    #             echo  "Custom Network API URL: "
-    #             read hollaexAPIURL
-    #         else 
-    #             break;
-    #         fi
-    #     done
-        
-    # else 
-
-    #     export hollaexAPIURL=https://api.hollaex.network
-
-    # fi 
 
     if [[ "$hollaexAPIURL" == *"localhost"* ]]; then 
 
