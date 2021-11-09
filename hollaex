@@ -82,7 +82,7 @@ function print_usage() {
 /bin/cat << EOF
 
 Usage : 
-    hollaex [ server ] [ web ] [ init ] [ prod ] [ import ] [ export ] [ dash ] [ pull ] [ build ] [ dev ] [ toolbox ] [ status ] [ logs ] [ version ] (--flags)
+    hollaex [ server ] [ web ] [ init ] [ prod ] [ import ] [ export ] [ dash ] [ pull ] [ build ] [ dev ] [ toolbox ] [ status ] [ logs ] [ version ] [ discord ] [ bug-report ] (--flags)
 
 General Flags (Except for 'hollaex init', 'hollaex import'):
     --path, Manually pointing HollaEx Kit path. Should be always absolute path.
@@ -136,6 +136,8 @@ Options:
         --build, Build the web server docker image. This command would not affect the existing web server before restart.
         --terminate, Terminate the web server. THIS COMMAND WILL COMPLETELY REMOVE YOUR WEB CLIENT AND CAN'T BE UNDO.
 
+    trade: Open my exchange's web trading page.
+
     toolbox: Toolbox for advanced features which could be helpful for your exchange operations.
         --backup, Run the full backup with 'pg_dump' for exchange's PostgreSQL database.
         --restore, Apply the database dump to the database.
@@ -178,6 +180,14 @@ Options:
     mode: Mode selector between the testnet and mainnet. Only use it for testing purposes.
         --testnet, Setting the mode to testnet.
         --mainnet, Setitng the mode to mainnet (default).
+
+    discord: Open (join) HollaEx Official Discord Channel.
+    
+    forum: Open Official HollaEx Forum.
+
+    xht-market: Open Official HollaEx Exchange's XHT trading market page.
+
+    bug-report: Report a bug you found on HollaEx GitHub.
 
     version: Print out current installed version of HollaEx CLI.
 
@@ -1027,39 +1037,103 @@ elif [[ "$1" == "init" ]]; then
     CONFIG_FILE_PATH=$(pwd)/settings/*
     TEMPLATE_GENERATE_PATH=$(pwd)/templates
     INIT_PATH_CHECK=$(pwd)/.hollaex
+    TEMP_CONFIG_FILE=$(pwd)/settings/temp
 
     source $SCRIPTPATH/tools_generator.sh
+
+    if [[ -f "$TEMP_CONFIG_FILE" ]]; then 
+        
+        source $(pwd)/settings/configmap
+        source $(pwd)/settings/temp
+
+        echo -e "\n\033[93mWarning: HollaEx CLI has detected your existing exchange information.\033[39m\n"
+        echo "Network: $HOLLAEX_CONFIGMAP_NETWORK_URL"
+        echo "Network Exchange ID: $HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID"
+        echo "Exchange Name: $ENVIRONMENT_EXCHANGE_NAME"
+        echo "Admin Email: $HOLLAEX_CONFIGMAP_ADMIN_EMAIL"
+        echo "Admin Password: $(echo ${HOLLAEX_CONFIGMAP_ADMIN_PASSWORD//?/◼︎}$(echo $HOLLAEX_CONFIGMAP_ADMIN_PASSWORD | grep -o '....$'))"
+
+        echo -e "\nDo you want to continue with the existing information? (Y/n)"
+        read answer
+
+        if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+
+            echo "Proceeding to the initialization wizard..."
+        
+        else 
+
+            echo "Skipping the initialization wizard..."
+            exit 0
+                    
+        fi 
+
+    fi 
 
     printf "\n\033[1mSelect the network\033[0m\n\n"
 
     echo -e "Before you continue, You need to \033[1mselect the network\033[0m that you want to use with the exchange."
-    echo -e "HollaEx Kit by default, will be connected to the official public HollaEx Network (\033[1mapi.hollaex.network\033[0m)." 
-    echo -e "If you want to connect to a different network, please type the URL.\n"
-    echo -e "Do you want to want to continue with the official HollaEx Network? (Y/n)\n"
-    read answer
+    echo -e "HollaEx Kit by default, will be connected to the official \033[1mmainnet\033[0m HollaEx Network (\033[1mapi.hollaex.network\033[0m)." 
+    echo -e "You can also run HollaEx Kit with official \033[1mtestnet\033[0m HollaEx Network for testing purpose (\033[1mapi.testnet.hollaex.network\033[0m)."
+    echo -e "If you want to connect to a different custom network, you can type the URL.\n"
+    # echo -e "Do you want to want to continue with the official HollaEx Network? (Y/n)\n"
+    # read answer
 
-    # If user selected a custom network option
-    if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+    flag=1
 
-        echo "***************************************************************"
-        printf "\nPlease type the URL of your custom network including 'http' or 'https'. (Example: https://api.hollaex.network)\n"
-        read hollaexAPIURL
+    list=(
+    "1) $(echo -e '\033[1mMainnet\033[0m') HollaEx Network"
+    "2) Testnet HollaEx Network"
+    "3) Custom HollaEx Network
+    "
+    )
 
-        while true;
-            do if [[ ! "$hollaexAPIURL" == *"http"* ]]; then
-                printf "\nPlease confirm that you typed in a correct url, including 'http' or 'https'.\n"
-                echo  "Custom Network API URL: "
+    message()
+    {
+        echo
+        printf "%s\n" "${list[@]}"
+        read -p "Please select the network: " networkOption
+        echo
+    }
+    message
+
+
+    while [[ $flag = '1' ]]  
+    do
+    {
+        case $networkOption in
+            1)
+                export hollaexAPIURL=https://api.hollaex.network
+                flag=0
+                ;;
+            2)
+                export hollaexAPIURL=https://api.testnet.hollaex.network
+                flag=0
+                ;;
+            3) 
+                echo "***************************************************************"
+                printf "\nPlease type the URL of your custom network including 'http' or 'https'. (Example: https://api.hollaex.network)\n"
                 read hollaexAPIURL
-            else 
-                break;
-            fi
-        done
-        
-    else 
 
-        export hollaexAPIURL=https://api.hollaex.network
-
-    fi 
+                while true;
+                    do if [[ ! "$hollaexAPIURL" == *"http"* ]]; then
+                        printf "\nPlease confirm that you typed in a correct url, including 'http' or 'https'.\n"
+                        echo  "Custom Network API URL: "
+                        read hollaexAPIURL
+                    else 
+                        break;
+                    fi
+                done
+                flag=0
+                ;;
+            *)
+                echo "Erro: Invalid Option. Please select it again."
+                flag=1
+                message
+                
+                ;;
+        esac
+    }
+    done
 
     if [[ "$hollaexAPIURL" == *"localhost"* ]]; then 
 
@@ -5488,6 +5562,8 @@ elif [[ "$1" == "web" ]]; then
             if command kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-web --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 ; then
 
                 hollaex_ascii_web_server_is_up;
+
+                hollaex trade
             
             else 
 
@@ -5576,6 +5652,8 @@ elif [[ "$1" == "web" ]]; then
                 fi
 
                 hollaex_ascii_web_server_is_up;
+
+                hollaex trade
 
             else 
 
@@ -8416,6 +8494,96 @@ elif [[ "$1" == "mode" ]]; then
     fi 
 
     exit 0
+
+elif [[ "$1" == "docs" ]]; then
+
+    export HOLLAEX_DOCS_URL="https://docs.hollaex.com"
+
+    if [[ "$OSTYPE" == *"darwin"* ]]; then 
+
+        open $HOLLAEX_DOCS_URL
+    
+    else 
+
+        xdg-open $HOLLAEX_DOCS_URL
+
+    fi
+
+elif [[ "$1" == "forum" ]]; then
+
+    export HOLLAEX_FORUM_URL="https://forum.hollaex.com"
+
+    if [[ "$OSTYPE" == *"darwin"* ]]; then 
+
+        open $HOLLAEX_FORUM_URL
+    
+    else 
+
+        xdg-open $HOLLAEX_FORUM_URL
+
+    fi
+
+elif [[ "$1" == "discord" ]]; then
+
+    export HOLLAEX_DISCORD_URL="https://discord.gg/nu8DJUHjBR"
+
+    if [[ "$OSTYPE" == *"darwin"* ]]; then 
+
+        open $HOLLAEX_DISCORD_URL
+    
+    else 
+
+        xdg-open $HOLLAEX_DISCORD_URL
+
+    fi 
+
+elif [[ "$1" == "bug" ]] || [[ "$1" == "bug-report" ]]; then
+
+    export HOLLAEX_GITHUB_ISSUES_NEW_URL="https://github.com/bitholla/hollaex-kit/issues/new"
+
+    if [[ "$OSTYPE" == *"darwin"* ]]; then 
+
+        open $HOLLAEX_GITHUB_ISSUES_NEW_URL
+    
+    else
+
+        xdg-open $HOLLAEX_GITHUB_ISSUES_NEW_URL
+
+    fi 
+
+elif [[ "$1" == "xht-market" ]]; then
+
+    export HOLLAEX_TRADE_XHT_URL="https://pro.hollaex.com/trade/xht-usdt"
+
+    if [[ "$OSTYPE" == *"darwin"* ]]; then 
+
+        open $HOLLAEX_TRADE_XHT_URL
+    
+    else 
+
+        xdg-open $HOLLAEX_TRADE_XHT_URL
+
+    fi
+
+elif [[ "$1" == "trade" ]]; then
+
+    source $(pwd)/settings/configmap
+
+    if [[ "$HOLLAEX_CONFIGMAP_DOMAIN" == *"yourdomain.com"* ]]; then 
+
+        export HOLLAEX_CONFIGMAP_DOMAIN="http://localhost:8080"
+
+    fi
+
+    if [[ "$OSTYPE" == *"darwin"* ]]; then 
+
+        open $HOLLAEX_CONFIGMAP_DOMAIN
+    
+    else 
+
+        xdg-open $HOLLAEX_CONFIGMAP_DOMAIN
+
+    fi
 
 elif [[ "$1" == "version" ]]; then
 
