@@ -85,7 +85,7 @@ spec:
 {{- else if eq .Values.DEPLOYMENT_MODE "plugins" }}
 
         command: ["/bin/bash"]
-        args: ["-c", "node plugin/index.js"]
+        args: ["-c", "node plugins/index.js"]
 
 {{- end }}
 
