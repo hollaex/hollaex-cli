@@ -4022,7 +4022,7 @@ function issue_new_hmac_token() {
   BITHOLLA_HMAC_TOKEN_ISSUE_POST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" -w "=%{http_code}" \
         --request POST \
         -d '{"name": "kit"}' \
-        https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/user/token)
+        $hollaexAPIURL/v2/dash/user/token)
 
   BITHOLLA_HMAC_TOKEN_ISSUE_POST_RESPOND=$(echo $BITHOLLA_HMAC_TOKEN_ISSUE_POST | cut -f1 -d "=")
   BITHOLLA_HMAC_TOKEN_ISSUE_POST_HTTP_CODE=$(echo $BITHOLLA_HMAC_TOKEN_ISSUE_POST | cut -f2 -d "=")
@@ -4071,17 +4071,17 @@ function get_hmac_token() {
   
   BITHOLLA_HMAC_TOKEN_GET_COUNT=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
             --request GET \
-            https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/user/token?active=true | jq '.count')
+            $hollaexAPIURL/v2/dash/user/token?active=true | jq '.count')
     
   if [[ ! $BITHOLLA_HMAC_TOKEN_GET_COUNT == 0 ]]; then 
 
     BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
             --request GET \
-            https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/user/token?active=true | jq -r '.data[0].apiKey')
+            $hollaexAPIURL/v2/dash/user/token?active=true | jq -r '.data[0].apiKey')
     
     BITHOLLA_HMAC_TOKEN_EXISTING_TOKEN_ID=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
             --request GET \
-            https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/user/token?active=true | jq -r '.data[0].id')
+            $hollaexAPIURL/v2/dash/user/token?active=true | jq -r '.data[0].id')
 
     printf "\n\033[1mYou already have an active Token! (API Key: $BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY)\033[0m\n\n"
 
@@ -4139,7 +4139,7 @@ function get_hmac_token() {
       BITHOLLA_HMAC_TOKEN_REVOKE_CALL=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" -w " HTTP_CODE=%{http_code}" \
           --request DELETE \
           -d "{\"name\": \"kit\", \"token_id\": $BITHOLLA_HMAC_TOKEN_EXISTING_TOKEN_ID}" \
-          https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/user/token)
+          $hollaexAPIURL/v2/dash/user/token)
 
       BITHOLLA_HMAC_TOKEN_REVOKE_CALL_RESPOND=$(echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL | cut -f1 -d "=")
       BITHOLLA_HMAC_TOKEN_REVOKE_CALL_HTTP_CODE=$(echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL | cut -f2 -d "=")
@@ -4229,6 +4229,9 @@ function hollaex_setup_initialization() {
 
 function hollaex_login_form() {
 
+    # DEBUG
+    echo $hollaexAPIURL
+
     echo -e "\033[1mHollaEx Account Email:\033[0m "
     read email
 
@@ -4237,12 +4240,12 @@ function hollaex_login_form() {
     printf "\n"
 
     echo -e "\033[1mOTP Code\033[0m (Enter if you don't have OTP set for your account): "
-    read otp
+    read otp 
 
     BITHOLLA_ACCOUNT_TOKEN=$(curl -s -H "Content-Type: application/json" \
         --request POST \
         --data "{\"email\": \"${email}\", \"password\": \"${password}\", \"otp_code\": \"${otp}\", \"service\": \"cli\"}" \
-        https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/login \
+        $hollaexAPIURL/v2/dash/login \
         | jq -r '.token')
 
     if [[ ! "$BITHOLLA_ACCOUNT_TOKEN" ]] || [[ "$BITHOLLA_ACCOUNT_TOKEN" == "null" ]]; then
@@ -4277,11 +4280,11 @@ function hollaex_login_token_validate_and_issue() {
 
       BITHOLLA_USER_TOKEN_EXPIRY_CHECK=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
           --request GET \
-          https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange)
+          $hollaexAPIURL/v2/exchange)
 
       BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
           --request GET \
-          https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange \
+          $hollaexAPIURL/v2/exchange \
           | jq '.')
 
       if [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" ]] || [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" == "200" ]]; then
