@@ -4255,8 +4255,7 @@ function hollaex_setup_initialization() {
 
 function hollaex_login_form() {
 
-    # DEBUG
-    echo $hollaexAPIURL
+    echo -e "\n\033[1m# # # HOLLAEX DASHBOARD LOGIN # # #\033[0m\n"
 
     echo -e "\033[1mHollaEx Account Email:\033[0m "
     read email

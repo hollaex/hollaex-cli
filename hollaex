@@ -1170,39 +1170,53 @@ elif [[ "$1" == "init" ]]; then
     if [[ $networkType == "mainnet" ]]; then 
 
         echo "***************************************************************"
-        printf "\n\033[1mSign Up on HollaEx Dashboard\033[0m\n\n"
-        echo -e "All HollaEx Kit connected to the Mainnet Network should sign-up on the HollaEx Dashboard first.\n"
-        echo -e "The HollaEx Dashboard sign-up page will get opened through your browser shortly (If it's supported)."
-        echo -e "You should come back to the CLI once you get fully signed-up & setup the DIY exchange."
+        echo -e "All HollaEx Kit connected to the Mainnet HollaEx Network require to have an account on HollaEx Dashboard.\n"
+        echo -e "If you already have an account, please proceed to login."
+        echo -e "For registration, please check out https://dash.hollaex.com."
 
-        sleep 5
+        echo -e "\nDo you have an account on HollaEx Dashboard? (Y/n)"
 
-        if [[ "$OSTYPE" == *"darwin"* ]]; then 
+        read answer
 
-            open https://dash.hollaex.com/signup
-        
-        else 
+        if [[ "$answer" = "${answer#[Yy]}" ]]; then
 
-            if ! command xdg-open https://dash.hollaex.com/signup; then 
 
-                echo "Error: Your system does not support xdg-open compatible browser."
-                echo "Please open HollaEx Dashboard (https://dash.hollaex.com/signup) by yourself, and continue to sign-up."
+            echo -e "Please sign up on HollaEx Dashboard through https://dash.hollaex.com/signup.\n"
 
-            fi 
+            if [[ "$OSTYPE" == *"darwin"* ]]; then 
 
-        fi
+                open https://dash.hollaex.com/signup
+            
+            else 
 
-        echo -e "\nOnce you are done with the sign-up and the exchange setup, please press Y to continue. (y/N)"
-        read answer 
+                if ! command xdg-open https://dash.hollaex.com/signup; then 
 
-        while true;
-            do if [[ "$answer" = "${answer#[Yy]}" ]]; then
-                echo -e "\nOnce you are done with the sign-up and the exchange setup, please press Y to continue. (y/N)"
-                read answer
-            else
-                break;
+                    echo "Error: Your system does not support xdg-open compatible browser."
+                    echo "Please open HollaEx Dashboard (https://dash.hollaex.com/signup) by yourself, and continue to sign-up."
+
+                fi 
+
             fi
-        done
+
+            echo -e "\nOnce the registration is completed, please press C to continue."
+            read answer
+
+            while true;
+
+                do if [[ "$answer" = "${answer#[Cc]}" ]]; then
+                
+                    echo -e "\nOnce the registration is completed, please press C to continue."
+                    read answer
+
+                else
+
+                    break;
+
+                fi
+            
+            done
+               
+        fi 
 
         while true;
             do if ! command hollaex login; then 
@@ -2363,9 +2377,6 @@ elif [[ "$1" == "login" ]]; then
     done;
 
     source $SCRIPTPATH/tools_generator.sh
-
-    # DEBUG
-    echo $hollaexAPIURL
 
     hollaex_login_token_validate_and_issue;
 
