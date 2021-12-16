@@ -1171,8 +1171,9 @@ elif [[ "$1" == "init" ]]; then
 
         echo "***************************************************************"
         printf "\n\033[1mSign Up on HollaEx Dashboard\033[0m\n\n"
-        echo -e "All HollaEx Kit connected to the Mainnet Network should sign-up on the HollaEx Dashboard (https://dash.hollaex.com/signup) first.\n"
-        echo -e "The HollaEx Dashboard sign-up page will be opened through your browser shortly (If it's supported)."
+        echo -e "All HollaEx Kit connected to the Mainnet Network should sign-up on the HollaEx Dashboard first.\n"
+        echo -e "The HollaEx Dashboard sign-up page will get opened through your browser shortly (If it's supported)."
+        echo -e "You should come back to the CLI once you get fully signed-up & setup the DIY exchange."
 
         sleep 5
 
@@ -1191,12 +1192,12 @@ elif [[ "$1" == "init" ]]; then
 
         fi
 
-        echo -e "If you get fully signed-up, please press Y to continue. (y/N)"
+        echo -e "\nOnce you are done with the sign-up and the exchange setup, please press Y to continue. (y/N)"
         read answer 
 
         while true;
             do if [[ "$answer" = "${answer#[Yy]}" ]]; then
-                echo -e "If you get fully signed-up, please press Y to continue. (y/N)"
+                echo -e "\nOnce you are done with the sign-up and the exchange setup, please press Y to continue. (y/N)"
                 read answer
             else
                 break;
