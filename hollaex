@@ -1532,6 +1532,37 @@ elif [[ "$1" == "setup" ]]; then
 
     else 
 
+        if [[ "$USE_KUBERNETES" ]]; then
+
+            if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+
+                export IS_HOLLAEX_KUBE_ALREADY_EXISTS=true
+
+            fi
+        
+        else 
+
+            if command docker ps -a | grep local_$ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+
+                export IS_HOLLAEX_LOCAL_ALREADY_EXISTS=true
+
+            fi
+
+        fi
+
+        if [[ "$IS_HOLLAEX_KUBE_ALREADY_EXISTS" ]] || [[ "$IS_HOLLAEX_LOCAL_ALREADY_EXISTS" ]]; then
+
+            hollaex_ascii_think_emoji;
+
+            echo -e "\n\033[91mOops! There's an exchange already running on the system.\033[39m"
+            echo -e "\nIf this was a mistake, there's nothing you should do."
+            echo -e "\nIf you \033[1mmeant to run the setup again\033[0m due to the failure of the previous setup job, or with any other reasons, you should \033[1mterminate the current exchange\033[0m first."
+            echo -e "\nPlease run \033[1m'hollaex server --terminate$(if [[ "$IS_HOLLAEX_KUBE_ALREADY_EXISTS" ]]; then "echo --kube"; fi)'\033[0m to fully terminate the exchange and run \033[1m'hollaex server --setup$(if [[ "$IS_HOLLAEX_KUBE_ALREADY_EXISTS" ]]; then "echo --kube"; fi)'\033[0m again.\n"
+
+            exit 1;
+
+        fi 
+
         if [[ ! "$RUN_WITH_VERIFY" == false ]]; then 
 
             hollaex_setup_initialization;
@@ -1674,17 +1705,6 @@ elif [[ "$1" == "setup" ]]; then
         #Checking Kubernetes dependencies
         check_kubernetes_dependencies;
 
-        if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
-
-            echo "*********************************************"
-            printf "\033[91mError: HollaEx CLI detected that the exchange exists on your remote Kubernetes environment.\033[39m\n"
-            printf "\033[91mCannot setup an exchange multiple times.\033[39m\n\n"
-            echo "Exiting..."
-            echo "*********************************************"
-            exit 1;
-
-        fi
-
         #Creating kubernetes_config directory for generating config for Kubernetes.
 
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes" ]]; then
@@ -1778,18 +1798,6 @@ elif [[ "$1" == "setup" ]]; then
         else
 
             echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
-            exit 1;
-
-        fi
-
-
-        if command docker ps -a | grep local_$ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
-
-            echo "*********************************************"
-            printf "\033[91mError: HollaEx CLI detected that the exchange exists on your machine.\033[39m\n"
-            printf "\033[91mExchange setup can't be done for multiple times.\033[39m\n\n"
-            echo "Exiting..."
-            echo "*********************************************"
             exit 1;
 
         fi

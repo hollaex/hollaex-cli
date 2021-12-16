@@ -3134,6 +3134,32 @@ function hollaex_ascii_pair_has_been_added() {
 EOF
 }
 
+function hollaex_ascii_think_emoji() {
+
+   /bin/cat << EOF
+                  ..,,,,..
+            .:itttt1111tttti:.
+          ;tf1;,.        .,;1ft;
+        1L1:                  :1L1
+      :Ct.   .ii:               .tC:
+     iG:  . ,8@@@t      .1CCt. .  :Gi
+    ;0. .   .C880i      ;@@@@t . . .0;
+   .0: .      ,,.       .1LCt.    . :0.
+   1C .          .....             . C1
+ . Lt    .i:  ,tttttttt1:          . tL .
+ . Lt .  G1G; ,,.     .:fi         . tL .
+   iC . LL C1   .,:;;:.  .         . Ci
+    0; fC ,8t1tt11ii1GL .         . ;0.
+    :GLL  .;:,. ,i111;.          . ,0:
+     ;@  .      Cf..              ;G;
+    . Ct        ;G              ,fC,
+      .Lf;,....,fL           .:tLi
+        :i1tLGGfi.      .,:itft:
+             ,;i1ttttttttt1i:.
+                  ......
+EOF
+}
+
 function update_hollaex_cli_to_latest() { 
   
   echo "Checking for a newer version of HollaEx CLI is available..."
