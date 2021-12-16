@@ -6,3 +6,4 @@ local/nginx/conf.d/*
 local/logs/*
 local/letsencrypt/*
 !local/letsencrypt/.gitkeep
+.DS_Store
