@@ -1517,6 +1517,43 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-plugins-sms-verify
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
+    #nginx.ingress.kubernetes.io/whitelist-source-range: ""
+    nginx.ingress.kubernetes.io/server-snippet: |
+        location @maintenance_503 {
+          internal;
+          return 503;
+        }
+    nginx.ingress.kubernetes.io/proxy-body-size: "6m"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      #error_page 403 @maintenance_503;
+      limit_req zone=sms burst=1 nodelay;
+      limit_req_log_level notice;
+      limit_req_status 429;
+
+spec:
+  rules:
+  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+    http:
+      paths:
+      - pathType: Prefix
+        path: /plugins/sms/verify
+        backend:
+          service:
+            name: ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins
+            port:
+              number: 10011
+    
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
   name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-stream
   namespace: ${ENVIRONMENT_EXCHANGE_NAME}
   annotations:
@@ -7208,5 +7245,46 @@ function check_latest_hollaex_network_docker_tag() {
 
   DOCKER_HUB_BEARER_TOKEN=$(curl -s -H "Content-Type: application/json" -X POST -d '{"username": "'${ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME}'", "password": "'${ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD}'"}' https://hub.docker.com/v2/users/login/ | jq -r .token)
   curl -s -S -H "Authorization: Bearer $DOCKER_HUB_BEARER_TOKEN" https://registry.hub.docker.com/v2/repositories/bitholla/hollaex-network-standalone/tags?page_size=100 | jq -r '."results"[]["name"]' | sed -n 1p 
+
+}
+
+function hollaex_setup_existing_exchange_check() {
+
+  CONFIG_FILE_PATH=$(pwd)/settings/*
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+      source $i
+  done;
+
+  if [[ "$USE_KUBERNETES" ]]; then
+
+      if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+
+          export IS_HOLLAEX_KUBE_ALREADY_EXISTS=true
+
+      fi
+  
+  else 
+
+      if command docker ps -a | grep local_$ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+
+          export IS_HOLLAEX_LOCAL_ALREADY_EXISTS=true
+
+      fi
+
+  fi
+
+  if [[ "$IS_HOLLAEX_KUBE_ALREADY_EXISTS" ]] || [[ "$IS_HOLLAEX_LOCAL_ALREADY_EXISTS" ]]; then
+
+      hollaex_ascii_think_emoji;
+
+      echo -e "\n\033[91mOops! There's an exchange $ENVIRONMENT_EXCHANGE_NAME already running on the system.\033[39m"
+      echo -e "\nIf this was a mistake, there's nothing you should do."
+      echo -e "\nIf you \033[1mmeant to run the setup again\033[0m due to the failure of the previous setup job, or with any other reasons, you should \033[1mterminate the current exchange\033[0m first."
+      echo -e "\nPlease run \033[1m'hollaex server --terminate$(if [[ "$IS_HOLLAEX_KUBE_ALREADY_EXISTS" ]];then echo " --kube"; fi)'\033[0m to fully terminate the exchange and run \033[1m'hollaex server --setup$(if [[ "$IS_HOLLAEX_KUBE_ALREADY_EXISTS" ]]; then echo " --kube"; fi)'\033[0m again.\n"
+
+      exit 1;
+
+  fi 
 
 }

@@ -1547,36 +1547,9 @@ elif [[ "$1" == "setup" ]]; then
 
     else 
 
-        if [[ "$USE_KUBERNETES" ]]; then
+        echo $ENVIRONMENT_EXCHANGE_NAME
 
-            if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
-
-                export IS_HOLLAEX_KUBE_ALREADY_EXISTS=true
-
-            fi
-        
-        else 
-
-            if command docker ps -a | grep local_$ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
-
-                export IS_HOLLAEX_LOCAL_ALREADY_EXISTS=true
-
-            fi
-
-        fi
-
-        if [[ "$IS_HOLLAEX_KUBE_ALREADY_EXISTS" ]] || [[ "$IS_HOLLAEX_LOCAL_ALREADY_EXISTS" ]]; then
-
-            hollaex_ascii_think_emoji;
-
-            echo -e "\n\033[91mOops! There's an exchange already running on the system.\033[39m"
-            echo -e "\nIf this was a mistake, there's nothing you should do."
-            echo -e "\nIf you \033[1mmeant to run the setup again\033[0m due to the failure of the previous setup job, or with any other reasons, you should \033[1mterminate the current exchange\033[0m first."
-            echo -e "\nPlease run \033[1m'hollaex server --terminate$(if [[ "$IS_HOLLAEX_KUBE_ALREADY_EXISTS" ]]; then "echo --kube"; fi)'\033[0m to fully terminate the exchange and run \033[1m'hollaex server --setup$(if [[ "$IS_HOLLAEX_KUBE_ALREADY_EXISTS" ]]; then "echo --kube"; fi)'\033[0m again.\n"
-
-            exit 1;
-
-        fi 
+        hollaex_setup_existing_exchange_check;
 
         if [[ ! "$RUN_WITH_VERIFY" == false ]]; then 
 
