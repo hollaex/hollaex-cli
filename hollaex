@@ -1319,12 +1319,12 @@ elif [[ "$1" == "init" ]]; then
         echo "HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID=$HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID" > $(pwd)/settings/temp
         echo "HOLLAEX_CONFIGMAP_ADMIN_EMAIL=$hollaexAdminEmail" >> $(pwd)/settings/temp
         echo "HOLLAEX_CONFIGMAP_ADMIN_PASSWORD=$hollaexAdminPassword" >> $(pwd)/settings/temp
+
+        echo -e "\n\033[92mSuccessfully initialized the exchange $hollaexExchangeName and the account $hollaexAdminEmail.\033[39m"
     
     fi 
 
     echo "HOLLAEX_CONFIGMAP_NETWORK_URL=$hollaexAPIURL" > $INIT_PATH_CHECK
-
-    echo -e "\n\033[92mSuccessfully initialized the exchange $hollaexExchangeName and the account $hollaexAdminEmail.\033[39m"
 
     if [[ ! "$HOLLAEX_IS_SETUP" ]]; then 
         
@@ -8233,13 +8233,14 @@ elif [[ "$1" == "status" ]]; then
 
     printf "\nCalling the exchange health page ($HOLLAEX_CONFIGMAP_API_HOST/v2/health) ...\n"
 
-    if command curl $HOLLAEX_CONFIGMAP_API_HOST/v2/health; then 
+    if command curl -s $HOLLAEX_CONFIGMAP_API_HOST/v2/health | grep $ENVIRONMENT_EXCHANGE_NAME; then 
 
         printf "\n\033[92mSuccessfully reached to the health page.\033[39m\n"
 
     else 
 
         printf "\033[91m\nThe health page is not responding. Please check the exchange is up.\033[39m\n"
+        curl -s $HOLLAEX_CONFIGMAP_API_HOST/v2/health
 
     fi
 
