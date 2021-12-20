@@ -2699,7 +2699,7 @@ elif [[ "$1" == "pull" ]]; then
     # Avoid running cloud exchange as DIY
     if [[ "$HOLLAEX_IS_SETUP" ]] && [[ ! "$HOLLAEX_SETUP_FORCE" ]]; then 
 
-        if [[ ! $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].type") == "DIY" ]]; then
+        if [[ $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].type") == "Cloud" ]]; then
 
             printf "\n\033[91mError: Your exchange is not a DIY exchange!\033[39m\n"
             printf "To manage cloud exchange, you should visit https://dash.hollaex.com.\n\n"
