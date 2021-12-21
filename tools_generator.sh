@@ -1517,6 +1517,43 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-plugins-sms-verify
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
+    #nginx.ingress.kubernetes.io/whitelist-source-range: ""
+    nginx.ingress.kubernetes.io/server-snippet: |
+        location @maintenance_503 {
+          internal;
+          return 503;
+        }
+    nginx.ingress.kubernetes.io/proxy-body-size: "6m"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      #error_page 403 @maintenance_503;
+      limit_req zone=sms burst=1 nodelay;
+      limit_req_log_level notice;
+      limit_req_status 429;
+
+spec:
+  rules:
+  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+    http:
+      paths:
+      - pathType: Prefix
+        path: /plugins/sms/verify
+        backend:
+          service:
+            name: ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins
+            port:
+              number: 10011
+    
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
   name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-stream
   namespace: ${ENVIRONMENT_EXCHANGE_NAME}
   annotations:
@@ -3134,6 +3171,32 @@ function hollaex_ascii_pair_has_been_added() {
 EOF
 }
 
+function hollaex_ascii_think_emoji() {
+
+   /bin/cat << EOF
+                  ..,,,,..
+            .:itttt1111tttti:.
+          ;tf1;,.        .,;1ft;
+        1L1:                  :1L1
+      :Ct.   .ii:               .tC:
+     iG:  . ,8@@@t      .1CCt. .  :Gi
+    ;0. .   .C880i      ;@@@@t . . .0;
+   .0: .      ,,.       .1LCt.    . :0.
+   1C .          .....             . C1
+ . Lt    .i:  ,tttttttt1:          . tL .
+ . Lt .  G1G; ,,.     .:fi         . tL .
+   iC . LL C1   .,:;;:.  .         . Ci
+    0; fC ,8t1tt11ii1GL .         . ;0.
+    :GLL  .;:,. ,i111;.          . ,0:
+     ;@  .      Cf..              ;G;
+    . Ct        ;G              ,fC,
+      .Lf;,....,fL           .:tLi
+        :i1tLGGfi.      .,:itft:
+             ,;i1ttttttttt1i:.
+                  ......
+EOF
+}
+
 function update_hollaex_cli_to_latest() { 
   
   echo "Checking for a newer version of HollaEx CLI is available..."
@@ -4022,7 +4085,7 @@ function issue_new_hmac_token() {
   BITHOLLA_HMAC_TOKEN_ISSUE_POST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" -w "=%{http_code}" \
         --request POST \
         -d '{"name": "kit"}' \
-        https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/user/token)
+        $hollaexAPIURL/v2/dash/user/token)
 
   BITHOLLA_HMAC_TOKEN_ISSUE_POST_RESPOND=$(echo $BITHOLLA_HMAC_TOKEN_ISSUE_POST | cut -f1 -d "=")
   BITHOLLA_HMAC_TOKEN_ISSUE_POST_HTTP_CODE=$(echo $BITHOLLA_HMAC_TOKEN_ISSUE_POST | cut -f2 -d "=")
@@ -4071,17 +4134,17 @@ function get_hmac_token() {
   
   BITHOLLA_HMAC_TOKEN_GET_COUNT=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
             --request GET \
-            https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/user/token?active=true | jq '.count')
+            $hollaexAPIURL/v2/dash/user/token?active=true | jq '.count')
     
   if [[ ! $BITHOLLA_HMAC_TOKEN_GET_COUNT == 0 ]]; then 
 
     BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
             --request GET \
-            https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/user/token?active=true | jq -r '.data[0].apiKey')
+            $hollaexAPIURL/v2/dash/user/token?active=true | jq -r '.data[0].apiKey')
     
     BITHOLLA_HMAC_TOKEN_EXISTING_TOKEN_ID=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
             --request GET \
-            https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/user/token?active=true | jq -r '.data[0].id')
+            $hollaexAPIURL/v2/dash/user/token?active=true | jq -r '.data[0].id')
 
     printf "\n\033[1mYou already have an active Token! (API Key: $BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY)\033[0m\n\n"
 
@@ -4139,7 +4202,7 @@ function get_hmac_token() {
       BITHOLLA_HMAC_TOKEN_REVOKE_CALL=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" -w " HTTP_CODE=%{http_code}" \
           --request DELETE \
           -d "{\"name\": \"kit\", \"token_id\": $BITHOLLA_HMAC_TOKEN_EXISTING_TOKEN_ID}" \
-          https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/user/token)
+          $hollaexAPIURL/v2/dash/user/token)
 
       BITHOLLA_HMAC_TOKEN_REVOKE_CALL_RESPOND=$(echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL | cut -f1 -d "=")
       BITHOLLA_HMAC_TOKEN_REVOKE_CALL_HTTP_CODE=$(echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL | cut -f2 -d "=")
@@ -4229,6 +4292,8 @@ function hollaex_setup_initialization() {
 
 function hollaex_login_form() {
 
+    echo -e "\n\033[1m# # # HOLLAEX DASHBOARD LOGIN # # #\033[0m\n"
+
     echo -e "\033[1mHollaEx Account Email:\033[0m "
     read email
 
@@ -4237,12 +4302,12 @@ function hollaex_login_form() {
     printf "\n"
 
     echo -e "\033[1mOTP Code\033[0m (Enter if you don't have OTP set for your account): "
-    read otp
+    read otp 
 
     BITHOLLA_ACCOUNT_TOKEN=$(curl -s -H "Content-Type: application/json" \
         --request POST \
         --data "{\"email\": \"${email}\", \"password\": \"${password}\", \"otp_code\": \"${otp}\", \"service\": \"cli\"}" \
-        https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/dash/login \
+        $hollaexAPIURL/v2/dash/login \
         | jq -r '.token')
 
     if [[ ! "$BITHOLLA_ACCOUNT_TOKEN" ]] || [[ "$BITHOLLA_ACCOUNT_TOKEN" == "null" ]]; then
@@ -4277,11 +4342,11 @@ function hollaex_login_token_validate_and_issue() {
 
       BITHOLLA_USER_TOKEN_EXPIRY_CHECK=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
           --request GET \
-          https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange)
+          $hollaexAPIURL/v2/exchange)
 
       BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
           --request GET \
-          https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange \
+          $hollaexAPIURL/v2/exchange \
           | jq '.')
 
       if [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" ]] || [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" == "200" ]]; then
@@ -7180,5 +7245,46 @@ function check_latest_hollaex_network_docker_tag() {
 
   DOCKER_HUB_BEARER_TOKEN=$(curl -s -H "Content-Type: application/json" -X POST -d '{"username": "'${ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME}'", "password": "'${ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD}'"}' https://hub.docker.com/v2/users/login/ | jq -r .token)
   curl -s -S -H "Authorization: Bearer $DOCKER_HUB_BEARER_TOKEN" https://registry.hub.docker.com/v2/repositories/bitholla/hollaex-network-standalone/tags?page_size=100 | jq -r '."results"[]["name"]' | sed -n 1p 
+
+}
+
+function hollaex_setup_existing_exchange_check() {
+
+  CONFIG_FILE_PATH=$(pwd)/settings/*
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+      source $i
+  done;
+
+  if [[ "$USE_KUBERNETES" ]]; then
+
+      if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+
+          export IS_HOLLAEX_KUBE_ALREADY_EXISTS=true
+
+      fi
+  
+  else 
+
+      if command docker ps -a | grep local_$ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+
+          export IS_HOLLAEX_LOCAL_ALREADY_EXISTS=true
+
+      fi
+
+  fi
+
+  if [[ "$IS_HOLLAEX_KUBE_ALREADY_EXISTS" ]] || [[ "$IS_HOLLAEX_LOCAL_ALREADY_EXISTS" ]]; then
+
+      hollaex_ascii_think_emoji;
+
+      echo -e "\n\033[91mOops! There's an exchange $ENVIRONMENT_EXCHANGE_NAME already running on the system.\033[39m"
+      echo -e "\nIf this was a mistake, there's nothing you should do."
+      echo -e "\nIf you \033[1mmeant to run the setup again\033[0m due to the failure of the previous setup job, or with any other reasons, you should \033[1mterminate the current exchange\033[0m first."
+      echo -e "\nPlease run \033[1m'hollaex server --terminate$(if [[ "$IS_HOLLAEX_KUBE_ALREADY_EXISTS" ]];then echo " --kube"; fi)'\033[0m to fully terminate the exchange and run \033[1m'hollaex server --setup$(if [[ "$IS_HOLLAEX_KUBE_ALREADY_EXISTS" ]]; then echo " --kube"; fi)'\033[0m again.\n"
+
+      exit 1;
+
+  fi 
 
 }
