@@ -1220,12 +1220,17 @@ elif [[ "$1" == "init" ]]; then
 
         while true;
             do if ! command hollaex login; then 
-
-                echo "Failed to login! Please confirm your credentials and try it again."
+                
+                rm -f $(pwd)/.token
 
             else 
 
-                hollaex pull --skip
+                if ! command hollaex pull --skip; then 
+
+                    exit 1;
+                
+                fi 
+
                 break;
             
             fi 
@@ -1546,8 +1551,6 @@ elif [[ "$1" == "setup" ]]; then
         fi
 
     else 
-
-        echo $ENVIRONMENT_EXCHANGE_NAME
 
         hollaex_setup_existing_exchange_check;
 
@@ -8441,7 +8444,7 @@ elif [[ "$1" == "logs" ]]; then
 
                     if [[ $(docker logs $i --tail 10) ]]; then
 
-                            docker logs $i --tail ${HOLLAEX_LOGS_TARGET_LINE:-100}
+                            docker logs $i --tail ${HOLLAEX_LOGS_TARGET_LINE:-100} 
 
                     else 
 
