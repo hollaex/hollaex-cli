@@ -58,15 +58,15 @@ if [[ ! "$HOLLAEX_NETWORK_OPERATION" ]]; then
 
     if [[ "$HOLLAEX_CONFIGMAP_NETWORK_URL" ]]; then 
 
-        export ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER=$HOLLAEX_CONFIGMAP_NETWORK_URL
+        export hollaexAPIURL=$HOLLAEX_CONFIGMAP_NETWORK_URL
 
     elif [[ ! "$HOLLAEX_CONFIGMAP_NETWORK_URL" ]] && [[ "$ENVIRONMENT_HOLLAEX_KIT_NETWORK" == "testnet" ]]; then 
 
-        ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER='api.testnet.hollaex.network'
+        export hollaexAPIURL='https://api.testnet.hollaex.network'
 
     else
 
-        ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER='api.hollaex.network'
+        export hollaexAPIURL='https://api.hollaex.network'
 
     fi
 
@@ -1103,13 +1103,16 @@ elif [[ "$1" == "init" ]]; then
         case $networkOption in
             1)
                 export hollaexAPIURL=https://api.hollaex.network
+                export networkType="mainnet"
                 flag=0
                 ;;
             2)
                 export hollaexAPIURL=https://api.testnet.hollaex.network
+                export networkType="testnet"
                 flag=0
                 ;;
-            3) 
+            3)  
+                export networkType="custom"
                 echo "***************************************************************"
                 printf "\nPlease type the URL of your custom network including 'http' or 'https'. (Example: https://api.hollaex.network)\n"
                 read hollaexAPIURL
@@ -1138,13 +1141,13 @@ elif [[ "$1" == "init" ]]; then
     if [[ "$hollaexAPIURL" == *"localhost"* ]]; then 
 
         export HOLLAEX_INIT_LOCALHOST_MODE_INTERNAL_URL="http://hollaex-network-nginx"
-        export HOLLAEX_CONFIGMAP_NETWORK_URL=${HOLLAEX_INIT_LOCALHOST_MODE_INTERNAL_URL//\//\\/}
+        export hollaexAPIURLEscaped=${HOLLAEX_INIT_LOCALHOST_MODE_INTERNAL_URL//\//\\/}
 
         export HOLLAEX_NETWORK_LOCALHOST_MODE=true
 
     else
     
-        export HOLLAEX_CONFIGMAP_NETWORK_URL=${hollaexAPIURL//\//\\/}
+        export hollaexAPIURLEscaped=${hollaexAPIURL//\//\\/}
 
     fi
 
@@ -1164,95 +1167,169 @@ elif [[ "$1" == "init" ]]; then
     echo "${hollaexAPIURL} ✔"
     printf "\n"
 
-    printf "\n\033[1mCreate Admin\033[0m\n\n"
-    echo -e "Please type your email address and password that you are going to use for your admin account.\n"
-    echo "Email: "
-    read hollaexAdminEmail
-    echo "Password: "
-    read -s hollaexAdminPassword
+    if [[ $networkType == "mainnet" ]]; then 
 
-     while true;
-        do if [[ ! "$hollaexAdminEmail" == *"@"* ]]; then 
-            printf "\nInvalid email address. Please type it again.\n"
-            echo "Email: "
-            read hollaexAdminEmail
-        else
-            break;
+        echo "***************************************************************"
+        echo -e "All HollaEx Kit connected to the Mainnet HollaEx Network require to have an account on HollaEx Dashboard.\n"
+        echo -e "If you already have an account, please proceed to login."
+        echo -e "For registration, please check out https://dash.hollaex.com."
+
+        echo -e "\nDo you have an account on HollaEx Dashboard? (Y/n)"
+
+        read answer
+
+        if [[ "$answer" = "${answer#[Yy]}" ]]; then
+
+
+            echo -e "Please sign up on HollaEx Dashboard through https://dash.hollaex.com/signup.\n"
+
+            if [[ "$OSTYPE" == *"darwin"* ]]; then 
+
+                open https://dash.hollaex.com/signup
+            
+            else 
+
+                if ! command xdg-open https://dash.hollaex.com/signup; then 
+
+                    echo "Error: Your system does not support xdg-open compatible browser."
+                    echo "Please open HollaEx Dashboard (https://dash.hollaex.com/signup) by yourself, and continue to sign-up."
+
+                fi 
+
+            fi
+
+            echo -e "\nOnce the registration is completed, please press C to continue."
+            read answer
+
+            while true;
+
+                do if [[ "$answer" = "${answer#[Cc]}" ]]; then
+                
+                    echo -e "\nOnce the registration is completed, please press C to continue."
+                    read answer
+
+                else
+
+                    break;
+
+                fi
+            
+            done
+               
+        fi 
+
+        while true;
+            do if ! command hollaex login; then 
+                
+                rm -f $(pwd)/.token
+
+            else 
+
+                if ! command hollaex pull --skip; then 
+
+                    exit 1;
+                
+                fi 
+
+                break;
+            
+            fi 
+
+        done 
+
+    else
+
+        printf "\n\033[1mCreate Admin\033[0m\n\n"
+        echo -e "Please type your email address and password that you are going to use for your admin account.\n"
+        echo "Email: "
+        read hollaexAdminEmail
+        echo "Password: "
+        read -s hollaexAdminPassword
+
+        while true;
+            do if [[ ! "$hollaexAdminEmail" == *"@"* ]]; then 
+                printf "\nInvalid email address. Please type it again.\n"
+                echo "Email: "
+                read hollaexAdminEmail
+            else
+                break;
+            fi
+        done
+
+        printf "\n\033[1mCreate Exchange\033[0m\n\n"
+
+        echo -e "Please type in the name of your new exchange."
+        printf "\033[2m- Alphanumeric, Dash (-), Underscore Only (_). No space or special character allowed.\033[22m\n" 
+        read hollaexExchangeName
+
+        while true;
+            do if [[ ! "$hollaexExchangeName" =~ ^[A-Za-z0-9_-]+$ ]]; then 
+                printf "\nInvalid Exchange Name. Make sure to input Alphanumeric, Dash (-), Underscore Only (_).\n"
+                echo "New Exchange Name: "
+                read hollaexExchangeName
+            else
+                break;
+            fi
+        done
+
+        printf "\n"
+        echo "$hollaexExchangeName ✔"
+        printf "\n"
+
+        HOLLAEX_INIT_REQUEST=$(curl -s -H "Content-Type: application/json" \
+            -w ";%{http_code}" \
+            --request POST \
+            --data "{\"email\": \"${hollaexAdminEmail}\", \"password\": \"${hollaexAdminPassword}\", \"exchange_name\": \"${hollaexExchangeName}\"}" \
+            $hollaexAPIURL/v2/network/exchange)
+
+        HOLLAEX_INIT_REQUEST_RESPONSE=$(echo $HOLLAEX_INIT_REQUEST | cut -f1 -d ";")
+        HOLLAEX_INIT_REQUEST_HTTP_CODE=$(echo $HOLLAEX_INIT_REQUEST | cut -f2 -d ";")
+
+        # Creating an admin account with exchange
+        if [[ ! "$HOLLAEX_INIT_REQUEST_HTTP_CODE" == "200" ]]; then
+        
+            echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.message'
+
+            echo -e "\nError: Failed to create an account on HollaEx Network."
+            echo "Please review the logs and try it again."
+            exit 1;
+        
         fi
-    done
 
-    printf "\n\033[1mCreate Exchange\033[0m\n\n"
+        export HOLLAEX_SECRET_API_KEY=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.token.apiKey')
+        export HOLLAEX_SECRET_API_SECRET=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.token.secret')
+        export HOLLAEX_SECRET_ACTIVATION_CODE=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.exchange.activation_code')    
+        export HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.user.id')
 
-    echo -e "Please type in the name of your new exchange."
-    printf "\033[2m- Alphanumeric, Dash (-), Underscore Only (_). No space or special character allowed.\033[22m\n" 
-    read hollaexExchangeName
+        # Update settings files with provided values
+        for i in ${CONFIG_FILE_PATH[@]}; do
+            if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+                CONFIGMAP_FILE_PATH=$i
+                sed -i.bak "s/ENVIRONMENT_EXCHANGE_NAME=.*/ENVIRONMENT_EXCHANGE_NAME=$hollaexExchangeName/" $CONFIGMAP_FILE_PATH
+                sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=.*/HOLLAEX_CONFIGMAP_API_NAME=$hollaexExchangeName/" $CONFIGMAP_FILE_PATH
+                sed -i.bak "s/HOLLAEX_CONFIGMAP_NETWORK_URL=.*/HOLLAEX_CONFIGMAP_NETWORK_URL=$hollaexAPIURLEscaped/" $CONFIGMAP_FILE_PATH
 
-    while true;
-        do if [[ ! "$hollaexExchangeName" =~ ^[A-Za-z0-9_-]+$ ]]; then 
-            printf "\nInvalid Exchange Name. Make sure to input Alphanumeric, Dash (-), Underscore Only (_).\n"
-            echo "New Exchange Name: "
-            read hollaexExchangeName
-        else
-            break;
-        fi
-    done
+                rm $CONFIGMAP_FILE_PATH.bak
+            fi
+            if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE" $i > /dev/null ; then
+                SECRET_FILE_PATH=$i
+                sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=.*/HOLLAEX_SECRET_ACTIVATION_CODE=$HOLLAEX_SECRET_ACTIVATION_CODE/" $SECRET_FILE_PATH
+                sed -i.bak "s/HOLLAEX_SECRET_API_KEY=.*/HOLLAEX_SECRET_API_KEY=$HOLLAEX_SECRET_API_KEY/" $SECRET_FILE_PATH
+                sed -i.bak "s/HOLLAEX_SECRET_API_SECRET=.*/HOLLAEX_SECRET_API_SECRET=$HOLLAEX_SECRET_API_SECRET/" $SECRET_FILE_PATH
+                rm $SECRET_FILE_PATH.bak
+            fi
+        done
 
-    printf "\n"
-    echo "$hollaexExchangeName ✔"
-    printf "\n"
+        # Store Network ID, Admin email and password to a temporary file
+        echo "HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID=$HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID" > $(pwd)/settings/temp
+        echo "HOLLAEX_CONFIGMAP_ADMIN_EMAIL=$hollaexAdminEmail" >> $(pwd)/settings/temp
+        echo "HOLLAEX_CONFIGMAP_ADMIN_PASSWORD=$hollaexAdminPassword" >> $(pwd)/settings/temp
 
-    HOLLAEX_INIT_REQUEST=$(curl -s -H "Content-Type: application/json" \
-        -w ";%{http_code}" \
-        --request POST \
-        --data "{\"email\": \"${hollaexAdminEmail}\", \"password\": \"${hollaexAdminPassword}\", \"exchange_name\": \"${hollaexExchangeName}\"}" \
-        $hollaexAPIURL/v2/network/exchange)
-
-    HOLLAEX_INIT_REQUEST_RESPONSE=$(echo $HOLLAEX_INIT_REQUEST | cut -f1 -d ";")
-    HOLLAEX_INIT_REQUEST_HTTP_CODE=$(echo $HOLLAEX_INIT_REQUEST | cut -f2 -d ";")
-
-    # Creating an admin account with exchange
-    if [[ ! "$HOLLAEX_INIT_REQUEST_HTTP_CODE" == "200" ]]; then
+        echo -e "\n\033[92mSuccessfully initialized the exchange $hollaexExchangeName and the account $hollaexAdminEmail.\033[39m"
     
-        echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.message'
+    fi 
 
-        echo -e "\nError: Failed to create an account on HollaEx Network."
-        echo "Please review the logs and try it again."
-        exit 1;
-    
-    fi
-
-    export HOLLAEX_SECRET_API_KEY=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.token.apiKey')
-    export HOLLAEX_SECRET_API_SECRET=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.token.secret')
-    export HOLLAEX_SECRET_ACTIVATION_CODE=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.exchange.activation_code')    
-    export HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.user.id')
-
-    # Update settings files with provided values
-    for i in ${CONFIG_FILE_PATH[@]}; do
-        if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
-            CONFIGMAP_FILE_PATH=$i
-            sed -i.bak "s/ENVIRONMENT_EXCHANGE_NAME=.*/ENVIRONMENT_EXCHANGE_NAME=$hollaexExchangeName/" $CONFIGMAP_FILE_PATH
-            sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=.*/HOLLAEX_CONFIGMAP_API_NAME=$hollaexExchangeName/" $CONFIGMAP_FILE_PATH
-            sed -i.bak "s/HOLLAEX_CONFIGMAP_NETWORK_URL=.*/HOLLAEX_CONFIGMAP_NETWORK_URL=$HOLLAEX_CONFIGMAP_NETWORK_URL/" $CONFIGMAP_FILE_PATH
-
-            rm $CONFIGMAP_FILE_PATH.bak
-        fi
-        if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE" $i > /dev/null ; then
-            SECRET_FILE_PATH=$i
-            sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=.*/HOLLAEX_SECRET_ACTIVATION_CODE=$HOLLAEX_SECRET_ACTIVATION_CODE/" $SECRET_FILE_PATH
-            sed -i.bak "s/HOLLAEX_SECRET_API_KEY=.*/HOLLAEX_SECRET_API_KEY=$HOLLAEX_SECRET_API_KEY/" $SECRET_FILE_PATH
-            sed -i.bak "s/HOLLAEX_SECRET_API_SECRET=.*/HOLLAEX_SECRET_API_SECRET=$HOLLAEX_SECRET_API_SECRET/" $SECRET_FILE_PATH
-            rm $SECRET_FILE_PATH.bak
-        fi
-    done
-
-    echo "HOLLAEX_CONFIGMAP_NETWORK_URL=$HOLLAEX_CONFIGMAP_NETWORK_URL" > $INIT_PATH_CHECK
-
-    # Store Network ID, Admin email and password to a temporary file
-    echo "HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID=$HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID" > $(pwd)/settings/temp
-    echo "HOLLAEX_CONFIGMAP_ADMIN_EMAIL=$hollaexAdminEmail" >> $(pwd)/settings/temp
-    echo "HOLLAEX_CONFIGMAP_ADMIN_PASSWORD=$hollaexAdminPassword" >> $(pwd)/settings/temp
-
-    echo -e "\n\033[92mSuccessfully initialized the exchange $hollaexExchangeName and the account $hollaexAdminEmail.\033[39m"
+    echo "HOLLAEX_CONFIGMAP_NETWORK_URL=$hollaexAPIURL" > $INIT_PATH_CHECK
 
     if [[ ! "$HOLLAEX_IS_SETUP" ]]; then 
         
@@ -1475,6 +1552,8 @@ elif [[ "$1" == "setup" ]]; then
 
     else 
 
+        hollaex_setup_existing_exchange_check;
+
         if [[ ! "$RUN_WITH_VERIFY" == false ]]; then 
 
             hollaex_setup_initialization;
@@ -1617,17 +1696,6 @@ elif [[ "$1" == "setup" ]]; then
         #Checking Kubernetes dependencies
         check_kubernetes_dependencies;
 
-        if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
-
-            echo "*********************************************"
-            printf "\033[91mError: HollaEx CLI detected that the exchange exists on your remote Kubernetes environment.\033[39m\n"
-            printf "\033[91mCannot setup an exchange multiple times.\033[39m\n\n"
-            echo "Exiting..."
-            echo "*********************************************"
-            exit 1;
-
-        fi
-
         #Creating kubernetes_config directory for generating config for Kubernetes.
 
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes" ]]; then
@@ -1721,18 +1789,6 @@ elif [[ "$1" == "setup" ]]; then
         else
 
             echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
-            exit 1;
-
-        fi
-
-
-        if command docker ps -a | grep local_$ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
-
-            echo "*********************************************"
-            printf "\033[91mError: HollaEx CLI detected that the exchange exists on your machine.\033[39m\n"
-            printf "\033[91mExchange setup can't be done for multiple times.\033[39m\n\n"
-            echo "Exiting..."
-            echo "*********************************************"
             exit 1;
 
         fi
@@ -2302,7 +2358,7 @@ elif [[ "$1" == "login" ]]; then
 
     BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
         --request GET \
-        https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange \
+        $hollaexAPIURL/v2/exchange \
        | jq '.')
     
     BITHOLLA_USER_EXCHANGE_COUNT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r '.count')
@@ -2397,7 +2453,7 @@ elif [[ "$1" == "login" ]]; then
 
     fi
     
-    # ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER=$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER
+    # hollaexAPIURL=$hollaexAPIURL
     # hollaex_login_form;
 
     if [[ "$HOLLAEX_SECRET_API_KEY" ]] && [[ "$HOLLAEX_SECRET_API_SECRET" ]]; then 
@@ -2586,12 +2642,12 @@ elif [[ "$1" == "pull" ]]; then
 
     BITHOLLA_USER_TOKEN_EXPIRY_CHECK=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
             --request GET \
-            https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange)
+            $hollaexAPIURL/v2/exchange)
 
 
     BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
         --request GET \
-        https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange \
+        $hollaexAPIURL/v2/exchange \
        | jq '.')
 
 
@@ -2646,7 +2702,7 @@ elif [[ "$1" == "pull" ]]; then
     # Avoid running cloud exchange as DIY
     if [[ "$HOLLAEX_IS_SETUP" ]] && [[ ! "$HOLLAEX_SETUP_FORCE" ]]; then 
 
-        if [[ ! $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].type") == "DIY" ]]; then
+        if [[ $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].type") == "Cloud" ]]; then
 
             printf "\n\033[91mError: Your exchange is not a DIY exchange!\033[39m\n"
             printf "To manage cloud exchange, you should visit https://dash.hollaex.com.\n\n"
@@ -7579,7 +7635,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         HOLLAEX_CLOUD_GET_EXCHANGE_INFO_REQUEST=$(curl -s -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
           --request GET \
-          https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange)
+          $hollaexAPIURL/v2/exchange)
 
         HOLLAEX_CLOUD_GET_EXCHANGE_NAME_LIST=$(echo $HOLLAEX_CLOUD_GET_EXCHANGE_INFO_REQUEST | jq -r '.data[].name')
 
@@ -7601,7 +7657,7 @@ elif [[ "$1" == "toolbox" ]]; then
         HOLLAEX_CLOUD_SEO_HTML_REQUEST=$(curl -s -w "&%{http_code}" \
         -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
         --request GET \
-        https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange/html?exchange_id=$HOLLAEX_CLOUD_EXCHANGE_ID) 
+        $hollaexAPIURL/v2/exchange/html?exchange_id=$HOLLAEX_CLOUD_EXCHANGE_ID) 
 
         HOLLAEX_CLOUD_SEO_HTML=$(echo $HOLLAEX_CLOUD_SEO_HTML_REQUEST | cut -f1 -d "&")
         HOLLAEX_CLOUD_SEO_HTML_CODE=$(echo $HOLLAEX_CLOUD_SEO_HTML_REQUEST | cut -f2 -d "&")
@@ -7612,7 +7668,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
             curl -s -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
             --request GET \
-            https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange/html?exchange_id=$HOLLAEX_CLOUD_EXCHANGE_ID > $HOLLAEX_CLI_INIT_PATH/web/public/index.html
+            $hollaexAPIURL/v2/exchange/html?exchange_id=$HOLLAEX_CLOUD_EXCHANGE_ID > $HOLLAEX_CLI_INIT_PATH/web/public/index.html
 
         else 
 
@@ -7826,7 +7882,7 @@ elif [[ "$1" == "cloud" ]]; then
     # # # FIGURE OUT THE EXCHANGE ID # # #
     HOLLAEX_CLOUD_GET_EXCHANGE_INFO_REQUEST=$(curl -s -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
           --request GET \
-          https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange)
+          $hollaexAPIURL/v2/exchange)
 
     HOLLAEX_CLOUD_GET_EXCHANGE_NAME_LIST=$(echo $HOLLAEX_CLOUD_GET_EXCHANGE_INFO_REQUEST | jq -r '.data[].name')
 
@@ -7857,13 +7913,13 @@ elif [[ "$1" == "cloud" ]]; then
         # -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
         # --request POST \
         # --data "{\"exchange_id\": ${HOLLAEX_CLOUD_EXCHANGE_ID}, \"command\": \"start\", \"data\": { \"exchange_name\": \"$HOLLAEX_CONFIGMAP_API_NAME\", \"agent\": \"CLI v$(cat $SCRIPTPATH/version)\" }}" \
-        # https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange/cloud) 
+        # $hollaexAPIURL/v2/exchange/cloud) 
 
         HOLLAEX_CLOUD_START_API_REQUEST=$(curl -s -w "&%{http_code}" -H "Content-Type: application/json" \
         -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
         --request POST \
         --data "{\"exchange_id\": ${HOLLAEX_CLOUD_EXCHANGE_ID}, \"command\": \"start\", \"data\": { \"exchange_name\": \"$HOLLAEX_CONFIGMAP_API_NAME\", \"agent\": \"CLI v$(cat $SCRIPTPATH/version)\" }}" \
-        https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange/cloud) 
+        $hollaexAPIURL/v2/exchange/cloud) 
 
         HOLLAEX_CLOUD_START_API_REQUEST_RESPONSE_PARSE=$(echo $HOLLAEX_CLOUD_START_API_REQUEST | cut -f1 -d "&" | jq -r '.message')
         HOLLAEX_CLOUD_START_API_REQUEST_HTTP_CODE=$(echo $HOLLAEX_CLOUD_START_API_REQUEST | cut -f2 -d "&")
@@ -7908,7 +7964,7 @@ elif [[ "$1" == "cloud" ]]; then
         -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
         --request POST \
         --data "{\"exchange_id\": ${HOLLAEX_CLOUD_EXCHANGE_ID}, \"command\": \"stop\", \"data\": { \"exchange_name\": \"$HOLLAEX_CONFIGMAP_API_NAME\", \"agent\": \"CLI v$(cat $SCRIPTPATH/version)\" }}" \
-        https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange/cloud) 
+        $hollaexAPIURL/v2/exchange/cloud) 
 
         HOLLAEX_CLOUD_STOP_API_REQUEST_RESPONSE_PARSE=$(echo $HOLLAEX_CLOUD_STOP_API_REQUEST | cut -f1 -d "&" | jq -r '.message')
         HOLLAEX_CLOUD_STOP_API_REQUEST_HTTP_CODE=$(echo $HOLLAEX_CLOUD_STOP_API_REQUEST | cut -f2 -d "&")
@@ -7952,7 +8008,7 @@ elif [[ "$1" == "cloud" ]]; then
         -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
         --request POST \
         --data "{\"exchange_id\": ${HOLLAEX_CLOUD_EXCHANGE_ID}, \"command\": \"restart\", \"data\": { \"exchange_name\": \"$HOLLAEX_CONFIGMAP_API_NAME\", \"agent\": \"CLI v$(cat $SCRIPTPATH/version)\" }}" \
-        https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange/cloud) 
+        $hollaexAPIURL/v2/exchange/cloud) 
 
         HOLLAEX_CLOUD_RESTART_API_REQUEST_RESPONSE_PARSE=$(echo $HOLLAEX_CLOUD_RESTART_API_REQUEST | cut -f1 -d "&" | jq -r '.message')
         HOLLAEX_CLOUD_RESTART_API_REQUEST_HTTP_CODE=$(echo $HOLLAEX_CLOUD_RESTART_API_REQUEST | cut -f2 -d "&")
@@ -8002,7 +8058,7 @@ elif [[ "$1" == "cloud" ]]; then
         -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
         --request POST \
         --data "{\"exchange_id\": ${HOLLAEX_CLOUD_EXCHANGE_ID}, \"command\": \"upgrade\", \"data\": { \"kit_repo\": \"$HOLLAEX_CLOUD_CUSTOM_KIT_REPO\", \"kit_branch\": \"$HOLLAEX_CLOUD_CUSTOM_KIT_BRANCH\", \"exchange_name\": \"$HOLLAEX_CONFIGMAP_API_NAME\", \"agent\": \"CLI v$(cat $SCRIPTPATH/version)\"}}" \
-        https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange/cloud) 
+        $hollaexAPIURL/v2/exchange/cloud) 
 
         HOLLAEX_CLOUD_UPGRADE_API_REQUEST_RESPONSE_PARSE=$(echo $HOLLAEX_CLOUD_UPGRADE_API_REQUEST | cut -f1 -d "&" | jq -r '.message')
         HOLLAEX_CLOUD_UPGRADE_API_REQUEST_HTTP_CODE=$(echo $HOLLAEX_CLOUD_UPGRADE_API_REQUEST | cut -f2 -d "&")
@@ -8048,7 +8104,7 @@ elif [[ "$1" == "cloud" ]]; then
         -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
         --request POST \
         --data "{\"exchange_id\": ${HOLLAEX_CLOUD_EXCHANGE_ID}, \"command\": \"terminate\", \"data\": { \"exchange_name\": \"$HOLLAEX_CONFIGMAP_API_NAME\", \"agent\": \"CLI v$(cat $SCRIPTPATH/version)\" }}" \
-        https://$ENVIRONMENT_HOLLAEX_NETWORK_TARGET_SERVER/v2/exchange/cloud) 
+        $hollaexAPIURL/v2/exchange/cloud) 
 
         HOLLAEX_CLOUD_TERMINATE_API_REQUEST_RESPONSE_PARSE=$(echo $HOLLAEX_CLOUD_TERMINATE_API_REQUEST | cut -f1 -d "&" | jq -r '.message')
         HOLLAEX_CLOUD_TERMINATE_API_REQUEST_HTTP_CODE=$(echo $HOLLAEX_CLOUD_TERMINATE_API_REQUEST | cut -f2 -d "&")
@@ -8153,13 +8209,14 @@ elif [[ "$1" == "status" ]]; then
 
     printf "\nCalling the exchange health page ($HOLLAEX_CONFIGMAP_API_HOST/v2/health) ...\n"
 
-    if command curl $HOLLAEX_CONFIGMAP_API_HOST/v2/health; then 
+    if command curl -s $HOLLAEX_CONFIGMAP_API_HOST/v2/health | grep $ENVIRONMENT_EXCHANGE_NAME; then 
 
         printf "\n\033[92mSuccessfully reached to the health page.\033[39m\n"
 
     else 
 
         printf "\033[91m\nThe health page is not responding. Please check the exchange is up.\033[39m\n"
+        curl -s $HOLLAEX_CONFIGMAP_API_HOST/v2/health
 
     fi
 
@@ -8387,7 +8444,7 @@ elif [[ "$1" == "logs" ]]; then
 
                     if [[ $(docker logs $i --tail 10) ]]; then
 
-                            docker logs $i --tail ${HOLLAEX_LOGS_TARGET_LINE:-100}
+                            docker logs $i --tail ${HOLLAEX_LOGS_TARGET_LINE:-100} 
 
                     else 
 

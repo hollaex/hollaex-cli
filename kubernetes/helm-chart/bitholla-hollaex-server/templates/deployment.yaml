@@ -133,6 +133,17 @@ spec:
           periodSeconds: 15
 {{- end }}
 
+{{- if eq .Values.DEPLOYMENT_MODE "stream" }}
+        readinessProbe:
+          exec:
+            command:
+            - curl
+            - http://localhost:10080
+          initialDelaySeconds: 1
+          periodSeconds: 15
+          
+{{- end }}
+
 {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
 {{ toYaml .Values.imagePullSecrets | indent 8 }}
