@@ -1174,7 +1174,7 @@ elif [[ "$1" == "init" ]]; then
         echo -e "If you already have an account, please proceed to login."
         echo -e "For registration, please check out https://dash.hollaex.com."
 
-        echo -e "\nDo you have an account on HollaEx Dashboard? (Y/n)"
+        echo -e "\nDo you have an account on HollaEx Dashboard? (y/N)"
 
         read answer
 
@@ -6711,7 +6711,13 @@ elif [[ "$1" == "toolbox" ]]; then
             export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
             export PGHOST=localhost
             
-            pg_restore --verbose --clean -d $PGDATABASE $RESTORE_POSTGRES_DUMP_PATH
+            if ! command pg_restore --verbose --clean -d $PGDATABASE $RESTORE_POSTGRES_DUMP_PATH; then 
+
+                echo "Error: Failed to restore the dump to your Database."
+                echo "Please check the logs and try again."
+                exit 1;
+            
+            fi
             
             unset PGUSER
             unset PGPASSWORD
@@ -6759,7 +6765,13 @@ elif [[ "$1" == "toolbox" ]]; then
             export PGHOST=localhost
             export PGPORT=5433
 
-            pg_restore --verbose --clean -d $PGDATABASE $RESTORE_POSTGRES_DUMP_PATH
+            if ! command pg_restore --verbose --clean -d $PGDATABASE $RESTORE_POSTGRES_DUMP_PATH; then 
+
+                echo "Error: Failed to restore the dump to your Database."
+                echo "Please check the logs and try again."
+                exit 1;
+
+            fi 
             
             unset PGUSER
             unset PGPASSWORD

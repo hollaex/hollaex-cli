@@ -1532,7 +1532,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-body-size: "6m"
     nginx.ingress.kubernetes.io/configuration-snippet: |
       #error_page 403 @maintenance_503;
-      limit_req zone=sms burst=1 nodelay;
+      limit_req zone=sms burst=10 nodelay;
       limit_req_log_level notice;
       limit_req_status 429;
 
