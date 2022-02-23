@@ -4085,16 +4085,16 @@ function issue_new_hmac_token() {
   BITHOLLA_HMAC_TOKEN_ISSUE_POST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" -w "=%{http_code}" \
         --request POST \
         -d '{"name": "kit"}' \
-        $hollaexAPIURL/v2/dash/user/token)
+        $hollaexAPIURL/v2/dash/user/token/main)
 
   BITHOLLA_HMAC_TOKEN_ISSUE_POST_RESPOND=$(echo $BITHOLLA_HMAC_TOKEN_ISSUE_POST | cut -f1 -d "=")
   BITHOLLA_HMAC_TOKEN_ISSUE_POST_HTTP_CODE=$(echo $BITHOLLA_HMAC_TOKEN_ISSUE_POST | cut -f2 -d "=")
 
   if [[ ! "$BITHOLLA_HMAC_TOKEN_ISSUE_POST_HTTP_CODE" == "200" ]]; then
 
-    echo -e "\n$BITHOLLA_HMAC_TOKEN_ISSUE_POST_RESPOND\n"
+    echo -e "\n\033[91m$(echo $BITHOLLA_HMAC_TOKEN_ISSUE_POST_RESPOND | jq -r '.message')\033[39m\n"
     
-    echo -e "\nFailed to issue a security token!"
+    echo -e "Failed to issue a security token!"
 
     echo -e "\nPlease check your internet connectivity, and try it again."
     echo -e "You could also check the HollaEx service status at https://status.bitholla.com."
@@ -4154,7 +4154,7 @@ function get_hmac_token() {
     if [[ ! "$RESET_HMAC_TOKEN" ]]; then 
 
       echo -e "Please \033[1mtype 'Y', if you have an existing token and ready to type.\033[0m"
-      echo -e "Please \033[1mtype 'N', if you want to revoke and issue a new token.\033[0m\n"
+      echo -e "Please \033[1mtype 'N', if you don't have the existing token with you.\033[0m\n"
 
       echo -e "\033[1mDo you want to continue with the exisitng token manually? (Y/n)\033[0m"
 
@@ -4172,52 +4172,87 @@ function get_hmac_token() {
       echo -e "\n\033[1mRevoking the token can't be undo and would bring down the existing exchange running with the revoked token.\033[0m"
       echo -e "Please \033[1mmake sure that you are not running the exchange already.\033[0m"
 
-      if [[ ! "$RESET_HMAC_TOKEN" ]]; then
-       
-        echo -e "\nDo you want to \033[1mproceed to revoke\033[0m the existing token? (API Key: $BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY) (y/N)"
+      echo -e "Please \033[1mgo to the HollaEx Dashboard (https://dash.hollaex.com/mypage/apikey) and revoke the existing token.\033[0m"
 
-        read answer
+     if [[ "$OSTYPE" == *"darwin"* ]]; then 
 
+          open https://dash.hollaex.com/mypage/apikey
+      
       else 
 
-        local answer="y"
+          if ! command xdg-open https://dash.hollaex.com/mypage/apikey > /dev/null 2>&1; then 
 
-      fi 
+              echo "Error: Your system does not support xdg-open compatible browser."
+              echo "Please open HollaEx Dashboard (https://dash.hollaex.com/mypage/apikey) by yourself, and continue to sign-up."
 
-      if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-
-        echo -e "\n\033[91mA security token is must required to setup an HollaEx Exchange.\033[39m"
-        echo -e "\nPlease \033[1mrun this command again once you becomes ready.\033[0m"
-        echo -e "You could also revoke the token through the https://dash.hollaex.com."
-
-        echo -e "\nSee you in a bit!\n"
-
-        exit 1;
+          fi 
 
       fi
 
-      echo -e "Revoking the exisitng token ($BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY)..."
+      echo -e "\nOnce you fully revoked the token, please press C to continue."
+      read answer
 
-      # Revoking the security token through the HollaEx API.
-      BITHOLLA_HMAC_TOKEN_REVOKE_CALL=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" -w " HTTP_CODE=%{http_code}" \
-          --request DELETE \
-          -d "{\"name\": \"kit\", \"token_id\": $BITHOLLA_HMAC_TOKEN_EXISTING_TOKEN_ID}" \
-          $hollaexAPIURL/v2/dash/user/token)
+      while true;
 
-      BITHOLLA_HMAC_TOKEN_REVOKE_CALL_RESPOND=$(echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL | cut -f1 -d "=")
-      BITHOLLA_HMAC_TOKEN_REVOKE_CALL_HTTP_CODE=$(echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL | cut -f2 -d "=")
+          do if [[ "$answer" = "${answer#[Cc]}" ]]; then
+          
+              echo -e "\nOnce you fully revoked the token, please press C to continue."
+              read answer
 
-      if [[ ! "$BITHOLLA_HMAC_TOKEN_REVOKE_CALL_HTTP_CODE" == "200" ]]; then 
+          else
 
-        echo -e "\033[91mFailed to revoke the security token!\033[39m"
-        echo -e "\nPlease check the error logs and try it again."
-        echo -e "You could also revoke the token through the https://dash.hollaex.com.\n"
+              break;
 
-        exit 1;
+          fi
+      
+      done
 
-      fi 
+      # if [[ ! "$RESET_HMAC_TOKEN" ]]; then
+       
+      #   echo -e "\nDo you want to \033[1mproceed to revoke\033[0m the existing token? (API Key: $BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY) (y/N)"
 
-      echo -e "\n\033[92mSuccessfully revoked the security token!\033[39m"
+      #   read answer
+
+      # else 
+
+      #   local answer="y"
+
+      # fi 
+
+      # if [[ "$answer" = "${answer#[Yy]}" ]] ;then
+
+      #   echo -e "\n\033[91mA security token is must required to setup an HollaEx Exchange.\033[39m"
+      #   echo -e "\nPlease \033[1mrun this command again once you becomes ready.\033[0m"
+      #   echo -e "You could also revoke the token through the https://dash.hollaex.com."
+
+      #   echo -e "\nSee you in a bit!\n"
+
+      #   exit 1;
+
+      # fi
+
+      # echo -e "Revoking the exisitng token ($BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY)..."
+
+      # # Revoking the security token through the HollaEx API.
+      # BITHOLLA_HMAC_TOKEN_REVOKE_CALL=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" -w " HTTP_CODE=%{http_code}" \
+      #     --request DELETE \
+      #     -d "{\"name\": \"kit\", \"token_id\": $BITHOLLA_HMAC_TOKEN_EXISTING_TOKEN_ID}" \
+      #     $hollaexAPIURL/v2/dash/user/token/main)
+
+      # BITHOLLA_HMAC_TOKEN_REVOKE_CALL_RESPOND=$(echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL | cut -f1 -d "=")
+      # BITHOLLA_HMAC_TOKEN_REVOKE_CALL_HTTP_CODE=$(echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL | cut -f2 -d "=")
+
+      # if [[ ! "$BITHOLLA_HMAC_TOKEN_REVOKE_CALL_HTTP_CODE" == "200" ]]; then 
+
+      #   echo -e "\033[91mFailed to revoke the security token!\033[39m"
+      #   echo -e "\nPlease check the error logs and try it again."
+      #   echo -e "You could also revoke the token through the https://dash.hollaex.com.\n"
+
+      #   exit 1;
+
+      # fi 
+
+      # echo -e "\n\033[92mSuccessfully revoked the security token!\033[39m"
 
       echo -e "\n\033[1mProceeding to reissue it...\033[0m"
       issue_new_hmac_token;
@@ -4304,14 +4339,55 @@ function hollaex_login_form() {
     echo -e "\033[1mOTP Code\033[0m (Enter if you don't have OTP set for your account): "
     read otp 
 
-    BITHOLLA_ACCOUNT_TOKEN=$(curl -s -H "Content-Type: application/json" \
+    BITHOLLA_ACCOUNT_LOGIN=$(curl -s -H "Content-Type: application/json" \
         --request POST \
+        -w ";%{http_code}" \
         --data "{\"email\": \"${email}\", \"password\": \"${password}\", \"otp_code\": \"${otp}\", \"service\": \"cli\"}" \
-        $hollaexAPIURL/v2/dash/login \
-        | jq -r '.token')
+        $hollaexAPIURL/v2/dash/login)
+    
+    BITHOLLA_ACCOUNT_LOGIN_MESSAGE=$(echo $BITHOLLA_ACCOUNT_LOGIN | cut -f2 -d ";")
+    BITHOLLA_ACCOUNT_LOGIN_HTTP_CODE=$(echo $BITHOLLA_ACCOUNT_LOGIN | cut -f2 -d ";")
+
+    if [[ "$BITHOLLA_ACCOUNT_LOGIN_HTTP_CODE" == "200" ]]; then
+
+      echo -e "\n\033[92mThe login confirmation email has been sent.\033[39m"
+      echo -e "Please check your email inbox and type the verification code in."
+      read -s verification_code
+      printf "\n"
+
+      BITHOLLA_VERIFICATION_CODE_CHECK=$(curl -s -H "Content-Type: application/json" \
+        --request POST \
+        -w ";%{http_code}" \
+        --data "{\"code\": \"${verification_code}\", \"service\": \"cli\"}" \
+        $hollaexAPIURL/v2/dash/confirm-login)
+
+      BITHOLLA_VERIFICATION_CODE_CHECK_HTTP_CODE=$(echo $BITHOLLA_VERIFICATION_CODE_CHECK | cut -f2 -d ";")
+
+      if [[ "$BITHOLLA_VERIFICATION_CODE_CHECK_HTTP_CODE" == "201" ]]; then 
+
+        echo "Successfully verified your email verification code."
+        BITHOLLA_ACCOUNT_TOKEN=$(echo $BITHOLLA_VERIFICATION_CODE_CHECK | cut -f1 -d ";" | jq -r '.token')
+
+      else 
+
+        printf "\033[91mFailed to authenticate on HollaEx Server with your passed credentials.\033[39m\n"
+        echo "Please try it again."
+        exit 1;
+
+      fi 
+
+    else 
+
+      echo -e "$BITHOLLA_ACCOUNT_LOGIN_MESSAGE\n"
+      printf "\033[91mFailed to authenticate on HollaEx Server with your passed credentials.\033[39m\n"
+      echo "Please try it again."
+      exit 1;
+
+    fi 
 
     if [[ ! "$BITHOLLA_ACCOUNT_TOKEN" ]] || [[ "$BITHOLLA_ACCOUNT_TOKEN" == "null" ]]; then
 
+        echo -e "$BITHOLLA_ACCOUNT_LOGIN_MESSAGE\n"
         printf "\033[91mFailed to authenticate on HollaEx Server with your passed credentials.\033[39m\n"
         echo "Please try it again."
         exit 1;
