@@ -4345,7 +4345,7 @@ function hollaex_login_form() {
         --data "{\"email\": \"${email}\", \"password\": \"${password}\", \"otp_code\": \"${otp}\", \"service\": \"cli\"}" \
         $hollaexAPIURL/v2/dash/login)
     
-    BITHOLLA_ACCOUNT_LOGIN_MESSAGE=$(echo $BITHOLLA_ACCOUNT_LOGIN | cut -f2 -d ";")
+    BITHOLLA_ACCOUNT_LOGIN_MESSAGE=$(echo $BITHOLLA_ACCOUNT_LOGIN | cut -f1 -d ";" | jq -r '.message')
     BITHOLLA_ACCOUNT_LOGIN_HTTP_CODE=$(echo $BITHOLLA_ACCOUNT_LOGIN | cut -f2 -d ";")
 
     if [[ "$BITHOLLA_ACCOUNT_LOGIN_HTTP_CODE" == "200" ]]; then
@@ -4378,8 +4378,8 @@ function hollaex_login_form() {
 
     else 
 
-      echo -e "$BITHOLLA_ACCOUNT_LOGIN_MESSAGE\n"
-      printf "\033[91mFailed to authenticate on HollaEx Server with your passed credentials.\033[39m\n"
+      echo -e "\n\033[91m$BITHOLLA_ACCOUNT_LOGIN_MESSAGE\033[39m"
+      printf "\nFailed to authenticate on HollaEx Server with your passed credentials.\n"
       echo "Please try it again."
       exit 1;
 
@@ -4387,8 +4387,8 @@ function hollaex_login_form() {
 
     if [[ ! "$BITHOLLA_ACCOUNT_TOKEN" ]] || [[ "$BITHOLLA_ACCOUNT_TOKEN" == "null" ]]; then
 
-        echo -e "$BITHOLLA_ACCOUNT_LOGIN_MESSAGE\n"
-        printf "\033[91mFailed to authenticate on HollaEx Server with your passed credentials.\033[39m\n"
+        echo -e "\n\033[91m$BITHOLLA_ACCOUNT_LOGIN_MESSAGE\033[39m"
+        printf "\nFailed to authenticate on HollaEx Server with your passed credentials.\n"
         echo "Please try it again."
         exit 1;
 
@@ -7362,5 +7362,39 @@ function hollaex_setup_existing_exchange_check() {
       exit 1;
 
   fi 
+
+}
+
+function hollaex_setup_existing_settings_values_check() {
+
+  CONFIG_FILE_PATH=$(pwd)/settings/*
+
+  for i in ${CONFIG_FILE_PATH[@]}; do
+      source $i
+  done;
+
+  if [[ ! "$ENVIRONMENT_EXCHANGE_NAME" == "my-hollaex-exchange" ]] && [[ "$HOLLAEX_SECRET_API_KEY" ]] && [[ "$HOLLAEX_SECRET_API_SECRET" ]]; then 
+
+    echo -e "\n\033[93mWarning: HollaEx CLI has detected your existing exchange information.\033[39m\n"
+    echo "Network: $HOLLAEX_CONFIGMAP_NETWORK_URL"
+    echo "Exchange Name: $ENVIRONMENT_EXCHANGE_NAME"
+    echo "API Key: $HOLLAEX_SECRET_API_KEY"
+    echo "API Secret: $(echo ${HOLLAEX_SECRET_API_SECRET//?/◼︎}$(echo $HOLLAEX_SECRET_API_SECRET | grep -o '....$'))"
+
+    echo -e "\nDo you want to continue with the existing information? (Y/n)"
+    read answer
+
+    if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+
+        echo "Proceeding to the initialization wizard..."
+    
+    else 
+
+        echo "Skipping the initialization wizard..."
+        exit 0
+                
+    fi
+  
+  fi
 
 }

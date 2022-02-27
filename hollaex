@@ -1041,33 +1041,35 @@ elif [[ "$1" == "init" ]]; then
 
     source $SCRIPTPATH/tools_generator.sh
 
-    if [[ -f "$TEMP_CONFIG_FILE" ]]; then 
+    hollaex_setup_existing_settings_values_check;
+
+    # if [[ -f "$TEMP_CONFIG_FILE" ]]; then 
         
-        source $(pwd)/settings/configmap
-        source $(pwd)/settings/temp
+    #     source $(pwd)/settings/configmap
+    #     source $(pwd)/settings/temp
 
-        echo -e "\n\033[93mWarning: HollaEx CLI has detected your existing exchange information.\033[39m\n"
-        echo "Network: $HOLLAEX_CONFIGMAP_NETWORK_URL"
-        echo "Network Exchange ID: $HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID"
-        echo "Exchange Name: $ENVIRONMENT_EXCHANGE_NAME"
-        echo "Admin Email: $HOLLAEX_CONFIGMAP_ADMIN_EMAIL"
-        echo "Admin Password: $(echo ${HOLLAEX_CONFIGMAP_ADMIN_PASSWORD//?/◼︎}$(echo $HOLLAEX_CONFIGMAP_ADMIN_PASSWORD | grep -o '....$'))"
+    #     echo -e "\n\033[93mWarning: HollaEx CLI has detected your existing exchange information.\033[39m\n"
+    #     echo "Network: $HOLLAEX_CONFIGMAP_NETWORK_URL"
+    #     echo "Network Exchange ID: $HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID"
+    #     echo "Exchange Name: $ENVIRONMENT_EXCHANGE_NAME"
+    #     echo "Admin Email: $HOLLAEX_CONFIGMAP_ADMIN_EMAIL"
+    #     echo "Admin Password: $(echo ${HOLLAEX_CONFIGMAP_ADMIN_PASSWORD//?/◼︎}$(echo $HOLLAEX_CONFIGMAP_ADMIN_PASSWORD | grep -o '....$'))"
 
-        echo -e "\nDo you want to continue with the existing information? (Y/n)"
-        read answer
+    #     echo -e "\nDo you want to continue with the existing information? (Y/n)"
+    #     read answer
 
-        if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+    #     if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
 
-            echo "Proceeding to the initialization wizard..."
+    #         echo "Proceeding to the initialization wizard..."
         
-        else 
+    #     else 
 
-            echo "Skipping the initialization wizard..."
-            exit 0
+    #         echo "Skipping the initialization wizard..."
+    #         exit 0
                     
-        fi 
+    #     fi 
 
-    fi 
+    # fi 
 
     printf "\n\033[1mSelect the network\033[0m\n\n"
 
@@ -1129,7 +1131,7 @@ elif [[ "$1" == "init" ]]; then
                 flag=0
                 ;;
             *)
-                echo "Erro: Invalid Option. Please select it again."
+                echo "Error: Invalid Option. Please select it again."
                 flag=1
                 message
                 
@@ -1282,7 +1284,7 @@ elif [[ "$1" == "init" ]]; then
             --data "{\"email\": \"${hollaexAdminEmail}\", \"password\": \"${hollaexAdminPassword}\", \"exchange_name\": \"${hollaexExchangeName}\"}" \
             $hollaexAPIURL/v2/network/exchange)
 
-        echo $HOLLAEX_INIT_REQUEST
+        # echo $HOLLAEX_INIT_REQUEST
 
         HOLLAEX_INIT_REQUEST_RESPONSE=$(echo $HOLLAEX_INIT_REQUEST | cut -f1 -d ";")
         HOLLAEX_INIT_REQUEST_HTTP_CODE=$(echo $HOLLAEX_INIT_REQUEST | cut -f2 -d ";")
