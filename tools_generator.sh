@@ -114,7 +114,7 @@ function kubernetes_database_init() {
 
     echo "Running database jobs..."
 
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade \
+    if command helm install $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade \
                 --namespace $ENVIRONMENT_EXCHANGE_NAME \
                 --set DEPLOYMENT_MODE="api" \
                 --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
@@ -136,7 +136,7 @@ function kubernetes_database_init() {
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
 
       echo "Removing the Kubernetes Job for running database jobs..."
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
 
     else 
 
@@ -145,7 +145,7 @@ function kubernetes_database_init() {
       echo "Displayling logs..."
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
       
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
 
       # Only tries to attempt apply ingress rules from Kubernetes if it doesn't exists.
       if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
@@ -1354,7 +1354,7 @@ function helm_dynamic_trading_paris() {
     elif [[ "$1" == "terminate" ]]; then
 
       #Terminating
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME
 
     fi
 
@@ -1928,7 +1928,7 @@ EOL
 
     echo "Adding new coin $COIN_SYMBOL on Kubernetes"
     
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL \
+    if command helm install $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL \
                             --namespace $ENVIRONMENT_EXCHANGE_NAME \
                             --set job.enable="true" \
                             --set job.mode="add_coin" \
@@ -1950,7 +1950,7 @@ EOL
     else 
 
       printf "\033[91mFailed to create Kubernetes Job for adding new coin $COIN_SYMBOL, Please confirm your input values and try again.\033[39m\n"
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
 
       # echo "Allowing exchange external connections"
       # kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
@@ -1963,7 +1963,7 @@ EOL
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
 
       echo "Removing created Kubernetes Job for adding new coin..."
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
 
       echo "Updating settings file to add new $COIN_SYMBOL."
       for i in ${CONFIG_FILE_PATH[@]}; do
@@ -2021,7 +2021,7 @@ EOL
       printf "\033[91mFailed to add coin $COIN_SYMBOL! Please try again.\033[39m\n"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_SYMBOL
 
       # echo "Allowing exchange external connections"
       # kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
@@ -2205,7 +2205,7 @@ function remove_coin_exec() {
 
   echo "Removing existing coin $COIN_SYMBOL on Kubernetes"
     
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL \
+    if command helm install $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL \
                 --namespace $ENVIRONMENT_EXCHANGE_NAME \
                 --set job.enable="true" \
                 --set job.mode="remove_coin" \
@@ -2227,7 +2227,7 @@ function remove_coin_exec() {
     else 
 
       printf "\033[91mFailed to create Kubernetes Job for removing existing coin $COIN_SYMBOL, Please confirm your input values and try again.\033[39m\n"
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
 
       echo "Allowing exchange external connections"
       kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
@@ -2242,7 +2242,7 @@ function remove_coin_exec() {
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
 
       echo "Removing created Kubernetes Job for removing existing coin..."
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
 
       echo "Updating settings file to remove $COIN_SYMBOL."
       for i in ${CONFIG_FILE_PATH[@]}; do
@@ -2285,7 +2285,7 @@ function remove_coin_exec() {
       printf "\033[91mFailed to remove existing coin $COIN_SYMBOL! Please try again.\033[39m\n"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_SYMBOL
 
     fi
 
@@ -2748,7 +2748,7 @@ EOL
 
     echo "Adding new pair $PAIR_NAME on Kubernetes"
     
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME \
+    if command helm install $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME \
                 --namespace $ENVIRONMENT_EXCHANGE_NAME \
                 --set job.enable="true" \
                 --set job.mode="add_pair" \
@@ -2770,7 +2770,7 @@ EOL
     else 
 
       printf "\033[91mFailed to create Kubernetes Job for adding new pair $PAIR_NAME, Please confirm your input values and try again.\033[39m\n"
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
 
     fi
 
@@ -2782,7 +2782,7 @@ EOL
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
 
       echo "Removing created Kubernetes Job for adding new coin..."
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
 
       echo "Updating settings file to add new $PAIR_NAME."
       for i in ${CONFIG_FILE_PATH[@]}; do
@@ -2859,7 +2859,7 @@ EOL
       printf "\033[91mFailed to add new pair $PAIR_NAME! Please try again.\033[39m\n"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
 
       echo "Allowing exchange external connections"
       kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
@@ -3035,7 +3035,7 @@ function remove_pair_exec() {
 
     echo "*** Removing existing pair $PAIR_NAME on Kubernetes ***"
       
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME \
+    if command helm install $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME \
                 --namespace $ENVIRONMENT_EXCHANGE_NAME \
                 --set job.enable="true" \
                 --set job.mode="remove_pair" \
@@ -3057,7 +3057,7 @@ function remove_pair_exec() {
     else 
 
       printf "\033[91mFailed to create Kubernetes Job for removing existing pair $PAIR_NAME, Please confirm your input values and try again.\033[39m\n"
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
 
     fi
 
@@ -3069,13 +3069,13 @@ function remove_pair_exec() {
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
 
       echo "*** Removing created Kubernetes Job for removing existing pair... ***"
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
 
       echo "*** Removing existing $PAIR_NAME container from Kubernetes ***"
       PAIR_BASE=$(echo $PAIR_NAME | cut -f1 -d '-')
       PAIR_2=$(echo $PAIR_NAME | cut -f2 -d '-')
 
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-server-engine-$PAIR_BASE$PAIR_2
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-server-engine-$PAIR_BASE$PAIR_2
 
       echo "*** Updating settings file to remove existing $PAIR_NAME. ***"
       for i in ${CONFIG_FILE_PATH[@]}; do
@@ -3114,7 +3114,7 @@ function remove_pair_exec() {
       printf "\033[91mFailed to remove existing pair $PAIR_NAME! Please try again.\033[39m\n"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_NAME
       
     fi
 
@@ -4511,7 +4511,7 @@ EOF
 #   echo "Applying secret on the namespace"
 #   kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
-#   if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange \
+#   if command helm install $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange \
 #                 --namespace $ENVIRONMENT_EXCHANGE_NAME \
 #                 --set DEPLOYMENT_MODE="api" \
 #                 --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
@@ -4532,7 +4532,7 @@ EOF
 #   else 
 
 #     printf "\033[91mFailed to create Kubernetes Job for reactivating your exchange, Please confirm your input values and try again.\033[39m\n"
-#     helm del --purge $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
+#     helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
   
 #   fi
 
@@ -4544,7 +4544,7 @@ EOF
 #     kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
 
 #     echo "Removing created Kubernetes Job for reactivating the exchange..."
-#     helm del --purge $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
+#     helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_NAME
 
 #     echo "Restarting the exchange..."
 #     kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$$ENVIRONMENT_EXCHANGE_NAME
@@ -4556,7 +4556,7 @@ EOF
 #     echo "Displaying logs..."
 #     kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
 
-#     helm del --purge $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
+#     helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-reactivate-exchange
   
 #   fi
 
@@ -5472,7 +5472,7 @@ job:
     activation_code: ${HOLLAEX_SECRET_ACTIVATION_CODE}
 EOL
 
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-set-activation-code \
+    if command helm install $ENVIRONMENT_EXCHANGE_NAME-set-activation-code \
                             --namespace $ENVIRONMENT_EXCHANGE_NAME \
                             --set job.enable="true" \
                             --set job.mode="set_activation_code" \
@@ -5494,7 +5494,7 @@ EOL
     else 
 
       printf "\033[91mFailed to create Kubernetes Job for updating activation code, Please confirm your input values and try again.\033[39m\n"
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-activation-code
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-set-activation-code
 
     fi
 
@@ -5504,14 +5504,14 @@ EOL
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-activation-code
 
       echo "Removing created Kubernetes Job for updating the activation code..."
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-activation-code
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-set-activation-code
 
     else 
 
       printf "\033[91mFailed to update the activation code! Please try again.\033[39m\n"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-activation-code
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-activation-code
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-set-activation-code
 
       exit 1;
 
@@ -5547,7 +5547,7 @@ job:
   mode: check_constants
 EOL
 
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-check-constants \
+    if command helm install $ENVIRONMENT_EXCHANGE_NAME-check-constants \
                             --namespace $ENVIRONMENT_EXCHANGE_NAME \
                             --set job.enable="true" \
                             --set job.mode="check_constants" \
@@ -5570,7 +5570,7 @@ EOL
     else 
 
       printf "\033[91mFailed to create Kubernetes Job for checkConstants, Please confirm the logs and try again.\033[39m\n"
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-check-constants
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-check-constants
 
     fi
 
@@ -5580,7 +5580,7 @@ EOL
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-check-constants
 
       echo "Removing created Kubernetes Job for setting up the config..."
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-check-constants
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-check-constants
 
       echo "Successfully updated the missing database constants with your local configmap values."
       echo "Make sure to run 'hollaex restart --kube' to fully apply it."
@@ -5590,7 +5590,7 @@ EOL
       printf "\033[91mFailed to update the database constants! Please try again.\033[39m\n"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-check-constants
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-check-constants
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-check-constants
 
       exit 1;
 
@@ -5629,7 +5629,7 @@ job:
   mode: set_config
 EOL
 
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-set-config \
+    if command helm install $ENVIRONMENT_EXCHANGE_NAME-set-config \
                             --namespace $ENVIRONMENT_EXCHANGE_NAME \
                             --set job.enable="true" \
                             --set job.mode="set_config" \
@@ -5651,7 +5651,7 @@ EOL
     else 
 
       printf "\033[91mFailed to create Kubernetes Job for setting up the config, Please confirm the logs and try again.\033[39m\n"
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-config
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-set-config
 
     fi
 
@@ -5661,7 +5661,7 @@ EOL
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-config
 
       echo "Removing created Kubernetes Job for setting up the config..."
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-config
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-set-config
 
       echo "Successfully updated database constants with your local configmap values."
       echo "Make sure to run 'hollaex restart --kube' to fully apply it."
@@ -5671,7 +5671,7 @@ EOL
       printf "\033[91mFailed to update the database constants! Please try again.\033[39m\n"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-config
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-config
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-set-config
 
       exit 1;
 
@@ -5836,7 +5836,7 @@ job:
   mode: set_security
 EOL
 
-    if command helm install --name $ENVIRONMENT_EXCHANGE_NAME-set-security \
+    if command helm install $ENVIRONMENT_EXCHANGE_NAME-set-security \
                 --namespace $ENVIRONMENT_EXCHANGE_NAME \
                 --set job.enable="true" \
                 --set job.mode="set_config" \
@@ -5858,7 +5858,7 @@ EOL
     else 
 
       printf "\033[91mFailed to create Kubernetes Job for setting up security values. Please confirm the logs and try again.\033[39m\n"
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-security
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-set-security
 
     fi
 
@@ -5868,7 +5868,7 @@ EOL
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-security
 
       echo "Removing created Kubernetes Job for setting up security values..."
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-security
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-set-security
 
       echo "Successfully updated security values with your local configmap values."
       echo "Make sure to run 'hollaex restart --kube' to fully apply it."
@@ -5878,7 +5878,7 @@ EOL
       printf "\033[91mFailed to update the database constants! Please try again.\033[39m\n"
       
       kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-security
-      helm del --purge $ENVIRONMENT_EXCHANGE_NAME-set-security
+      helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-set-security
 
       exit 1;
 
