@@ -4106,19 +4106,19 @@ function issue_new_hmac_token() {
   HOLLAEX_SECRET_API_KEY=$(echo $BITHOLLA_HMAC_TOKEN_ISSUE_POST_RESPOND | jq -r '.apiKey')
   HOLLAEX_SECRET_API_SECRET=$(echo $BITHOLLA_HMAC_TOKEN_ISSUE_POST_RESPOND | jq -r '.secret')
 
-  echo -e "\n# # # # # Your Security Token # # # # #"
+  echo -e "\n# # # # # Your API Key and Secret # # # # #"
   echo -e "\033[1mYour API Key: $HOLLAEX_SECRET_API_KEY\033[0m"
   echo -e "\033[1mYour Secret Key: $HOLLAEX_SECRET_API_SECRET\033[0m"
   echo -e "# # # # # # # # # # # # # # # #\n"
 
   if command sed -i.bak "s/HOLLAEX_SECRET_API_KEY=.*/HOLLAEX_SECRET_API_KEY=$HOLLAEX_SECRET_API_KEY/" $SECRET_FILE_PATH && command sed -i.bak "s/HOLLAEX_SECRET_API_SECRET=.*/HOLLAEX_SECRET_API_SECRET=$HOLLAEX_SECRET_API_SECRET/" $SECRET_FILE_PATH; then
 
-    echo -e "\033[92mSuccessfully stored the issued token to the settings file.\033[39m\n"
+    echo -e "\033[92mSuccessfully stored the issued API Key and Secret to the settings file.\033[39m\n"
 
   else 
 
-    echo -e "\n\033[91mFailed to store the issued token to the settings file.\033[39m\n"
-    echo "Please make sure to manually save the issued token displayed above, and try the process again."
+    echo -e "\n\033[91mFailed to store the issued API Key and Secret to the settings file.\033[39m\n"
+    echo "Please make sure to manually save the issued API Key and Secret displayed above, and try it again."
     
     exit 1;
 
@@ -4130,33 +4130,44 @@ function issue_new_hmac_token() {
 
 function get_hmac_token() {
 
-  echo "Issueing a security token for the HollaEx Network communication..."
-  
-  BITHOLLA_HMAC_TOKEN_GET_COUNT=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
+  echo "Issuing an API Key for the HollaEx Network communication..."
+
+  BITHOLLA_HMAC_TOKEN_GET_DATA=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
             --request GET \
-            $hollaexAPIURL/v2/dash/user/token?active=true | jq '.count')
+            $hollaexAPIURL/v2/dash/user/token?active=true)
+  
+  BITHOLLA_HMAC_TOKEN_GET_COUNT=$(echo $BITHOLLA_HMAC_TOKEN_GET_DATA | jq '.count')
+
+  # BITHOLLA_HMAC_TOKEN_TYPE=$(echo $BITHOLLA_HMAC_TOKEN_GET_DATA | jq '.data.type')
     
   if [[ ! $BITHOLLA_HMAC_TOKEN_GET_COUNT == 0 ]]; then 
 
-    BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
-            --request GET \
-            $hollaexAPIURL/v2/dash/user/token?active=true | jq -r '.data[0].apiKey')
+    BITHOLLA_HMAC_TOKEN_GET_COUNT=$((BITHOLLA_HMAC_TOKEN_GET_COUNT-1))
+
+    for ((i=0;i<=BITHOLLA_HMAC_TOKEN_GET_COUNT;i++)); do 
+
+      if [[ $(echo $BITHOLLA_HMAC_TOKEN_GET_DATA | jq -r ".data[$i].type") == "main" ]]; then
+
+          # echo $BITHOLLA_HMAC_TOKEN_GET_DATA | jq -r ".data[$i].type"
+          export BITHOLLA_HMAC_MAIN_TOKEN_ORDER=$i
+          # echo "Main token order: $BITHOLLA_HMAC_MAIN_TOKEN_ORDER"
+      
+      fi
+
+    done;
+
+    BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY=$(echo $BITHOLLA_HMAC_TOKEN_GET_DATA | jq -r ".data[$BITHOLLA_HMAC_MAIN_TOKEN_ORDER].apiKey")
     
-    BITHOLLA_HMAC_TOKEN_EXISTING_TOKEN_ID=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
-            --request GET \
-            $hollaexAPIURL/v2/dash/user/token?active=true | jq -r '.data[0].id')
+    BITHOLLA_HMAC_TOKEN_EXISTING_TOKEN_ID=$(echo $BITHOLLA_HMAC_TOKEN_GET_DATA | jq -r ".data[$BITHOLLA_HMAC_MAIN_TOKEN_ORDER].id")
 
-    printf "\n\033[1mYou already have an active Token! (API Key: $BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY)\033[0m\n\n"
+    printf "\n\033[1mYou already have an active main API key! (API Key: $BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY)\033[0m\n\n"
 
-    echo -e "You could \033[1mprovide the existing token manually\033[0m on the further menu."
-    echo -e "If you dont have an existing token, \033[1myou could also revoke the token at the https://dash.hollaex.com.\033[0m\n"
+    # echo -e "You could \033[1mprovide the existing token manually\033[0m on the further menu."
+    # echo -e "If you dont have an existing token, \033[1myou could also revoke the token at the https://dash.hollaex.com.\033[0m\n"
 
     if [[ ! "$RESET_HMAC_TOKEN" ]]; then 
 
-      echo -e "Please \033[1mtype 'Y', if you have an existing token and ready to type.\033[0m"
-      echo -e "Please \033[1mtype 'N', if you don't have the existing token with you.\033[0m\n"
-
-      echo -e "\033[1mDo you want to continue with the exisitng token manually? (Y/n)\033[0m"
+      echo -e "\033[1mDo you have the API secret for this API key? (Y/n)\033[0m"
 
       read tokenAnswer
 
@@ -4168,11 +4179,10 @@ function get_hmac_token() {
 
     if [[ "$tokenAnswer" = "${tokenAnswer#[Yy]}" ]]; then
 
-      echo -e "\nIf you dont have an existing token with you, you could \033[1mrevoke and reissue it.\033[0m"
-      echo -e "\n\033[1mRevoking the token can't be undo and would bring down the existing exchange running with the revoked token.\033[0m"
-      echo -e "Please \033[1mmake sure that you are not running the exchange already.\033[0m"
+      echo -e "\033[1mYou need to revoke the existing main API key at HollaEx Dashboard (https://dash.hollaex.com/mypage/apikey).\033[0m"
 
-      echo -e "Please \033[1mgo to the HollaEx Dashboard (https://dash.hollaex.com/mypage/apikey) and revoke the existing token.\033[0m"
+      echo -e "Revoking the API key can't be undone and would result in disconnecting the existing exchange."
+      echo -e "Please make sure that you are not running the exchange already."
 
      if [[ "$OSTYPE" == *"darwin"* ]]; then 
 
@@ -4189,14 +4199,14 @@ function get_hmac_token() {
 
       fi
 
-      echo -e "\nOnce you fully revoked the token, please press C to continue."
+      echo -e "\nOnce you fully revoked the API Key, please press C to continue."
       read answer
 
       while true;
 
           do if [[ "$answer" = "${answer#[Cc]}" ]]; then
           
-              echo -e "\nOnce you fully revoked the token, please press C to continue."
+              echo -e "\nOnce you fully revoked the API key, please press C to continue."
               read answer
 
           else
@@ -4260,10 +4270,19 @@ function get_hmac_token() {
     else
 
       function existing_token_form() {
+        
+        if [[ "$BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY" ]]; then 
 
-        echo -e "\033[1mYour existing API Key: \033[0m"
-        read answer 
-        HOLLAEX_SECRET_API_KEY=$answer
+          echo "Your existing API Key: $BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY"
+          HOLLAEX_SECRET_API_KEY=$BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY
+
+        else 
+
+          echo -e "\033[1mYour existing API Key: \033[0m"
+          read answer 
+          HOLLAEX_SECRET_API_KEY=$answer
+
+        fi 
 
         echo -e "\033[1mYour existing Secret Key: \033[0m"
         read answer
@@ -4283,11 +4302,11 @@ function get_hmac_token() {
 
         if command sed -i.bak "s/HOLLAEX_SECRET_API_KEY=.*/HOLLAEX_SECRET_API_KEY=$HOLLAEX_SECRET_API_KEY/" $SECRET_FILE_PATH && command sed -i.bak "s/HOLLAEX_SECRET_API_SECRET=.*/HOLLAEX_SECRET_API_SECRET=$HOLLAEX_SECRET_API_SECRET/" $SECRET_FILE_PATH; then
 
-          echo -e "\n\033[92mSuccessfully stored the provided token to the settings file.\033[39m\n"
+          echo -e "\n\033[92mSuccessfully stored the provided API Key to the settings file.\033[39m\n"
 
         else 
 
-          echo -e "\n\033[91mFailed to store the issued token to the settings file.\033[39m\n"
+          echo -e "\n\033[91mFailed to store the issued API Key to the settings file.\033[39m\n"
           echo "Please try it again."
 
           exit 1;

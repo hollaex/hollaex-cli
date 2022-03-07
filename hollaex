@@ -2382,68 +2382,80 @@ elif [[ "$1" == "login" ]]; then
 
     printf "\n"
 
-    function hollaex_login_select_exchange() {
+    if (( $BITHOLLA_USER_EXCHANGE_COUNT > 0 )); then 
 
-        printf "Please pick the \033[1mexchange number\033[0m you want to bind.\n\n"
+        function hollaex_login_select_exchange() {
 
-        for ((i=0;i<=BITHOLLA_USER_EXCHANGE_COUNT;i++)); do 
+            printf "Please pick the \033[1mexchange number\033[0m you want to bind.\n\n"
 
-        printf "Exchange number : \033[1m$((i+1))\033[0m\n";
+            for ((i=0;i<=BITHOLLA_USER_EXCHANGE_COUNT;i++)); do 
 
-        echo "Name:" $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].name");
-        echo "Activation Code:" $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].activation_code");
-        printf "\n"
+            printf "Exchange number : \033[1m$((i+1))\033[0m\n";
 
-        EXCHANGE_NAME_TEMP=EXCHANGE_NAME_${i}
-        EXCHANGE_ACTIVATION_CODE_TEMP=EXCHANGE_ACTIVATION_CODE_${i}
+            echo "Name:" $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].name");
+            echo "Activation Code:" $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].activation_code");
+            printf "\n"
 
-        export $(echo $EXCHANGE_NAME_TEMP)=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].name";);
-        export $(echo $EXCHANGE_ACTIVATION_CODE_TEMP)=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].activation_code";);
+            EXCHANGE_NAME_TEMP=EXCHANGE_NAME_${i}
+            EXCHANGE_ACTIVATION_CODE_TEMP=EXCHANGE_ACTIVATION_CODE_${i}
 
-        done;
+            export $(echo $EXCHANGE_NAME_TEMP)=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].name";);
+            export $(echo $EXCHANGE_ACTIVATION_CODE_TEMP)=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].activation_code";);
 
-        printf "Input the exchange number: "
-        read answer
+            done;
 
-        while true;
-            do if [[ ! "${answer}" =~ ^[0-9]+$ ]]; then 
-                printf "\033[91m\nError: The input always should be numberic.\033[39m\n"
-                echo "Please pick the exchange number you want to bind."
-                read answer
-            else
-                break;
+            printf "Input the exchange number: "
+            read answer
+
+            while true;
+                do if [[ ! "${answer}" =~ ^[0-9]+$ ]]; then 
+                    printf "\033[91m\nError: The input always should be numberic.\033[39m\n"
+                    echo "Please pick the exchange number you want to bind."
+                    read answer
+                else
+                    break;
+                fi
+            done
+
+            answer=$((answer-1))
+
+            printf "\n"
+            SELECTED_EXCHANGE_NAME=EXCHANGE_NAME_${answer}
+            SELECTED_EXCHANGE_ACTIVATION_CODE=EXCHANGE_ACTIVATION_CODE_${answer}
+
+            if [[ ! "${!SELECTED_EXCHANGE_NAME}" ]] || [[ ! "${!SELECTED_EXCHANGE_ACTIVATION_CODE}" ]]; then
+
+                printf "\033[91m\nError: Failed to read the data from the selected exchange.\033[39m\n"
+                printf "Please make sure that you selected the correct number, and try again.\n\n"
+                hollaex_login_select_exchange;
+
             fi
-        done
+            
+            echo -e "\033[1mYour Exchange name: ${!SELECTED_EXCHANGE_NAME}\033[0m"
+            echo -e "\033[1mYour Activation code: ${!SELECTED_EXCHANGE_ACTIVATION_CODE}\033[0m"
+            echo "Do you want to continue? (Y/n)"
+            read answer
 
-        answer=$((answer-1))
-        
-        printf "\n"
-        SELECTED_EXCHANGE_NAME=EXCHANGE_NAME_${answer}
-        SELECTED_EXCHANGE_ACTIVATION_CODE=EXCHANGE_ACTIVATION_CODE_${answer}
+            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
 
-        if [[ ! "${!SELECTED_EXCHANGE_NAME}" ]] || [[ ! "${!SELECTED_EXCHANGE_ACTIVATION_CODE}" ]]; then
+                hollaex_login_select_exchange;
 
-            printf "\033[91m\nError: Failed to read the data from the selected exchange.\033[39m\n"
-            printf "Please make sure that you selected the correct number, and try again.\n\n"
-            hollaex_login_select_exchange;
+            fi
+        }
 
-        fi
-        
-        echo -e "\033[1mSelected Exchange name: ${!SELECTED_EXCHANGE_NAME}\033[0m"
-        echo -e "\033[1mSelected Activation code: ${!SELECTED_EXCHANGE_ACTIVATION_CODE}\033[0m"
-        echo "Do you want to continue? (Y/n)"
-        read answer
+        hollaex_login_select_exchange;
 
-        if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+    else 
 
-            hollaex_login_select_exchange;
+        export SELECTED_EXCHANGE_NAME=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[0].name";);
+        export SELECTED_EXCHANGE_ACTIVATION_CODE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[0].activation_code";);
 
-        fi
-    }
+        echo -e "\033[1mYour Exchange name: ${SELECTED_EXCHANGE_NAME}\033[0m"
+        echo -e "\033[1mYour Activation code: ${SELECTED_EXCHANGE_ACTIVATION_CODE}\033[0m"
 
-    hollaex_login_select_exchange;
+    fi 
 
-    if command sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=.*/HOLLAEX_SECRET_ACTIVATION_CODE=${!SELECTED_EXCHANGE_ACTIVATION_CODE}/" $SECRET_FILE_PATH; then
+    if command sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=.*/HOLLAEX_SECRET_ACTIVATION_CODE=${!SELECTED_EXCHANGE_ACTIVATION_CODE:-$SELECTED_EXCHANGE_ACTIVATION_CODE}/" $SECRET_FILE_PATH; then
 
         rm $SECRET_FILE_PATH.bak
 
