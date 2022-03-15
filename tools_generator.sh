@@ -3764,7 +3764,7 @@ function hollaex_pull_and_apply_exchange_data() {
   #LOGO PATH ESCAPING
   local ORIGINAL_CHARACTER_FOR_LOGO_IMAGE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.LOGO_IMAGE";)
   local HOLLAEX_CONFIGMAP_LOGO_IMAGE_OVERRIDE="${ORIGINAL_CHARACTER_FOR_LOGO_IMAGE//\//\\/}"
-  
+
   # Set the default HollaEx Server version as the maximum compatible version of the current release of CLI.
   local ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
 
@@ -4179,43 +4179,48 @@ function get_hmac_token() {
 
     if [[ "$tokenAnswer" = "${tokenAnswer#[Yy]}" ]]; then
 
-      echo -e "\033[1mYou need to revoke the existing main API key at HollaEx Dashboard (https://dash.hollaex.com/mypage/apikey).\033[0m"
+      if [[ ! "$RUN_WITH_VERIFY" ]]; then 
 
-      echo -e "Revoking the API key can't be undone and would result in disconnecting the existing exchange."
-      echo -e "Please make sure that you are not running the exchange already."
+        echo -e "\033[1mYou need to revoke the existing main API key at HollaEx Dashboard (https://dash.hollaex.com/mypage/apikey).\033[0m"
 
-     if [[ "$OSTYPE" == *"darwin"* ]]; then 
+        echo -e "Revoking the API key can't be undone and would result in disconnecting the existing exchange."
+        echo -e "Please make sure that you are not running the exchange already."
 
-          open https://dash.hollaex.com/mypage/apikey
+        if [[ "$OSTYPE" == *"darwin"* ]]; then 
+
+              open https://dash.hollaex.com/mypage/apikey
+          
+          else 
+
+              if ! command xdg-open https://dash.hollaex.com/mypage/apikey > /dev/null 2>&1; then 
+
+                  echo "Error: Your system does not support xdg-open compatible browser."
+                  echo "Please open HollaEx Dashboard (https://dash.hollaex.com/mypage/apikey) by yourself, and continue to sign-up."
+
+              fi 
+
+        fi
+
+          echo -e "\nOnce you fully revoked the API Key, please press C to continue."
+          read answer
+
+          while true;
+
+              do if [[ "$answer" = "${answer#[Cc]}" ]]; then
+              
+                  echo -e "\nOnce you fully revoked the API key, please press C to continue."
+                  read answer
+
+              else
+
+                  break;
+
+              fi
+          
+          done
       
-      else 
-
-          if ! command xdg-open https://dash.hollaex.com/mypage/apikey > /dev/null 2>&1; then 
-
-              echo "Error: Your system does not support xdg-open compatible browser."
-              echo "Please open HollaEx Dashboard (https://dash.hollaex.com/mypage/apikey) by yourself, and continue to sign-up."
-
-          fi 
 
       fi
-
-      echo -e "\nOnce you fully revoked the API Key, please press C to continue."
-      read answer
-
-      while true;
-
-          do if [[ "$answer" = "${answer#[Cc]}" ]]; then
-          
-              echo -e "\nOnce you fully revoked the API key, please press C to continue."
-              read answer
-
-          else
-
-              break;
-
-          fi
-      
-      done
 
       # if [[ ! "$RESET_HMAC_TOKEN" ]]; then
        
@@ -4231,7 +4236,7 @@ function get_hmac_token() {
 
       # if [[ "$answer" = "${answer#[Yy]}" ]] ;then
 
-      #   echo -e "\n\033[91mA security token is must required to setup an HollaEx Exchange.\033[39m"
+      #   echo -e "\n\033[91mThe security token is must required to setup an HollaEx Exchange.\033[39m"
       #   echo -e "\nPlease \033[1mrun this command again once you becomes ready.\033[0m"
       #   echo -e "You could also revoke the token through the https://dash.hollaex.com."
 
@@ -4240,29 +4245,35 @@ function get_hmac_token() {
       #   exit 1;
 
       # fi
+      
+      if [[ "$HOLLAEX_LOGIN_KEY" ]]; then 
 
-      # echo -e "Revoking the exisitng token ($BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY)..."
+        echo -e "Revoking the exisitng token ($BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY)..."
 
-      # # Revoking the security token through the HollaEx API.
-      # BITHOLLA_HMAC_TOKEN_REVOKE_CALL=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" -w " HTTP_CODE=%{http_code}" \
-      #     --request DELETE \
-      #     -d "{\"name\": \"kit\", \"token_id\": $BITHOLLA_HMAC_TOKEN_EXISTING_TOKEN_ID}" \
-      #     $hollaexAPIURL/v2/dash/user/token/main)
+        # Revoking the security token through the HollaEx API.
+        BITHOLLA_HMAC_TOKEN_REVOKE_CALL=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" -w " HTTP_CODE=%{http_code}" \
+            --request DELETE \
+            -d "{\"key\": \"$HOLLAEX_LOGIN_KEY\", \"token_id\": $BITHOLLA_HMAC_TOKEN_EXISTING_TOKEN_ID}" \
+            $hollaexAPIURL/v2/dash/user/token/main)
+        
+        BITHOLLA_HMAC_TOKEN_REVOKE_CALL_RESPOND=$(echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL | cut -f1 -d "=")
+        BITHOLLA_HMAC_TOKEN_REVOKE_CALL_HTTP_CODE=$(echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL | cut -f2 -d "=")
 
-      # BITHOLLA_HMAC_TOKEN_REVOKE_CALL_RESPOND=$(echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL | cut -f1 -d "=")
-      # BITHOLLA_HMAC_TOKEN_REVOKE_CALL_HTTP_CODE=$(echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL | cut -f2 -d "=")
+        # echo $BITHOLLA_HMAC_TOKEN_REVOKE_CALL
 
-      # if [[ ! "$BITHOLLA_HMAC_TOKEN_REVOKE_CALL_HTTP_CODE" == "200" ]]; then 
+        if [[ ! "$BITHOLLA_HMAC_TOKEN_REVOKE_CALL_HTTP_CODE" == "200" ]]; then 
 
-      #   echo -e "\033[91mFailed to revoke the security token!\033[39m"
-      #   echo -e "\nPlease check the error logs and try it again."
-      #   echo -e "You could also revoke the token through the https://dash.hollaex.com.\n"
+          echo -e "\033[91mFailed to revoke the security token!\033[39m"
+          echo -e "\nPlease check the error logs and try it again."
+          echo -e "You could also revoke the token through the https://dash.hollaex.com.\n"
 
-      #   exit 1;
+          exit 1;
 
-      # fi 
+        fi 
 
-      # echo -e "\n\033[92mSuccessfully revoked the security token!\033[39m"
+        echo -e "\n\033[92mSuccessfully revoked the security token!\033[39m"
+      
+      fi
 
       echo -e "\n\033[1mProceeding to reissue it...\033[0m"
       issue_new_hmac_token;
@@ -4389,7 +4400,7 @@ function hollaex_login_form() {
 
       else 
 
-        printf "\033[91mFailed to authenticate on HollaEx Server with your passed credentials.\033[39m\n"
+        printf "\033[91mInvalid email code.\033[39m\n"
         echo "Please try it again."
         exit 1;
 

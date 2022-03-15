@@ -2360,13 +2360,15 @@ elif [[ "$1" == "login" ]]; then
 
     hollaex_login_token_validate_and_issue;
 
+    export BITHOLLA_ACCOUNT_TOKEN=$(cat $HOLLAEX_CLI_INIT_PATH/.token)
+
     BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
         --request GET \
         $hollaexAPIURL/v2/exchange \
        | jq '.')
     
     BITHOLLA_USER_EXCHANGE_COUNT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r '.count')
-    
+
     # Exit with error if user doesn't have any exchange on the account.
     if [[ "$BITHOLLA_USER_EXCHANGE_COUNT" == "0" ]]; then
 
@@ -2644,17 +2646,20 @@ elif [[ "$1" == "pull" ]]; then
     
     fi 
 
-    if [[ -f "$HOLLAEX_CLI_INIT_PATH/.token" ]]; then
+    if [[ ! -f "$HOLLAEX_CLI_INIT_PATH/.token" ]]; then
 
-        export BITHOLLA_ACCOUNT_TOKEN=$(cat $HOLLAEX_CLI_INIT_PATH/.token)
-
-    else 
 
         printf "\033[91mError: An access token has not been detected.\033[39m\n"
         printf "Please login with your HollaEx account to issue an access token.\n\n"
         hollaex login --renew
 
     fi
+
+    if [[ -f "$HOLLAEX_CLI_INIT_PATH/.token" ]]; then
+
+        export BITHOLLA_ACCOUNT_TOKEN=$(cat $HOLLAEX_CLI_INIT_PATH/.token)
+
+    fi 
 
     BITHOLLA_USER_TOKEN_EXPIRY_CHECK=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
             --request GET \
@@ -2666,17 +2671,30 @@ elif [[ "$1" == "pull" ]]; then
         $hollaexAPIURL/v2/exchange \
        | jq '.')
 
-
     if [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" ]] || [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" == "200" ]]; then
 
         printf "\033[91mFailed to pull the exchange data from HollaEx.\033[39m\n\n"
         printf "\033[91mError: Your access token has been expired!\033[39m\n"
         printf "Please login again with your HollaEx account to issue a new access token.\n\n"
-        hollaex login --renew
+
+        if ! command hollaex login --renew; then 
+
+            exit 1;
+
+        else
+        
+            export BITHOLLA_ACCOUNT_TOKEN=$(cat $HOLLAEX_CLI_INIT_PATH/.token)
+
+            export BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
+                --request GET \
+                $hollaexAPIURL/v2/exchange \
+            | jq '.')
+
+        fi
 
     else 
 
-        printf "\n\033[92mSuccessfully authenticated on HollaEx Server.\033[39m\n"
+        # printf "\n\033[92mSuccessfully authenticated on HollaEx Server.\033[39m\n"
         printf "Proceeding to pull data from HollaEx...\n"
 
     fi
@@ -2757,7 +2775,7 @@ elif [[ "$1" == "pull" ]]; then
         source $i
     done;
 
-    if [[ ! "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]]; then
+    if [[ ! "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]] && [[ ! -z "$HOLLAEX_CONFIGMAP_API_NAME" ]]; then
 
         printf "\n\033[92mSuccessfully pulled and applied your exchange data to Hollaex Kit!\033[39m\n\n"
 
@@ -6427,6 +6445,13 @@ elif [[ "$1" == "toolbox" ]]; then
 
                 fi 
 
+                shift; continue
+                ;;
+            --loginKey)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_LOGIN_KEY=$1
+                TOOLBOX_ENABLE=true
                 shift; continue
                 ;;
             --get_seo_html)
