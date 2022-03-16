@@ -1041,33 +1041,35 @@ elif [[ "$1" == "init" ]]; then
 
     source $SCRIPTPATH/tools_generator.sh
 
-    if [[ -f "$TEMP_CONFIG_FILE" ]]; then 
+    hollaex_setup_existing_settings_values_check;
+
+    # if [[ -f "$TEMP_CONFIG_FILE" ]]; then 
         
-        source $(pwd)/settings/configmap
-        source $(pwd)/settings/temp
+    #     source $(pwd)/settings/configmap
+    #     source $(pwd)/settings/temp
 
-        echo -e "\n\033[93mWarning: HollaEx CLI has detected your existing exchange information.\033[39m\n"
-        echo "Network: $HOLLAEX_CONFIGMAP_NETWORK_URL"
-        echo "Network Exchange ID: $HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID"
-        echo "Exchange Name: $ENVIRONMENT_EXCHANGE_NAME"
-        echo "Admin Email: $HOLLAEX_CONFIGMAP_ADMIN_EMAIL"
-        echo "Admin Password: $(echo ${HOLLAEX_CONFIGMAP_ADMIN_PASSWORD//?/◼︎}$(echo $HOLLAEX_CONFIGMAP_ADMIN_PASSWORD | grep -o '....$'))"
+    #     echo -e "\n\033[93mWarning: HollaEx CLI has detected your existing exchange information.\033[39m\n"
+    #     echo "Network: $HOLLAEX_CONFIGMAP_NETWORK_URL"
+    #     echo "Network Exchange ID: $HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID"
+    #     echo "Exchange Name: $ENVIRONMENT_EXCHANGE_NAME"
+    #     echo "Admin Email: $HOLLAEX_CONFIGMAP_ADMIN_EMAIL"
+    #     echo "Admin Password: $(echo ${HOLLAEX_CONFIGMAP_ADMIN_PASSWORD//?/◼︎}$(echo $HOLLAEX_CONFIGMAP_ADMIN_PASSWORD | grep -o '....$'))"
 
-        echo -e "\nDo you want to continue with the existing information? (Y/n)"
-        read answer
+    #     echo -e "\nDo you want to continue with the existing information? (Y/n)"
+    #     read answer
 
-        if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+    #     if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
 
-            echo "Proceeding to the initialization wizard..."
+    #         echo "Proceeding to the initialization wizard..."
         
-        else 
+    #     else 
 
-            echo "Skipping the initialization wizard..."
-            exit 0
+    #         echo "Skipping the initialization wizard..."
+    #         exit 0
                     
-        fi 
+    #     fi 
 
-    fi 
+    # fi 
 
     printf "\n\033[1mSelect the network\033[0m\n\n"
 
@@ -1129,7 +1131,7 @@ elif [[ "$1" == "init" ]]; then
                 flag=0
                 ;;
             *)
-                echo "Erro: Invalid Option. Please select it again."
+                echo "Error: Invalid Option. Please select it again."
                 flag=1
                 message
                 
@@ -1189,7 +1191,7 @@ elif [[ "$1" == "init" ]]; then
             
             else 
 
-                if ! command xdg-open https://dash.hollaex.com/signup; then 
+                if ! command xdg-open https://dash.hollaex.com/signup > /dev/null 2>&1; then 
 
                     echo "Error: Your system does not support xdg-open compatible browser."
                     echo "Please open HollaEx Dashboard (https://dash.hollaex.com/signup) by yourself, and continue to sign-up."
@@ -1281,6 +1283,8 @@ elif [[ "$1" == "init" ]]; then
             --request POST \
             --data "{\"email\": \"${hollaexAdminEmail}\", \"password\": \"${hollaexAdminPassword}\", \"exchange_name\": \"${hollaexExchangeName}\"}" \
             $hollaexAPIURL/v2/network/exchange)
+
+        # echo $HOLLAEX_INIT_REQUEST
 
         HOLLAEX_INIT_REQUEST_RESPONSE=$(echo $HOLLAEX_INIT_REQUEST | cut -f1 -d ";")
         HOLLAEX_INIT_REQUEST_HTTP_CODE=$(echo $HOLLAEX_INIT_REQUEST | cut -f2 -d ";")
@@ -2356,13 +2360,15 @@ elif [[ "$1" == "login" ]]; then
 
     hollaex_login_token_validate_and_issue;
 
+    export BITHOLLA_ACCOUNT_TOKEN=$(cat $HOLLAEX_CLI_INIT_PATH/.token)
+
     BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
         --request GET \
         $hollaexAPIURL/v2/exchange \
        | jq '.')
     
     BITHOLLA_USER_EXCHANGE_COUNT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r '.count')
-    
+
     # Exit with error if user doesn't have any exchange on the account.
     if [[ "$BITHOLLA_USER_EXCHANGE_COUNT" == "0" ]]; then
 
@@ -2378,68 +2384,80 @@ elif [[ "$1" == "login" ]]; then
 
     printf "\n"
 
-    function hollaex_login_select_exchange() {
+    if (( $BITHOLLA_USER_EXCHANGE_COUNT > 0 )); then 
 
-        printf "Please pick the \033[1mexchange number\033[0m you want to bind.\n\n"
+        function hollaex_login_select_exchange() {
 
-        for ((i=0;i<=BITHOLLA_USER_EXCHANGE_COUNT;i++)); do 
+            printf "Please pick the \033[1mexchange number\033[0m you want to bind.\n\n"
 
-        printf "Exchange number : \033[1m$((i+1))\033[0m\n";
+            for ((i=0;i<=BITHOLLA_USER_EXCHANGE_COUNT;i++)); do 
 
-        echo "Name:" $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].name");
-        echo "Activation Code:" $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].activation_code");
-        printf "\n"
+            printf "Exchange number : \033[1m$((i+1))\033[0m\n";
 
-        EXCHANGE_NAME_TEMP=EXCHANGE_NAME_${i}
-        EXCHANGE_ACTIVATION_CODE_TEMP=EXCHANGE_ACTIVATION_CODE_${i}
+            echo "Name:" $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].name");
+            echo "Activation Code:" $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].activation_code");
+            printf "\n"
 
-        export $(echo $EXCHANGE_NAME_TEMP)=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].name";);
-        export $(echo $EXCHANGE_ACTIVATION_CODE_TEMP)=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].activation_code";);
+            EXCHANGE_NAME_TEMP=EXCHANGE_NAME_${i}
+            EXCHANGE_ACTIVATION_CODE_TEMP=EXCHANGE_ACTIVATION_CODE_${i}
 
-        done;
+            export $(echo $EXCHANGE_NAME_TEMP)=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].name";);
+            export $(echo $EXCHANGE_ACTIVATION_CODE_TEMP)=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].activation_code";);
 
-        printf "Input the exchange number: "
-        read answer
+            done;
 
-        while true;
-            do if [[ ! "${answer}" =~ ^[0-9]+$ ]]; then 
-                printf "\033[91m\nError: The input always should be numberic.\033[39m\n"
-                echo "Please pick the exchange number you want to bind."
-                read answer
-            else
-                break;
+            printf "Input the exchange number: "
+            read answer
+
+            while true;
+                do if [[ ! "${answer}" =~ ^[0-9]+$ ]]; then 
+                    printf "\033[91m\nError: The input always should be numberic.\033[39m\n"
+                    echo "Please pick the exchange number you want to bind."
+                    read answer
+                else
+                    break;
+                fi
+            done
+
+            answer=$((answer-1))
+
+            printf "\n"
+            SELECTED_EXCHANGE_NAME=EXCHANGE_NAME_${answer}
+            SELECTED_EXCHANGE_ACTIVATION_CODE=EXCHANGE_ACTIVATION_CODE_${answer}
+
+            if [[ ! "${!SELECTED_EXCHANGE_NAME}" ]] || [[ ! "${!SELECTED_EXCHANGE_ACTIVATION_CODE}" ]]; then
+
+                printf "\033[91m\nError: Failed to read the data from the selected exchange.\033[39m\n"
+                printf "Please make sure that you selected the correct number, and try again.\n\n"
+                hollaex_login_select_exchange;
+
             fi
-        done
+            
+            echo -e "\033[1mYour Exchange name: ${!SELECTED_EXCHANGE_NAME}\033[0m"
+            echo -e "\033[1mYour Activation code: ${!SELECTED_EXCHANGE_ACTIVATION_CODE}\033[0m"
+            echo "Do you want to continue? (Y/n)"
+            read answer
 
-        answer=$((answer-1))
-        
-        printf "\n"
-        SELECTED_EXCHANGE_NAME=EXCHANGE_NAME_${answer}
-        SELECTED_EXCHANGE_ACTIVATION_CODE=EXCHANGE_ACTIVATION_CODE_${answer}
+            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
 
-        if [[ ! "${!SELECTED_EXCHANGE_NAME}" ]] || [[ ! "${!SELECTED_EXCHANGE_ACTIVATION_CODE}" ]]; then
+                hollaex_login_select_exchange;
 
-            printf "\033[91m\nError: Failed to read the data from the selected exchange.\033[39m\n"
-            printf "Please make sure that you selected the correct number, and try again.\n\n"
-            hollaex_login_select_exchange;
+            fi
+        }
 
-        fi
-        
-        echo -e "\033[1mSelected Exchange name: ${!SELECTED_EXCHANGE_NAME}\033[0m"
-        echo -e "\033[1mSelected Activation code: ${!SELECTED_EXCHANGE_ACTIVATION_CODE}\033[0m"
-        echo "Do you want to continue? (Y/n)"
-        read answer
+        hollaex_login_select_exchange;
 
-        if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+    else 
 
-            hollaex_login_select_exchange;
+        export SELECTED_EXCHANGE_NAME=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[0].name";);
+        export SELECTED_EXCHANGE_ACTIVATION_CODE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[0].activation_code";);
 
-        fi
-    }
+        echo -e "\033[1mYour Exchange name: ${SELECTED_EXCHANGE_NAME}\033[0m"
+        echo -e "\033[1mYour Activation code: ${SELECTED_EXCHANGE_ACTIVATION_CODE}\033[0m"
 
-    hollaex_login_select_exchange;
+    fi 
 
-    if command sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=.*/HOLLAEX_SECRET_ACTIVATION_CODE=${!SELECTED_EXCHANGE_ACTIVATION_CODE}/" $SECRET_FILE_PATH; then
+    if command sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=.*/HOLLAEX_SECRET_ACTIVATION_CODE=${!SELECTED_EXCHANGE_ACTIVATION_CODE:-$SELECTED_EXCHANGE_ACTIVATION_CODE}/" $SECRET_FILE_PATH; then
 
         rm $SECRET_FILE_PATH.bak
 
@@ -2628,17 +2646,20 @@ elif [[ "$1" == "pull" ]]; then
     
     fi 
 
-    if [[ -f "$HOLLAEX_CLI_INIT_PATH/.token" ]]; then
+    if [[ ! -f "$HOLLAEX_CLI_INIT_PATH/.token" ]]; then
 
-        export BITHOLLA_ACCOUNT_TOKEN=$(cat $HOLLAEX_CLI_INIT_PATH/.token)
-
-    else 
 
         printf "\033[91mError: An access token has not been detected.\033[39m\n"
         printf "Please login with your HollaEx account to issue an access token.\n\n"
         hollaex login --renew
 
     fi
+
+    if [[ -f "$HOLLAEX_CLI_INIT_PATH/.token" ]]; then
+
+        export BITHOLLA_ACCOUNT_TOKEN=$(cat $HOLLAEX_CLI_INIT_PATH/.token)
+
+    fi 
 
     BITHOLLA_USER_TOKEN_EXPIRY_CHECK=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
             --request GET \
@@ -2650,17 +2671,30 @@ elif [[ "$1" == "pull" ]]; then
         $hollaexAPIURL/v2/exchange \
        | jq '.')
 
-
     if [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" ]] || [[ ! "$BITHOLLA_USER_TOKEN_EXPIRY_CHECK" == "200" ]]; then
 
         printf "\033[91mFailed to pull the exchange data from HollaEx.\033[39m\n\n"
         printf "\033[91mError: Your access token has been expired!\033[39m\n"
         printf "Please login again with your HollaEx account to issue a new access token.\n\n"
-        hollaex login --renew
+
+        if ! command hollaex login --renew; then 
+
+            exit 1;
+
+        else
+        
+            export BITHOLLA_ACCOUNT_TOKEN=$(cat $HOLLAEX_CLI_INIT_PATH/.token)
+
+            export BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
+                --request GET \
+                $hollaexAPIURL/v2/exchange \
+            | jq '.')
+
+        fi
 
     else 
 
-        printf "\n\033[92mSuccessfully authenticated on HollaEx Server.\033[39m\n"
+        # printf "\n\033[92mSuccessfully authenticated on HollaEx Server.\033[39m\n"
         printf "Proceeding to pull data from HollaEx...\n"
 
     fi
@@ -2741,7 +2775,7 @@ elif [[ "$1" == "pull" ]]; then
         source $i
     done;
 
-    if [[ ! "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]]; then
+    if [[ ! "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]] && [[ ! -z "$HOLLAEX_CONFIGMAP_API_NAME" ]]; then
 
         printf "\n\033[92mSuccessfully pulled and applied your exchange data to Hollaex Kit!\033[39m\n\n"
 
@@ -6413,6 +6447,13 @@ elif [[ "$1" == "toolbox" ]]; then
 
                 shift; continue
                 ;;
+            --loginKey)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_LOGIN_KEY=$1
+                TOOLBOX_ENABLE=true
+                shift; continue
+                ;;
             --get_seo_html)
                 GET_SEO_HTML=true
                 TOOLBOX_ENABLE=true
@@ -6763,7 +6804,6 @@ elif [[ "$1" == "toolbox" ]]; then
             export PGPASSWORD=$HOLLAEX_SECRET_DB_PASSWORD
             export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
             export PGHOST=localhost
-            export PGPORT=5433
 
             if ! command pg_restore --verbose --clean -d $PGDATABASE $RESTORE_POSTGRES_DUMP_PATH; then 
 
@@ -8574,7 +8614,12 @@ elif [[ "$1" == "docs" ]]; then
     
     else 
 
-        xdg-open $HOLLAEX_DOCS_URL
+        if ! command xdg-open $HOLLAEX_DOCS_URL > /dev/null 2>&1; then
+
+            echo "Error: Your system does not support xdg-open compatible browser."
+            echo "Please open the website ($HOLLAEX_DOCS_URL) through your browser by yourself."
+
+        fi
 
     fi
 
@@ -8588,7 +8633,12 @@ elif [[ "$1" == "forum" ]]; then
     
     else 
 
-        xdg-open $HOLLAEX_FORUM_URL
+        if ! command xdg-open $HOLLAEX_FORUM_URL > /dev/null 2>&1; then
+
+            echo "Error: Your system does not support xdg-open compatible browser."
+            echo "Please open the website ($HOLLAEX_FORUM_URL) through your browser by yourself."
+
+        fi
 
     fi
 
@@ -8602,7 +8652,12 @@ elif [[ "$1" == "discord" ]]; then
     
     else 
 
-        xdg-open $HOLLAEX_DISCORD_URL
+        if ! command xdg-open $HOLLAEX_DISCORD_URL > /dev/null 2>&1; then
+
+            echo "Error: Your system does not support xdg-open compatible browser."
+            echo "Please open the website ($HOLLAEX_DISCORD_URL) through your browser by yourself."
+
+        fi
 
     fi 
 
@@ -8616,7 +8671,12 @@ elif [[ "$1" == "bug" ]] || [[ "$1" == "bug-report" ]]; then
     
     else
 
-        xdg-open $HOLLAEX_GITHUB_ISSUES_NEW_URL
+         if ! command xdg-open $HOLLAEX_GITHUB_ISSUES_NEW_URL > /dev/null 2>&1; then
+
+            echo "Error: Your system does not support xdg-open compatible browser."
+            echo "Please open the website ($HOLLAEX_GITHUB_ISSUES_NEW_URL) through your browser by yourself."
+
+        fi
 
     fi 
 
@@ -8630,7 +8690,12 @@ elif [[ "$1" == "xht-market" ]]; then
     
     else 
 
-        xdg-open $HOLLAEX_TRADE_XHT_URL
+        if ! command xdg-open $HOLLAEX_TRADE_XHT_URL > /dev/null 2>&1; then
+
+            echo "Error: Your system does not support xdg-open compatible browser."
+            echo "Please open the website ($HOLLAEX_TRADE_XHT_URL) through your browser by yourself."
+
+        fi
 
     fi
 
@@ -8650,7 +8715,12 @@ elif [[ "$1" == "trade" ]]; then
     
     else 
 
-        xdg-open $HOLLAEX_CONFIGMAP_DOMAIN
+        if ! command xdg-open $HOLLAEX_CONFIGMAP_DOMAIN > /dev/null 2>&1; then
+
+            echo "Error: Your system does not support xdg-open compatible browser."
+            echo "Please open the website ($HOLLAEX_CONFIGMAP_DOMAIN) through your browser by yourself."
+
+        fi 
 
     fi
 
