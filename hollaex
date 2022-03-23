@@ -3670,8 +3670,19 @@ elif [[ "$1" == "prod" ]]; then
         
         if command nslookup $INPUT_HOLLAEX_CONFIGMAP_DOMAIN > /dev/null; then
 
-            printf "\n\033[92mSuccessfully resolved the exchange web URL ($INPUT_HOLLAEX_CONFIGMAP_DOMAIN).\033[39m\n"
-            HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY=true
+            WEB_URL_NSLOOKUP_CHECK=$(nslookup $INPUT_HOLLAEX_CONFIGMAP_DOMAIN)
+
+            # Catching exception
+            if [[ "$WEB_URL_NSLOOKUP_CHECK" == *"an't find"* ]]; then 
+
+                export HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY=false
+
+            else 
+
+                printf "\n\033[92mSuccessfully resolved the exchange web URL ($INPUT_HOLLAEX_CONFIGMAP_DOMAIN).\033[39m\n"
+                HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY=true
+
+            fi
 
         else 
 
@@ -3681,8 +3692,19 @@ elif [[ "$1" == "prod" ]]; then
 
         if command nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST > /dev/null; then
 
-            printf "\n\033[92mSuccessfully resolved the exchange API URL ($INPUT_HOLLAEX_CONFIGMAP_API_HOST).\033[39m\n"
-            HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=true
+            API_URL_NSLOOKUP_CHECK=$(nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST)
+            
+            # Catching exception
+            if [[ "$API_URL_NSLOOKUP_CHECK" == *"an't find"* ]]; then 
+
+                HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=false
+
+            else 
+
+                printf "\n\033[92mSuccessfully resolved the exchange API URL ($INPUT_HOLLAEX_CONFIGMAP_API_HOST).\033[39m\n"
+                HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=true
+
+            fi 
 
         else
 
@@ -8268,6 +8290,8 @@ elif [[ "$1" == "status" ]]; then
     else 
 
         printf "\033[91m\nThe health page is not responding. Please check the exchange is up.\033[39m\n"
+        echo -e "\nIf you just started the server, it could take a minute for the server to get fully ready."
+        echo -e "Please try it again after few minutes.\n"
         curl -s $HOLLAEX_CONFIGMAP_API_HOST/v2/health
 
     fi

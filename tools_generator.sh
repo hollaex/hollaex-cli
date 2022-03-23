@@ -2174,6 +2174,8 @@ function hollaex_ascii_exchange_is_up() {
 
     You can easily check the exchange status with 'hollaex status'.
 
+    It could take a minute for the server to get fully ready.
+
     $(if [[ "$USE_KUBERNETES" ]]; then 
       if ! command helm ls --namespace $ENVIRONMENT_EXCHANGE_NAME | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null 2>&1; then 
         echo "You can proceed to setup the web server with 'hollaex web --setup --kube'." 
