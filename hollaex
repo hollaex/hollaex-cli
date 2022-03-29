@@ -1846,6 +1846,16 @@ elif [[ "$1" == "setup" ]]; then
         apply_nginx_user_defined_values
 
         if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d; then
+            
+            sleep 5
+            
+            IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+
+            # Confirm that the local API server is up.
+            while ! [[ $(docker inspect -f "{{.Name}} {{.State.Status}}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1) == *"running"* ]] ;
+                do echo "Waiting for the containers to get fully initialized..."
+                sleep 5;
+            done;
 
             if [[ "$HOLLAEX_NETWORK_SETUP" ]]; then
 
