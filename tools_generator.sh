@@ -926,7 +926,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
         reservations:
           cpus: "${ENVIRONMENT_POSTGRESQL_CPU_REQUESTS:-0.1}"
           $(echo memory: "${ENVIRONMENT_POSTGRESQL_MEMORY_REQUESTS:-100M}" | sed 's/i//g')
-    command : ["sh", "-c", "export POSTGRES_DB=\$\${DB_NAME} && export POSTGRES_USER=\$\${DB_USERNAME} && export POSTGRES_PASSWORD=\$\${DB_PASSWORD} && ./docker-entrypoint.sh postgres"]
+    command : ["sh", "-c", "export POSTGRES_DB=\$\${DB_NAME} && export POSTGRES_USER=\$\${DB_USERNAME} && export POSTGRES_PASSWORD=\$\${DB_PASSWORD} && docker-entrypoint.sh postgres"]
     networks:
       - $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "local_hollaex-network-network"; else echo "${ENVIRONMENT_EXCHANGE_NAME}-network"; fi)
 EOL
