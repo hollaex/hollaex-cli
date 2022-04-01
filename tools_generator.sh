@@ -918,6 +918,10 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
       - 5432:5432
     env_file:
       - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    # environment:
+    #   - POSTGRES_DB=${HOLLAEX_SECRET_DB_NAME}
+    #   - POSTGRES_USER=${HOLLAEX_SECRET_DB_USERNAME}
+    #   - POSTGRES_PASSWORD=${HOLLAEX_SECRET_DB_PASSWORD}
     deploy:
       resources:
         limits:
@@ -926,7 +930,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
         reservations:
           cpus: "${ENVIRONMENT_POSTGRESQL_CPU_REQUESTS:-0.1}"
           $(echo memory: "${ENVIRONMENT_POSTGRESQL_MEMORY_REQUESTS:-100M}" | sed 's/i//g')
-    command : ["sh", "-c", "export POSTGRES_DB=\$\${DB_NAME} && export POSTGRES_USER=\$\${DB_USERNAME} && export POSTGRES_PASSWORD=\$\${DB_PASSWORD} && docker-entrypoint.sh postgres"]
+    command : ["sh", "-c", "export POSTGRES_DB=\$\${DB_NAME} && export POSTGRES_USER=\$\${DB_USERNAME} && export POSTGRES_PASSWORD=\$\${DB_PASSWORD} && ln -sf /usr/local/bin/docker-entrypoint.sh ./docker-entrypoint.sh && ./docker-entrypoint.sh postgres"]
     networks:
       - $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "local_hollaex-network-network"; else echo "${ENVIRONMENT_EXCHANGE_NAME}-network"; fi)
 EOL
