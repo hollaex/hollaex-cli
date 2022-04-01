@@ -918,10 +918,6 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
       - 5432:5432
     env_file:
       - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
-    # environment:
-    #   - POSTGRES_DB=${HOLLAEX_SECRET_DB_NAME}
-    #   - POSTGRES_USER=${HOLLAEX_SECRET_DB_USERNAME}
-    #   - POSTGRES_PASSWORD=${HOLLAEX_SECRET_DB_PASSWORD}
     deploy:
       resources:
         limits:
