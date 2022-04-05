@@ -1200,7 +1200,7 @@ elif [[ "$1" == "init" ]]; then
 
             fi
 
-            echo -e "\nOnce the registration is completed, please press C to continue."
+            echo -e "\nOnce the registration and the DIY exchange setup are completed, please press C to continue."
             read answer
 
             while true;
