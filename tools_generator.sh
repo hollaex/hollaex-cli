@@ -926,7 +926,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
         reservations:
           cpus: "${ENVIRONMENT_POSTGRESQL_CPU_REQUESTS:-0.1}"
           $(echo memory: "${ENVIRONMENT_POSTGRESQL_MEMORY_REQUESTS:-100M}" | sed 's/i//g')
-    command : ["sh", "-c", "export POSTGRES_DB=\$\${DB_NAME} && export POSTGRES_USER=\$\${DB_USERNAME} && export POSTGRES_PASSWORD=\$\${DB_PASSWORD} && ./docker-entrypoint.sh postgres"]
+    command : ["sh", "-c", "export POSTGRES_DB=\$\${DB_NAME} && export POSTGRES_USER=\$\${DB_USERNAME} && export POSTGRES_PASSWORD=\$\${DB_PASSWORD} && ln -sf /usr/local/bin/docker-entrypoint.sh ./docker-entrypoint.sh && ./docker-entrypoint.sh postgres"]
     networks:
       - $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "local_hollaex-network-network"; else echo "${ENVIRONMENT_EXCHANGE_NAME}-network"; fi)
 EOL
@@ -2173,6 +2173,8 @@ function hollaex_ascii_exchange_is_up() {
     Try to reach ${HOLLAEX_CONFIGMAP_API_HOST}/v2/health
 
     You can easily check the exchange status with 'hollaex status'.
+
+    It could take a minute for the server to get fully ready.
 
     $(if [[ "$USE_KUBERNETES" ]]; then 
       if ! command helm ls --namespace $ENVIRONMENT_EXCHANGE_NAME | grep $ENVIRONMENT_EXCHANGE_NAME-web > /dev/null 2>&1; then 
