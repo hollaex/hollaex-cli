@@ -4108,7 +4108,7 @@ function issue_new_hmac_token() {
 
         if ! command xdg-open https://dash.hollaex.com/mypage/apikey > /dev/null 2>&1; then 
 
-            echo "Error: Your system does not support xdg-open compatible browser."
+            echo -e "\nError: Your system does not support xdg-open compatible browser."
             echo "Please open HollaEx Dashboard (https://dash.hollaex.com/mypage/apikey) by yourself, and continue to revoke the main key."
 
         fi 
@@ -4446,6 +4446,20 @@ function hollaex_login_form() {
         # echo "Info: Your authentication will be only available for 24 hours."
 
         echo $BITHOLLA_ACCOUNT_TOKEN > $HOLLAEX_CLI_INIT_PATH/.token
+
+        # echo "HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID=$HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID" > $(pwd)/settings/temp
+        # echo "HOLLAEX_CONFIGMAP_ADMIN_EMAIL=$email" >> $(pwd)/settings/temp
+        # echo "HOLLAEX_CONFIGMAP_ADMIN_PASSWORD=$password" >> $(pwd)/settings/temp
+
+        export hollaexAPIURLEscaped=${hollaexAPIURL//\//\\/}
+
+        for i in ${CONFIG_FILE_PATH[@]}; do
+          if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+              CONFIGMAP_FILE_PATH=$i
+              sed -i.bak "s/HOLLAEX_CONFIGMAP_NETWORK_URL=.*/HOLLAEX_CONFIGMAP_NETWORK_URL=$hollaexAPIURLEscaped/" $CONFIGMAP_FILE_PATH
+              rm $CONFIGMAP_FILE_PATH.bak
+          fi
+        done
 
         if [[ "$HOLLAEX_LOGIN_RENEW" ]]; then 
 
