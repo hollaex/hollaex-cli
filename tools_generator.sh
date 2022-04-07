@@ -7435,7 +7435,7 @@ function hollaex_setup_existing_settings_values_check() {
       source $i
   done;
 
-  if [[ ! "$ENVIRONMENT_EXCHANGE_NAME" == "my-hollaex-exchange" ]] && [[ "$HOLLAEX_SECRET_API_KEY" ]] && [[ "$HOLLAEX_SECRET_API_SECRET" ]]; then 
+  if [[ ! "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]] && [[ "$HOLLAEX_SECRET_API_KEY" ]] && [[ "$HOLLAEX_SECRET_API_SECRET" ]]; then 
 
     echo -e "\n\033[93mWarning: HollaEx CLI has detected your existing exchange information.\033[39m\n"
     echo "Network: $HOLLAEX_CONFIGMAP_NETWORK_URL"
