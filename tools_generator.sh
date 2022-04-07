@@ -4096,10 +4096,26 @@ function issue_new_hmac_token() {
 
     echo -e "\n\033[91m$(echo $BITHOLLA_HMAC_TOKEN_ISSUE_POST_RESPOND | jq -r '.message')\033[39m\n"
     
-    echo -e "Failed to issue a security token!"
+    echo -e "Failed to auto-issue a main key!"
+    
+    echo -e "\nIf you already have an active main token, please go to HollaEx Dashboard (https://dash.hollaex.com/mypage/apikey) and REVOKE the main key."
 
-    echo -e "\nPlease check your internet connectivity, and try it again."
-    echo -e "You could also check the HollaEx service status at https://status.bitholla.com."
+    if [[ "$OSTYPE" == *"darwin"* ]]; then 
+
+        open https://dash.hollaex.com/mypage/apikey
+    
+    else 
+
+        if ! command xdg-open https://dash.hollaex.com/mypage/apikey > /dev/null 2>&1; then 
+
+            echo "Error: Your system does not support xdg-open compatible browser."
+            echo "Please open HollaEx Dashboard (https://dash.hollaex.com/mypage/apikey) by yourself, and continue to revoke the main key."
+
+        fi 
+
+    fi
+
+    echo -e "\nPlease try it again after the revoke."
 
     exit 1;
 
