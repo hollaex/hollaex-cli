@@ -4096,10 +4096,26 @@ function issue_new_hmac_token() {
 
     echo -e "\n\033[91m$(echo $BITHOLLA_HMAC_TOKEN_ISSUE_POST_RESPOND | jq -r '.message')\033[39m\n"
     
-    echo -e "Failed to issue a security token!"
+    echo -e "Failed to auto-issue a main key!"
+    
+    echo -e "\nIf you already have an active main token, please go to HollaEx Dashboard (https://dash.hollaex.com/mypage/apikey) and REVOKE the main key."
 
-    echo -e "\nPlease check your internet connectivity, and try it again."
-    echo -e "You could also check the HollaEx service status at https://status.bitholla.com."
+    if [[ "$OSTYPE" == *"darwin"* ]]; then 
+
+        open https://dash.hollaex.com/mypage/apikey
+    
+    else 
+
+        if ! command xdg-open https://dash.hollaex.com/mypage/apikey > /dev/null 2>&1; then 
+
+            echo -e "\nError: Your system does not support xdg-open compatible browser."
+            echo "Please open HollaEx Dashboard (https://dash.hollaex.com/mypage/apikey) by yourself, and continue to revoke the main key."
+
+        fi 
+
+    fi
+
+    echo -e "\nPlease try it again after the revoke."
 
     exit 1;
 
@@ -4430,6 +4446,20 @@ function hollaex_login_form() {
         # echo "Info: Your authentication will be only available for 24 hours."
 
         echo $BITHOLLA_ACCOUNT_TOKEN > $HOLLAEX_CLI_INIT_PATH/.token
+
+        # echo "HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID=$HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID" > $(pwd)/settings/temp
+        # echo "HOLLAEX_CONFIGMAP_ADMIN_EMAIL=$email" >> $(pwd)/settings/temp
+        # echo "HOLLAEX_CONFIGMAP_ADMIN_PASSWORD=$password" >> $(pwd)/settings/temp
+
+        export hollaexAPIURLEscaped=${hollaexAPIURL//\//\\/}
+
+        for i in ${CONFIG_FILE_PATH[@]}; do
+          if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+              CONFIGMAP_FILE_PATH=$i
+              sed -i.bak "s/HOLLAEX_CONFIGMAP_NETWORK_URL=.*/HOLLAEX_CONFIGMAP_NETWORK_URL=$hollaexAPIURLEscaped/" $CONFIGMAP_FILE_PATH
+              rm $CONFIGMAP_FILE_PATH.bak
+          fi
+        done
 
         if [[ "$HOLLAEX_LOGIN_RENEW" ]]; then 
 
@@ -7405,7 +7435,7 @@ function hollaex_setup_existing_settings_values_check() {
       source $i
   done;
 
-  if [[ ! "$ENVIRONMENT_EXCHANGE_NAME" == "my-hollaex-exchange" ]] && [[ "$HOLLAEX_SECRET_API_KEY" ]] && [[ "$HOLLAEX_SECRET_API_SECRET" ]]; then 
+  if [[ ! "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]] && [[ "$HOLLAEX_SECRET_API_KEY" ]] && [[ "$HOLLAEX_SECRET_API_SECRET" ]]; then 
 
     echo -e "\n\033[93mWarning: HollaEx CLI has detected your existing exchange information.\033[39m\n"
     echo "Network: $HOLLAEX_CONFIGMAP_NETWORK_URL"
