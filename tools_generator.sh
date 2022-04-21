@@ -4174,6 +4174,14 @@ function get_hmac_token() {
 
     done;
 
+    if [[ ! "$BITHOLLA_HMAC_MAIN_TOKEN_ORDER" ]]; then 
+
+      issue_new_hmac_token
+    
+      exit 0;
+    
+    fi
+
     BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY=$(echo $BITHOLLA_HMAC_TOKEN_GET_DATA | jq -r ".data[$BITHOLLA_HMAC_MAIN_TOKEN_ORDER].apiKey")
     
     BITHOLLA_HMAC_TOKEN_EXISTING_TOKEN_ID=$(echo $BITHOLLA_HMAC_TOKEN_GET_DATA | jq -r ".data[$BITHOLLA_HMAC_MAIN_TOKEN_ORDER].id")
@@ -4239,30 +4247,6 @@ function get_hmac_token() {
       
 
       fi
-
-      # if [[ ! "$RESET_HMAC_TOKEN" ]]; then
-       
-      #   echo -e "\nDo you want to \033[1mproceed to revoke\033[0m the existing token? (API Key: $BITHOLLA_HMAC_TOKEN_EXISTING_APIKEY) (y/N)"
-
-      #   read answer
-
-      # else 
-
-      #   local answer="y"
-
-      # fi 
-
-      # if [[ "$answer" = "${answer#[Yy]}" ]] ;then
-
-      #   echo -e "\n\033[91mThe security token is must required to setup an HollaEx Exchange.\033[39m"
-      #   echo -e "\nPlease \033[1mrun this command again once you becomes ready.\033[0m"
-      #   echo -e "You could also revoke the token through the https://dash.hollaex.com."
-
-      #   echo -e "\nSee you in a bit!\n"
-
-      #   exit 1;
-
-      # fi
       
       if [[ "$HOLLAEX_LOGIN_KEY" ]]; then 
 
@@ -4386,7 +4370,7 @@ function hollaex_login_form() {
 
     echo -e "\033[1mOTP Code\033[0m (Enter if you don't have OTP set for your account): "
     read otp 
-
+    
     BITHOLLA_ACCOUNT_LOGIN=$(curl -s -H "Content-Type: application/json" \
         --request POST \
         -w ";%{http_code}" \
