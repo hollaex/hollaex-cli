@@ -4376,8 +4376,6 @@ function hollaex_login_form() {
         -w ";%{http_code}" \
         --data "{\"email\": \"${email}\", \"password\": \"${password}\", \"otp_code\": \"${otp}\", \"service\": \"cli\"}" \
         $hollaexAPIURL/v2/dash/login)
-
-    echo $BITHOLLA_ACCOUNT_LOGIN
     
     BITHOLLA_ACCOUNT_LOGIN_MESSAGE=$(echo $BITHOLLA_ACCOUNT_LOGIN | cut -f1 -d ";" | jq -r '.message')
     BITHOLLA_ACCOUNT_LOGIN_HTTP_CODE=$(echo $BITHOLLA_ACCOUNT_LOGIN | cut -f2 -d ";")
