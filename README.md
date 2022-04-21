@@ -99,9 +99,6 @@ In this section, you will see the usage and examples of each commands.
       <a href="#installing-specific-version-of-cli">Installing specific version of CLI</a>
     </li>
     <li>
-      <a href="#running-influxdb-migration">Running InfluxDB Migration</a>
-    </li>
-    <li>
       <a href="#terminating-the-exchange">Terminating the exchange</a>
     </li>
   </ol>
@@ -418,18 +415,6 @@ hollaex toolbox --install_cli <VERSION_NUMBER>
 
 Installing a specific version of HollaEx CLI. For example, to install 2.0.0 version of HollaEx CLI, run `hollaex toolbox --install_cli 2.0.0`.
 
-### Running InfluxDB Migration
-
-```
-hollaex toolbox --influxdb_migration
-```
-
-Running InfluxDB migration job. InfluxDB for HollaEx Kit exchange is being used for displaying trading charts on the web. If the charts are not displaying correctly, please run this command to fix it.
-
-```
-hollaex toolbox --influxdb_migration --kube
-```
-Running InfluxDB migration job on Kubernetes.
 
 ### Terminating the exchange
 
