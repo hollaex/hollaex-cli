@@ -3732,29 +3732,31 @@ elif [[ "$1" == "prod" ]]; then
         
         fi
 
-        if command nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST > /dev/null; then
+        # if command nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST > /dev/null; then
 
-            API_URL_NSLOOKUP_CHECK=$(nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST)
+        #     API_URL_NSLOOKUP_CHECK=$(nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST)
             
-            # Catching exception
-            if [[ "$API_URL_NSLOOKUP_CHECK" == *"an't find"* ]]; then 
+        #     # Catching exception
+        #     if [[ "$API_URL_NSLOOKUP_CHECK" == *"an't find"* ]]; then 
 
-                HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=false
+        #         HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=false
 
-            else 
+        #     else 
 
-                printf "\n\033[92mSuccessfully resolved the exchange API URL ($INPUT_HOLLAEX_CONFIGMAP_API_HOST).\033[39m\n"
-                HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=true
+        #         printf "\n\033[92mSuccessfully resolved the exchange API URL ($INPUT_HOLLAEX_CONFIGMAP_API_HOST).\033[39m\n"
+        #         HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=true
 
-            fi 
+        #     fi 
 
-        else
+        # else
 
-            HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=false
+        #     HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=false
         
-        fi
+        # fi
 
-        if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] || [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+        # if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] || [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+        if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] ; then
+
 
             # Announcing the domain configuration how-to.
             SYSTEM_PUBLIC_IP=$(curl -s ifconfig.me)
@@ -3775,14 +3777,14 @@ elif [[ "$1" == "prod" ]]; then
                 read -p "Press enter once you configured the DNS."
             fi
 
-            if [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+            # if [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
 
-                printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_API_HOST.\033[39m\n"
-                printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST to point $SYSTEM_PUBLIC_IP\033[0m.\n"
-                printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
-                read -p "Press enter once you configured the DNS."
+            #     printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_API_HOST.\033[39m\n"
+            #     printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST to point $SYSTEM_PUBLIC_IP\033[0m.\n"
+            #     printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
+            #     read -p "Press enter once you configured the DNS."
 
-            fi
+            # fi
 
             printf "\n\033[93mChecking the DNS reachability...\033[39m\n"
             echo "Info: You could always quit the DNS checking loop with 'Crtl + C'."
