@@ -1846,7 +1846,7 @@ elif [[ "$1" == "setup" ]]; then
         apply_nginx_user_defined_values
 
         # Update the nginx if the Kit got a separated domain for the API.
-        if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api"]]; then
+        if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
 
             apply_nginx_separated_kit_domains_values;
         
@@ -3170,7 +3170,7 @@ elif [[ "$1" == "start" ]]; then
         apply_nginx_user_defined_values;
         
         # Update the nginx if the Kit got a separated domain for the API.
-        if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api"]]; then
+        if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
 
             apply_nginx_separated_kit_domains_values;
         
@@ -3839,7 +3839,7 @@ elif [[ "$1" == "prod" ]]; then
         apply_nginx_user_defined_values;
 
         # Update the nginx if the Kit got a separated domain for the API.
-        if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api"]]; then
+        if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
 
             apply_nginx_separated_kit_domains_values;
         
@@ -5601,7 +5601,7 @@ elif [[ "$1" == "web" ]]; then
             generate_hollaex_web_local_env
 
             # Only generated the separated web.conf file if user got a different domain for the API.
-            if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api"]]; then 
+            if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then 
 
                 if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
 
@@ -5637,7 +5637,7 @@ elif [[ "$1" == "web" ]]; then
             apply_nginx_user_defined_values
 
             # Update the nginx if the Kit got a separated domain for the API.
-            if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api"]]; then
+            if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
 
                 apply_nginx_separated_kit_domains_values;
             
@@ -5806,7 +5806,7 @@ elif [[ "$1" == "web" ]]; then
             apply_nginx_user_defined_values
 
             # Update the nginx if the Kit got a separated domain for the API.
-            if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api"]]; then
+            if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
 
                 apply_nginx_separated_kit_domains_values;
             
@@ -6087,7 +6087,7 @@ elif [[ "$1" == "web" ]]; then
             fi 
 
             # Only generated the separated web.conf file if user got a different domain for the API.
-            if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api"]]; then
+            if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
 
                 if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
 
@@ -6102,7 +6102,7 @@ elif [[ "$1" == "web" ]]; then
             apply_nginx_user_defined_values
 
             # Update the nginx if the Kit got a separated domain for the API.
-            if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api"]]; then
+            if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
 
                 apply_nginx_separated_kit_domains_values;
             
