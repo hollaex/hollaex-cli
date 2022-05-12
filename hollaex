@@ -381,6 +381,7 @@ if [[ "$1" == "dev" ]]; then
         # fi
 
         generate_nginx_upstream;
+        generate_nginx_upstream_for_web;
 
         # Checking docker-compose is installed on this machine.
         if command docker-compose version > /dev/null 2>&1; then
@@ -1840,6 +1841,7 @@ elif [[ "$1" == "setup" ]]; then
         else 
 
             generate_nginx_upstream
+            generate_nginx_upstream_for_web
 
         fi 
 
@@ -3160,6 +3162,7 @@ elif [[ "$1" == "start" ]]; then
             else 
 
                 generate_nginx_upstream
+                generate_nginx_upstream_for_web
 
             fi 
         

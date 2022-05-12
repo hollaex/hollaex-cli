@@ -374,6 +374,7 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
   upstream plugins {
     server ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins:10011;
   }
+  
 EOL
 
 done
