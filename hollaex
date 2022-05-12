@@ -3528,7 +3528,7 @@ elif [[ "$1" == "prod" ]]; then
 
         # Web Domain
         echo "***************************************************************"
-        echo "Exchange Web Domain"
+        echo "Exchange Domain"
         printf "\033[2m- Enter the full domain of your exchange website, without 'http' or 'https'.\033[22m\n"
         read answer
         
@@ -3557,52 +3557,52 @@ elif [[ "$1" == "prod" ]]; then
         printf "\n"
 
         #Automatically mark the API url as api.<MY_DOMAIN>
-        export INPUT_HOLLAEX_CONFIGMAP_API_HOST="api.${INPUT_HOLLAEX_CONFIGMAP_DOMAIN}"
+        export INPUT_HOLLAEX_CONFIGMAP_API_HOST="${INPUT_HOLLAEX_CONFIGMAP_DOMAIN}/api"
         local INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP="http://${INPUT_HOLLAEX_CONFIGMAP_API_HOST}"
         local PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP//\//\\/}
 
-        printf "Since you selected the Exchange Web domain as: \033[1m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN,\033[0m\n"
-        printf "Your Exchange Server \033[1mAPI domain\033[0m would be: \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST\033[0m.\n"
-        printf "Type \033[1m'Y'\033[0m to continute, or \033[1m'N'\033[0m to modify the Exchange Server API domain. (Y/n)\n"
-        read answer
+        # printf "Since you selected the Exchange Web domain as: \033[1m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN,\033[0m\n"
+        # printf "Your Exchange Server \033[1mAPI domain\033[0m would be: \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST\033[0m.\n"
+        # printf "Type \033[1m'Y'\033[0m to continute, or \033[1m'N'\033[0m to modify the Exchange Server API domain. (Y/n)\n"
+        # read answer
 
-        if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+        # if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
         
-            # API Domain
-            echo "***************************************************************"
-            echo "Exchange Server API Domain"
-            printf "\033[2m- Enter the full domain of your exchange API server, without 'http' or 'https'.\033[22m\n"
-            read answer
+        #     # API Domain
+        #     echo "***************************************************************"
+        #     echo "Exchange Server API Domain"
+        #     printf "\033[2m- Enter the full domain of your exchange API server, without 'http' or 'https'.\033[22m\n"
+        #     read answer
 
-            while true;
-                do if [[ "$answer" == *"http"* ]]; then
-                    printf "\nValue should be an URL without 'http' or 'https'.\n"
-                    echo  "Exchange API Domain: "
-                    read answer
-                    local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
-                elif [[ -z "$answer" ]]; then
-                    printf "\nThe value should not be empty!\n\n"
-                    echo  "Exchange API Domain: "
-                    read answer
-                    local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
-                else
-                    break;
-                fi
-            done
+        #     while true;
+        #         do if [[ "$answer" == *"http"* ]]; then
+        #             printf "\nValue should be an URL without 'http' or 'https'.\n"
+        #             echo  "Exchange API Domain: "
+        #             read answer
+        #             local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
+        #         elif [[ -z "$answer" ]]; then
+        #             printf "\nThe value should not be empty!\n\n"
+        #             echo  "Exchange API Domain: "
+        #             read answer
+        #             local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
+        #         else
+        #             break;
+        #         fi
+        #     done
 
-            export INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
+        #     export INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
 
-            printf "\n"
-            echo "${INPUT_HOLLAEX_CONFIGMAP_API_HOST} ✔"
-            printf "\n"
+        #     printf "\n"
+        #     echo "${INPUT_HOLLAEX_CONFIGMAP_API_HOST} ✔"
+        #     printf "\n"
 
-            local INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP="http://${answer}"
-            local PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP//\//\\/}
+        #     local INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP="http://${answer}"
+        #     local PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP//\//\\/}
 
-        fi 
+        # fi 
 
-        export HOLLAEX_CONFIGMAP_DOMAIN=$INPUT_HOLLAEX_CONFIGMAP_DOMAIN
-        export HOLLAEX_CONFIGMAP_API_HOST=$INPUT_HOLLAEX_CONFIGMAP_API_HOST
+        # export HOLLAEX_CONFIGMAP_DOMAIN=$INPUT_HOLLAEX_CONFIGMAP_DOMAIN
+        # export HOLLAEX_CONFIGMAP_API_HOST=$INPUT_HOLLAEX_CONFIGMAP_API_HOST
 
         printf "\nYour Exchange Web Domain: \033[92m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN\033[39m"
         printf "\nYour Exchange API Domain: \033[92m$INPUT_HOLLAEX_CONFIGMAP_API_HOST\033[39m\n"
