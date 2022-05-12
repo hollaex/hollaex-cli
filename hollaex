@@ -3849,18 +3849,11 @@ elif [[ "$1" == "prod" ]]; then
     
     if [[ ! "$USE_KUBERNETES" ]]; then 
 
+        HOLLAEX_CONFIGMAP_DOMAIN=$INPUT_HOLLAEX_CONFIGMAP_DOMAIN
+
         apply_nginx_user_defined_values;
 
-        # Update the nginx if the Kit got a separated domain for the API.
-        if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
-
-            apply_nginx_root_domain_to_api;
-        
-        else
-
-            apply_nginx_root_domain_to_web;
-            
-        fi
+        apply_nginx_root_domain_to_web;
 
     fi 
 
