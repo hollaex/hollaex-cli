@@ -3853,8 +3853,6 @@ elif [[ "$1" == "prod" ]]; then
 
         apply_nginx_user_defined_values;
 
-        apply_nginx_root_domain_to_web;
-
     fi 
 
     printf "\n"
@@ -4088,6 +4086,8 @@ elif [[ "$1" == "prod" ]]; then
         hollaex_network_prod_complete;
 
     else 
+
+        apply_nginx_root_domain_to_web;
 
         hollaex_prod_complete;
     
