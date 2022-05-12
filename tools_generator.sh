@@ -427,6 +427,16 @@ function apply_nginx_user_defined_values(){
     fi
 }
 
+function apply_nginx_separated_kit_domains_values(){
+
+    sed -i.bak "s/.*\#Root.*/proxy_pass http:\/\/api; \#Root path/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
+    rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
+
+    sed -i.bak "s/.*\/api\/v2.*/location \/v2 {/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
+    rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
+
+}
+
 function generate_local_docker_compose_for_core_dev() {
 
 # Generate docker-compose
@@ -2087,6 +2097,7 @@ NODE_ENV=${HOLLAEX_CONFIGMAP_NODE_ENV}
 
 REACT_APP_PUBLIC_URL=${HOLLAEX_CONFIGMAP_DOMAIN}
 REACT_APP_SERVER_ENDPOINT=${HOLLAEX_CONFIGMAP_API_HOST}
+
 REACT_APP_NETWORK=${HOLLAEX_CONFIGMAP_NETWORK}
 
 REACT_APP_DEVELOPMENT_ENDPOINT=${HOLLAEX_CONFIGMAP_API_HOST}
@@ -2103,7 +2114,19 @@ REACT_APP_LOGO_BLACK_PATH=${HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH}
 
 REACT_APP_EXCHANGE_NAME='${HOLLAEX_CONFIGMAP_API_NAME}'
 
+REACT_APP_STREAM_ENDPOINT=${HOLLAEX_CONFIGMAP_DOMAIN}
+
 EOL
+
+if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api"]]; then
+
+cat >> $HOLLAEX_CLI_INIT_PATH/web/.env <<EOL
+
+REACT_APP_STREAM_ENDPOINT=${HOLLAEX_CONFIGMAP_DOMAIN}/stream
+
+EOL
+
+fi 
 }
 
 function generate_hollaex_web_local_nginx_conf() {
