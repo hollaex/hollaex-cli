@@ -3173,8 +3173,8 @@ elif [[ "$1" == "start" ]]; then
         fi
 
         # Update nginx.conf to apply user own domains
-        echo "Updating nginx conf file based on user settings"
-        apply_nginx_user_defined_values;
+        # echo "Updating nginx conf file based on user settings"
+        # apply_nginx_user_defined_values;
         
         # Update the nginx if the Kit got a separated domain for the API.
         # if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
@@ -5823,8 +5823,8 @@ elif [[ "$1" == "web" ]]; then
 
             # fi
 
-            echo "Updating main Nginx.conf based on user settings..."
-            apply_nginx_user_defined_values
+            # echo "Updating main Nginx.conf based on user settings..."
+            # apply_nginx_user_defined_values
 
             # Update the nginx if the Kit got a separated domain for the API.
             # if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
@@ -6123,8 +6123,8 @@ elif [[ "$1" == "web" ]]; then
 
             fi
 
-            echo "Updating main Nginx.conf based on user settings..."
-            apply_nginx_user_defined_values
+            # echo "Updating main Nginx.conf based on user settings..."
+            # apply_nginx_user_defined_values
 
             # Update the nginx if the Kit got a separated domain for the API.
             # if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
