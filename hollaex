@@ -1847,12 +1847,19 @@ elif [[ "$1" == "setup" ]]; then
 
         apply_nginx_user_defined_values
 
-        # Update the nginx if the Kit got a separated domain for the API.
-        if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+        # initial setup
+        # apply_nginx_root_domain_to_api
 
-            apply_nginx_separated_kit_domains_values;
+        # # Update the nginx if the Kit got a separated domain for the API.
+        # if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+
+        #     apply_nginx_root_domain_to_api;
         
-        fi
+        # else
+
+        #     apply_nginx_root_domain_to_web;
+            
+        # fi
 
         if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d; then
             
@@ -3173,11 +3180,15 @@ elif [[ "$1" == "start" ]]; then
         apply_nginx_user_defined_values;
         
         # Update the nginx if the Kit got a separated domain for the API.
-        if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+        # if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
 
-            apply_nginx_separated_kit_domains_values;
+        #     apply_nginx_root_domain_to_api;
         
-        fi
+        # else
+
+        #     apply_nginx_root_domain_to_web;
+
+        # fi 
 
         if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d; then
 
@@ -3844,8 +3855,12 @@ elif [[ "$1" == "prod" ]]; then
         # Update the nginx if the Kit got a separated domain for the API.
         if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
 
-            apply_nginx_separated_kit_domains_values;
+            apply_nginx_root_domain_to_api;
         
+        else
+
+            apply_nginx_root_domain_to_web;
+            
         fi
 
     fi 
@@ -5640,11 +5655,15 @@ elif [[ "$1" == "web" ]]; then
             apply_nginx_user_defined_values
 
             # Update the nginx if the Kit got a separated domain for the API.
-            if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+            # if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
 
-                apply_nginx_separated_kit_domains_values;
+            #     apply_nginx_root_domain_to_api;
             
-            fi
+            # else
+
+            #     apply_nginx_root_domain_to_web;
+                
+            # fi
 
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client up -d; then
 
@@ -5809,11 +5828,15 @@ elif [[ "$1" == "web" ]]; then
             apply_nginx_user_defined_values
 
             # Update the nginx if the Kit got a separated domain for the API.
-            if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+            # if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
 
-                apply_nginx_separated_kit_domains_values;
+            #     apply_nginx_root_domain_to_api;
             
-            fi
+            # else
+
+            #     apply_nginx_root_domain_to_web;
+                
+            # fi
 
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client start; then
 
@@ -6105,11 +6128,15 @@ elif [[ "$1" == "web" ]]; then
             apply_nginx_user_defined_values
 
             # Update the nginx if the Kit got a separated domain for the API.
-            if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+            # if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
 
-                apply_nginx_separated_kit_domains_values;
+            #     apply_nginx_root_domain_to_api;
             
-            fi
+            # else
+
+            #     apply_nginx_root_domain_to_web;
+                
+            # fi
 
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client stop; then
                 

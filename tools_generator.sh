@@ -428,9 +428,19 @@ function apply_nginx_user_defined_values(){
     fi
 }
 
-function apply_nginx_separated_kit_domains_values(){
+function apply_nginx_root_domain_to_api(){
 
     sed -i.bak "s/.*\#Root.*/proxy_pass http:\/\/api; \#Root path/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
+    rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
+
+    sed -i.bak "s/.*\/api\/v2.*/location \/v2 {/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
+    rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
+
+}
+
+function apply_nginx_root_domain_to_web(){
+
+    sed -i.bak "s/.*\#Root.*/proxy_pass http:\/\/web; \#Root path/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
     rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
 
     sed -i.bak "s/.*\/api\/v2.*/location \/v2 {/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
