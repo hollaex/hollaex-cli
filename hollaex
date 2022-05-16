@@ -1846,7 +1846,7 @@ elif [[ "$1" == "setup" ]]; then
         apply_nginx_user_defined_values
 
         # initial setup
-        # apply_nginx_root_domain_to_api
+        apply_nginx_root_domain_to_api
 
         # # Update the nginx if the Kit got a separated domain for the API.
         # if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
@@ -3912,41 +3912,54 @@ elif [[ "$1" == "prod" ]]; then
 
             echo "HollaEx CLI natively supports issuing SSL cert through 'certbot' and Let's encrypt."
             echo "Running 'certbot' now..."
-            printf "\n"
-            while true;
-                do if command hollaex toolbox --issue_ssl --skip; then
 
-                    if [[ ! "$HOLLAEX_NETWORK_PROD" ]]; then 
+            if command hollaex toolbox --issue_ssl --skip; then
 
-                        echo "Do you want to issue more SSL cert for different domain? (Y/n)"
-                        read answer
+                echo "Successfully issued the SSL certificate for your domain."
 
-                        if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+            else 
 
-                            echo "Skipping..."
-                            break;
+                printf "\033[91mFailed to issue SSL certificate by using Certbot. Please confirm your settings and try again.\033[39m\n"
+                exit 1;
 
-                        else 
+            fi
 
-                            hollaex toolbox --issue_ssl --skip;
-                            break;
 
-                        fi
+            # printf "\n"
+            # while true;
+            #     do if command hollaex toolbox --issue_ssl --skip; then
+
+            #         if [[ ! "$HOLLAEX_NETWORK_PROD" ]]; then 
+
+            #             echo "Do you want to issue more SSL cert for different domain? (Y/n)"
+            #             read answer
+
+            #             if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+
+            #                 echo "Skipping..."
+            #                 break;
+
+            #             else 
+
+            #                 hollaex toolbox --issue_ssl --skip;
+            #                 break;
+
+            #             fi
                     
-                    else 
+            #         else 
 
-                        echo "Successfully issued the SSL certificate for your domain."
+            #             echo "Successfully issued the SSL certificate for your domain."
 
-                    fi 
+            #         fi 
                 
-                else 
+            #     else 
 
-                    printf "\033[91mFailed to issue SSL certificate by using Certbot. Please confirm your settings and try again.\033[39m\n"
-                    exit 1;
+            #         printf "\033[91mFailed to issue SSL certificate by using Certbot. Please confirm your settings and try again.\033[39m\n"
+            #         exit 1;
 
-                fi
+            #     fi
 
-            done;
+            # done;
 
             
         fi
