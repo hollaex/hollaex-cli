@@ -2125,7 +2125,7 @@ if [[ "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
 
 cat >> $HOLLAEX_CLI_INIT_PATH/web/.env <<EOL
 
-REACT_APP_STREAM_ENDPOINT=${HOLLAEX_CONFIGMAP_DOMAIN}
+REACT_APP_STREAM_ENDPOINT=$(if [[ "$HOLLAEX_CONFIGMAP_DOMAIN" == *"https"* ]]; then echo "wss://" else echo "ws://")$(echo $HOLLAEX_CONFIGMAP_DOMAIN | cut -f3 -d /)
 
 EOL
 
