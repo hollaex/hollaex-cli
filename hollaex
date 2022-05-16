@@ -5670,6 +5670,8 @@ elif [[ "$1" == "web" ]]; then
                 
             # fi
 
+            apply_nginx_root_domain_to_web
+
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client up -d; then
 
                 echo "Reloading Nginx..."
