@@ -2991,7 +2991,16 @@ elif [[ "$1" == "start" ]]; then
         if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
 
             echo "Generating Kubernetes Ingress"
-            generate_kubernetes_ingress;
+
+            if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+
+                generate_kubernetes_ingress;
+            
+            else 
+
+                generate_kubernetes_ingress_2_4;
+
+            fi 
 
         fi
 
@@ -7770,7 +7779,15 @@ elif [[ "$1" == "toolbox" ]]; then
             if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
 
                 echo "Generating Kubernetes Ingress"
-                generate_kubernetes_ingress;
+                if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+
+                    generate_kubernetes_ingress;
+                
+                else 
+
+                    generate_kubernetes_ingress_2_4;
+
+                fi 
 
                 echo "Generating Kubernetes Ingress for Web"
                 generate_kubernetes_ingress_for_web;
