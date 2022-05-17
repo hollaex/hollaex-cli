@@ -1,6 +1,6 @@
 secretName: 
 
-cronRule: "0 1 * * *" 
+cronRule: "0 1,13 * * *" 
 
 timeZone: UTC
 
