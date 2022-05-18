@@ -27,7 +27,7 @@ if [[ "$1" == "network" ]] && [[ "$2" == "--setup" ]]; then
 
 fi 
 
-if [[ ! -f "$INIT_PATH_CHECK" ]] && [[ ! "$HOLLAEX_NETWORK_OPERATION" ]] && [[ ! "$1" == "version" ]] && [[ ! "$1" == "deploy" ]]; then 
+if [[ ! -f "$INIT_PATH_CHECK" ]] && [[ ! "$HOLLAEX_NETWORK_OPERATION" ]] && [[ ! "$1" == "version" ]]; then 
 
     echo -e "\n\033[91mFailed to detect the HollaEx Kit."
     echo -e "Every HollaEx commands should be run at the HollaEx Kit path.\033[39m" 
@@ -54,7 +54,7 @@ fi
 
 if [[ ! "$HOLLAEX_NETWORK_OPERATION" ]]; then 
 
-    if [[ ! "$1" == "version" ]] && [[ ! "$1" == "deploy" ]]; then 
+    if [[ ! "$1" == "version" ]]; then 
     
         source $(pwd)/.hollaex
 
