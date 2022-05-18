@@ -27,7 +27,7 @@ if [[ "$1" == "network" ]] && [[ "$2" == "--setup" ]]; then
 
 fi 
 
-if [[ ! -f "$INIT_PATH_CHECK" ]] && [[ ! "$HOLLAEX_NETWORK_OPERATION" ]]; then 
+if [[ ! -f "$INIT_PATH_CHECK" ]] && [[ ! "$HOLLAEX_NETWORK_OPERATION" ]] && [[ ! "$1" == "version" ]] && [[ ! "$1" == "deploy" ]]; then 
 
     echo -e "\n\033[91mFailed to detect the HollaEx Kit."
     echo -e "Every HollaEx commands should be run at the HollaEx Kit path.\033[39m" 
@@ -54,7 +54,11 @@ fi
 
 if [[ ! "$HOLLAEX_NETWORK_OPERATION" ]]; then 
 
-    source $(pwd)/.hollaex
+    if [[ ! "$1" == "version" ]] && [[ ! "$1" == "deploy" ]]; then 
+    
+        source $(pwd)/.hollaex
+
+    fi
 
     if [[ "$HOLLAEX_CONFIGMAP_NETWORK_URL" ]]; then 
 
@@ -2824,6 +2828,166 @@ elif [[ "$1" == "pull" ]]; then
         exit 1;
 
     fi
+
+
+elif [[ "$1" == "deploy" ]]; then
+
+    export HOLLAEX_DEPLOY_SUPPORTED_CLOUD_PROVIODERS="digitalocean"
+
+    while true; do
+        [[ $# -eq 0 ]] && break
+        case $1 in
+            --cloud)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                if [[ "$1" == "digitalocean" ]]; then
+                    export HOLLAEX_DEPLOY_CLOUD_PROVIDER=$1
+                    echo "Selected Cloud Provider: $HOLLAEX_DEPLOY_CLOUD_PROVIDER."
+                else 
+                    echo -e "\n\033[91mError: Not supported cloud provider!\033[39m"
+                    echo "Supported Clouds: $HOLLAEX_DEPLOY_SUPPORTED_CLOUD_PROVIODERS."
+                    echo -e "Please try it again with the supported cloud provider name.\n"
+                    exit 1;
+                fi
+                shift; continue
+                ;;
+            --skip)
+                RUN_WITH_VERIFY=false
+                echo "Skipping the command confirmation."
+                shift; continue
+                ;;
+            --*) 
+                err_msg "Invalid option: $1"
+                print_usage;
+                exit 1;
+                ;;
+        esac
+        shift
+    done
+
+    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        CONFIG_FILE_PATH=$(pwd)/settings/*
+        TEMPLATE_GENERATE_PATH=$(pwd)/templates
+        INIT_PATH_CHECK=$(pwd)/.hollaex
+
+    fi
+
+    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        
+    fi
+
+    source $SCRIPTPATH/tools_generator.sh
+
+    # for i in ${CONFIG_FILE_PATH[@]}; do
+    #     source $i
+    # done;
+
+    if [[ "$HOLLAEX_DEPLOY_CLOUD_PROVIDER" == "digitalocean" ]]; then 
+
+        echo -e "Checking the installation status of DigitalOcean CLI (doctl)...\n"
+        if ! command doctl version; then
+
+            echo "Error: doctl is not installed."
+            echo "Please install the doctl first to continue."
+
+            exit 1;
+        
+        fi 
+
+        echo -e "Checking the authentication status of doctl...\n"
+        if ! command doctl auth init; then
+
+            echo "Error: The authentication was not successful."
+            echo "Please run 'doctl auth init' to go through the auth first."
+
+            exit 1;
+        
+        fi
+
+        echo -e "\033[92mGood to go!\033[39m\n"
+
+        echo "***************************************************************"
+        echo "Droplet Name: "
+        printf "\033[2m- Enter the name you want to set for the new droplet (Default: hollaex-kit).\033[22m\n"
+        read answer
+
+
+        export HOLLAEX_DEPLOY_DIGITALOCEAN_DROPLET_NAME=${answer:-hollaexkit}
+        export HOLLAEX_DEPLOY_DIGITALOCEAN_DROPLET_NAME=$(echo $HOLLAEX_DEPLOY_DIGITALOCEAN_DROPLET_NAME | tr -dc '[:alnum:]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+    
+        
+
+        printf "\n"
+        echo "${HOLLAEX_DEPLOY_DIGITALOCEAN_DROPLET_NAME} ✔"
+        printf "\n"
+
+        echo "***************************************************************"
+
+        echo -e "Listing up the available regions:"
+        doctl compute region list
+
+        echo -e "\nRegion: "
+        printf "\033[2m- Enter the name of the region you want to deploy your droplet. (Default: sgp1)\033[22m\n"
+        read answer
+
+        export HOLLAEX_DEPLOY_DIGITALOCEAN_REGION=${answer:-sgp1}
+
+        while true;
+            do if (( ${#answer} > 4 )); then
+                printf "Invalid Region Name! Please try it again.\n"
+                echo  "Region: "
+                read answer
+                export HOLLAEX_DEPLOY_DIGITALOCEAN_REGION=${answer}
+            else
+                break;
+            fi
+        done
+
+        printf "\n"
+        echo "${HOLLAEX_DEPLOY_DIGITALOCEAN_REGION} ✔"
+        printf "\n"
+
+        echo "***************************************************************"
+        
+        echo -e "\nDeploying the Droplet..."
+
+        if ! command doctl compute droplet create --image hollaex-hollaexkit --size s-4vcpu-8gb --region $HOLLAEX_DEPLOY_DIGITALOCEAN_REGION $HOLLAEX_DEPLOY_DIGITALOCEAN_DROPLET_NAME; then
+
+            echo "Error: Failed to deploy the droplet!"
+            echo "Please review the logs and try it again."
+
+            exit 1;
+
+        fi
+
+        echo -e "\n\033[92mSuccessfully deployed the HollaEx Kit Droplet on DigitalOcean!\033[39m\n"
+        
+        echo -e "The Droplet creation could take up to 5 minutes."
+        echo -e "There will be an email sent with the connection information for your new Droplet soon.\n"
+        echo -e "Please continue to setup the HollaEx Kit through it.\n"
+
+        echo -e "Happy Coding 🐳\n"
+
+    else
+
+        echo -e "\n\033[91mError: You didn't specify the Cloud Provider.\033[39m\n"
+        
+        echo "The 'hollaex deploy' is the command to quickly deploy the HollaEx Kit base on the Public Cloud."
+        echo "Supported Cloud Provider(s): $HOLLAEX_DEPLOY_SUPPORTED_CLOUD_PROVIODERS."
+
+        echo -e "\nTry it again by running 'hollaex deploy --cloud <CLOUD_PROVIDER_NAME>'.\n"
+
+        exit 1;
+
+    fi 
+    
+    exit 0;
 
 
 elif [[ "$1" == "start" ]]; then
