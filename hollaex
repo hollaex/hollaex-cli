@@ -27,7 +27,7 @@ if [[ "$1" == "network" ]] && [[ "$2" == "--setup" ]]; then
 
 fi 
 
-if [[ ! -f "$INIT_PATH_CHECK" ]] && [[ ! "$HOLLAEX_NETWORK_OPERATION" ]]; then 
+if [[ ! -f "$INIT_PATH_CHECK" ]] && [[ ! "$HOLLAEX_NETWORK_OPERATION" ]] && [[ ! "$1" == "version" ]]; then 
 
     echo -e "\n\033[91mFailed to detect the HollaEx Kit."
     echo -e "Every HollaEx commands should be run at the HollaEx Kit path.\033[39m" 
@@ -54,7 +54,11 @@ fi
 
 if [[ ! "$HOLLAEX_NETWORK_OPERATION" ]]; then 
 
-    source $(pwd)/.hollaex
+    if [[ ! "$1" == "version" ]]; then 
+    
+        source $(pwd)/.hollaex
+
+    fi
 
     if [[ "$HOLLAEX_CONFIGMAP_NETWORK_URL" ]]; then 
 
@@ -1845,6 +1849,20 @@ elif [[ "$1" == "setup" ]]; then
 
         apply_nginx_user_defined_values
 
+        # initial setup
+        apply_nginx_root_domain_to_api
+
+        # # Update the nginx if the Kit got a separated domain for the API.
+        # if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+
+        #     apply_nginx_root_domain_to_api;
+        
+        # else
+
+        #     apply_nginx_root_domain_to_web;
+            
+        # fi
+
         if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d; then
             
             sleep 5
@@ -2977,7 +2995,16 @@ elif [[ "$1" == "start" ]]; then
         if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
 
             echo "Generating Kubernetes Ingress"
-            generate_kubernetes_ingress;
+
+            if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+
+                generate_kubernetes_ingress;
+            
+            else 
+
+                generate_kubernetes_ingress_2_4;
+
+            fi 
 
         fi
 
@@ -3022,6 +3049,14 @@ elif [[ "$1" == "start" ]]; then
                 kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-job --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
             fi 
+
+            # Only tries to attempt remove ingress rules from Kubernetes if it exists.
+            if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+            
+                echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
+                kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+
+            fi
 
             echo "Applying Ingress rules..."
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
@@ -3159,8 +3194,19 @@ elif [[ "$1" == "start" ]]; then
         fi
 
         # Update nginx.conf to apply user own domains
-        echo "Updating nginx conf file based on user settings"
-        apply_nginx_user_defined_values;
+        # echo "Updating nginx conf file based on user settings"
+        # apply_nginx_user_defined_values;
+        
+        # Update the nginx if the Kit got a separated domain for the API.
+        # if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+
+        #     apply_nginx_root_domain_to_api;
+        
+        # else
+
+        #     apply_nginx_root_domain_to_web;
+
+        # fi 
 
         if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d; then
 
@@ -3503,7 +3549,7 @@ elif [[ "$1" == "prod" ]]; then
 
         # Web Domain
         echo "***************************************************************"
-        echo "Exchange Web Domain"
+        echo "Exchange Domain"
         printf "\033[2m- Enter the full domain of your exchange website, without 'http' or 'https'.\033[22m\n"
         read answer
         
@@ -3532,52 +3578,52 @@ elif [[ "$1" == "prod" ]]; then
         printf "\n"
 
         #Automatically mark the API url as api.<MY_DOMAIN>
-        export INPUT_HOLLAEX_CONFIGMAP_API_HOST="api.${INPUT_HOLLAEX_CONFIGMAP_DOMAIN}"
+        export INPUT_HOLLAEX_CONFIGMAP_API_HOST="${INPUT_HOLLAEX_CONFIGMAP_DOMAIN}/api"
         local INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP="http://${INPUT_HOLLAEX_CONFIGMAP_API_HOST}"
         local PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP//\//\\/}
 
-        printf "Since you selected the Exchange Web domain as: \033[1m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN,\033[0m\n"
-        printf "Your Exchange Server \033[1mAPI domain\033[0m would be: \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST\033[0m.\n"
-        printf "Type \033[1m'Y'\033[0m to continute, or \033[1m'N'\033[0m to modify the Exchange Server API domain. (Y/n)\n"
-        read answer
+        # printf "Since you selected the Exchange Web domain as: \033[1m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN,\033[0m\n"
+        # printf "Your Exchange Server \033[1mAPI domain\033[0m would be: \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST\033[0m.\n"
+        # printf "Type \033[1m'Y'\033[0m to continute, or \033[1m'N'\033[0m to modify the Exchange Server API domain. (Y/n)\n"
+        # read answer
 
-        if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+        # if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
         
-            # API Domain
-            echo "***************************************************************"
-            echo "Exchange Server API Domain"
-            printf "\033[2m- Enter the full domain of your exchange API server, without 'http' or 'https'.\033[22m\n"
-            read answer
+        #     # API Domain
+        #     echo "***************************************************************"
+        #     echo "Exchange Server API Domain"
+        #     printf "\033[2m- Enter the full domain of your exchange API server, without 'http' or 'https'.\033[22m\n"
+        #     read answer
 
-            while true;
-                do if [[ "$answer" == *"http"* ]]; then
-                    printf "\nValue should be an URL without 'http' or 'https'.\n"
-                    echo  "Exchange API Domain: "
-                    read answer
-                    local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
-                elif [[ -z "$answer" ]]; then
-                    printf "\nThe value should not be empty!\n\n"
-                    echo  "Exchange API Domain: "
-                    read answer
-                    local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
-                else
-                    break;
-                fi
-            done
+        #     while true;
+        #         do if [[ "$answer" == *"http"* ]]; then
+        #             printf "\nValue should be an URL without 'http' or 'https'.\n"
+        #             echo  "Exchange API Domain: "
+        #             read answer
+        #             local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
+        #         elif [[ -z "$answer" ]]; then
+        #             printf "\nThe value should not be empty!\n\n"
+        #             echo  "Exchange API Domain: "
+        #             read answer
+        #             local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
+        #         else
+        #             break;
+        #         fi
+        #     done
 
-            export INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
+        #     export INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
 
-            printf "\n"
-            echo "${INPUT_HOLLAEX_CONFIGMAP_API_HOST} ✔"
-            printf "\n"
+        #     printf "\n"
+        #     echo "${INPUT_HOLLAEX_CONFIGMAP_API_HOST} ✔"
+        #     printf "\n"
 
-            local INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP="http://${answer}"
-            local PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP//\//\\/}
+        #     local INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP="http://${answer}"
+        #     local PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP//\//\\/}
 
-        fi 
+        # fi 
 
-        export HOLLAEX_CONFIGMAP_DOMAIN=$INPUT_HOLLAEX_CONFIGMAP_DOMAIN
-        export HOLLAEX_CONFIGMAP_API_HOST=$INPUT_HOLLAEX_CONFIGMAP_API_HOST
+        # export HOLLAEX_CONFIGMAP_DOMAIN=$INPUT_HOLLAEX_CONFIGMAP_DOMAIN
+        # export HOLLAEX_CONFIGMAP_API_HOST=$INPUT_HOLLAEX_CONFIGMAP_API_HOST
 
         printf "\nYour Exchange Web Domain: \033[92m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN\033[39m"
         printf "\nYour Exchange API Domain: \033[92m$INPUT_HOLLAEX_CONFIGMAP_API_HOST\033[39m\n"
@@ -3707,29 +3753,31 @@ elif [[ "$1" == "prod" ]]; then
         
         fi
 
-        if command nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST > /dev/null; then
+        # if command nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST > /dev/null; then
 
-            API_URL_NSLOOKUP_CHECK=$(nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST)
+        #     API_URL_NSLOOKUP_CHECK=$(nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST)
             
-            # Catching exception
-            if [[ "$API_URL_NSLOOKUP_CHECK" == *"an't find"* ]]; then 
+        #     # Catching exception
+        #     if [[ "$API_URL_NSLOOKUP_CHECK" == *"an't find"* ]]; then 
 
-                HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=false
+        #         HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=false
 
-            else 
+        #     else 
 
-                printf "\n\033[92mSuccessfully resolved the exchange API URL ($INPUT_HOLLAEX_CONFIGMAP_API_HOST).\033[39m\n"
-                HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=true
+        #         printf "\n\033[92mSuccessfully resolved the exchange API URL ($INPUT_HOLLAEX_CONFIGMAP_API_HOST).\033[39m\n"
+        #         HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=true
 
-            fi 
+        #     fi 
 
-        else
+        # else
 
-            HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=false
+        #     HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=false
         
-        fi
+        # fi
 
-        if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] || [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+        # if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] || [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+        if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] ; then
+
 
             # Announcing the domain configuration how-to.
             SYSTEM_PUBLIC_IP=$(curl -s ifconfig.me)
@@ -3750,14 +3798,14 @@ elif [[ "$1" == "prod" ]]; then
                 read -p "Press enter once you configured the DNS."
             fi
 
-            if [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+            # if [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
 
-                printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_API_HOST.\033[39m\n"
-                printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST to point $SYSTEM_PUBLIC_IP\033[0m.\n"
-                printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
-                read -p "Press enter once you configured the DNS."
+            #     printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_API_HOST.\033[39m\n"
+            #     printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST to point $SYSTEM_PUBLIC_IP\033[0m.\n"
+            #     printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
+            #     read -p "Press enter once you configured the DNS."
 
-            fi
+            # fi
 
             printf "\n\033[93mChecking the DNS reachability...\033[39m\n"
             echo "Info: You could always quit the DNS checking loop with 'Crtl + C'."
@@ -3822,9 +3870,22 @@ elif [[ "$1" == "prod" ]]; then
     
     if [[ ! "$USE_KUBERNETES" ]]; then 
 
+        HOLLAEX_CONFIGMAP_DOMAIN=$INPUT_HOLLAEX_CONFIGMAP_DOMAIN
+
         apply_nginx_user_defined_values;
 
     fi 
+
+    # Only generated the separated web.conf file if user got a different domain for the API.
+    if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then 
+
+        if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
+
+            rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
+
+        fi
+
+    fi
 
     printf "\n"
 
@@ -3883,41 +3944,54 @@ elif [[ "$1" == "prod" ]]; then
 
             echo "HollaEx CLI natively supports issuing SSL cert through 'certbot' and Let's encrypt."
             echo "Running 'certbot' now..."
-            printf "\n"
-            while true;
-                do if command hollaex toolbox --issue_ssl --skip; then
 
-                    if [[ ! "$HOLLAEX_NETWORK_PROD" ]]; then 
+            if command hollaex toolbox --issue_ssl --skip; then
 
-                        echo "Do you want to issue more SSL cert for different domain? (Y/n)"
-                        read answer
+                echo "Successfully issued the SSL certificate for your domain."
 
-                        if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+            else 
 
-                            echo "Skipping..."
-                            break;
+                printf "\033[91mFailed to issue SSL certificate by using Certbot. Please confirm your settings and try again.\033[39m\n"
+                exit 1;
 
-                        else 
+            fi
 
-                            hollaex toolbox --issue_ssl --skip;
-                            break;
 
-                        fi
+            # printf "\n"
+            # while true;
+            #     do if command hollaex toolbox --issue_ssl --skip; then
+
+            #         if [[ ! "$HOLLAEX_NETWORK_PROD" ]]; then 
+
+            #             echo "Do you want to issue more SSL cert for different domain? (Y/n)"
+            #             read answer
+
+            #             if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+
+            #                 echo "Skipping..."
+            #                 break;
+
+            #             else 
+
+            #                 hollaex toolbox --issue_ssl --skip;
+            #                 break;
+
+            #             fi
                     
-                    else 
+            #         else 
 
-                        echo "Successfully issued the SSL certificate for your domain."
+            #             echo "Successfully issued the SSL certificate for your domain."
 
-                    fi 
+            #         fi 
                 
-                else 
+            #     else 
 
-                    printf "\033[91mFailed to issue SSL certificate by using Certbot. Please confirm your settings and try again.\033[39m\n"
-                    exit 1;
+            #         printf "\033[91mFailed to issue SSL certificate by using Certbot. Please confirm your settings and try again.\033[39m\n"
+            #         exit 1;
 
-                fi
+            #     fi
 
-            done;
+            # done;
 
             
         fi
@@ -4057,6 +4131,8 @@ elif [[ "$1" == "prod" ]]; then
         hollaex_network_prod_complete;
 
     else 
+
+        apply_nginx_root_domain_to_web;
 
         hollaex_prod_complete;
     
@@ -5579,29 +5655,54 @@ elif [[ "$1" == "web" ]]; then
             echo "Generating web .env file"
             generate_hollaex_web_local_env
 
-            if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]] || [[ ! -s "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
+            # Only generated the separated web.conf file if user got a different domain for the API.
+            if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then 
 
-                if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]] && [[ -s "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]]; then
-
-                    echo "Restoring old web Nginx configuration file"
-                    cp -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
-
-                    rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf
-
-                else
+                if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
 
                     echo "Generating web Nginx configuration file"
                     generate_hollaex_web_local_nginx_conf
-                
+
                 fi
 
             fi
+
+            # if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]] || [[ ! -s "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
+
+            #     if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]] && [[ -s "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]]; then
+
+            #         echo "Restoring old web Nginx configuration file"
+            #         cp -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
+
+            #         rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf
+
+            #     else
+
+            #         echo "Generating web Nginx configuration file"
+            #         generate_hollaex_web_local_nginx_conf
+                
+            #     fi
+
+            # fi
 
             echo "Generating web Nginx upstream file"
             generate_nginx_upstream_for_web
 
             echo "Updating main Nginx.conf based on user settings..."
             apply_nginx_user_defined_values
+
+            # Update the nginx if the Kit got a separated domain for the API.
+            # if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+
+            #     apply_nginx_root_domain_to_api;
+            
+            # else
+
+            #     apply_nginx_root_domain_to_web;
+                
+            # fi
+
+            apply_nginx_root_domain_to_web
 
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client up -d; then
 
@@ -5744,26 +5845,37 @@ elif [[ "$1" == "web" ]]; then
             echo "Generating web docker-compose file"
             generate_local_docker_compose_for_web
 
-            if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]] || [[ ! -s "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
+            # if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]] || [[ ! -s "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
 
-                if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]] && [[ -s "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]]; then
+            #     if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]] && [[ -s "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf" ]]; then
 
-                    echo "Restoring old web Nginx configuration file"
-                    cp -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
+            #         echo "Restoring old web Nginx configuration file"
+            #         cp -f $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
 
-                    rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf
+            #         rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/.web.conf
 
-                else
+            #     else
 
-                    echo "Generating web Nginx configuration file"
-                    generate_hollaex_web_local_nginx_conf
+            #         echo "Generating web Nginx configuration file"
+            #         generate_hollaex_web_local_nginx_conf
                 
-                fi
+            #     fi
 
-            fi
+            # fi
 
-            echo "Updating main Nginx.conf based on user settings..."
-            apply_nginx_user_defined_values
+            # echo "Updating main Nginx.conf based on user settings..."
+            # apply_nginx_user_defined_values
+
+            # Update the nginx if the Kit got a separated domain for the API.
+            # if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+
+            #     apply_nginx_root_domain_to_api;
+            
+            # else
+
+            #     apply_nginx_root_domain_to_web;
+                
+            # fi
 
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client start; then
 
@@ -6039,15 +6151,31 @@ elif [[ "$1" == "web" ]]; then
 
             fi 
 
-            if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
+            # Only generated the separated web.conf file if user got a different domain for the API.
+            if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
 
-                echo "Generating web Nginx configuration file"
-                generate_hollaex_web_local_nginx_conf
+                if [[ ! -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
+
+                    echo "Generating web Nginx configuration file"
+                    generate_hollaex_web_local_nginx_conf
+
+                fi
 
             fi
 
-            echo "Updating main Nginx.conf based on user settings..."
-            apply_nginx_user_defined_values
+            # echo "Updating main Nginx.conf based on user settings..."
+            # apply_nginx_user_defined_values
+
+            # Update the nginx if the Kit got a separated domain for the API.
+            # if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+
+            #     apply_nginx_root_domain_to_api;
+            
+            # else
+
+            #     apply_nginx_root_domain_to_web;
+                
+            # fi
 
             if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client stop; then
                 
@@ -7663,7 +7791,15 @@ elif [[ "$1" == "toolbox" ]]; then
             if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
 
                 echo "Generating Kubernetes Ingress"
-                generate_kubernetes_ingress;
+                if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+
+                    generate_kubernetes_ingress;
+                
+                else 
+
+                    generate_kubernetes_ingress_2_4;
+
+                fi 
 
                 echo "Generating Kubernetes Ingress for Web"
                 generate_kubernetes_ingress_for_web;

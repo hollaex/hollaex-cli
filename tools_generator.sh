@@ -374,6 +374,7 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
   upstream plugins {
     server ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins:10011;
   }
+  
 EOL
 
 done
@@ -416,7 +417,7 @@ EOL
 function apply_nginx_user_defined_values(){
     #sed -i.bak "s/$ENVIRONMENT_DOCKER_IMAGE_VERSION/$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
-    local SERVER_DOMAIN=$(echo $HOLLAEX_CONFIGMAP_API_HOST | cut -f3 -d "/")
+    local SERVER_DOMAIN=$(echo $HOLLAEX_CONFIGMAP_DOMAIN | cut -f3 -d "/")
     sed -i.bak "s/server_name.*\#Server.*/server_name $SERVER_DOMAIN; \#Server domain/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
     rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
 
@@ -425,6 +426,20 @@ function apply_nginx_user_defined_values(){
       sed -i.bak "s/server_name.*\#Client.*/server_name $CLIENT_DOMAIN; \#Client domain/" $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
       rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf.bak
     fi
+}
+
+function apply_nginx_root_domain_to_api(){
+
+    sed -i.bak "s/.*\#Root.*/        proxy_pass http:\/\/api; \#Root path/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
+    rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
+
+}
+
+function apply_nginx_root_domain_to_web(){
+
+    sed -i.bak "s/.*\#Root.*/        proxy_pass http:\/\/web; \#Root path/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
+    rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
+
 }
 
 function generate_local_docker_compose_for_core_dev() {
@@ -1635,6 +1650,165 @@ EOL
 
 }
 
+function generate_kubernetes_ingress_2_4() {
+
+if [[ -z "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" ]]; then 
+
+  ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER=true
+
+fi 
+
+# Generate Kubernetes Secret
+cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml <<EOL
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-api
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
+    nginx.ingress.kubernetes.io/proxy-body-size: "6m"
+    #nginx.ingress.kubernetes.io/whitelist-source-range: ""
+    nginx.ingress.kubernetes.io/rewrite-target: /\$2
+    nginx.ingress.kubernetes.io/server-snippet: |
+        location @maintenance_503 {
+          internal;
+          return 503;
+        }
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      limit_req zone=api burst=10 nodelay;
+      limit_req_log_level notice;
+      limit_req_status 429;
+
+      #error_page 403 @maintenance_503;
+
+spec:
+  rules:
+  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+    http:
+      paths:
+      - pathType: Prefix
+        path: /api(/|$)(.*)
+        backend:
+          service:
+            name: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
+            port:
+              number: 10010
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_web_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-plugins
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
+    #nginx.ingress.kubernetes.io/whitelist-source-range: ""
+    nginx.ingress.kubernetes.io/server-snippet: |
+        location @maintenance_503 {
+          internal;
+          return 503;
+        }
+    nginx.ingress.kubernetes.io/proxy-body-size: "6m"
+    nginx.ingress.kubernetes.io/rewrite-target: /plugins/\$2
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      #error_page 403 @maintenance_503;
+
+spec:
+  rules:
+  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+    http:
+      paths:
+      - pathType: Prefix
+        path: /api/plugins(/|$)(.*)
+        backend:
+          service:
+            name: ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins
+            port:
+              number: 10011
+    
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_web_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-plugins-sms-verify
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
+    #nginx.ingress.kubernetes.io/whitelist-source-range: ""
+    nginx.ingress.kubernetes.io/server-snippet: |
+        location @maintenance_503 {
+          internal;
+          return 503;
+        }
+    nginx.ingress.kubernetes.io/proxy-body-size: "6m"
+    nginx.ingress.kubernetes.io/rewrite-target: /plugins/sms/verify/\$2
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      #error_page 403 @maintenance_503;
+      limit_req zone=sms burst=10 nodelay;
+      limit_req_log_level notice;
+      limit_req_status 429;
+
+spec:
+  rules:
+  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+    http:
+      paths:
+      - pathType: Prefix
+        path: /api/plugins/sms/verify(/|$)(.*)
+        backend:
+          service:
+            name: ${ENVIRONMENT_EXCHANGE_NAME}-server-plugins
+            port:
+              number: 10011
+    
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_web_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-stream
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
+    #nginx.ingress.kubernetes.io/whitelist-source-range: ""
+    nginx.ingress.kubernetes.io/server-snippet: |
+        location @maintenance_503 {
+          internal;
+          return 503;
+        }
+    nginx.ingress.kubernetes.io/proxy-body-size: "6m"
+    nginx.org/websocket-services: "${ENVIRONMENT_EXCHANGE_NAME}-server-stream"
+    nginx.ingress.kubernetes.io/upstream-hash-by: "\$binary_remote_addr"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      #error_page 403 @maintenance_503;
+spec:
+  rules:
+  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+    http:
+      paths:
+      - pathType: Prefix
+        path: /stream
+        backend:
+          service:
+            name: ${ENVIRONMENT_EXCHANGE_NAME}-server-stream
+            port:
+              number: 10080
+  
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_web_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
+EOL
+
+}
+
 # function generate_kubernetes_ingress() {
 
 # if [[ -z "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" ]]; then 
@@ -2087,6 +2261,7 @@ NODE_ENV=${HOLLAEX_CONFIGMAP_NODE_ENV}
 
 REACT_APP_PUBLIC_URL=${HOLLAEX_CONFIGMAP_DOMAIN}
 REACT_APP_SERVER_ENDPOINT=${HOLLAEX_CONFIGMAP_API_HOST}
+
 REACT_APP_NETWORK=${HOLLAEX_CONFIGMAP_NETWORK}
 
 REACT_APP_DEVELOPMENT_ENDPOINT=${HOLLAEX_CONFIGMAP_API_HOST}
@@ -2104,6 +2279,16 @@ REACT_APP_LOGO_BLACK_PATH=${HOLLAEX_CONFIGMAP_LOGO_BLACK_PATH}
 REACT_APP_EXCHANGE_NAME='${HOLLAEX_CONFIGMAP_API_NAME}'
 
 EOL
+
+if [[ "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+
+cat >> $HOLLAEX_CLI_INIT_PATH/web/.env <<EOL
+
+REACT_APP_STREAM_ENDPOINT=$(if [[ "$HOLLAEX_CONFIGMAP_DOMAIN" == *"https"* ]]; then echo "wss://"; else echo "ws://"; fi)$(echo $HOLLAEX_CONFIGMAP_DOMAIN | cut -f3 -d /)
+
+EOL
+
+fi 
 }
 
 function generate_hollaex_web_local_nginx_conf() {
@@ -4518,7 +4703,15 @@ function run_and_upgrade_hollaex_on_kubernetes() {
   if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
 
       echo "Generating Kubernetes Ingress"
-      generate_kubernetes_ingress;
+      if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+
+          generate_kubernetes_ingress;
+      
+      else 
+
+          generate_kubernetes_ingress_2_4;
+
+      fi 
 
   fi
 
@@ -4685,7 +4878,15 @@ function run_and_upgrade_hollaex_network_on_kubernetes() {
   if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
 
       echo "Generating Kubernetes Ingress"
-      generate_kubernetes_ingress;
+      if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+
+          generate_kubernetes_ingress;
+      
+      else 
+
+          generate_kubernetes_ingress_2_4;
+
+      fi 
 
   fi
 
