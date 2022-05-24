@@ -4132,7 +4132,7 @@ elif [[ "$1" == "prod" ]]; then
 
     else 
 
-        apply_nginx_root_domain_to_web;
+        # apply_nginx_root_domain_to_web;
 
         hollaex_prod_complete;
     
