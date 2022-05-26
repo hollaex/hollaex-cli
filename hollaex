@@ -3481,6 +3481,10 @@ elif [[ "$1" == "prod" ]]; then
                 echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
                 shift; continue
                 ;;
+            --api_subdomain)
+                API_SUBDOMAIN_MODE=true
+                shift; continue
+                ;;
             --kube)
                 USE_KUBERNETES=true
                 echo "HollaEx CLI will use your Kubernetes cluster as a target."
@@ -3578,52 +3582,61 @@ elif [[ "$1" == "prod" ]]; then
         printf "\n"
 
         #Automatically mark the API url as api.<MY_DOMAIN>
-        export INPUT_HOLLAEX_CONFIGMAP_API_HOST="${INPUT_HOLLAEX_CONFIGMAP_DOMAIN}/api"
+
+        if [[ "$API_SUBDOMAIN_MODE" ]]; then 
+            export INPUT_HOLLAEX_CONFIGMAP_API_HOST="api.${INPUT_HOLLAEX_CONFIGMAP_DOMAIN}"
+        else 
+            export INPUT_HOLLAEX_CONFIGMAP_API_HOST="${INPUT_HOLLAEX_CONFIGMAP_DOMAIN}/api"
+        fi
         local INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP="http://${INPUT_HOLLAEX_CONFIGMAP_API_HOST}"
         local PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP//\//\\/}
 
-        # printf "Since you selected the Exchange Web domain as: \033[1m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN,\033[0m\n"
-        # printf "Your Exchange Server \033[1mAPI domain\033[0m would be: \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST\033[0m.\n"
-        # printf "Type \033[1m'Y'\033[0m to continute, or \033[1m'N'\033[0m to modify the Exchange Server API domain. (Y/n)\n"
-        # read answer
+        if [[ "$API_SUBDOMAIN_MODE" ]]; then 
 
-        # if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+            printf "Since you selected the Exchange Web domain as: \033[1m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN,\033[0m\n"
+            printf "Your Exchange Server \033[1mAPI domain\033[0m would be: \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST\033[0m.\n"
+            printf "Type \033[1m'Y'\033[0m to continute, or \033[1m'N'\033[0m to modify the Exchange Server API domain. (Y/n)\n"
+            read answer
+
+            if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+            
+                # API Domain
+                echo "***************************************************************"
+                echo "Exchange Server API Domain"
+                printf "\033[2m- Enter the full domain of your exchange API server, without 'http' or 'https'.\033[22m\n"
+                read answer
+
+                while true;
+                    do if [[ "$answer" == *"http"* ]]; then
+                        printf "\nValue should be an URL without 'http' or 'https'.\n"
+                        echo  "Exchange API Domain: "
+                        read answer
+                        local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
+                    elif [[ -z "$answer" ]]; then
+                        printf "\nThe value should not be empty!\n\n"
+                        echo  "Exchange API Domain: "
+                        read answer
+                        local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
+                    else
+                        break;
+                    fi
+                done
+
+                export INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
+
+                printf "\n"
+                echo "${INPUT_HOLLAEX_CONFIGMAP_API_HOST} ✔"
+                printf "\n"
+
+                local INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP="http://${answer}"
+                local PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP//\//\\/}
+
+            fi 
+
+            export HOLLAEX_CONFIGMAP_DOMAIN=$INPUT_HOLLAEX_CONFIGMAP_DOMAIN
+            export HOLLAEX_CONFIGMAP_API_HOST=$INPUT_HOLLAEX_CONFIGMAP_API_HOST
         
-        #     # API Domain
-        #     echo "***************************************************************"
-        #     echo "Exchange Server API Domain"
-        #     printf "\033[2m- Enter the full domain of your exchange API server, without 'http' or 'https'.\033[22m\n"
-        #     read answer
-
-        #     while true;
-        #         do if [[ "$answer" == *"http"* ]]; then
-        #             printf "\nValue should be an URL without 'http' or 'https'.\n"
-        #             echo  "Exchange API Domain: "
-        #             read answer
-        #             local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
-        #         elif [[ -z "$answer" ]]; then
-        #             printf "\nThe value should not be empty!\n\n"
-        #             echo  "Exchange API Domain: "
-        #             read answer
-        #             local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
-        #         else
-        #             break;
-        #         fi
-        #     done
-
-        #     export INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
-
-        #     printf "\n"
-        #     echo "${INPUT_HOLLAEX_CONFIGMAP_API_HOST} ✔"
-        #     printf "\n"
-
-        #     local INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP="http://${answer}"
-        #     local PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP//\//\\/}
-
-        # fi 
-
-        # export HOLLAEX_CONFIGMAP_DOMAIN=$INPUT_HOLLAEX_CONFIGMAP_DOMAIN
-        # export HOLLAEX_CONFIGMAP_API_HOST=$INPUT_HOLLAEX_CONFIGMAP_API_HOST
+        fi
 
         printf "\nYour Exchange Web Domain: \033[92m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN\033[39m"
         printf "\nYour Exchange API Domain: \033[92m$INPUT_HOLLAEX_CONFIGMAP_API_HOST\033[39m\n"
@@ -3753,27 +3766,31 @@ elif [[ "$1" == "prod" ]]; then
         
         fi
 
-        # if command nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST > /dev/null; then
+        if [[ "$API_SUBDOMAIN_MODE" ]]; then 
 
-        #     API_URL_NSLOOKUP_CHECK=$(nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST)
+            if command nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST > /dev/null; then
+
+                API_URL_NSLOOKUP_CHECK=$(nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST)
+                
+                # Catching exception
+                if [[ "$API_URL_NSLOOKUP_CHECK" == *"an't find"* ]]; then 
+
+                    HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=false
+
+                else 
+
+                    printf "\n\033[92mSuccessfully resolved the exchange API URL ($INPUT_HOLLAEX_CONFIGMAP_API_HOST).\033[39m\n"
+                    HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=true
+
+                fi 
+
+            else
+
+                HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=false
             
-        #     # Catching exception
-        #     if [[ "$API_URL_NSLOOKUP_CHECK" == *"an't find"* ]]; then 
-
-        #         HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=false
-
-        #     else 
-
-        #         printf "\n\033[92mSuccessfully resolved the exchange API URL ($INPUT_HOLLAEX_CONFIGMAP_API_HOST).\033[39m\n"
-        #         HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=true
-
-        #     fi 
-
-        # else
-
-        #     HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=false
+            fi
         
-        # fi
+        fi
 
         # if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] || [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
         if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] ; then
@@ -3798,14 +3815,18 @@ elif [[ "$1" == "prod" ]]; then
                 read -p "Press enter once you configured the DNS."
             fi
 
-            # if [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+            if [[ "$API_SUBDOMAIN_MODE" ]]; then 
 
-            #     printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_API_HOST.\033[39m\n"
-            #     printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST to point $SYSTEM_PUBLIC_IP\033[0m.\n"
-            #     printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
-            #     read -p "Press enter once you configured the DNS."
+                if [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
 
-            # fi
+                    printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_API_HOST.\033[39m\n"
+                    printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST to point $SYSTEM_PUBLIC_IP\033[0m.\n"
+                    printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
+                    read -p "Press enter once you configured the DNS."
+
+                fi
+
+            fi
 
             printf "\n\033[93mChecking the DNS reachability...\033[39m\n"
             echo "Info: You could always quit the DNS checking loop with 'Crtl + C'."
@@ -3957,41 +3978,45 @@ elif [[ "$1" == "prod" ]]; then
             fi
 
 
-            # printf "\n"
-            # while true;
-            #     do if command hollaex toolbox --issue_ssl --skip; then
+            if [[ "$API_SUBDOMAIN_MODE" ]]; then 
 
-            #         if [[ ! "$HOLLAEX_NETWORK_PROD" ]]; then 
+                printf "\n"
+                while true;
+                    do if command hollaex toolbox --issue_ssl --skip; then
 
-            #             echo "Do you want to issue more SSL cert for different domain? (Y/n)"
-            #             read answer
+                        if [[ ! "$HOLLAEX_NETWORK_PROD" ]]; then 
 
-            #             if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+                            echo "Do you want to issue more SSL cert for different domain? (Y/n)"
+                            read answer
 
-            #                 echo "Skipping..."
-            #                 break;
+                            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
 
-            #             else 
+                                echo "Skipping..."
+                                break;
 
-            #                 hollaex toolbox --issue_ssl --skip;
-            #                 break;
+                            else 
 
-            #             fi
+                                hollaex toolbox --issue_ssl --skip;
+                                break;
+
+                            fi
+                        
+                        else 
+
+                            echo "Successfully issued the SSL certificate for your domain."
+
+                        fi 
                     
-            #         else 
+                    else 
 
-            #             echo "Successfully issued the SSL certificate for your domain."
+                        printf "\033[91mFailed to issue SSL certificate by using Certbot. Please confirm your settings and try again.\033[39m\n"
+                        exit 1;
 
-            #         fi 
-                
-            #     else 
+                    fi
 
-            #         printf "\033[91mFailed to issue SSL certificate by using Certbot. Please confirm your settings and try again.\033[39m\n"
-            #         exit 1;
+                done;
 
-            #     fi
-
-            # done;
+            fi
 
             
         fi
