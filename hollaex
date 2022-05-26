@@ -3906,7 +3906,7 @@ elif [[ "$1" == "prod" ]]; then
     fi 
 
     # Only generated the separated web.conf file if user got a different domain for the API.
-    if [[ "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then 
+    if [[ ! "$API_SUBDOMAIN_MODE" ]]; then
 
         if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then
 
