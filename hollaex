@@ -1593,8 +1593,15 @@ elif [[ "$1" == "setup" ]]; then
     if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
 
         CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        CONFIG_FILE_FOLDER=$HOLLAEX_CLI_INIT_PATH/settings
+
+        CONFIGMAP_FILE_PATH=$CONFIG_FILE_FOLDER/configmap
+        SECRET_FILE_PATH=$CONFIG_FILE_FOLDER/secret
         TEMP_CONFIG_FILE=$HOLLAEX_CLI_INIT_PATH/settings/temp
+
+        EXAMPLE_CONFIG_FOLDER=$HOLLAEX_CLI_INIT_PATH/settings/.example
         TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+
         if [[ "$HOLLAEX_NETWORK_SETUP" ]]; then 
             INIT_PATH_CHECK=$(pwd)/.hollaex-network
         else
@@ -1602,8 +1609,6 @@ elif [[ "$1" == "setup" ]]; then
         fi 
         
     fi
-    
-    
 
     system_dependencies_check;
 
@@ -1618,29 +1623,20 @@ elif [[ "$1" == "setup" ]]; then
         
         fi 
 
+        # COPY the example settings files into the original settings directory ONLY IF there are no exsiting ones.
+        if [[ ! -f "$CONFIGMAP_FILE_PATH" ]] || command grep -q "my-hollaex-exchange" $CONFIGMAP_FILE_PATH > /dev/null; then
+
+            echo "Setting up the base configmap file."
+            cp -f $EXAMPLE_CONFIG_FOLDER/configmap $CONFIGMAP_FILE_PATH
+
+            echo "Setting up the base secret file."
+            cp -f $EXAMPLE_CONFIG_FOLDER/secret $SECRET_FILE_PATH
+
+        fi
+
         for i in ${CONFIG_FILE_PATH[@]}; do
             source $i
         done;
-
-        for i in ${CONFIG_FILE_PATH[@]}; do
-
-            if command grep -q "HOLLAEX_CONFIGMAP_API_NAME=" $i > /dev/null ; then
-
-                export CONFIGMAP_FILE_PATH=$i
-
-            fi
-
-        done
-
-        for i in ${CONFIG_FILE_PATH[@]}; do
-
-            if command grep -q "HOLLAEX_SECRET_DB_PASSWORD=" $i > /dev/null ; then
-
-                export SECRET_FILE_PATH=$i
-
-            fi
-
-        done
 
         # PRESET env for user initial setup config value selection
         CONTINUE_WITH_PRECONFIGURED_VALUES=false 
