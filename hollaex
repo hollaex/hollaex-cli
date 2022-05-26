@@ -3893,7 +3893,15 @@ elif [[ "$1" == "prod" ]]; then
 
         HOLLAEX_CONFIGMAP_DOMAIN=$INPUT_HOLLAEX_CONFIGMAP_DOMAIN
 
-        apply_nginx_user_defined_values;
+        if [[ "$API_SUBDOMAIN_MODE" ]]; then
+
+            apply_nginx_user_defined_values_api_subdomain;
+
+        else 
+
+            apply_nginx_user_defined_values;
+
+        fi
 
     fi 
 
@@ -5714,7 +5722,18 @@ elif [[ "$1" == "web" ]]; then
             generate_nginx_upstream_for_web
 
             echo "Updating main Nginx.conf based on user settings..."
-            apply_nginx_user_defined_values
+
+            if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then 
+
+                apply_nginx_user_defined_values_api_subdomain;
+
+            else 
+
+                apply_nginx_user_defined_values;
+
+            fi
+
+            # apply_nginx_user_defined_values
 
             # Update the nginx if the Kit got a separated domain for the API.
             # if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
