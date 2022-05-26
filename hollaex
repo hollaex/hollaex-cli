@@ -3892,14 +3892,26 @@ elif [[ "$1" == "prod" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then 
 
         HOLLAEX_CONFIGMAP_DOMAIN=$INPUT_HOLLAEX_CONFIGMAP_DOMAIN
+        HOLLAEX_CONFIGMAP_API_HOST=$INPUT_HOLLAEX_CONFIGMAP_API_HOST
 
         if [[ "$API_SUBDOMAIN_MODE" ]]; then
 
+            if command docker ps | grep web > /dev/null 2>&1; then 
+
+                echo "Generating web Nginx configuration file"
+                generate_hollaex_web_local_nginx_conf
+
+            fi
+
             apply_nginx_user_defined_values_api_subdomain;
+
+            apply_nginx_root_domain_to_api;
 
         else 
 
             apply_nginx_user_defined_values;
+
+            apply_nginx_root_domain_to_web;
 
         fi
 
@@ -3914,24 +3926,6 @@ elif [[ "$1" == "prod" ]]; then
 
         fi
 
-    fi 
-
-    # Update the nginx if the Kit got a separated domain for the API.
-    if [[ "$API_SUBDOMAIN_MODE" ]]; then
-
-        apply_nginx_root_domain_to_api;
-
-        if command docker ps | grep web > /dev/null 2>&1; then 
-
-            echo "Generating web Nginx configuration file"
-            generate_hollaex_web_local_nginx_conf
-
-        fi
-
-    else
-
-        apply_nginx_root_domain_to_web;
-        
     fi
     
 
