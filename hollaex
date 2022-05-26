@@ -3920,7 +3920,14 @@ elif [[ "$1" == "prod" ]]; then
     if [[ "$API_SUBDOMAIN_MODE" ]]; then
 
         apply_nginx_root_domain_to_api;
-        
+
+        if command docker ps | grep web > /dev/null 2>&1; then 
+
+            echo "Generating web Nginx configuration file"
+            generate_hollaex_web_local_nginx_conf
+
+        fi
+
     else
 
         apply_nginx_root_domain_to_web;
