@@ -7121,7 +7121,7 @@ elif [[ "$1" == "toolbox" ]]; then
             export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
             export PGHOST=localhost
 
-            if ! command pg_dump -Fc  > "${HOLLAEX_CLI_INIT_PATH}"/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-"$(date +%y%m%d%H%M)".dump; then 
+            if ! command pg_dump -Fc  > "${HOLLAEX_CLI_INIT_PATH}"/backups/$HOLLAEX_CONFIGMAP_API_NAME-"$(date +%y%m%d%H%M)".dump; then 
 
                 echo "Error: Failed to run pg_dump for your Database."
                 echo "Please check the logs and try again."
@@ -7154,7 +7154,7 @@ elif [[ "$1" == "toolbox" ]]; then
             export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
             export PGHOST=localhost
             
-            if ! command pg_dump -Fc > $HOLLAEX_CLI_INIT_PATH/backups/$HOLLAEX_CONFIGMAP_API_NAME-db-$(date +%y%m%d%H%M).dump; then 
+            if ! command pg_dump -Fc > $HOLLAEX_CLI_INIT_PATH/backups/$HOLLAEX_CONFIGMAP_API_NAME-$(date +%y%m%d%H%M).dump; then 
             
                 echo "Error: Failed to run pg_dump for your Database."
                 echo "Please check the logs and try again."
