@@ -11,7 +11,7 @@
   </p>
 </p>
 
-HollaEx CLI is a command-line tool for operating [HollaEx Kit](https://github.com/bitholla/hollaex-kit) with simple commands. Anyone even without deep knowledge on Kubernetes and Docker can play with HollaEx Kit easily with this awesome CLI.
+HollaEx CLI is a command-line tool for operating [HollaEx Kit](https://github.com/hollaex/hollaex-kit) with simple commands. Anyone even without deep knowledge on Kubernetes and Docker can play with HollaEx Kit easily with this awesome CLI.
 
 <!-- GETTING STARTED -->
 ## Getting Started
