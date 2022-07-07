@@ -38,13 +38,17 @@ spec:
       tier: backend
   template:
     metadata:
-      annotations:
-        seccomp.security.alpha.kubernetes.io/pod: "runtime/default"
+      # annotations:
+      #   seccomp.security.alpha.kubernetes.io/pod: "runtime/default"
       labels:
         app: {{.Release.Name}}
         role: {{.Release.Namespace}}
         tier: backend
     spec:
+    
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
 
 {{- if .Values.nodeSelector }}
       nodeSelector:
