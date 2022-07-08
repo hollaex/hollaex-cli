@@ -3005,20 +3005,36 @@ function push_user_hollaex_core() {
   
   else 
 
-      printf "\033[91mFailed to push the image to docker registry.\033[39m\n"
+    export DOCKER_PUSH_FAILURE=true
+    export DOCKER_PUSH_RETRY=0
+    export index=0
 
-      if [[ ! "$USE_KUBERNETES" ]]; then
+    while true;
+    do if [[ "$DOCKER_PUSH_FAILURE" == true ]] && (( "$DOCKER_PUSH_RETRY" < 3 )); then
+        if ! command docker push $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION; then 
+            export DOCKER_PUSH_FAILURE=true
+            index=$(($index+1))
+            export DOCKER_PUSH_RETRY=$index
+        fi
+    else
+        break;
+    fi
+    done
 
-          echo "Proceeding setup processes without pushing the image at Docker Registry."
-          echo "You can push it later by using 'docker push' command manually."
-  
-      else
+    printf "\033[91mFailed to push the image to docker registry.\033[39m\n"
 
-          printf "\033[93mHollaEx Kit deployment for Kubernetes requires user's HollaEx Server image pushed at Docker Registry.\033[39m\n"
-          echo "Plesae try again after you confirm the image name is correct, and got proper Docker Registry access."
-          exit 1;
+    if [[ ! "$USE_KUBERNETES" ]]; then
 
-      fi
+        echo "Proceeding setup processes without pushing the image at Docker Registry."
+        echo "You can push it later by using 'docker push' command manually."
+
+    else
+
+        printf "\033[93mHollaEx Kit deployment for Kubernetes requires user's HollaEx Server image pushed at Docker Registry.\033[39m\n"
+        echo "Plesae try again after you confirm the image name is correct, and got proper Docker Registry access."
+        exit 1;
+
+    fi
   
   fi
 
@@ -3141,6 +3157,22 @@ function push_user_hollaex_web() {
   else 
 
       echo "Failed to push the image to docker registry."
+
+      export DOCKER_PUSH_FAILURE=true
+      export DOCKER_PUSH_RETRY=0
+      export index=0
+
+      while true;
+      do if [[ "$DOCKER_PUSH_FAILURE" == true ]] && (( "$DOCKER_PUSH_RETRY" < 3 )); then
+          if ! command docker push $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION; then 
+              export DOCKER_PUSH_FAILURE=true
+              index=$(($index+1))
+              export DOCKER_PUSH_RETRY=$index
+          fi
+      else
+          break;
+      fi
+      done
 
       if [[ ! $USE_KUBERNETES ]]; then
 
