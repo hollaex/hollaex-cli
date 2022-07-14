@@ -176,14 +176,16 @@ function kubernetes_database_init() {
 
 function kubernetes_run_checkconfig() {
 
-    # Checks the api container(s) get ready enough to run database upgrade jobs.
+  sleep 10
+
+  # Checks the api container(s) get ready enough to run database upgrade jobs.
   while ! kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- echo "API is ready!" > /dev/null 2>&1;
       do echo "API container is not ready! Retrying..."
-      sleep 10;
+      sleep 15;
   done;
 
   echo "API container become ready to run Database configuration check!"
-  sleep 5;
+  sleep 10;
 
   echo "Running checkConfig"
   kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/checkConfig.js
