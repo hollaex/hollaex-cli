@@ -3050,6 +3050,9 @@ elif [[ "$1" == "start" ]]; then
 
             fi 
 
+            # Run checkconfig before the server gets fully started.
+            kubernetes_run_checkconfig;
+
             # Only tries to attempt remove ingress rules from Kubernetes if it exists.
             if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
             
@@ -3209,12 +3212,16 @@ elif [[ "$1" == "start" ]]; then
         # fi 
 
         if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d; then
+        
 
             if [[ "$HOLLAEX_NETWORK_START" ]]; then 
 
                 hollaex_ascii_network_is_up;
 
             else 
+
+                # Running the checkconfig before the server goes fully up.
+                local_run_checkconfig;
 
                 hollaex_ascii_exchange_is_up;
             

@@ -174,6 +174,35 @@ function kubernetes_database_init() {
 
 }
 
+function kubernetes_run_checkconfig() {
+
+    # Checks the api container(s) get ready enough to run database upgrade jobs.
+  while ! kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- echo "API is ready!" > /dev/null 2>&1;
+      do echo "API container is not ready! Retrying..."
+      sleep 10;
+  done;
+
+  echo "API container become ready to run Database configuration check!"
+  sleep 5;
+
+  echo "Running checkConfig"
+  kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/checkConfig.js
+
+}
+
+
+function local_run_checkconfig() {
+
+  echo "Preparing to initialize exchange database..."
+  sleep 5;
+
+  IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+
+  echo "Running checkConfig"
+  docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/checkConfig.js
+      
+}
+
 function kubernetes_hollaex_network_database_init() {
 
   if [[ "$1" == "launch" ]]; then
