@@ -32,7 +32,7 @@ if [[ ! -f "$INIT_PATH_CHECK" ]] && [[ ! "$HOLLAEX_NETWORK_OPERATION" ]] && [[ !
     echo -e "\n\033[91mFailed to detect the HollaEx Kit."
     echo -e "Every HollaEx commands should be run at the HollaEx Kit path.\033[39m" 
     echo -e "Please check your current path and try it again.\n"
-    echo -e "To download the HollaEx Kit, Please run 'git clone https://github.com/bitholla/hollaex-kit.git'.\n"
+    echo -e "To download the HollaEx Kit, Please run 'git clone https://github.com/hollaex/hollaex-kit.git'.\n"
     exit 1;
 
 fi 
@@ -3050,6 +3050,9 @@ elif [[ "$1" == "start" ]]; then
 
             fi 
 
+            # Run checkconfig before the server gets fully started.
+            kubernetes_run_checkconfig;
+
             # Only tries to attempt remove ingress rules from Kubernetes if it exists.
             if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
             
@@ -3209,12 +3212,16 @@ elif [[ "$1" == "start" ]]; then
         # fi 
 
         if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d; then
+        
 
             if [[ "$HOLLAEX_NETWORK_START" ]]; then 
 
                 hollaex_ascii_network_is_up;
 
             else 
+
+                # Running the checkconfig before the server goes fully up.
+                local_run_checkconfig;
 
                 hollaex_ascii_exchange_is_up;
             
@@ -8059,7 +8066,7 @@ elif [[ "$1" == "cloud" ]]; then
             --kit_repo)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                HOLLAEX_CLOUD_CUSTOM_KIT_REPO="${1:-https://github.com/bitholla/hollaex-kit.git}"
+                HOLLAEX_CLOUD_CUSTOM_KIT_REPO="${1:-https://github.com/hollaex/hollaex-kit.git}"
                 echo "Your Custom HollaEx Kit Git Repository : $HOLLAEX_CLOUD_CUSTOM_KIT_REPO."
                 shift; continue
                 ;;
@@ -8350,7 +8357,7 @@ elif [[ "$1" == "cloud" ]]; then
         echo -e "\nSending a request to upgrade the running exchange on the HollaCloud..."
 
         echo -e "\n# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #"
-        echo "Your HollaEx Kit Git repository: ${HOLLAEX_CLOUD_CUSTOM_KIT_REPO:-'https://github.com/bitholla/hollaex-kit.git'}"
+        echo "Your HollaEx Kit Git repository: ${HOLLAEX_CLOUD_CUSTOM_KIT_REPO:-'https://github.com/hollaex/hollaex-kit.git'}"
         echo "Your HollaEx Kit Git branch: ${HOLLAEX_CLOUD_CUSTOM_KIT_BRANCH:-'master'}"
         echo -e "# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #"
 
@@ -8913,7 +8920,7 @@ elif [[ "$1" == "discord" ]]; then
 
 elif [[ "$1" == "bug" ]] || [[ "$1" == "bug-report" ]]; then
 
-    export HOLLAEX_GITHUB_ISSUES_NEW_URL="https://github.com/bitholla/hollaex-kit/issues/new"
+    export HOLLAEX_GITHUB_ISSUES_NEW_URL="https://github.com/hollaex/hollaex-kit/issues/new"
 
     if [[ "$OSTYPE" == *"darwin"* ]]; then 
 

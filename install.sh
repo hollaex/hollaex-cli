@@ -32,7 +32,7 @@ if [[ "$REPLACE_EXISTING_TO_LATEST" == "true" ]]; then
 fi 
 
 echo "Cloning HollaEx CLI repo from git..."
-git clone https://github.com/bitholla/hollaex-cli.git -b $HOLLAEX_INSTALLER_VERSION_TARGET
+git clone https://github.com/hollaex/hollaex-cli.git -b $HOLLAEX_INSTALLER_VERSION_TARGET
 
 
 chmod +x $(pwd)/hollaex-cli

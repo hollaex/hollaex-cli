@@ -30,6 +30,6 @@ if [[ -d $HOME/.hollaex-cli ]] && [[ -f /usr/local/bin/hollaex ]]; then
 else 
 
    printf "\n\033[92mHollaEx CLI has been successfully removed from your computer.\033[39m\n"
-   echo "If you want to reinstall HollaEx CLI, Please visit https://github.com/bitholla/hollaex-cli for further information."
+   echo "If you want to reinstall HollaEx CLI, Please visit https://github.com/hollaex/hollaex-cli for further information."
 
 fi

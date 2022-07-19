@@ -174,6 +174,37 @@ function kubernetes_database_init() {
 
 }
 
+function kubernetes_run_checkconfig() {
+
+  sleep 10
+
+  # Checks the api container(s) get ready enough to run database upgrade jobs.
+  while ! kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- echo "API is ready!" > /dev/null 2>&1;
+      do echo "API container is not ready! Retrying..."
+      sleep 15;
+  done;
+
+  echo "API container become ready to run Database configuration check!"
+  sleep 10;
+
+  echo "Running checkConfig"
+  kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/checkConfig.js
+
+}
+
+
+function local_run_checkconfig() {
+
+  echo "Preparing to initialize exchange database..."
+  sleep 5;
+
+  IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+
+  echo "Running checkConfig"
+  docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/checkConfig.js
+      
+}
+
 function kubernetes_hollaex_network_database_init() {
 
   if [[ "$1" == "launch" ]]; then
@@ -3005,20 +3036,36 @@ function push_user_hollaex_core() {
   
   else 
 
-      printf "\033[91mFailed to push the image to docker registry.\033[39m\n"
+    export DOCKER_PUSH_FAILURE=true
+    export DOCKER_PUSH_RETRY=0
+    export index=0
 
-      if [[ ! "$USE_KUBERNETES" ]]; then
+    while true;
+    do if [[ "$DOCKER_PUSH_FAILURE" == true ]] && (( "$DOCKER_PUSH_RETRY" < 3 )); then
+        if ! command docker push $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION; then 
+            export DOCKER_PUSH_FAILURE=true
+            index=$(($index+1))
+            export DOCKER_PUSH_RETRY=$index
+        fi
+    else
+        break;
+    fi
+    done
 
-          echo "Proceeding setup processes without pushing the image at Docker Registry."
-          echo "You can push it later by using 'docker push' command manually."
-  
-      else
+    printf "\033[91mFailed to push the image to docker registry.\033[39m\n"
 
-          printf "\033[93mHollaEx Kit deployment for Kubernetes requires user's HollaEx Server image pushed at Docker Registry.\033[39m\n"
-          echo "Plesae try again after you confirm the image name is correct, and got proper Docker Registry access."
-          exit 1;
+    if [[ ! "$USE_KUBERNETES" ]]; then
 
-      fi
+        echo "Proceeding setup processes without pushing the image at Docker Registry."
+        echo "You can push it later by using 'docker push' command manually."
+
+    else
+
+        printf "\033[93mHollaEx Kit deployment for Kubernetes requires user's HollaEx Server image pushed at Docker Registry.\033[39m\n"
+        echo "Plesae try again after you confirm the image name is correct, and got proper Docker Registry access."
+        exit 1;
+
+    fi
   
   fi
 
@@ -3141,6 +3188,22 @@ function push_user_hollaex_web() {
   else 
 
       echo "Failed to push the image to docker registry."
+
+      export DOCKER_PUSH_FAILURE=true
+      export DOCKER_PUSH_RETRY=0
+      export index=0
+
+      while true;
+      do if [[ "$DOCKER_PUSH_FAILURE" == true ]] && (( "$DOCKER_PUSH_RETRY" < 3 )); then
+          if ! command docker push $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION; then 
+              export DOCKER_PUSH_FAILURE=true
+              index=$(($index+1))
+              export DOCKER_PUSH_RETRY=$index
+          fi
+      else
+          break;
+      fi
+      done
 
       if [[ ! $USE_KUBERNETES ]]; then
 
