@@ -10,7 +10,17 @@ LOCAL_DEPLOYMENT_MODE='all'
 
 GENERATE_PASSWORDS=false
 
-DOCKER_COMPOSE_NAME_PREFIX='local'
+# Docker compose v1 prefixes
+DOCKER_COMPOSE_NAME_PREFIX='local_'
+DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR="_"
+
+# Docker compose v2+ compatibility prefiexes
+if [[ ! "$(docker-compose version 2>&1)" == *"docker-compose version 1."* ]]; then
+
+    export DOCKER_COMPOSE_NAME_PREFIX="local-"
+    export DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR="-"
+
+fi
 
 INIT_PATH_CHECK=$(pwd)/.hollaex
 
@@ -468,7 +478,7 @@ if [[ "$1" == "dev" ]]; then
             docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml up -d  
             
             echo "Installing npm packages for /plugins"
-            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-api_1 bash -c '
+            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server-api_1 bash -c '
                 cd /app/plugins && \
                 npm install --loglevel=error && \
                 for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done'
@@ -490,7 +500,7 @@ if [[ "$1" == "dev" ]]; then
             if [[ ! "$HOLLAEX_DEV_SETUP" ]]; then
 
                 echo "Installing npm packages for /plugins"
-                docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-api_1 bash -c '
+                docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server-api_1 bash -c '
                     cd /app/plugins && \
                     npm install --loglevel=error && \
                     for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done'
@@ -729,7 +739,7 @@ elif [[ "$1" == "network" ]]; then
             else 
 
                 echo "Running database triggers"
-                docker exec --env "CURRENCIES=${HOLLAEX_CONFIGMAP_CURRENCIES}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null;
+                docker exec --env "CURRENCIES=${HOLLAEX_CONFIGMAP_CURRENCIES}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js > /dev/null;
             
             fi
              
@@ -895,7 +905,7 @@ elif [[ "$1" == "network" ]]; then
             else 
 
                 echo "Running database triggers"
-                docker exec --env "PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null;
+                docker exec --env "PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js > /dev/null;
             
             fi
 
@@ -1870,7 +1880,7 @@ elif [[ "$1" == "setup" ]]; then
             IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
             # Confirm that the local API server is up.
-            while ! [[ $(docker inspect -f "{{.Name}} {{.State.Status}}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1) == *"running"* ]] ;
+            while ! [[ $(docker inspect -f "{{.Name}} {{.State.Status}}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1) == *"running"* ]] ;
                 do echo "Waiting for the containers to get fully initialized..."
                 sleep 5;
             done;
@@ -7279,7 +7289,7 @@ elif [[ "$1" == "toolbox" ]]; then
             IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
             
             echo "Flushing Redis..."
-            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/flushRedis.js
+            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/flushRedis.js
 
             echo "Restarting all workload containers..."
             docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
