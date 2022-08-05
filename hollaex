@@ -10,7 +10,17 @@ LOCAL_DEPLOYMENT_MODE='all'
 
 GENERATE_PASSWORDS=false
 
-DOCKER_COMPOSE_NAME_PREFIX='local'
+# Docker compose v1 prefixes
+DOCKER_COMPOSE_NAME_PREFIX='local_'
+DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR="_"
+
+# Docker compose v2+ compatibility prefiexes
+if [[ ! "$(docker-compose version 2>&1)" == *"docker-compose version 1."* ]]; then
+
+    export DOCKER_COMPOSE_NAME_PREFIX="local-"
+    export DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR="-"
+
+fi
 
 INIT_PATH_CHECK=$(pwd)/.hollaex
 
@@ -32,7 +42,7 @@ if [[ ! -f "$INIT_PATH_CHECK" ]] && [[ ! "$HOLLAEX_NETWORK_OPERATION" ]] && [[ !
     echo -e "\n\033[91mFailed to detect the HollaEx Kit."
     echo -e "Every HollaEx commands should be run at the HollaEx Kit path.\033[39m" 
     echo -e "Please check your current path and try it again.\n"
-    echo -e "To download the HollaEx Kit, Please run 'git clone https://github.com/bitholla/hollaex-kit.git'.\n"
+    echo -e "To download the HollaEx Kit, Please run 'git clone https://github.com/hollaex/hollaex-kit.git'.\n"
     exit 1;
 
 fi 
@@ -468,7 +478,7 @@ if [[ "$1" == "dev" ]]; then
             docker-compose -f ${TEMPLATE_GENERATE_PATH}/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml up -d  
             
             echo "Installing npm packages for /plugins"
-            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-api_1 bash -c '
+            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server-api_1 bash -c '
                 cd /app/plugins && \
                 npm install --loglevel=error && \
                 for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done'
@@ -490,7 +500,7 @@ if [[ "$1" == "dev" ]]; then
             if [[ ! "$HOLLAEX_DEV_SETUP" ]]; then
 
                 echo "Installing npm packages for /plugins"
-                docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-api_1 bash -c '
+                docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server-api_1 bash -c '
                     cd /app/plugins && \
                     npm install --loglevel=error && \
                     for d in ./*/ ; do (cd "$d" && npm install --loglevel=error); done'
@@ -729,7 +739,7 @@ elif [[ "$1" == "network" ]]; then
             else 
 
                 echo "Running database triggers"
-                docker exec --env "CURRENCIES=${HOLLAEX_CONFIGMAP_CURRENCIES}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null;
+                docker exec --env "CURRENCIES=${HOLLAEX_CONFIGMAP_CURRENCIES}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js > /dev/null;
             
             fi
              
@@ -895,7 +905,7 @@ elif [[ "$1" == "network" ]]; then
             else 
 
                 echo "Running database triggers"
-                docker exec --env "PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null;
+                docker exec --env "PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js > /dev/null;
             
             fi
 
@@ -1870,7 +1880,7 @@ elif [[ "$1" == "setup" ]]; then
             IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
             # Confirm that the local API server is up.
-            while ! [[ $(docker inspect -f "{{.Name}} {{.State.Status}}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1) == *"running"* ]] ;
+            while ! [[ $(docker inspect -f "{{.Name}} {{.State.Status}}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1) == *"running"* ]] ;
                 do echo "Waiting for the containers to get fully initialized..."
                 sleep 5;
             done;
@@ -3050,6 +3060,9 @@ elif [[ "$1" == "start" ]]; then
 
             fi 
 
+            # Run checkconfig before the server gets fully started.
+            kubernetes_run_checkconfig;
+
             # Only tries to attempt remove ingress rules from Kubernetes if it exists.
             if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
             
@@ -3209,12 +3222,16 @@ elif [[ "$1" == "start" ]]; then
         # fi 
 
         if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml up -d; then
+        
 
             if [[ "$HOLLAEX_NETWORK_START" ]]; then 
 
                 hollaex_ascii_network_is_up;
 
             else 
+
+                # Running the checkconfig before the server goes fully up.
+                local_run_checkconfig;
 
                 hollaex_ascii_exchange_is_up;
             
@@ -7272,7 +7289,7 @@ elif [[ "$1" == "toolbox" ]]; then
             IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
             
             echo "Flushing Redis..."
-            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/flushRedis.js
+            docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/flushRedis.js
 
             echo "Restarting all workload containers..."
             docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose.yaml restart
@@ -8059,7 +8076,7 @@ elif [[ "$1" == "cloud" ]]; then
             --kit_repo)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                HOLLAEX_CLOUD_CUSTOM_KIT_REPO="${1:-https://github.com/bitholla/hollaex-kit.git}"
+                HOLLAEX_CLOUD_CUSTOM_KIT_REPO="${1:-https://github.com/hollaex/hollaex-kit.git}"
                 echo "Your Custom HollaEx Kit Git Repository : $HOLLAEX_CLOUD_CUSTOM_KIT_REPO."
                 shift; continue
                 ;;
@@ -8350,7 +8367,7 @@ elif [[ "$1" == "cloud" ]]; then
         echo -e "\nSending a request to upgrade the running exchange on the HollaCloud..."
 
         echo -e "\n# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #"
-        echo "Your HollaEx Kit Git repository: ${HOLLAEX_CLOUD_CUSTOM_KIT_REPO:-'https://github.com/bitholla/hollaex-kit.git'}"
+        echo "Your HollaEx Kit Git repository: ${HOLLAEX_CLOUD_CUSTOM_KIT_REPO:-'https://github.com/hollaex/hollaex-kit.git'}"
         echo "Your HollaEx Kit Git branch: ${HOLLAEX_CLOUD_CUSTOM_KIT_BRANCH:-'master'}"
         echo -e "# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #"
 
@@ -8913,7 +8930,7 @@ elif [[ "$1" == "discord" ]]; then
 
 elif [[ "$1" == "bug" ]] || [[ "$1" == "bug-report" ]]; then
 
-    export HOLLAEX_GITHUB_ISSUES_NEW_URL="https://github.com/bitholla/hollaex-kit/issues/new"
+    export HOLLAEX_GITHUB_ISSUES_NEW_URL="https://github.com/hollaex/hollaex-kit/issues/new"
 
     if [[ "$OSTYPE" == *"darwin"* ]]; then 
 

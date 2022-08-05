@@ -11,33 +11,33 @@ function local_hollaex_network_database_init() {
       IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
       echo "Running sequelize db:migrate"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 sequelize db:migrate
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 sequelize db:migrate
 
       echo "Running database triggers"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js
 
       echo "Running sequelize db:seed:all"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 sequelize db:seed:all
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 sequelize db:seed:all
 
       echo "Setting up the InfluxDB"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/createInflux.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/createInflux.js
 
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/migrateInflux.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/migrateInflux.js
 
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/initializeInflux.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/initializeInflux.js
 
     elif [[ "$1" == 'upgrade' ]]; then
 
       IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
       echo "Running sequelize db:migrate"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:migrate
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:migrate
 
       echo "Running database triggers"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/runTriggers.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/runTriggers.js
 
       echo "Initializing the InfluxDB"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/initializeInflux.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/initializeInflux.js
     
     fi
 }
@@ -52,38 +52,38 @@ function local_database_init() {
       IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
       echo "Running sequelize db:migrate"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 sequelize db:migrate
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 sequelize db:migrate
 
       echo "Running database triggers"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js
 
       echo "Running sequelize db:seed:all"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 sequelize db:seed:all
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 sequelize db:seed:all
 
       echo "Setting up the exchange with provided activation code"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/setActivationCode.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/setActivationCode.js
 
       echo "Updating the secrets.."
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/checkConfig.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/checkConfig.js
 
       echo "Setting up the version number based on the current Kit."
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/setKitVersion.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/setKitVersion.js
 
     elif [[ "$1" == 'upgrade' ]]; then
 
       IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
       echo "Running sequelize db:migrate"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:migrate
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:migrate
 
       echo "Running database triggers"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/runTriggers.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/runTriggers.js
 
       echo "Updating the secrets.."
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/checkConfig.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/checkConfig.js
 
       echo "Setting up the version number based on the current Kit."
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/setKitVersion.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/setKitVersion.js
     
     fi
 }
@@ -174,6 +174,37 @@ function kubernetes_database_init() {
 
 }
 
+function kubernetes_run_checkconfig() {
+
+  sleep 10
+
+  # Checks the api container(s) get ready enough to run database upgrade jobs.
+  while ! kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- echo "API is ready!" > /dev/null 2>&1;
+      do echo "API container is not ready! Retrying..."
+      sleep 15;
+  done;
+
+  echo "API container become ready to run Database configuration check!"
+  sleep 10;
+
+  echo "Running checkConfig"
+  kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/checkConfig.js
+
+}
+
+
+function local_run_checkconfig() {
+
+  echo "Preparing to initialize exchange database..."
+  sleep 5;
+
+  IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+
+  echo "Running checkConfig"
+  docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/checkConfig.js
+      
+}
+
 function kubernetes_hollaex_network_database_init() {
 
   if [[ "$1" == "launch" ]]; then
@@ -259,7 +290,7 @@ function kubernetes_hollaex_network_database_init() {
 function local_code_test() {
 
     echo "Running mocha code test"
-    docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server-api_1 mocha --exit
+    docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server-api_1 mocha --exit
 
     exit 0;
 }
@@ -3005,20 +3036,36 @@ function push_user_hollaex_core() {
   
   else 
 
-      printf "\033[91mFailed to push the image to docker registry.\033[39m\n"
+    export DOCKER_PUSH_FAILURE=true
+    export DOCKER_PUSH_RETRY=0
+    export index=0
 
-      if [[ ! "$USE_KUBERNETES" ]]; then
+    while true;
+    do if [[ "$DOCKER_PUSH_FAILURE" == true ]] && (( "$DOCKER_PUSH_RETRY" < 3 )); then
+        if ! command docker push $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION; then 
+            export DOCKER_PUSH_FAILURE=true
+            index=$(($index+1))
+            export DOCKER_PUSH_RETRY=$index
+        fi
+    else
+        break;
+    fi
+    done
 
-          echo "Proceeding setup processes without pushing the image at Docker Registry."
-          echo "You can push it later by using 'docker push' command manually."
-  
-      else
+    printf "\033[91mFailed to push the image to docker registry.\033[39m\n"
 
-          printf "\033[93mHollaEx Kit deployment for Kubernetes requires user's HollaEx Server image pushed at Docker Registry.\033[39m\n"
-          echo "Plesae try again after you confirm the image name is correct, and got proper Docker Registry access."
-          exit 1;
+    if [[ ! "$USE_KUBERNETES" ]]; then
 
-      fi
+        echo "Proceeding setup processes without pushing the image at Docker Registry."
+        echo "You can push it later by using 'docker push' command manually."
+
+    else
+
+        printf "\033[93mHollaEx Kit deployment for Kubernetes requires user's HollaEx Server image pushed at Docker Registry.\033[39m\n"
+        echo "Plesae try again after you confirm the image name is correct, and got proper Docker Registry access."
+        exit 1;
+
+    fi
   
   fi
 
@@ -3141,6 +3188,22 @@ function push_user_hollaex_web() {
   else 
 
       echo "Failed to push the image to docker registry."
+
+      export DOCKER_PUSH_FAILURE=true
+      export DOCKER_PUSH_RETRY=0
+      export index=0
+
+      while true;
+      do if [[ "$DOCKER_PUSH_FAILURE" == true ]] && (( "$DOCKER_PUSH_RETRY" < 3 )); then
+          if ! command docker push $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION; then 
+              export DOCKER_PUSH_FAILURE=true
+              index=$(($index+1))
+              export DOCKER_PUSH_RETRY=$index
+          fi
+      else
+          break;
+      fi
+      done
 
       if [[ ! $USE_KUBERNETES ]]; then
 
@@ -3549,7 +3612,7 @@ EOL
     # fi
 
     echo "Setting up the exchange with provided activation code"
-    docker exec --env "ACTIVATION_CODE=${HOLLAEX_SECRET_ACTIVATION_CODE}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/setActivationCode.js
+    docker exec --env "ACTIVATION_CODE=${HOLLAEX_SECRET_ACTIVATION_CODE}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/setActivationCode.js
           
   fi
 
@@ -3621,7 +3684,7 @@ EOL
     IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
         
     echo "Updating constants..."
-    if command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/checkConstants.js; then
+    if command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/checkConstants.js; then
 
         echo "Successfully updated the missing database constants with your local configmap values."
         echo "Make sure to run 'hollaex restart' to fully apply it."
@@ -3709,7 +3772,7 @@ EOL
     # fi
 
     echo "Updating constants..."
-    if command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/setConfig.js; then
+    if command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/setConfig.js; then
 
         echo "Successfully updated database constants with your local configmap values."
         echo "Make sure to run 'hollaex restart' to fully apply it."
@@ -3920,7 +3983,7 @@ EOL
                 --env ALLOWED_DOMAINS=$HOLLAEX_CONFIGMAP_ALLOWED_DOMAINS \
                 --env CAPTCHA_SITE_KEY=$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY \
                 --env CAPTCHA_SECRET_KEY=$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY \
-                ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
+                ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 \
                 node tools/dbs/setSecurity.js; then
 
         echo "Successfully updated exchange security values with the new ones."
@@ -3944,7 +4007,7 @@ function check_docker_compose_dependencies() {
 
       echo "*********************************************"
       echo "docker-compose detected"  
-      echo "version: $(docker-compose version)"
+      echo "$(docker-compose version)"
       echo "*********************************************"
 
   else
@@ -5875,7 +5938,7 @@ EOL
                   --env "COIN_MAX=$(echo ${!COIN_MAX_OVERRIDE})" \
                   --env "COIN_INCREMENT_UNIT=$(echo ${!COIN_INCREMENT_UNIT_OVERRIDE})" \
                   --env "COIN_ACTIVE=$(echo ${!COIN_ACTIVE_OVERRIDE})"  \
-                  ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
+                  ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 \
                   node tools/dbs/addCoin.js; then
 
          echo "Updating configmap file to add new $COIN_CODE."
@@ -5910,7 +5973,7 @@ EOL
         if [[ ! "$IS_HOLLAEX_SETUP" ]]; then
 
           echo "Running database triggers"
-          docker exec --env "CURRENCIES=${HOLLAEX_CONFIGMAP_CURRENCIES}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
+          docker exec --env "CURRENCIES=${HOLLAEX_CONFIGMAP_CURRENCIES}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js > /dev/null
         
         fi
 
@@ -6125,7 +6188,7 @@ function remove_coin_exec() {
 
     echo "Removing new coin $COIN_CODE on local docker"
     if command docker exec --env "COIN_CODE=${COIN_CODE}" \
-                ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
+                ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 \
                 node tools/dbs/removeCoin.js; then
 
       echo "Updating settings file to remove $COIN_CODE."
@@ -6172,7 +6235,7 @@ function remove_coin_exec() {
       # fi
 
       # Running database triggers
-      docker exec --env="CURRENCIES=${HOLLAEX_CONFIGMAP_CURRENCIES}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
+      docker exec --env="CURRENCIES=${HOLLAEX_CONFIGMAP_CURRENCIES}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js > /dev/null
 
       echo "Coin $COIN_CODE has been successfully removed."
       echo "Please run 'hollaex restart' to apply it."
@@ -6614,7 +6677,7 @@ EOL
                   --env "INCREMENT_SIZE=$(echo ${!INCREMENT_SIZE_OVERRIDE})" \
                   --env "INCREMENT_PRICE=$(echo ${!INCREMENT_PRICE_OVERRIDE})"  \
                   --env "PAIR_ACTIVE=$(echo ${!PAIR_ACTIVE_OVERRIDE})" \
-                  ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
+                  ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 \
                   node tools/dbs/addPair.js; then
 
           echo "Updating settings file to add new $PAIR_CODE."
@@ -6651,7 +6714,7 @@ EOL
           if [[ ! "$IS_HOLLAEX_SETUP" ]]; then
 
             # Running database triggers
-            docker exec  --env "PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
+            docker exec  --env "PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js > /dev/null
 
           fi
 
@@ -6844,7 +6907,7 @@ function remove_pair_exec() {
       IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
       echo "*** Removing new pair $PAIR_CODE on local exchange ***"
-      if command docker exec --env "PAIR_CODE=${PAIR_CODE}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/removePair.js; then
+      if command docker exec --env "PAIR_CODE=${PAIR_CODE}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/removePair.js; then
 
         echo "*** Updating settings file to remove existing $PAIR_CODE. ***"
         for i in ${CONFIG_FILE_PATH[@]}; do
@@ -6873,7 +6936,7 @@ function remove_pair_exec() {
         generate_local_docker_compose;
         
         # Running database triggers
-        docker exec --env="PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
+        docker exec --env="PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js > /dev/null
 
         echo "Trading pair $PAIR_CODE has been successfully removed."
         echo "Please run 'hollaex restart' to fully apply it."
@@ -7013,7 +7076,7 @@ EOL
       if command docker exec \
                   --env "COIN_CODE=$COIN_CODE" \
                   --env "COIN_OWNER_ID=$COIN_OWNER_ID" \
-                  ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
+                  ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 \
                   node tools/dbs/changeCoinOwner.js; then
 
          
@@ -7169,7 +7232,7 @@ EOL
       echo "Activating $COIN_CODE on HollaEx Network."
       if command docker exec \
                   --env "COIN_CODE=$COIN_CODE" \
-                  ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
+                  ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 \
                   node tools/dbs/activateCoin.js; then
 
          
@@ -7201,7 +7264,7 @@ EOL
         if [[ ! "$IS_HOLLAEX_SETUP" ]]; then
 
             # Running database triggers
-            docker exec  --env "PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
+            docker exec  --env "PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js > /dev/null
 
           fi
 
@@ -7346,7 +7409,7 @@ EOL
       if command docker exec \
                   --env "PAIR_CODE=$PAIR_CODE" \
                   --env "PAIR_OWNER_ID=$PAIR_OWNER_ID" \
-                  ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
+                  ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 \
                   node tools/dbs/changePairOwner.js; then
 
          
@@ -7521,7 +7584,7 @@ EOL
       echo "Activating $PAIR_CODE on HollaEx Network."
       if command docker exec \
                   --env "PAIR_CODE=$PAIR_CODE" \
-                  ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 \
+                  ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 \
                   node tools/dbs/activatePair.js; then
 
          
@@ -7558,7 +7621,7 @@ EOL
         generate_local_docker_compose_for_network;
 
         # Running database triggers
-        docker exec  --env "PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}_${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}_1 node tools/dbs/runTriggers.js > /dev/null
+        docker exec  --env "PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js > /dev/null
 
         hollaex_ascii_pair_has_been_added
 
