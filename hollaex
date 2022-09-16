@@ -1441,6 +1441,11 @@ elif [[ "$1" == "setup" ]]; then
                 echo "Skipping the command confirmation."
                 shift; continue
                 ;;
+            --no_db_init)
+                NO_DB_INIT=true
+                echo "Skipping to initialize the db."
+                shift; continue
+                ;;
             --ignore_compatibility_check)
                 IGNORE_COMPATIBILITY_CHECK=true
                 echo "Warning: HollaEx CLI will ignore all compatibility checkes for HollaEx Core and Kit."
@@ -1767,7 +1772,7 @@ elif [[ "$1" == "setup" ]]; then
 
             run_and_upgrade_hollaex_on_kubernetes
 
-        fi 
+        fi
 
         if [[ "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_ACCESSKEY" ]] && [[ "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_SECRETKEY" ]]; then
 

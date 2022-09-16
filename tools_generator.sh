@@ -4905,8 +4905,16 @@ function run_and_upgrade_hollaex_on_kubernetes() {
 
   if [[ "$HOLLAEX_IS_SETUP" == true ]]; then 
 
-    # Running database job for Kubernetes
-    kubernetes_database_init launch;
+    if [[ "$NO_DB_INIT" ]]; then 
+
+      echo "Skipping the db initialization"
+
+    else
+
+      # Running database job for Kubernetes
+      kubernetes_database_init launch;
+
+    fi
 
   else 
 
