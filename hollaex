@@ -1570,7 +1570,19 @@ elif [[ "$1" == "setup" ]]; then
 
     else 
 
-        hollaex_setup_existing_exchange_check;
+        if [[ -d $(pwd)/settings ]]; then 
+
+            hollaex_setup_existing_exchange_check;
+
+        else
+
+            echo "Generating initial settings files on your Kit."
+
+            mkdir $(pwd)/settings
+            generate_settings_configmap;
+            generate_settings_secret;
+
+        fi
 
         if [[ ! "$RUN_WITH_VERIFY" == false ]]; then 
 
@@ -8990,6 +9002,59 @@ elif [[ "$1" == "trade" ]]; then
         fi 
 
     fi
+
+elif [[ "$1" == "update-envs" ]]; then
+
+    while true; do
+        [[ $# -eq 0 ]] && break
+        case $1 in
+            --path)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HOLLAEX_CLI_INIT_PATH=$1
+                echo "Your HollaEx Kit Path : $HOLLAEX_CLI_INIT_PATH."
+                shift; continue
+                ;;
+            --skip)
+                RUN_WITH_VERIFY=false
+                echo "Skipping the command confirmation."
+                shift; continue
+                ;;
+            --*) 
+                err_msg "Invalid option: $1"
+                print_usage;
+                exit 1;
+                ;;
+        esac
+        shift
+    done
+
+    if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        HOLLAEX_CLI_INIT_PATH=$(pwd)
+        CONFIG_FILE_PATH=$(pwd)/settings/*
+        TEMPLATE_GENERATE_PATH=$(pwd)/templates
+        INIT_PATH_CHECK=$(pwd)/.hollaex
+
+    fi
+
+    if [[ "$HOLLAEX_CLI_INIT_PATH" ]]; then
+
+        CONFIG_FILE_PATH=$HOLLAEX_CLI_INIT_PATH/settings/*
+        TEMPLATE_GENERATE_PATH=$HOLLAEX_CLI_INIT_PATH/templates
+        INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
+        
+    fi
+    
+    source $SCRIPTPATH/tools_generator.sh
+
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
+
+    update_settings_configmap_new_envs;
+
+    echo "All set!"
 
 elif [[ "$1" == "version" ]]; then
 
