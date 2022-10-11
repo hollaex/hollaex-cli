@@ -1888,7 +1888,7 @@ elif [[ "$1" == "setup" ]]; then
             IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
             # Confirm that the local API server is up.
-            while ! [[ $(docker inspect -f "{{.Name}} {{.State.Status}}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1) == *"running"* ]] ;
+            while ! [[ $(docker inspect -f "{{.Name}} {{.State.Status}}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1) == *"running"* ]] ;
                 do echo "Waiting for the containers to get fully initialized..."
                 sleep 5;
             done;
@@ -1950,6 +1950,10 @@ elif [[ "$1" == "import" ]]; then
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 TARGET_AWS_S3_BUCKET=$1
+                shift; continue
+                ;;
+            --db_backup)
+                IS_DB_BACKUP=true
                 shift; continue
                 ;;
             --*) 
@@ -2037,6 +2041,39 @@ EOL
             export ENVIRONMENT_EXCHANGE_NAME=$exchangeNameParsed
 
         fi 
+
+        if [[ "$IS_DB_BACKUP" ]]; then 
+
+            if [[ ! -d $HOLLAEX_CLI_INIT_PATH/backups ]]; then
+
+                echo "Creating '/backups' folder on HollaEx Kit directory"
+                mkdir $HOLLAEX_CLI_INIT_PATH/backups
+
+            fi
+
+            LATEST_DB_DUMP_FILE="$(aws s3 ls $TARGET_AWS_S3_BUCKET/backup/$ENVIRONMENT_EXCHANGE_NAME-postgres --recursive | sort | tail -n 1 | awk '{print $4}')"
+            LATEST_DB_DUMP_FILE_NAME=$(echo $LATEST_DB_DUMP_FILE | cut -f3 -d "/")
+            echo "Latest DB dump file: $LATEST_DB_DUMP_FILE_NAME"
+
+            echo "Pulling the db backup file from s3://$TARGET_AWS_S3_BUCKET/$LATEST_DB_DUMP_FILE AWS S3 bucket."
+            if command aws s3 cp s3://$TARGET_AWS_S3_BUCKET/$LATEST_DB_DUMP_FILE $HOLLAEX_CLI_INIT_PATH/backups/$LATEST_DB_DUMP_FILE_NAME; then
+
+                printf "\033[92mYour backup file has been downloaded at $HOLLAEX_CLI_INIT_PATH/backups.\033[39m\n"
+                echo "If you are going to run a db restore job, please run the command below."
+                echo "'hollaex toolbox --restore backups/$LATEST_DB_DUMP_FILE_NAME."
+
+            else 
+
+                echo "Error: Failed to pull the settings files from s3://$TARGET_AWS_S3_BUCKET/$LATEST_DB_DUMP_FILE."
+                echo "Please check the error logs and try again."
+
+                exit 1;
+
+            fi 
+
+            exit 0;
+
+        fi
 
         mkdir -p $HOLLAEX_CLI_INIT_PATH/.settings-temp
 
@@ -2209,6 +2246,10 @@ elif [[ "$1" == "export" ]]; then
                 TARGET_AWS_S3_BUCKET=$1
                 shift; continue
                 ;;
+            --db_backup)
+                IS_DB_BACKUP=true
+                shift; continue
+                ;;
             --*) 
                 err_msg "Invalid option: $1"
                 print_usage;
@@ -2286,7 +2327,39 @@ elif [[ "$1" == "export" ]]; then
 
             export ENVIRONMENT_EXCHANGE_NAME=$exchangeNameParsed
 
-        fi 
+        fi
+
+        if [[ "$IS_DB_BACKUP" ]]; then 
+
+            if [[ ! -d $HOLLAEX_CLI_INIT_PATH/backups ]]; then
+
+                echo "Error: You don't have any db dumps stored on your HollaEx Kit."
+                echo "Run 'hollaex toolbox --backup' to get the dump file first."
+
+                exit 1;
+
+            fi
+
+            LATEST_DB_DUMP_FILE="$(ls backups/ | sort | tail -n 1)"
+            echo "Latest DB dump file: $LATEST_DB_DUMP_FILE"
+
+            echo "Pushing the db backup file to s3://$TARGET_AWS_S3_BUCKET/backup/$ENVIRONMENT_EXCHANGE_NAME-postgres/$LATEST_DB_DUMP_FILE AWS S3 bucket."
+            if command aws s3 cp backups/$LATEST_DB_DUMP_FILE s3://$TARGET_AWS_S3_BUCKET/backup/$ENVIRONMENT_EXCHANGE_NAME-postgres/$LATEST_DB_DUMP_FILE; then
+
+                printf "\033[92mYour backup file has been uploaded at s3://$TARGET_AWS_S3_BUCKET.\033[39m\n"
+            
+            else 
+
+                echo "Error: Failed to push the db dump at s3://$TARGET_AWS_S3_BUCKET"
+                echo "Please check the error logs and try again."
+
+                exit 1;
+
+            fi 
+
+            exit 0;
+
+        fi
 
         echo "Pushing the settings files to s3://$TARGET_AWS_S3_BUCKET/hollaex-kit-settings/$ENVIRONMENT_EXCHANGE_NAME AWS S3 bucket."
         if ! command aws s3 cp --recursive $HOLLAEX_CLI_INIT_PATH/settings s3://$TARGET_AWS_S3_BUCKET/hollaex-kit-settings/$ENVIRONMENT_EXCHANGE_NAME; then
@@ -3058,7 +3131,7 @@ elif [[ "$1" == "start" ]]; then
 
             fi 
 
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=${ENVIRONMENT_KUBERNETES_API_SERVER_REPLICAS:-1} --namespace $ENVIRONMENT_EXCHANGE_NAME
+            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=${ENVIRONMENT_API_SERVER_REPLICAS:-1} --namespace $ENVIRONMENT_EXCHANGE_NAME
 
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
@@ -5671,7 +5744,7 @@ elif [[ "$1" == "web" ]]; then
                         --namespace $ENVIRONMENT_EXCHANGE_NAME \
                         --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY" \
                         --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION" \
-                        --set stable.replicaCount="${ENVIRONMENT_KUBERNETES_WEB_SERVER_REPLICAS:-1}" \
+                        --set stable.replicaCount="${ENVIRONMENT_WEB_SERVER_REPLICAS:-1}" \
                         --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_WEB_HPA_ENABLE:-false}" \
                         --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_WEB_HPA_AVGMEMORY:-500000000}" \
                         --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_WEB_HPA_MAXREPLICAS:-4}" \
@@ -6192,7 +6265,7 @@ elif [[ "$1" == "web" ]]; then
                         --namespace $ENVIRONMENT_EXCHANGE_NAME \
                         --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY" \
                         --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION" \
-                        --set stable.replicaCount="${ENVIRONMENT_KUBERNETES_WEB_SERVER_REPLICAS:-1}" \
+                        --set stable.replicaCount="${ENVIRONMENT_WEB_SERVER_REPLICAS:-1}" \
                         --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_WEB_HPA_ENABLE:-false}" \
                         --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_WEB_HPA_AVGMEMORY:-500000000}" \
                         --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_WEB_HPA_MAXREPLICAS:-4}" \
@@ -6514,7 +6587,7 @@ elif [[ "$1" == "web" ]]; then
                     # Update exchange name
                     if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
                         CONFIGMAP_FILE_PATH=$i
-                        sed -i.bak "s/$ENVIRONMENT_KUBERNETES_WEB_SERVER_REPLICAS=.*/$ENVIRONMENT_KUBERNETES_WEB_SERVER_REPLICAS=$HOLLAEX_WEB_SCALE_TARGET_REPLICAS/" $CONFIGMAP_FILE_PATH
+                        sed -i.bak "s/$ENVIRONMENT_WEB_SERVER_REPLICAS=.*/$ENVIRONMENT_WEB_SERVER_REPLICAS=$HOLLAEX_WEB_SCALE_TARGET_REPLICAS/" $CONFIGMAP_FILE_PATH
                         rm $CONFIGMAP_FILE_PATH.bak
                     fi
                     
