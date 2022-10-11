@@ -7730,3 +7730,25 @@ function hollaex_setup_existing_settings_values_check() {
   fi
 
 }
+
+function update_settings_configmap_new_envs() {
+
+echo "Checking for the new envs..."
+
+NEW_CONFIGMAP_ENV="TEST=123"
+
+for i in ${NEW_CONFIGMAP_ENV[@]}; do
+
+if command grep -R $i $(pwd)/settings/configmap > /dev/null 2>&1; then 
+
+  echo "The env $(echo $i | cut -f1 -d "=") already exists. Skipping..."
+
+else
+
+cat >> $(pwd)/settings/configmap <<EOL
+$i
+EOL
+
+fi
+done
+}
