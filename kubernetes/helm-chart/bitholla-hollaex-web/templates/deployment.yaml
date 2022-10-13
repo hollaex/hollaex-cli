@@ -38,7 +38,7 @@ spec:
       containers:
       - name: {{.Release.Name}}
         image: {{.Values.imageRegistry}}:{{.Values.dockerTag}}
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
 
         ports:
         - name: port
