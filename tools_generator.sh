@@ -2059,7 +2059,7 @@ function generate_random_values() {
 
 function update_random_values_to_config() {
 
-GENERATE_VALUES_LIST=( "HOLLAEX_SECRET_SUPERVISOR_PASSWORD" "HOLLAEX_SECRET_SUPPORT_PASSWORD" "HOLLAEX_SECRET_KYC_PASSWORD" "HOLLAEX_SECRET_QUICK_TRADE_SECRET" "HOLLAEX_SECRET_SECRET" )
+GENERATE_VALUES_LIST=( "HOLLAEX_SECRET_SECRET" )
 
 for j in ${CONFIG_FILE_PATH[@]}; do
 
@@ -2073,20 +2073,9 @@ for j in ${CONFIG_FILE_PATH[@]}; do
       grep -v $k $SECRET_CONFIG_FILE_PATH > temp && mv temp $SECRET_CONFIG_FILE_PATH
       #echo $SECRET_CONFIG_FILE_PATH
 
-      # Using special form to generate both API_KEYS keys and secret
-      if [[ "$k" == "HOLLAEX_SECRET_SECRET" ]]; then
-
-      cat >> $SECRET_CONFIG_FILE_PATH <<EOL
-$k=$(generate_random_values):$(generate_random_values)
-EOL
-
-      else 
-
       cat >> $SECRET_CONFIG_FILE_PATH <<EOL
 $k=$(generate_random_values)
 EOL
-
-      fi
         
     done
 
@@ -7755,4 +7744,28 @@ EOL
 
 fi
 done
+}
+
+function essential_secret_validator() {
+
+  echo "Checking the core enviornment variables' status"
+
+  VALIDATION_ENV_LIST=( "HOLLAEX_SECRET_DB_PASSWORD" "HOLLAEX_SECRET_SECRET" )
+
+  for i in ${VALIDATION_ENV_LIST[@]}; do
+
+    declare prefix_$i=${!i}
+    VERIFY_ITEM=prefix_$i
+
+    if [[ -z "${!VERIFY_ITEM}" ]]; then
+
+      echo "Error: Env ${VERIFY_ITEM} is not defined!"
+      exit 1;
+
+    fi
+  
+  done
+
+  echo "All good!"
+
 }
