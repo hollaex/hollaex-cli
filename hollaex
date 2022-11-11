@@ -3000,9 +3000,6 @@ elif [[ "$1" == "start" ]]; then
         
     fi
 
-
-    
-
     source $SCRIPTPATH/tools_generator.sh
 
     for i in ${CONFIG_FILE_PATH[@]}; do
@@ -3025,6 +3022,9 @@ elif [[ "$1" == "start" ]]; then
     fi
 
     load_config_variables;
+
+    #Validate the envs
+    essential_secret_validator;
 
     if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
 
