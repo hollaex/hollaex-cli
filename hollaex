@@ -2018,7 +2018,7 @@ EOL
             echo "Please type the registered exchange name."
             echo "The name will be used to point the AWS S3 folder."
             read exchangeName
-            exchangeNameParsed=$(echo $exchangeName | tr -dc '[:alnum:]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+            exchangeNameParsed=$(echo $exchangeName |  tr -dc '[^[:alnum:]-]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
             
             echo "Your exchange name: $exchangeNameParsed."
             echo "Do you want to proceed with this name? (Y/n)"
@@ -2028,7 +2028,7 @@ EOL
                 do if [[ ! "$answer" = "${answer#[Nn]}" ]]; then 
                     echo "Please type the registered exchange name."
                     read exchangeName
-                    exchangeNameParsed=$(echo $exchangeName | tr -dc '[:alnum:]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+                    exchangeNameParsed=$(echo $exchangeName |  tr -dc '[^[:alnum:]-]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
                     
                     echo "Your exchange name: $exchangeNameParsed."
                     echo "Do you want to proceed with this name? (Y/n)"
@@ -2305,7 +2305,7 @@ elif [[ "$1" == "export" ]]; then
             echo "Please type the registered exchange name."
             echo "The name will be used to point the AWS S3 folder."
             read exchangeName
-            exchangeNameParsed=$(echo $exchangeName | tr -dc '[:alnum:]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+            exchangeNameParsed=$(echo $exchangeName |  tr -dc '[^[:alnum:]-]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
             
             echo "Your exchange name: $exchangeNameParsed."
             echo "Do you want to proceed with this name? (Y/n)"
@@ -2315,7 +2315,7 @@ elif [[ "$1" == "export" ]]; then
                 do if [[ ! "$answer" = "${answer#[Nn]}" ]]; then 
                     echo "Please type the registered exchange name."
                     read exchangeName
-                    exchangeNameParsed=$(echo $exchangeName | tr -dc '[:alnum:]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+                    exchangeNameParsed=$(echo $exchangeName |  tr -dc '[^[:alnum:]-]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
                     
                     echo "Your exchange name: $exchangeNameParsed."
                     echo "Do you want to proceed with this name? (Y/n)"
