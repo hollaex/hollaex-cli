@@ -4016,7 +4016,7 @@ function hollaex_pull_and_apply_exchange_data() {
 
   local HOLLAEX_CONFIGMAP_API_NAME_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].name";)
 
-  local ENVIRONMENT_EXCHANGE_NAME_OVERRIDE=$(echo $HOLLAEX_CONFIGMAP_API_NAME_OVERRIDE | tr -dc '[:alnum:]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+  local ENVIRONMENT_EXCHANGE_NAME_OVERRIDE=$(echo $HOLLAEX_CONFIGMAP_API_NAME_OVERRIDE |  tr -dc '[^[:alnum:]-]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
 
   #LOGO PATH ESCAPING
   # local ORIGINAL_CHARACTER_FOR_LOGO_IMAGE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.LOGO_IMAGE";)
