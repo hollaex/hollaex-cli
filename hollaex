@@ -1916,7 +1916,7 @@ elif [[ "$1" == "setup" ]]; then
             fi 
 
             # Drop temp settings file for setup
-            rm -rf $TEMP_CONFIG_FILE
+            rm -rf $HOLLAEX_CLI_INIT_PATH/settings/temp
             
         else 
 
