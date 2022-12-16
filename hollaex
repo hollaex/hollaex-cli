@@ -1916,12 +1916,8 @@ elif [[ "$1" == "setup" ]]; then
             fi 
 
             # Drop temp settings file for setup
-            if [[ -f $TEMP_CONFIG_FILE ]]; then 
-
-                rm $TEMP_CONFIG_FILE
+            rm -rf $HOLLAEX_CLI_INIT_PATH/settings/temp
             
-            fi
-
         else 
 
             echo "Error: Failed to start the HollaEx server."
@@ -7928,7 +7924,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         get_hmac_token;
 
-        echo "To apply the new HMAC Token on your exchange, please run 'hollaex toolbox --set_activation_code (--kube)."
+        echo "To apply the new HMAC Token on your exchange, please run 'hollaex server --restart' and 'hollaex toolbox --set_activation_code (--kube)'."
         echo "Please make sure that it's all good to rollback the security settings to the default, before proceeding."
 
     elif [[ "$ENABLE_MAINTENANCE_MODE" ]]; then
