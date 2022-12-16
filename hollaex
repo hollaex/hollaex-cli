@@ -1916,12 +1916,8 @@ elif [[ "$1" == "setup" ]]; then
             fi 
 
             # Drop temp settings file for setup
-            if [[ -f $TEMP_CONFIG_FILE ]]; then 
-
-                rm $TEMP_CONFIG_FILE
+            rm -rf $TEMP_CONFIG_FILE
             
-            fi
-
         else 
 
             echo "Error: Failed to start the HollaEx server."
