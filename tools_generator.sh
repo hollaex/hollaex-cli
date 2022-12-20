@@ -1520,9 +1520,9 @@ metadata:
           return 503;
         }
     nginx.ingress.kubernetes.io/configuration-snippet: |
-      limit_req zone=api burst=10 nodelay;
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=10 nodelay;
       limit_req_log_level notice;
-      limit_req_status 429;
+      limit_req_status 429;'; fi)
 
       #error_page 403 @maintenance_503;
 
@@ -1592,9 +1592,9 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-body-size: "6m"
     nginx.ingress.kubernetes.io/configuration-snippet: |
       #error_page 403 @maintenance_503;
-      limit_req zone=sms burst=10 nodelay;
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=sms burst=10 nodelay;
       limit_req_log_level notice;
-      limit_req_status 429;
+      limit_req_status 429;'; fi)
 
 spec:
   rules:
@@ -1723,9 +1723,9 @@ metadata:
           return 503;
         }
     nginx.ingress.kubernetes.io/configuration-snippet: |
-      limit_req zone=api burst=10 nodelay;
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=10 nodelay;
       limit_req_log_level notice;
-      limit_req_status 429;
+      limit_req_status 429;'; fi)
 
       #error_page 403 @maintenance_503;
 
@@ -1797,9 +1797,9 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /plugins/sms/verify/\$2
     nginx.ingress.kubernetes.io/configuration-snippet: |
       #error_page 403 @maintenance_503;
-      limit_req zone=sms burst=10 nodelay;
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=sms burst=10 nodelay;
       limit_req_log_level notice;
-      limit_req_status 429;
+      limit_req_status 429;'; fi)
 
 spec:
   rules:
