@@ -4860,14 +4860,39 @@ elif [[ "$1" == "build" ]]; then
         source $i
     done;
 
+    for i in ${CONFIG_FILE_PATH[@]}; do
+
+        if command grep -q "HOLLAEX_CONFIGMAP_API_NAME=" $i > /dev/null ; then
+
+            export CONFIGMAP_FILE_PATH=$i
+
+        fi
+
+    done
+
+    for i in ${CONFIG_FILE_PATH[@]}; do
+
+        if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE=" $i > /dev/null ; then
+
+            export SECRET_FILE_PATH=$i
+
+        fi
+
+    done
+
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
+
+    # Set the default HollaEx Server version as the maximum compatible version of the current release of CLI.
+    export ENVIRONMENT_DOCKER_IMAGE_VERSION="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
+    sed -i.bak "s/ENVIRONMENT_DOCKER_IMAGE_VERSION=.*/ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION/" $CONFIGMAP_FILE_PATH
+    rm $CONFIGMAP_FILE_PATH.bak
 
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
     
     if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
 
-        export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')-${ENVIORNMENT_HOLLAEX_CPU_ARCH}"
+        export ENVIRONMENT_DOCKER_IMAGE_VERSION="${ENVIRONMENT_DOCKER_IMAGE_VERSION}-${ENVIORNMENT_HOLLAEX_CPU_ARCH:-amd64}"
 
         ENVIRONMENT_NODE_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/Dockerfile | grep -e "FROM.*node:" | cut -f2 -d ":")
 
@@ -4875,13 +4900,10 @@ elif [[ "$1" == "build" ]]; then
         sed -i.bak "s/FROM .*node.*/FROM ${ENVIORNMENT_HOLLAEX_CPU_ARCH}\/node:${ENVIRONMENT_NODE_VERSION}/" $HOLLAEX_CLI_INIT_PATH/Dockerfile
         rm $HOLLAEX_CLI_INIT_PATH/Dockerfile.bak
 
-    else 
+    fi 
 
-        export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
 
-    fi     
-
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-server-${ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE}-$(date +%y%m%d%H%M)"
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-server-${ENVIRONMENT_DOCKER_IMAGE_VERSION}-$(date +%y%m%d%H%M)"
 
     build_user_hollaex_core;
 
