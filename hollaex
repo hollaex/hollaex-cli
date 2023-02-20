@@ -1182,97 +1182,12 @@ elif [[ "$1" == "init" ]]; then
     printf "\n"
     echo "${hollaexAPIURL} ✔"
     printf "\n"
+    
 
-    if [[ $networkType == "mainnet" ]]; then 
+    if [[ "$RESTORE_FROM_BACKUP" ]]; then
 
         echo "***************************************************************"
-        echo -e "All HollaEx Kit connected to the Mainnet HollaEx Network require to have an account on HollaEx Dashboard.\n"
-        echo -e "If you already have an account, please proceed to login."
-        echo -e "For registration, please check out https://dash.hollaex.com."
-
-        echo -e "\nDo you have an account on HollaEx Dashboard? (y/N)"
-
-        read answer
-
-        if [[ "$answer" = "${answer#[Yy]}" ]]; then
-
-
-            echo -e "Please sign up on HollaEx Dashboard through https://dash.hollaex.com/signup.\n"
-
-            if [[ "$OSTYPE" == *"darwin"* ]]; then 
-
-                open https://dash.hollaex.com/signup
-            
-            else 
-
-                if ! command xdg-open https://dash.hollaex.com/signup > /dev/null 2>&1; then 
-
-                    echo "Error: Your system does not support xdg-open compatible browser."
-                    echo "Please open HollaEx Dashboard (https://dash.hollaex.com/signup) by yourself, and continue to sign-up."
-
-                fi 
-
-            fi
-
-            echo -e "\nOnce the registration and the DIY exchange setup are completed, please press C to continue."
-            read answer
-
-            while true;
-
-                do if [[ "$answer" = "${answer#[Cc]}" ]]; then
-                
-                    echo -e "\nOnce the registration is completed, please press C to continue."
-                    read answer
-
-                else
-
-                    break;
-
-                fi
-            
-            done
-               
-        fi 
-
-        while true;
-            do if ! command hollaex login; then 
-                
-                rm -f $(pwd)/.token
-
-            else 
-
-                if ! command hollaex pull --skip; then 
-
-                    exit 1;
-                
-                fi 
-
-                break;
-            
-            fi 
-
-        done 
-
-    else
-
-        printf "\n\033[1mCreate Admin\033[0m\n\n"
-        echo -e "Please type your email address and password that you are going to use for your admin account.\n"
-        echo "Email: "
-        read hollaexAdminEmail
-        echo "Password: "
-        read -s hollaexAdminPassword
-
-        while true;
-            do if [[ ! "$hollaexAdminEmail" == *"@"* ]]; then 
-                printf "\nInvalid email address. Please type it again.\n"
-                echo "Email: "
-                read hollaexAdminEmail
-            else
-                break;
-            fi
-        done
-
-        printf "\n\033[1mCreate Exchange\033[0m\n\n"
+        printf "\n\033[1mExchange Name\033[0m\n\n"
 
         echo -e "Please type in the name of your new exchange."
         printf "\033[2m- Alphanumeric, Dash (-), Underscore Only (_). No space or special character allowed.\033[22m\n" 
@@ -1292,34 +1207,7 @@ elif [[ "$1" == "init" ]]; then
         echo "$hollaexExchangeName ✔"
         printf "\n"
 
-        HOLLAEX_INIT_REQUEST=$(curl -s -H "Content-Type: application/json" \
-            -w ";%{http_code}" \
-            --request POST \
-            --data "{\"email\": \"${hollaexAdminEmail}\", \"password\": \"${hollaexAdminPassword}\", \"exchange_name\": \"${hollaexExchangeName}\"}" \
-            $hollaexAPIURL/v2/network/exchange)
-
-        # echo $HOLLAEX_INIT_REQUEST
-
-        HOLLAEX_INIT_REQUEST_RESPONSE=$(echo $HOLLAEX_INIT_REQUEST | cut -f1 -d ";")
-        HOLLAEX_INIT_REQUEST_HTTP_CODE=$(echo $HOLLAEX_INIT_REQUEST | cut -f2 -d ";")
-
-        # Creating an admin account with exchange
-        if [[ ! "$HOLLAEX_INIT_REQUEST_HTTP_CODE" == "200" ]]; then
-        
-            echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.message'
-
-            echo -e "\nError: Failed to create an account on HollaEx Network."
-            echo "Please review the logs and try it again."
-            exit 1;
-        
-        fi
-
-        export HOLLAEX_SECRET_API_KEY=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.token.apiKey')
-        export HOLLAEX_SECRET_API_SECRET=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.token.secret')
-        export HOLLAEX_SECRET_ACTIVATION_CODE=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.exchange.activation_code')    
-        export HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.user.id')
-
-        # Update settings files with provided values
+         # Update settings files with provided values
         for i in ${CONFIG_FILE_PATH[@]}; do
             if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
                 CONFIGMAP_FILE_PATH=$i
@@ -1329,23 +1217,177 @@ elif [[ "$1" == "init" ]]; then
 
                 rm $CONFIGMAP_FILE_PATH.bak
             fi
-            if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE" $i > /dev/null ; then
-                SECRET_FILE_PATH=$i
-                sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=.*/HOLLAEX_SECRET_ACTIVATION_CODE=$HOLLAEX_SECRET_ACTIVATION_CODE/" $SECRET_FILE_PATH
-                sed -i.bak "s/HOLLAEX_SECRET_API_KEY=.*/HOLLAEX_SECRET_API_KEY=$HOLLAEX_SECRET_API_KEY/" $SECRET_FILE_PATH
-                sed -i.bak "s/HOLLAEX_SECRET_API_SECRET=.*/HOLLAEX_SECRET_API_SECRET=$HOLLAEX_SECRET_API_SECRET/" $SECRET_FILE_PATH
-                rm $SECRET_FILE_PATH.bak
-            fi
         done
 
-        # Store Network ID, Admin email and password to a temporary file
-        echo "HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID=$HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID" > $(pwd)/settings/temp
-        echo "HOLLAEX_CONFIGMAP_ADMIN_EMAIL=$hollaexAdminEmail" >> $(pwd)/settings/temp
-        echo "HOLLAEX_CONFIGMAP_ADMIN_PASSWORD=$hollaexAdminPassword" >> $(pwd)/settings/temp
+        echo -e "\n\033[92mSuccessfully set the exchange name $hollaexExchangeName for the restore.\033[39m"
 
-        echo -e "\n\033[92mSuccessfully initialized the exchange $hollaexExchangeName and the account $hollaexAdminEmail.\033[39m"
-    
-    fi 
+    else
+
+        if [[ $networkType == "mainnet" ]]; then 
+
+            echo "***************************************************************"
+            echo -e "All HollaEx Kit connected to the Mainnet HollaEx Network require to have an account on HollaEx Dashboard.\n"
+            echo -e "If you already have an account, please proceed to login."
+            echo -e "For registration, please check out https://dash.hollaex.com."
+
+            echo -e "\nDo you have an account on HollaEx Dashboard? (y/N)"
+
+            read answer
+
+            if [[ "$answer" = "${answer#[Yy]}" ]]; then
+
+
+                echo -e "Please sign up on HollaEx Dashboard through https://dash.hollaex.com/signup.\n"
+
+                if [[ "$OSTYPE" == *"darwin"* ]]; then 
+
+                    open https://dash.hollaex.com/signup
+                
+                else 
+
+                    if ! command xdg-open https://dash.hollaex.com/signup > /dev/null 2>&1; then 
+
+                        echo "Error: Your system does not support xdg-open compatible browser."
+                        echo "Please open HollaEx Dashboard (https://dash.hollaex.com/signup) by yourself, and continue to sign-up."
+
+                    fi 
+
+                fi
+
+                echo -e "\nOnce the registration and the DIY exchange setup are completed, please press C to continue."
+                read answer
+
+                while true;
+
+                    do if [[ "$answer" = "${answer#[Cc]}" ]]; then
+                    
+                        echo -e "\nOnce the registration is completed, please press C to continue."
+                        read answer
+
+                    else
+
+                        break;
+
+                    fi
+                
+                done
+                
+            fi 
+
+            while true;
+                do if ! command hollaex login; then 
+                    
+                    rm -f $(pwd)/.token
+
+                else 
+
+                    if ! command hollaex pull --skip; then 
+
+                        exit 1;
+                    
+                    fi 
+
+                    break;
+                
+                fi 
+
+            done 
+
+        else
+
+            printf "\n\033[1mCreate Admin\033[0m\n\n"
+            echo -e "Please type your email address and password that you are going to use for your admin account.\n"
+            echo "Email: "
+            read hollaexAdminEmail
+            echo "Password: "
+            read -s hollaexAdminPassword
+
+            while true;
+                do if [[ ! "$hollaexAdminEmail" == *"@"* ]]; then 
+                    printf "\nInvalid email address. Please type it again.\n"
+                    echo "Email: "
+                    read hollaexAdminEmail
+                else
+                    break;
+                fi
+            done
+
+            printf "\n\033[1mCreate Exchange\033[0m\n\n"
+
+            echo -e "Please type in the name of your new exchange."
+            printf "\033[2m- Alphanumeric, Dash (-), Underscore Only (_). No space or special character allowed.\033[22m\n" 
+            read hollaexExchangeName
+
+            while true;
+                do if [[ ! "$hollaexExchangeName" =~ ^[A-Za-z0-9_-]+$ ]]; then 
+                    printf "\nInvalid Exchange Name. Make sure to input Alphanumeric, Dash (-), Underscore Only (_).\n"
+                    echo "New Exchange Name: "
+                    read hollaexExchangeName
+                else
+                    break;
+                fi
+            done
+
+            printf "\n"
+            echo "$hollaexExchangeName ✔"
+            printf "\n"
+
+            HOLLAEX_INIT_REQUEST=$(curl -s -H "Content-Type: application/json" \
+                -w ";%{http_code}" \
+                --request POST \
+                --data "{\"email\": \"${hollaexAdminEmail}\", \"password\": \"${hollaexAdminPassword}\", \"exchange_name\": \"${hollaexExchangeName}\"}" \
+                $hollaexAPIURL/v2/network/exchange)
+
+            # echo $HOLLAEX_INIT_REQUEST
+
+            HOLLAEX_INIT_REQUEST_RESPONSE=$(echo $HOLLAEX_INIT_REQUEST | cut -f1 -d ";")
+            HOLLAEX_INIT_REQUEST_HTTP_CODE=$(echo $HOLLAEX_INIT_REQUEST | cut -f2 -d ";")
+
+            # Creating an admin account with exchange
+            if [[ ! "$HOLLAEX_INIT_REQUEST_HTTP_CODE" == "200" ]]; then
+            
+                echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.message'
+
+                echo -e "\nError: Failed to create an account on HollaEx Network."
+                echo "Please review the logs and try it again."
+                exit 1;
+            
+            fi
+
+            export HOLLAEX_SECRET_API_KEY=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.token.apiKey')
+            export HOLLAEX_SECRET_API_SECRET=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.token.secret')
+            export HOLLAEX_SECRET_ACTIVATION_CODE=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.exchange.activation_code')    
+            export HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID=$(echo $HOLLAEX_INIT_REQUEST_RESPONSE | jq -r '.user.id')
+
+            # Update settings files with provided values
+            for i in ${CONFIG_FILE_PATH[@]}; do
+                if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+                    CONFIGMAP_FILE_PATH=$i
+                    sed -i.bak "s/ENVIRONMENT_EXCHANGE_NAME=.*/ENVIRONMENT_EXCHANGE_NAME=$hollaexExchangeName/" $CONFIGMAP_FILE_PATH
+                    sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=.*/HOLLAEX_CONFIGMAP_API_NAME=$hollaexExchangeName/" $CONFIGMAP_FILE_PATH
+                    sed -i.bak "s/HOLLAEX_CONFIGMAP_NETWORK_URL=.*/HOLLAEX_CONFIGMAP_NETWORK_URL=$hollaexAPIURLEscaped/" $CONFIGMAP_FILE_PATH
+
+                    rm $CONFIGMAP_FILE_PATH.bak
+                fi
+                if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE" $i > /dev/null ; then
+                    SECRET_FILE_PATH=$i
+                    sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=.*/HOLLAEX_SECRET_ACTIVATION_CODE=$HOLLAEX_SECRET_ACTIVATION_CODE/" $SECRET_FILE_PATH
+                    sed -i.bak "s/HOLLAEX_SECRET_API_KEY=.*/HOLLAEX_SECRET_API_KEY=$HOLLAEX_SECRET_API_KEY/" $SECRET_FILE_PATH
+                    sed -i.bak "s/HOLLAEX_SECRET_API_SECRET=.*/HOLLAEX_SECRET_API_SECRET=$HOLLAEX_SECRET_API_SECRET/" $SECRET_FILE_PATH
+                    rm $SECRET_FILE_PATH.bak
+                fi
+            done
+
+            # Store Network ID, Admin email and password to a temporary file
+            echo "HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID=$HOLLAEX_CONFIGMAP_ADMIN_NETWORK_ID" > $(pwd)/settings/temp
+            echo "HOLLAEX_CONFIGMAP_ADMIN_EMAIL=$hollaexAdminEmail" >> $(pwd)/settings/temp
+            echo "HOLLAEX_CONFIGMAP_ADMIN_PASSWORD=$hollaexAdminPassword" >> $(pwd)/settings/temp
+
+            echo -e "\n\033[92mSuccessfully initialized the exchange $hollaexExchangeName and the account $hollaexAdminEmail.\033[39m"
+        
+        fi
+
+    fi
 
     echo "HOLLAEX_CONFIGMAP_NETWORK_URL=$hollaexAPIURL" > $INIT_PATH_CHECK
 
@@ -1470,6 +1512,14 @@ elif [[ "$1" == "setup" ]]; then
                     echo -e "Please try it again with the supported arch name.\n"
                     exit 1;
                 fi
+                shift; continue
+                ;;
+            --restore_from_backup)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                BACKUP_DUMP_FILE_PATH=$1
+                export RESTORE_FROM_BACKUP=true
+                echo "Restore from the backup mode is activated."
                 shift; continue
                 ;;
             --*) 
@@ -1771,10 +1821,10 @@ elif [[ "$1" == "setup" ]]; then
 
             run_and_upgrade_hollaex_network_on_kubernetes
 
-        else 
+        else
 
             run_and_upgrade_hollaex_on_kubernetes
-
+            
         fi
 
         if [[ "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_ACCESSKEY" ]] && [[ "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_SECRETKEY" ]]; then
@@ -1899,7 +1949,11 @@ elif [[ "$1" == "setup" ]]; then
 
             else 
 
-                local_database_init start;
+                if [[ ! "$RESTORE_FROM_BACKUP" ]]; then
+
+                    local_database_init start;
+                
+                fi 
 
             fi
 
@@ -2965,6 +3019,10 @@ elif [[ "$1" == "start" ]]; then
                 echo "Warning: HollaEx CLI will ignore all compatibility checkes for HollaEx Core and Kit."
                 shift; continue
                 ;;
+            --is_hollaex_setup)
+                IS_HOLLAEX_SETUP=true
+                shift; continue
+                ;;
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
@@ -3135,10 +3193,14 @@ elif [[ "$1" == "start" ]]; then
 
                 kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-job --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-            fi 
+            fi
 
-            # Run checkconfig before the server gets fully started.
-            kubernetes_run_checkconfig;
+            if [[ ! "$IS_HOLLAEX_SETUP" ]]; then
+
+                # Run checkconfig before the server gets fully started.
+                kubernetes_run_checkconfig;
+            
+            fi
 
             # Only tries to attempt remove ingress rules from Kubernetes if it exists.
             if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
@@ -3308,7 +3370,12 @@ elif [[ "$1" == "start" ]]; then
             else 
 
                 # Running the checkconfig before the server goes fully up.
-                local_run_checkconfig;
+
+                if [[ ! "$IS_HOLLAEX_SETUP" ]]; then
+
+                    local_run_checkconfig;
+
+                fi
 
                 hollaex_ascii_exchange_is_up;
             
@@ -4793,14 +4860,39 @@ elif [[ "$1" == "build" ]]; then
         source $i
     done;
 
+    for i in ${CONFIG_FILE_PATH[@]}; do
+
+        if command grep -q "HOLLAEX_CONFIGMAP_API_NAME=" $i > /dev/null ; then
+
+            export CONFIGMAP_FILE_PATH=$i
+
+        fi
+
+    done
+
+    for i in ${CONFIG_FILE_PATH[@]}; do
+
+        if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE=" $i > /dev/null ; then
+
+            export SECRET_FILE_PATH=$i
+
+        fi
+
+    done
+
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
+
+    # Set the default HollaEx Server version as the maximum compatible version of the current release of CLI.
+    export ENVIRONMENT_DOCKER_IMAGE_VERSION="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
+    sed -i.bak "s/ENVIRONMENT_DOCKER_IMAGE_VERSION=.*/ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION/" $CONFIGMAP_FILE_PATH
+    rm $CONFIGMAP_FILE_PATH.bak
 
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
     
     if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
 
-        export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')-${ENVIORNMENT_HOLLAEX_CPU_ARCH}"
+        export ENVIRONMENT_DOCKER_IMAGE_VERSION="${ENVIRONMENT_DOCKER_IMAGE_VERSION}-${ENVIORNMENT_HOLLAEX_CPU_ARCH:-amd64}"
 
         ENVIRONMENT_NODE_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/Dockerfile | grep -e "FROM.*node:" | cut -f2 -d ":")
 
@@ -4808,13 +4900,10 @@ elif [[ "$1" == "build" ]]; then
         sed -i.bak "s/FROM .*node.*/FROM ${ENVIORNMENT_HOLLAEX_CPU_ARCH}\/node:${ENVIRONMENT_NODE_VERSION}/" $HOLLAEX_CLI_INIT_PATH/Dockerfile
         rm $HOLLAEX_CLI_INIT_PATH/Dockerfile.bak
 
-    else 
+    fi 
 
-        export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
 
-    fi     
-
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-server-${ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE}-$(date +%y%m%d%H%M)"
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-server-${ENVIRONMENT_DOCKER_IMAGE_VERSION}-$(date +%y%m%d%H%M)"
 
     build_user_hollaex_core;
 
@@ -7086,7 +7175,7 @@ elif [[ "$1" == "toolbox" ]]; then
             export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
             export PGHOST=localhost
             
-            if ! command pg_restore --verbose --clean -d $PGDATABASE $RESTORE_POSTGRES_DUMP_PATH; then 
+            if ! command pg_restore --verbose --clean --if-exists -d $PGDATABASE $RESTORE_POSTGRES_DUMP_PATH; then 
 
                 echo "Error: Failed to restore the dump to your Database."
                 echo "Please check the logs and try again."
@@ -7139,7 +7228,7 @@ elif [[ "$1" == "toolbox" ]]; then
             export PGDATABASE=$HOLLAEX_SECRET_DB_NAME
             export PGHOST=localhost
 
-            if ! command pg_restore --verbose --clean -d $PGDATABASE $RESTORE_POSTGRES_DUMP_PATH; then 
+            if ! command pg_restore --verbose --clean --if-exists -d $PGDATABASE $RESTORE_POSTGRES_DUMP_PATH; then 
 
                 echo "Error: Failed to restore the dump to your Database."
                 echo "Please check the logs and try again."
