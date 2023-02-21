@@ -11,13 +11,32 @@ function local_hollaex_network_database_init() {
       IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
       echo "Running sequelize db:migrate"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 sequelize db:migrate
+
+      if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 sequelize db:migrate; then
+
+        printf "\n\033[91mError: Something went wrong while setting up the database (db:migrate).\033[39m\n"
+        echo "Please check the server status try it again."
+        exit 1
+
+      fi
 
       echo "Running database triggers"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js
+      if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js; then
+        
+        printf "\n\033[91mError: Something went wrong while setting up the database (runTriggers).\033[39m\n"
+        echo "Please check the server status try it again."
+        exit 1
+        
+      fi
 
       echo "Running sequelize db:seed:all"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 sequelize db:seed:all
+      if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 sequelize db:seed:all; then
+
+        printf "\n\033[91mError: Something went wrong while setting up the database (db:seed:all).\033[39m\n"
+        echo "Please check the server status try it again."
+        exit 1
+        
+      fi
 
       echo "Setting up the InfluxDB"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/createInflux.js
@@ -52,13 +71,31 @@ function local_database_init() {
       IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
       echo "Running sequelize db:migrate"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 sequelize db:migrate
+      if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 sequelize db:migrate; then
+
+        printf "\n\033[91mError: Something went wrong while setting up the database (db:migrate).\033[39m\n"
+        echo "Please check the server status try it again."
+        exit 1
+        
+      fi
 
       echo "Running database triggers"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js
+      if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js; then
+
+        printf "\n\033[91mError: Something went wrong while setting up the database (runTriggers).\033[39m\n"
+        echo "Please check the server status try it again."
+        exit 1
+        
+      fi
 
       echo "Running sequelize db:seed:all"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 sequelize db:seed:all
+      if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 sequelize db:seed:all; then
+
+        printf "\n\033[91mError: Something went wrong while setting up the database (db:seed:all).\033[39m\n"
+        echo "Please check the server status try it again."
+        exit 1
+        
+      fi
 
       echo "Setting up the exchange with provided activation code"
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/setActivationCode.js
@@ -74,13 +111,25 @@ function local_database_init() {
       IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
       echo "Running sequelize db:migrate"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:migrate
+      if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 sequelize db:migrate; then
+
+        printf "\n\033[91mError: Something went wrong while setting up the database (db:migrate).\033[39m\n"
+        echo "Please check the server status try it again."
+        exit 1
+        
+      fi
 
       echo "Running database triggers"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/runTriggers.js
+      if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js; then
+
+        printf "\n\033[91mError: Something went wrong while setting up the database (runTriggers).\033[39m\n"
+        echo "Please check the server status try it again."
+        exit 1
+        
+      fi
 
       echo "Updating the secrets.."
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/checkConfig.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/checkConfig.js
 
       echo "Setting up the version number based on the current Kit."
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/setKitVersion.js
@@ -104,13 +153,31 @@ function kubernetes_database_init() {
     sleep 10;
 
     echo "Running sequelize db:migrate"
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:migrate 
+    if ! command kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:migrate; then
+        
+      printf "\n\033[91mError: Something went wrong while setting up the database (db:migrate).\033[39m\n"
+      echo "Please check the server status try it again."
+      exit 1
+        
+    fi
 
     echo "Running Database Triggers"
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/runTriggers.js
+    if ! command kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/runTriggers.js; then
+
+      printf "\n\033[91mError: Something went wrong while setting up the database (runTriggers).\033[39m\n"
+      echo "Please check the server status try it again."
+      exit 1
+        
+    fi
 
     echo "Running sequelize db:seed:all"
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:seed:all 
+    if ! command kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:seed:all; then
+
+      printf "\n\033[91mError: Something went wrong while setting up the database (db:seed:all).\033[39m\n"
+      echo "Please check the server status try it again."
+      exit 1
+        
+    fi
 
     echo "Setting up the exchange with provided activation code"
     kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/setActivationCode.js
@@ -2901,6 +2968,20 @@ function hollaex_network_setup_finalization() {
 
 function hollaex_setup_finalization() { 
 
+  if [[ "$RESTORE_FROM_BACKUP" ]]; then
+
+    printf "\033[93m\Starting back the server to run the DB restore...\033[39m\n"
+    if [[ "$USE_KUBERNETES" ]]; then
+        hollaex toolbox --kube --skip --restore $BACKUP_DUMP_FILE_PATH
+        kubernetes_database_init upgrade
+
+    elif [[ ! "$USE_KUBERNETES" ]]; then
+        hollaex toolbox --skip --restore $BACKUP_DUMP_FILE_PATH
+        local_database_init upgrade 
+
+    fi
+
+  fi
 
   echo "*********************************************"
   printf "\n"
@@ -3011,7 +3092,6 @@ function build_user_hollaex_core() {
 
       printf "\033[91mFailed to build the image.\033[39m\n"
       echo "Please confirm your configurations and try again."
-      echo "If you are not on a latest HollaEx Kit, Please update it first to latest."
       
       exit 1;
   
@@ -4896,9 +4976,10 @@ function run_and_upgrade_hollaex_on_kubernetes() {
                      -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                      -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
 
+
   if [[ "$HOLLAEX_IS_SETUP" == true ]]; then 
 
-    if [[ "$NO_DB_INIT" ]]; then 
+    if [[ "$RESTORE_FROM_BACKUP" ]] || [[ "$NO_DB_INIT" ]]; then 
 
       echo "Skipping the db initialization"
 
