@@ -1086,7 +1086,7 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
           # MEMORY LIMIT
           $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_API_MEMORY_LIMITS:-512M}" | sed 's/i//g' ; fi) 
           $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_STREAM_MEMORY_LIMITS:-256M}" | sed 's/i//g' ; fi) 
-          $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_PLUGINS_MEMORY_LIMITS:-512M}" | sed 's/i//g' ; fi) 
+          $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_PLUGINS_MEMORY_LIMITS:-1200M}" | sed 's/i//g' ; fi) 
         reservations:
           # CPU REQUEST
           $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "cpus: \"${ENVIRONMENT_API_CPU_REQUESTS:-0.05}\""; fi) 
@@ -1095,7 +1095,7 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
           # MEMORY REQUEST
           $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_API_MEMORY_REQUESTS:-512M}" | sed 's/i//g' ; fi) 
           $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_STREAM_MEMORY_REQUESTS:-256M}" | sed 's/i//g' ; fi) 
-          $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_PLUGINS_MEMORY_REQUESTS:-256M}" | sed 's/i//g' ; fi) 
+          $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_PLUGINS_MEMORY_REQUESTS:-700M}" | sed 's/i//g' ; fi) 
     command:
       $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- app.js"; fi) 
       $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- ws/index.js"; fi) 
@@ -4969,9 +4969,9 @@ function run_and_upgrade_hollaex_on_kubernetes() {
                      --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                      --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                      --set resources.limits.cpu="${ENVIRONMENT_PLUGINS_CPU_LIMITS:-500m}" \
-                     --set resources.limits.memory="${ENVIRONMENT_PLUGINS_MEMORY_LIMITS:-512Mi}" \
+                     --set resources.limits.memory="${ENVIRONMENT_PLUGINS_MEMORY_LIMITS:-1200Mi}" \
                      --set resources.requests.cpu="${ENVIRONMENT_PLUGINS_CPU_REQUESTS:-10m}" \
-                     --set resources.requests.memory="${ENVIRONMENT_PLUGINS_MEMORY_REQUESTS:-128Mi}" \
+                     --set resources.requests.memory="${ENVIRONMENT_PLUGINS_MEMORY_REQUESTS:-700Mi}" \
                      --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
                      -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                      -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
