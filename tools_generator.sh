@@ -479,6 +479,26 @@ done
 
 }
 
+function generate_nginx_upstream_for_minio() {
+
+IFS=',' read -ra LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE <<< "$ENVIRONMENT_EXCHANGE_RUN_MODE"
+
+for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
+  
+  # Generate local nginx conf
+  cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-minio.conf <<EOL
+  upstream minio {
+    server ${ENVIRONMENT_EXCHANGE_NAME}-minio:9000;
+  }
+  upstream minio-console {
+    server ${ENVIRONMENT_EXCHANGE_NAME}-minio:9001;
+  }
+EOL
+
+done
+
+}
+
 function generate_nginx_upstream_for_network() {
 
 IFS=',' read -ra LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE <<< "$ENVIRONMENT_EXCHANGE_RUN_MODE"
@@ -1054,6 +1074,52 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
           cpus: "${ENVIRONMENT_POSTGRESQL_CPU_REQUESTS:-0.1}"
           $(echo memory: "${ENVIRONMENT_POSTGRESQL_MEMORY_REQUESTS:-100M}" | sed 's/i//g')
     command : ["sh", "-c", "export POSTGRES_DB=\$\${DB_NAME} && export POSTGRES_USER=\$\${DB_USERNAME} && export POSTGRES_PASSWORD=\$\${DB_PASSWORD} && ln -sf /usr/local/bin/docker-entrypoint.sh ./docker-entrypoint.sh && ./docker-entrypoint.sh postgres"]
+    networks:
+      - $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "local_hollaex-network-network"; else echo "${ENVIRONMENT_EXCHANGE_NAME}-network"; fi)
+EOL
+
+fi
+
+if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_MINIO" == "true" ]]; then 
+  # Generate docker-compose
+  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+  ${ENVIRONMENT_EXCHANGE_NAME}-minio:
+    image: ${ENVIRONMENT_DOCKER_IMAGE_MINIO_REGISTRY:-quay.io/minio/minio}:${ENVIRONMENT_DOCKER_IMAGE_MINIO_VERSION:-RELEASE.2023-02-10T18-48-39Z}
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    env_file:
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    deploy:
+      resources:
+        limits:
+          cpus: "${ENVIRONMENT_MINIO_CPU_LIMITS:-0.1}"
+          $(echo memory: "${ENVIRONMENT_MINIO_MEMORY_LIMITS:-100M}" | sed 's/i//g')
+        reservations:
+          cpus: "${ENVIRONMENT_MINIO_CPU_REQUESTS:-0.1}"
+          $(echo memory: "${ENVIRONMENT_MINIO_MEMORY_REQUESTS:-100M}" | sed 's/i//g')
+    entrypoint: > 
+      /bin/sh -c "
+      minio server --address :9000 --console-address ':9001' /data
+      "
+    networks:
+      - $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "local_hollaex-network-network"; else echo "${ENVIRONMENT_EXCHANGE_NAME}-network"; fi)
+      
+  ${ENVIRONMENT_EXCHANGE_NAME}-minio-createbuckets:
+    image: minio/mc
+    depends_on:
+      - ${ENVIRONMENT_EXCHANGE_NAME}-minio
+    env_file:
+      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+    entrypoint: >
+      /bin/sh -c "
+      sleep 20;
+      mc config host add myminio http://${ENVIRONMENT_EXCHANGE_NAME}-minio:9000 \$\${MINIO_ROOT_USER} \$\${MINIO_ROOT_PASSWORD};
+      mc mb myminio/${ENVIRONMENT_EXCHANGE_NAME};
+      mc policy download myminio/${ENVIRONMENT_EXCHANGE_NAME};
+      exit 0;
+      "
     networks:
       - $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "local_hollaex-network-network"; else echo "${ENVIRONMENT_EXCHANGE_NAME}-network"; fi)
 EOL
@@ -2410,7 +2476,6 @@ server {
 
 EOL
 }
-
 
 function generate_hollaex_web_configmap() {
 

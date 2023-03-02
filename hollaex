@@ -396,6 +396,12 @@ if [[ "$1" == "dev" ]]; then
 
         generate_nginx_upstream;
 
+        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_MINIO" ]]; then 
+                    
+            generate_nginx_upstream_for_minio
+        
+        fi
+        
         # Checking docker-compose is installed on this machine.
         if command docker-compose version > /dev/null 2>&1; then
             echo "*********************************************"
@@ -1912,6 +1918,11 @@ elif [[ "$1" == "setup" ]]; then
         else 
 
             generate_nginx_upstream
+            if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_MINIO" ]]; then 
+                    
+                generate_nginx_upstream_for_minio
+            
+            fi
 
         fi 
 
@@ -3341,6 +3352,11 @@ elif [[ "$1" == "start" ]]; then
 
                 generate_nginx_upstream
 
+                if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_MINIO" ]]; then 
+                    
+                    generate_nginx_upstream_for_minio
+                
+                fi
             fi 
         
         fi
