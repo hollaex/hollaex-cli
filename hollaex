@@ -1719,6 +1719,8 @@ elif [[ "$1" == "setup" ]]; then
             source $i
         done;
 
+    
+
         if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
 
             if [[ "$USE_KUBERNETES" ]]; then
@@ -1744,12 +1746,23 @@ elif [[ "$1" == "setup" ]]; then
             fi
 
         fi
+         
 
     fi 
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
     done;
+
+    # Check the availability of the docker image
+    if ! command docker images | grep $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY | grep $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION > /dev/null; then
+
+      echo "Error: The image ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION) is currently not available."
+      echo "This could be an temporary issue, especially when there is a recent Kit release came up just a while ago."
+      echo "Please try it again after a while, or run 'hollaex server --setup --local_build' to force build local image."
+      exit 1;
+    
+    fi
     
     # Randomly generates backend passwords
     if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] ; then
@@ -3059,6 +3072,16 @@ elif [[ "$1" == "start" ]]; then
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
     done;
+
+    # Check the availability of the docker image
+    if ! command docker images | grep $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY | grep $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION > /dev/null; then
+
+      echo "Error: The image ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION) is currently not available."
+      echo "This could be an temporary issue, especially when there is a recent Kit release came up just a while ago."
+      echo "Please try it again after a while, or run 'hollaex server --build --local_build' to force build local image."
+      exit 1;
+    
+    fi
 
     # Update random secrets if env generation is enabled.
     if [[ ! "$IGNORE_SETTINGS" ]]; then 
@@ -4635,6 +4658,16 @@ elif [[ "$1" == "restart" ]]; then
         source $i
     done;
 
+    # Check the availability of the docker image
+    if ! command docker images | grep $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY | grep $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION > /dev/null; then
+
+      echo "Error: The image ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION) is currently not available."
+      echo "This could be an temporary issue, especially when there is a recent Kit release came up just a while ago."
+      echo "Please try it again after a while, or run 'hollaex server --build --local_build' to force build local image."
+      exit 1;
+    
+    fi
+
     # Update random secrets if env generation is enabled.
     if [[ ! "$IGNORE_SETTINGS" ]]; then 
 
@@ -4906,8 +4939,6 @@ elif [[ "$1" == "build" ]]; then
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-server-${ENVIRONMENT_DOCKER_IMAGE_VERSION}-$(date +%y%m%d%H%M)"
 
     build_user_hollaex_core;
-
-    echo -e "\nPlease run 'hollaex apply --registry $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION $(if [[ "$USE_KUBERNETES" ]]; then echo "--kube"; fi)' to apply it on the server."
 
 elif [[ "$1" == "apply" ]]; then
 
@@ -5201,6 +5232,16 @@ elif [[ "$1" == "upgrade" ]]; then
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
     done;
+
+    # Check the availability of the docker image
+    if ! command docker images | grep $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY | grep $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION > /dev/null; then
+
+      echo "Error: The image ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION) is currently not available."
+      echo "This could be an temporary issue, especially when there is a recent Kit release came up just a while ago."
+      echo "Please try it again after a while, or run 'hollaex server --build --local_build' to force build local image."
+      exit 1;
+    
+    fi
 
     # Update random secrets if env generation is enabled.
     if [[ ! "$IGNORE_SETTINGS" ]]; then 

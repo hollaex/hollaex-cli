@@ -3004,98 +3004,128 @@ function hollaex_setup_finalization() {
 
 function build_user_hollaex_core() {
 
-  # Preparing HollaEx Server image with custom mail configurations
-  echo "Building the user HollaEx Server image with user custom Kit setups."
+  GIT_REMOTE_URL=$(git remote -v | awk '{print $2}' | head -n1)
+  GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+  GIT_COMMIT_ID=$(git rev-parse HEAD | cut -c 1-7)
 
-  if command docker build -t $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION -f $HOLLAEX_CLI_INIT_PATH/Dockerfile $HOLLAEX_CLI_INIT_PATH; then
+  if [[ ! "$GIT_REMOTE_URL" == "https://github.com/hollaex/hollaex-kit.git" ]] || [[ ! "$GIT_BRANCH" == "master" ]]; then
 
-      echo "Your custom HollaEx Server image has been successfully built."
+    if [[ ! "$GIT_BRANCH" == "testnet" ]]; then 
 
-      if [[ "$USE_KUBERNETES" ]]; then
+      echo $GIT_REMOTE_URL
+      echo $GIT_BRANCH
+      echo $GIT_COMMIT_ID
+      # Preparing HollaEx Server image with custom mail configurations
+      echo "Building the user HollaEx Server image with user custom Kit setups."
 
-        echo "Info: Deployment to Kubernetes mandatorily requires image to gets pushed on your Docker registry."
+      if command docker build -t $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION -f $HOLLAEX_CLI_INIT_PATH/Dockerfile $HOLLAEX_CLI_INIT_PATH; then
 
-      fi
+          echo "Your custom HollaEx Server image has been successfully built."
 
-      if [[ "$RUN_WITH_VERIFY" == true ]]; then
-        
-          echo "Please type in your new image name. ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION)"
-          echo "Press enter to proceed with the previous name."
-          read tag
+          if [[ "$USE_KUBERNETES" ]]; then
 
-          export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} | cut -f1 -d ":")
-          export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION} | cut -f2 -d ":")
+            echo "Info: Deployment to Kubernetes mandatorily requires image to gets pushed on your Docker registry."
 
-          echo "Do you want to proceed with this image name? ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE) (Y/n)"
-          read answer
+          fi
 
-          while true;
-          do if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
-            echo "Please type in your new image name. ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION)"
-            echo "Press enter to proceed with the previous name."
-            read tag
+          if [[ "$RUN_WITH_VERIFY" == true ]]; then
+            
+              echo "Please type in your new image name. ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION)"
+              echo "Press enter to proceed with the previous name."
+              read tag
+
+              export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} | cut -f1 -d ":")
+              export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION} | cut -f2 -d ":")
+
+              echo "Do you want to proceed with this image name? ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE) (Y/n)"
+              read answer
+
+              while true;
+              do if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+                echo "Please type in your new image name. ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION)"
+                echo "Press enter to proceed with the previous name."
+                read tag
+                export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} | cut -f1 -d ":")
+                export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION} | cut -f2 -d ":")
+                echo "Do you want to proceed with this image name? ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE) (Y/n)"
+                read answer
+              else
+                break;
+              fi
+            done
+            
+          else 
+
             export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} | cut -f1 -d ":")
             export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION} | cut -f2 -d ":")
-            echo "Do you want to proceed with this image name? ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE) (Y/n)"
-            read answer
-          else
-            break;
-          fi
-        done
-        
-      else 
 
-        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} | cut -f1 -d ":")
-        export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$(echo ${tag:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION} | cut -f2 -d ":")
+          fi 
 
-      fi 
+          if [[ "$IS_HOLLAEX_SETUP" ]]; then
 
-      if [[ "$IS_HOLLAEX_SETUP" ]]; then
-
-        override_user_hollaex_core;
-      
-      fi
-
-      docker tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
-
-      export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE
-      export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
-
-      echo "Your new image name is: ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION)."
-      
-      if [[ "$RUN_WITH_VERIFY" == true ]] && [[ ! "$USE_KUBERNETES" ]]; then 
-
-          echo "Do you want to push this image to your Docker Registry? (y/N) (Optional)"
-          read pushAnswer
+            override_user_hollaex_core;
           
-          if [[ "$pushAnswer" = "${pushAnswer#[Yy]}" ]] ;then
+          fi
 
-            echo "Skipping..."
-            echo "Your image name: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION."
-            echo "You can later tag and push it by using 'docker tag' and 'docker push' command manually."
+          docker tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
+
+          export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE
+          export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
+
+          echo "Your new image name is: ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION)."
+          
+          if [[ "$RUN_WITH_VERIFY" == true ]] && [[ ! "$USE_KUBERNETES" ]]; then 
+
+              echo "Do you want to push this image to your Docker Registry? (y/N) (Optional)"
+              read pushAnswer
+              
+              if [[ "$pushAnswer" = "${pushAnswer#[Yy]}" ]] ;then
+
+                echo "Skipping..."
+                echo "Your image name: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION."
+                echo "You can later tag and push it by using 'docker tag' and 'docker push' command manually."
+
+              else 
+
+                push_user_hollaex_core;        
+                
+              fi
 
           else 
 
-            push_user_hollaex_core;        
-            
+            echo "Pushing the built image to the Docker Registry..."
+
+            push_user_hollaex_core;
+          
           fi
+
+          echo -e "\nPlease run 'hollaex apply --registry $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION $(if [[ "$USE_KUBERNETES" ]]; then echo "--kube"; fi)' to apply it on the server."
 
       else 
 
-        echo "Pushing the built image to the Docker Registry..."
-
-        push_user_hollaex_core;
+          printf "\033[91mFailed to build the image.\033[39m\n"
+          echo "Please confirm your configurations and try again."
+          
+          exit 1;
       
-      fi
-
-  else 
-
-      printf "\033[91mFailed to build the image.\033[39m\n"
-      echo "Please confirm your configurations and try again."
+      fi  
       
-      exit 1;
-  
-  fi  
+    fi
+
+  else
+
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE="bitholla/hollaex-kit"
+    if [[ ! "$GIT_BRANCH" == "master" ]]; then
+      export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')-$GIT_BRANCH-$GIT_COMMIT_ID"
+    else
+      export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
+    fi
+
+    override_user_hollaex_core;
+
+    docker pull $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
+    
+  fi
   
 }
 
