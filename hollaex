@@ -1493,6 +1493,11 @@ elif [[ "$1" == "setup" ]]; then
                 echo "Warning: HollaEx CLI will ignore all compatibility checkes for HollaEx Core and Kit."
                 shift; continue
                 ;;
+            --local_build)
+                LOCAL_BUILD=true
+                echo "Warning: HollaEx CLI will force build the local codebase instead of using the public image."
+                shift; continue
+                ;;
             --tag)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
@@ -5233,15 +5238,15 @@ elif [[ "$1" == "upgrade" ]]; then
         source $i
     done;
 
-    # Check the availability of the docker image
-    if ! command docker images | grep $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY | grep $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION > /dev/null; then
+    # # Check the availability of the docker image
+    # if ! command docker images | grep $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY | grep $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION > /dev/null; then
 
-      echo "Error: The image ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION) is currently not available."
-      echo "This could be an temporary issue, especially when there is a recent Kit release came up just a while ago."
-      echo "Please try it again after a while, or run 'hollaex server --build --local_build' to force build local image."
-      exit 1;
+    #   echo "Error: The image ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION) is currently not available."
+    #   echo "This could be an temporary issue, especially when there is a recent Kit release came up just a while ago."
+    #   echo "Please try it again after a while, or run 'hollaex server --build --local_build' to force build local image."
+    #   exit 1;
     
-    fi
+    # fi
 
     # Update random secrets if env generation is enabled.
     if [[ ! "$IGNORE_SETTINGS" ]]; then 
