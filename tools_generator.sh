@@ -3008,11 +3008,7 @@ function build_user_hollaex_core() {
   GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
   GIT_COMMIT_ID=$(git rev-parse HEAD | cut -c 1-7)
 
-  echo $GIT_REMOTE_URL
-  echo $GIT_BRANCH
-  echo $GIT_COMMIT_ID
-
-  if [[ ! "$GIT_REMOTE_URL" == *"github.com/hollaex/hollaex-kit"* ]] || [[ ! "$GIT_REMOTE_URL" == *"github.com/bitholla/hollaex-kit"* ]]; then 
+  if [[ ! "$GIT_REMOTE_URL" == *"github.com/hollaex/hollaex-kit"* ]] && [[ ! "$GIT_REMOTE_URL" == *"github.com/bitholla/hollaex-kit"* ]]; then 
 
     local CUSTOM_GIT_REMOTE_URL=true
 
