@@ -5249,12 +5249,12 @@ elif [[ "$1" == "upgrade" ]]; then
     # fi
 
     # Update random secrets if env generation is enabled.
-    if [[ ! "$IGNORE_SETTINGS" ]]; then 
+    # if [[ ! "$IGNORE_SETTINGS" ]]; then 
 
-        #Regenerate random secrets
-        update_random_values_to_config;
+    #     #Regenerate random secrets
+    #     update_random_values_to_config;
 
-    fi
+    # fi
 
     # Update HollaEx CLI to latest if there is newer release available.
     update_hollaex_cli_to_latest;
@@ -5283,24 +5283,81 @@ elif [[ "$1" == "upgrade" ]]; then
 
     #hollaex build
 
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
+    # export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
     
-    # Update the Core version to the user specified version, or use a latest compatible one.
+    # # Update the Core version to the user specified version, or use a latest compatible one.
+    # if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
+
+    #     export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')-${ENVIORNMENT_HOLLAEX_CPU_ARCH}"
+    
+    # else 
+
+    #     export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
+
+    # fi     
+
+    # export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-server-${ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE}-$(date +%y%m%d%H%M)"
+    
+    # export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
+
     if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
 
-        export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')-${ENVIORNMENT_HOLLAEX_CPU_ARCH}"
-    
+        if [[ "$USE_KUBERNETES" ]]; then
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then 
+
+                hollaex server --build --is_hollaex_setup --kube --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+
+            else 
+
+                hollaex server --build --is_hollaex_setup --kube --skip --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+
+            fi
+
+        else
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then 
+
+                hollaex server --build --is_hollaex_setup --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+
+            else 
+
+                hollaex server --build --is_hollaex_setup --skip --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+
+            fi
+
+        fi
+
     else 
 
-        export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
+        if [[ "$USE_KUBERNETES" ]]; then
 
-    fi     
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then 
 
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-server-${ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE}-$(date +%y%m%d%H%M)"
-    
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
+                hollaex server --build --is_hollaex_setup --kube --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
 
-    build_user_hollaex_core;
+            else 
+
+                hollaex server --build --is_hollaex_setup --kube --skip --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
+
+            fi
+
+        else
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then 
+
+                hollaex server --build --is_hollaex_setup --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
+
+            else 
+
+                hollaex server --build --is_hollaex_setup --skip --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
+
+            fi
+
+        fi
+
+    fi 
+        
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
@@ -5320,11 +5377,11 @@ elif [[ "$1" == "upgrade" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then 
 
-            hollaex apply --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE --kube
+            hollaex apply --kube
 
         else 
 
-            hollaex apply --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE --kube --skip
+            hollaex apply --kube --skip
 
         fi
 
@@ -5332,11 +5389,11 @@ elif [[ "$1" == "upgrade" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then 
 
-            hollaex apply --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE 
+            hollaex apply
 
         else 
 
-            hollaex apply --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE --skip
+            hollaex apply --skip
 
         fi
 
