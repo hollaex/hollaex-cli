@@ -5306,11 +5306,11 @@ elif [[ "$1" == "upgrade" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then 
 
-                hollaex server --build --is_hollaex_setup --kube --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+                hollaex server --build --is_hollaex_setup --kube --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
 
             else 
 
-                hollaex server --build --is_hollaex_setup --kube --skip --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+                hollaex server --build --is_hollaex_setup --kube --skip --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
 
             fi
 
@@ -5318,11 +5318,11 @@ elif [[ "$1" == "upgrade" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then 
 
-                hollaex server --build --is_hollaex_setup --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+                hollaex server --build --is_hollaex_setup --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
 
             else 
 
-                hollaex server --build --is_hollaex_setup --skip --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+                hollaex server --build --is_hollaex_setup --skip --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
 
             fi
 
@@ -5334,11 +5334,11 @@ elif [[ "$1" == "upgrade" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then 
 
-                hollaex server --build --is_hollaex_setup --kube --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
+                hollaex server --build --is_hollaex_setup --kube --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
 
             else 
 
-                hollaex server --build --is_hollaex_setup --kube --skip --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
+                hollaex server --build --is_hollaex_setup --kube --skip --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
 
             fi
 
@@ -5346,11 +5346,11 @@ elif [[ "$1" == "upgrade" ]]; then
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then 
 
-                hollaex server --build --is_hollaex_setup --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
+                hollaex server --build --is_hollaex_setup --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
 
             else 
 
-                hollaex server --build --is_hollaex_setup --skip --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
+                hollaex server --build --is_hollaex_setup --skip --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
 
             fi
 
