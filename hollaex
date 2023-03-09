@@ -1724,34 +1724,65 @@ elif [[ "$1" == "setup" ]]; then
             source $i
         done;
 
-    
 
-        if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
+        if [[ "$LOCAL_BUILD" ]]; then 
 
-            if [[ "$USE_KUBERNETES" ]]; then
+            if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
 
-                hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --kube --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+                if [[ "$USE_KUBERNETES" ]]; then
+
+                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --local_build --kube --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+
+                else 
+
+                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --local_build --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+
+                fi
 
             else 
 
-                hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+                if [[ "$USE_KUBERNETES" ]]; then
+
+                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --local_build --kube --is_hollaex_setup 
+
+                else 
+
+                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --local_build --is_hollaex_setup 
+
+                fi
 
             fi
 
         else 
 
-            if [[ "$USE_KUBERNETES" ]]; then
+            if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
 
-                hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --kube --is_hollaex_setup 
+                if [[ "$USE_KUBERNETES" ]]; then
+
+                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --kube --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+
+                else 
+
+                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+
+                fi
 
             else 
 
-                hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --is_hollaex_setup 
+                if [[ "$USE_KUBERNETES" ]]; then
+
+                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --kube --is_hollaex_setup 
+
+                else 
+
+                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --is_hollaex_setup 
+
+                fi
 
             fi
-
+        
         fi
-         
+            
 
     fi 
 
@@ -4834,6 +4865,11 @@ elif [[ "$1" == "build" ]]; then
                 ;;
             --is_hollaex_setup)
                 IS_HOLLAEX_SETUP=true
+                shift; continue
+                ;;
+            --local_build)
+                LOCAL_BUILD=true
+                echo "Warning: HollaEx CLI will force build the local codebase instead of using the public image."
                 shift; continue
                 ;;
             --registry)

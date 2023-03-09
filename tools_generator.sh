@@ -3020,7 +3020,7 @@ function build_user_hollaex_core() {
 
   fi 
 
-  if [[ "$CUSTOM_GIT_REMOTE_URL" ]] || [[ "$UNSUPPORTED_GIT_BRANCH" ]]; then
+  if [[ "$CUSTOM_GIT_REMOTE_URL" ]] || [[ "$UNSUPPORTED_GIT_BRANCH" ]] || [[ "$LOCAL_BUILD" ]]; then
 
     # Preparing HollaEx Server image with custom mail configurations
     echo "Building the user HollaEx Server image with user custom Kit setups."
