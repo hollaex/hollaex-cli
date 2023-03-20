@@ -3123,7 +3123,7 @@ function build_user_hollaex_core() {
 
   else
 
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE="bitholla/hollaex-kit"
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE="hollaex/hollaex-kit"
     if [[ ! "$GIT_BRANCH" == "master" ]]; then
       export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')-$GIT_BRANCH-$GIT_COMMIT_ID"
     else

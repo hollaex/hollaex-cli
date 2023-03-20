@@ -1858,7 +1858,7 @@ elif [[ "$1" == "setup" ]]; then
         echo "Creating namespace on Kubernetes."
         kubectl create ns $ENVIRONMENT_EXCHANGE_NAME
         
-        if [[ ! "$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" == "bitholla/hollaex-kit" ]]; then
+        if [[ ! "$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" == "hollaex/hollaex-kit" ]]; then
 
             create_kubernetes_docker_registry_secret;
 
@@ -5958,7 +5958,7 @@ elif [[ "$1" == "web" ]]; then
 
             
             # Create docker registry secret on Kubernetes.
-            if ! command kubectl get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null && [[ ! "$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" == "bitholla/hollaex-kit" ]]; then
+            if ! command kubectl get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null && [[ ! "$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" == "hollaex/hollaex-kit" ]]; then
 
                 create_kubernetes_docker_registry_secret;
             
@@ -6168,7 +6168,7 @@ elif [[ "$1" == "web" ]]; then
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
 
 
-            if ! command kubectl get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null && [[ ! "$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" == "bitholla/hollaex-kit" ]]; then
+            if ! command kubectl get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null && [[ ! "$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" == "hollaex/hollaex-kit" ]]; then
 
                 create_kubernetes_docker_registry_secret;
             
