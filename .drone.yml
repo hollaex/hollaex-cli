@@ -1,3 +1,19 @@
+---
+kind: secret
+name: slack_webhook_from_vault
+get:
+  path: devops/drone-ci/secret
+  name: slack_webhook
+
+---
+kind: secret
+name: webhook_url_from_vault
+get:
+  path: devops/drone-ci/secret
+  name: webhook_url
+
+---
+
 kind: pipeline
 type: docker
 name: block_duplicated_pr_merged
@@ -46,7 +62,7 @@ steps:
 - name: notify_job_start
   image: plugins/slack
   settings:
-    template: "<{{build.link}}|Docker Build for Amd64> - #{{build.number}} started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
+    template: "<{{build.link}}|HollaEx CLI merge> - #{{build.number}} started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
   channel: deployment
   environment:
     SLACK_WEBHOOK:
@@ -58,7 +74,7 @@ steps:
   -  export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION-testnet" > .tags
   - echo "Current Release tag is :" && cat .tags
   when:
-    branch: testnet
+    branch: develop
 
 - name: docker_tag_for_release_master
   image: alpine
@@ -84,7 +100,7 @@ steps:
   channel: deployment
   environment:
     SLACK_WEBHOOK:
-      from_secret: slack_webhook
+      from_secret: slack_webhook_from_vault
   when:
     status: [ success, failure ]
 
@@ -93,7 +109,7 @@ steps:
   channel: deployment
   environment:
     WEBHOOK_URL:
-      from_secret: webhook_url
+      from_secret: slack_webhook_from_vault
   when:
     status: [ success, failure ]
 
@@ -114,6 +130,7 @@ trigger:
   branch: 
     - master
     - testnet
+    - develop
   event:
     - push
 
