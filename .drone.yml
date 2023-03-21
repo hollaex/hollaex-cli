@@ -2,14 +2,14 @@
 kind: secret
 name: slack_webhook_from_vault
 get:
-  path: devops/drone-ci/secret
+  path: secrets/devops/drone-ci/secret
   name: slack_webhook
 
 ---
 kind: secret
 name: webhook_url_from_vault
 get:
-  path: devops/drone-ci/secret
+  path: secrets/devops/drone-ci/secret
   name: webhook_url
 
 ---
@@ -66,7 +66,7 @@ steps:
   channel: deployment
   environment:
     SLACK_WEBHOOK:
-      from_secret: slack_webhook
+      from_secret: slack_webhook_from_vault
   
 - name: docker_tag_for_release_testnet
   image: alpine
@@ -109,7 +109,7 @@ steps:
   channel: deployment
   environment:
     WEBHOOK_URL:
-      from_secret: slack_webhook_from_vault
+      from_secret: webhook_url_from_vault
   when:
     status: [ success, failure ]
 
