@@ -50,7 +50,7 @@ steps:
   channel: deployment
   environment:
     SLACK_WEBHOOK:
-      from_secret: slack_webhook_from_vault
+      from_secret: slack_webhook
   
 - name: docker_tag_for_release_testnet
   image: alpine
@@ -58,7 +58,7 @@ steps:
   -  export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION-testnet" > .tags
   - echo "Current Release tag is :" && cat .tags
   when:
-    branch: develop
+    branch: testnet
 
 - name: docker_tag_for_release_master
   image: alpine
@@ -84,7 +84,7 @@ steps:
   channel: deployment
   environment:
     SLACK_WEBHOOK:
-      from_secret: slack_webhook_from_vault
+      from_secret: slack_webhook
   when:
     status: [ success, failure ]
 
@@ -93,7 +93,7 @@ steps:
   channel: deployment
   environment:
     WEBHOOK_URL:
-      from_secret: webhook_url_from_vault
+      from_secret: webhook_url
   when:
     status: [ success, failure ]
 
@@ -114,20 +114,33 @@ trigger:
   branch: 
     - master
     - testnet
-    - develop
   event:
     - push
 
 ---
 kind: secret
-name: slack_webhook_from_vault
+name: slack_webhook
 get:
   path: devops/data/drone-ci/secret
   name: slack_webhook
 
 ---
 kind: secret
-name: webhook_url_from_vault
+name: webhook_url
 get:
   path: devops/data/drone-ci/secret
   name: webhook_url
+
+---
+kind: secret
+name: discord_webhook_url
+get:
+  path: devops/data/drone-ci/secret
+  name: discord_webhook_url
+
+---
+kind: secret
+name: github_oauth2_token_for_releases
+get:
+  path: devops/data/drone-ci/secret
+  name: github_oauth2_token_for_releases
