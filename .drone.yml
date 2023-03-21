@@ -122,12 +122,12 @@ trigger:
 kind: secret
 name: slack_webhook_from_vault
 get:
-  path: secrets/devops/drone-ci/secret
+  path: devops/drone-ci/secret
   name: slack_webhook
 
 ---
 kind: secret
 name: webhook_url_from_vault
 get:
-  path: secrets/devops/drone-ci/secret
+  path: devops/drone-ci/secret
   name: webhook_url
