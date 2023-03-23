@@ -4017,7 +4017,7 @@ elif [[ "$1" == "prod" ]]; then
         fi
 
         # if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] || [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
-        if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] ; then
+        if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] && [[ ! "$USE_KUBERNETES" ]] ; then
 
 
             # Announcing the domain configuration how-to.
@@ -4045,6 +4045,35 @@ elif [[ "$1" == "prod" ]]; then
 
                     printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_API_HOST.\033[39m\n"
                     printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST to point $SYSTEM_PUBLIC_IP\033[0m.\n"
+                    printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
+                    read -p "Press enter once you configured the DNS."
+
+                fi
+
+            fi
+
+            printf "\n\033[93mChecking the DNS reachability...\033[39m\n"
+            echo "Info: You could always quit the DNS checking loop with 'Crtl + C'."
+            hollaex_prod_check_domains_reachability;
+
+        elif [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] && [[ "$USE_KUBERNETES" ]] ; then
+
+            if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]]; then
+
+                    printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_DOMAIN.\033[39m\n"
+                    printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN to point your Kubernetes Public IP\033[0m.\n"
+                    printf "\nIt could either be a Load balancer IP or a public IP of the node(s).\033[0m.\n"
+                    printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
+                    read -p "Press enter once you configured the DNS."
+            fi
+
+            if [[ "$API_SUBDOMAIN_MODE" ]]; then 
+
+                if [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+
+                    printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_API_HOST.\033[39m\n"
+                    printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST to point Kubernetes Public IP\033[0m.\n"
+                    printf "\nIt could either be a Load balancer IP or a public IP of the node(s).\033[0m.\n"
                     printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
                     read -p "Press enter once you configured the DNS."
 
