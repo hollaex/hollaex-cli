@@ -5454,6 +5454,14 @@ elif [[ "$1" == "upgrade" ]]; then
 
         fi
 
+        # upgrade backup cronjob if it exists
+        if [[ "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_ACCESSKEY" ]] && [[ "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_SECRETKEY" ]]; then
+
+            echo "Installing PostgreSQL database backup Cronjob..."
+            hollaex toolbox --set_backup_cronjob --kube --skip
+
+        fi
+
     else
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then 
