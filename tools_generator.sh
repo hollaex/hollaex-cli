@@ -1101,7 +1101,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_MINIO" == "true" ]]; then
           $(echo memory: "${ENVIRONMENT_MINIO_MEMORY_REQUESTS:-100M}" | sed 's/i//g')
     entrypoint: > 
       /bin/sh -c "
-      minio server --address :9000 --console-address ':9001' /data
+      minio server --address \$\${MINIO_DOMAIN}:9000 --console-address ':9001' /data
       "
     networks:
       - $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "local_hollaex-network-network"; else echo "${ENVIRONMENT_EXCHANGE_NAME}-network"; fi)
