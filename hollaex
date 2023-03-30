@@ -452,7 +452,7 @@ if [[ "$1" == "dev" ]]; then
             update_random_values_to_config;
 
             # Randomly generates backend passwords
-            if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] ; then
+            if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_MINIO_ROOT_PASSWORD" ]] ; then
             
                 generate_backend_passwords;
 
@@ -1758,7 +1758,7 @@ elif [[ "$1" == "setup" ]]; then
     done;
     
     # Randomly generates backend passwords
-    if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] ; then
+    if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_MINIO_ROOT_PASSWORD" ]] ; then
     
         generate_backend_passwords;
 
@@ -5009,6 +5009,13 @@ elif [[ "$1" == "apply" ]]; then
     
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
+
+    # Randomly generates backend passwords if they are missing.
+    if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_MINIO_ROOT_PASSWORD" ]] ; then
+    
+        generate_backend_passwords;
+
+    fi
 
     if [[ "$IGNORE_SETTINGS" ]]; then
 
