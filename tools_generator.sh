@@ -1089,6 +1089,8 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_MINIO" == "true" ]]; then
     ports:
       - "9000:9000"
       - "9001:9001"
+    volumes:
+      - ./minio:/data
     env_file:
       - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
     deploy:
