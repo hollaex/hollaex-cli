@@ -1119,6 +1119,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_MINIO" == "true" ]]; then
       sleep 20;
       mc config host add myminio http://${ENVIRONMENT_EXCHANGE_NAME}-minio:9000 \$\${MINIO_ROOT_USER} \$\${MINIO_ROOT_PASSWORD};
       mc mb myminio/${ENVIRONMENT_EXCHANGE_NAME};
+      mc mb myminio/${ENVIRONMENT_EXCHANGE_NAME}-private;
       mc policy download myminio/${ENVIRONMENT_EXCHANGE_NAME};
       exit 0;
       "
