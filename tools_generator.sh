@@ -1624,10 +1624,6 @@ metadata:
           return 503;
         }
     nginx.ingress.kubernetes.io/configuration-snippet: |
-      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=15 nodelay;
-      limit_req_log_level notice;
-      limit_req_status 429;'; fi)
-
       #error_page 403 @maintenance_503;
 
 spec:
