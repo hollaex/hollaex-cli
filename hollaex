@@ -424,7 +424,7 @@ if [[ "$1" == "dev" ]]; then
 
             export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
 
-            if ! command build_user_hollaex_core; then
+            if ! build_user_hollaex_core; then
 
                 exit 1;
 
@@ -5016,7 +5016,7 @@ elif [[ "$1" == "build" ]]; then
 
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-server-${ENVIRONMENT_DOCKER_IMAGE_VERSION}-$(date +%y%m%d%H%M)"
 
-   if ! command build_user_hollaex_core; then 
+   if ! build_user_hollaex_core; then 
     
         exit 1;
 
@@ -5953,7 +5953,7 @@ elif [[ "$1" == "web" ]]; then
         fi 
 
         export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat $HOLLAEX_CLI_INIT_PATH/web/package.json | jq -r '.version')-$(date +%y%m%d%H%M)"
-        if ! command build_user_hollaex_web; then
+        if ! build_user_hollaex_web; then
 
             exit 1;
 
@@ -6663,7 +6663,7 @@ elif [[ "$1" == "web" ]]; then
 
         export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY=${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY}
         export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat version)-$(date +%y%m%d%H%M)"
-        if ! command build_user_hollaex_web; then
+        if ! build_user_hollaex_web; then
 
             exit 1;
 
@@ -6695,7 +6695,7 @@ elif [[ "$1" == "web" ]]; then
     if [[ "$WEB_CLIENT_REBUILD" ]];  then
         
         export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat $HOLLAEX_CLI_INIT_PATH/web/package.json | jq -r '.version')-$(date +%y%m%d%H%M)"
-        if ! command build_user_hollaex_web; then
+        if ! build_user_hollaex_web; then
 
             exit 1;
 
