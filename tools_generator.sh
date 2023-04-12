@@ -1629,6 +1629,91 @@ EOF
   
 }
 
+function generate_kubernetes_ingress_minio () {
+
+if [[ -z "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" ]]; then 
+
+  ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER=true
+
+fi 
+
+# Generate Kubernetes Secret
+cat >> $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml <<EOL
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-minio
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
+    nginx.ingress.kubernetes.io/proxy-body-size: "6m"
+    #nginx.ingress.kubernetes.io/whitelist-source-range: ""
+    nginx.ingress.kubernetes.io/server-snippet: |
+        location @maintenance_503 {
+          internal;
+          return 503;
+        }
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=10 nodelay;
+      limit_req_log_level notice;
+      limit_req_status 429;'; fi)
+
+      #error_page 403 @maintenance_503;
+
+spec:
+  rules:
+  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+    http:
+      paths:
+      - pathType: Prefix
+        path: /
+        backend:
+          service:
+            name: ${ENVIRONMENT_EXCHANGE_NAME}-minio
+            port:
+              number: 9000
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-minio-console
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
+    #nginx.ingress.kubernetes.io/whitelist-source-range: ""
+    nginx.ingress.kubernetes.io/server-snippet: |
+        location @maintenance_503 {
+          internal;
+          return 503;
+        }
+    nginx.ingress.kubernetes.io/proxy-body-size: "6m"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      #error_page 403 @maintenance_503;
+
+spec:
+  rules:
+  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+    http:
+      paths:
+      - pathType: Prefix
+        path: /console(/|$)(.*)
+        backend:
+          service:
+            name: ${ENVIRONMENT_EXCHANGE_NAME}-minio-console
+            port:
+              number: 9001
+    
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
+EOL
+}
+
 function generate_kubernetes_ingress() {
 
 if [[ -z "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" ]]; then 
@@ -1782,6 +1867,87 @@ spec:
   
   $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
 EOL
+
+if [[ "$ENVIRONMENT_KUBERNETES_RUN_MINIO" ]]; then
+
+  # Generate Kubernetes Secret
+cat >> $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml <<EOL
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-minio
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
+    nginx.ingress.kubernetes.io/proxy-body-size: "6m"
+    #nginx.ingress.kubernetes.io/whitelist-source-range: ""
+    nginx.ingress.kubernetes.io/server-snippet: |
+        location @maintenance_503 {
+          internal;
+          return 503;
+        }
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=10 nodelay;
+      limit_req_log_level notice;
+      limit_req_status 429;'; fi)
+
+      #error_page 403 @maintenance_503;
+
+spec:
+  rules:
+  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+    http:
+      paths:
+      - pathType: Prefix
+        path: /
+        backend:
+          service:
+            name: ${ENVIRONMENT_EXCHANGE_NAME}-minio
+            port:
+              number: 9000
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-minio-console
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
+    #nginx.ingress.kubernetes.io/whitelist-source-range: ""
+    nginx.ingress.kubernetes.io/server-snippet: |
+        location @maintenance_503 {
+          internal;
+          return 503;
+        }
+    nginx.ingress.kubernetes.io/proxy-body-size: "6m"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      #error_page 403 @maintenance_503;
+
+spec:
+  rules:
+  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+    http:
+      paths:
+      - pathType: Prefix
+        path: /console(/|$)(.*)
+        backend:
+          service:
+            name: ${ENVIRONMENT_EXCHANGE_NAME}-minio-console
+            port:
+              number: 9001
+    
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
+EOL
+
+fi
+
 
 }
 
@@ -1987,6 +2153,86 @@ spec:
   
   $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_web_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
 EOL
+
+if [[ "$ENVIRONMENT_KUBERNETES_RUN_MINIO" ]]; then
+
+  # Generate Kubernetes Secret
+cat >> $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml <<EOL
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-minio
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
+    nginx.ingress.kubernetes.io/proxy-body-size: "6m"
+    #nginx.ingress.kubernetes.io/whitelist-source-range: ""
+    nginx.ingress.kubernetes.io/server-snippet: |
+        location @maintenance_503 {
+          internal;
+          return 503;
+        }
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=10 nodelay;
+      limit_req_log_level notice;
+      limit_req_status 429;'; fi)
+
+      #error_page 403 @maintenance_503;
+
+spec:
+  rules:
+  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+    http:
+      paths:
+      - pathType: Prefix
+        path: /
+        backend:
+          service:
+            name: ${ENVIRONMENT_EXCHANGE_NAME}-minio
+            port:
+              number: 9000
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-minio-console
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
+    #nginx.ingress.kubernetes.io/whitelist-source-range: ""
+    nginx.ingress.kubernetes.io/server-snippet: |
+        location @maintenance_503 {
+          internal;
+          return 503;
+        }
+    nginx.ingress.kubernetes.io/proxy-body-size: "6m"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      #error_page 403 @maintenance_503;
+
+spec:
+  rules:
+  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+    http:
+      paths:
+      - pathType: Prefix
+        path: /console(/|$)(.*)
+        backend:
+          service:
+            name: ${ENVIRONMENT_EXCHANGE_NAME}-minio-console
+            port:
+              number: 9001
+    
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
+EOL
+
+fi
 
 }
 
@@ -5000,6 +5246,25 @@ function run_and_upgrade_hollaex_on_kubernetes() {
 
                   echo "Waiting until the database to be fully initialized"
                   sleep 60
+
+  fi
+
+  if [[ "$ENVIRONMENT_KUBERNETES_RUN_MINIO" == true ]]; then
+
+    helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-minio \
+                --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                --set image.repository=${ENVIRONMENT_DOCKER_IMAGE_MINIO_REGISTRY:-"quay.io/minio/minio"} \
+                --set image.tag=${ENVIRONMENT_DOCKER_IMAGE_MINIO_VERSION:-"RELEASE.2023-02-10T18-48-39Z"} \
+                --set environment.MINIO_CONSOLE_SUBPATH="$HOLLAEX_CONFIGMAP_MINIO_CONSOLE_SUBPATH" \
+                --set environment.MINIO_BROWSER_REDIRECT_URL="$HOLLAEX_CONFIGMAP_MINIO_BROWSER_REDIRECT_URL" \
+                --set buckets[0].name=${ENVIRONMENT_EXCHANGE_NAME} \
+                --set buckets[0].policy=download \
+                --set buckets[1].name=${ENVIRONMENT_EXCHANGE_NAME}-private \
+                --set buckets[1].policy=none \
+                --set users[0].accessKey="${HOLLAEX_SECRET_MINIO_ROOT_USER}" \
+                --set users[0].secretKey="${HOLLAEX_SECRET_MINIO_ROOT_PASSWORD}" \
+                --set users[0].policy=consoleAdmin \
+                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-minio
 
   fi
         
