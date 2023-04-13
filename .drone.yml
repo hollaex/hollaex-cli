@@ -46,7 +46,7 @@ steps:
 - name: notify_job_start
   image: plugins/slack
   settings:
-    template: "<{{build.link}}|Docker Build for Amd64> - #{{build.number}} started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
+    template: "<{{build.link}}|HollaEx CLI merge> - #{{build.number}} started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
   channel: deployment
   environment:
     SLACK_WEBHOOK:
@@ -117,3 +117,30 @@ trigger:
   event:
     - push
 
+---
+kind: secret
+name: slack_webhook
+get:
+  path: devops/data/drone-ci/secret
+  name: slack_webhook
+
+---
+kind: secret
+name: webhook_url
+get:
+  path: devops/data/drone-ci/secret
+  name: webhook_url
+
+---
+kind: secret
+name: discord_webhook_url
+get:
+  path: devops/data/drone-ci/secret
+  name: discord_webhook_url
+
+---
+kind: secret
+name: github_oauth2_token_for_releases
+get:
+  path: devops/data/drone-ci/secret
+  name: github_oauth2_token_for_releases
