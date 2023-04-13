@@ -6007,7 +6007,7 @@ elif [[ "$1" == "web" ]]; then
 
             
             # Create docker registry secret on Kubernetes.
-            if ! command kubectl get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null && [[ ! "$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" == "hollaex/hollaex-kit" ]]; then
+            if ! command kubectl get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null && [[ ! "$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY" == "hollaex/hollaex-kit" ]]; then
 
                 create_kubernetes_docker_registry_secret;
             
