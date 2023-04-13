@@ -3166,6 +3166,8 @@ function build_user_hollaex_core() {
     override_user_hollaex_core;
 
     docker pull $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
+
+    echo -e "\nPlease run 'hollaex apply --registry $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE $(if [[ "$USE_KUBERNETES" ]]; then echo "--kube"; fi)' to apply it on the server."
   
   fi
   
