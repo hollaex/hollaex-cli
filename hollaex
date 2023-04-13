@@ -424,7 +424,11 @@ if [[ "$1" == "dev" ]]; then
 
             export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE
 
-            build_user_hollaex_core;
+            if ! build_user_hollaex_core; then
+
+                exit 1;
+
+            fi 
 
             hollaex_setup_initialization;
 
@@ -1493,6 +1497,11 @@ elif [[ "$1" == "setup" ]]; then
                 echo "Warning: HollaEx CLI will ignore all compatibility checkes for HollaEx Core and Kit."
                 shift; continue
                 ;;
+            --local_build)
+                LOCAL_BUILD=true
+                echo "Warning: HollaEx CLI will force build the local codebase instead of using the public image."
+                shift; continue
+                ;;
             --tag)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
@@ -1625,8 +1634,8 @@ elif [[ "$1" == "setup" ]]; then
 
     else 
 
-        git update-index --skip-worktree settings/
-        git update-index --skip-worktree settings/*
+        # git update-index --skip-worktree settings/
+        # git update-index --skip-worktree settings/*
 
         hollaex_setup_existing_exchange_check;
 
@@ -1719,37 +1728,81 @@ elif [[ "$1" == "setup" ]]; then
             source $i
         done;
 
-        if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
 
-            if [[ "$USE_KUBERNETES" ]]; then
+        if [[ "$LOCAL_BUILD" ]]; then 
 
-                hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --kube --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+            if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
+
+                if [[ "$USE_KUBERNETES" ]]; then
+
+                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --local_build --kube --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+
+                else 
+
+                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --local_build --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+
+                fi
 
             else 
 
-                hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+                if [[ "$USE_KUBERNETES" ]]; then
+
+                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --local_build --kube --is_hollaex_setup 
+
+                else 
+
+                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --local_build --is_hollaex_setup 
+
+                fi
 
             fi
 
         else 
 
-            if [[ "$USE_KUBERNETES" ]]; then
+            if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
 
-                hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --kube --is_hollaex_setup 
+                if [[ "$USE_KUBERNETES" ]]; then
+
+                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --kube --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+
+                else 
+
+                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+
+                fi
 
             else 
 
-                hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --is_hollaex_setup 
+                if [[ "$USE_KUBERNETES" ]]; then
+
+                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --kube --is_hollaex_setup 
+
+                else 
+
+                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --is_hollaex_setup 
+
+                fi
 
             fi
-
+        
         fi
+            
 
     fi 
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
     done;
+
+    # Check the availability of the docker image
+    if ! command docker images | grep $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY | grep $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION > /dev/null; then
+
+      echo "Error: The image ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION) is currently not available."
+      echo "This could be an temporary issue, especially when there is a recent Kit release came up just a while ago."
+      echo "Please try it again after a while, or run 'hollaex server --setup --local_build' to force build local image."
+      exit 1;
+    
+    fi
     
     # Randomly generates backend passwords
     if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] ; then
@@ -1809,7 +1862,11 @@ elif [[ "$1" == "setup" ]]; then
         echo "Creating namespace on Kubernetes."
         kubectl create ns $ENVIRONMENT_EXCHANGE_NAME
         
-        create_kubernetes_docker_registry_secret;
+        if [[ ! "$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" == "hollaex/hollaex-kit" ]]; then
+
+            create_kubernetes_docker_registry_secret;
+
+        fi
 
         if [[ "$HOLLAEX_NETWORK_SETUP" ]]; then
 
@@ -3060,6 +3117,16 @@ elif [[ "$1" == "start" ]]; then
         source $i
     done;
 
+    # Check the availability of the docker image
+    # if ! command docker images | grep $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY | grep $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION > /dev/null; then
+
+    #   echo "Error: The image ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION) is currently not available."
+    #   echo "This could be an temporary issue, especially when there is a recent Kit release came up just a while ago."
+    #   echo "Please try it again after a while, or run 'hollaex server --build --local_build' to force build local image."
+    #   exit 1;
+    
+    # fi
+
     # Update random secrets if env generation is enabled.
     if [[ ! "$IGNORE_SETTINGS" ]]; then 
 
@@ -3954,7 +4021,7 @@ elif [[ "$1" == "prod" ]]; then
         fi
 
         # if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] || [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
-        if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] ; then
+        if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] && [[ ! "$USE_KUBERNETES" ]] ; then
 
 
             # Announcing the domain configuration how-to.
@@ -3982,6 +4049,35 @@ elif [[ "$1" == "prod" ]]; then
 
                     printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_API_HOST.\033[39m\n"
                     printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST to point $SYSTEM_PUBLIC_IP\033[0m.\n"
+                    printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
+                    read -p "Press enter once you configured the DNS."
+
+                fi
+
+            fi
+
+            printf "\n\033[93mChecking the DNS reachability...\033[39m\n"
+            echo "Info: You could always quit the DNS checking loop with 'Crtl + C'."
+            hollaex_prod_check_domains_reachability;
+
+        elif [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]] && [[ "$USE_KUBERNETES" ]] ; then
+
+            if [[ "$HOLLAEX_PROD_EXCHANGE_WEB_URL_REACHABLILITY" == "false" ]]; then
+
+                    printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_DOMAIN.\033[39m\n"
+                    printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_DOMAIN to point your Kubernetes Public IP\033[0m.\n"
+                    printf "\nIt could either be a Load balancer IP or a public IP of the node(s).\033[0m.\n"
+                    printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
+                    read -p "Press enter once you configured the DNS."
+            fi
+
+            if [[ "$API_SUBDOMAIN_MODE" ]]; then 
+
+                if [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
+
+                    printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_API_HOST.\033[39m\n"
+                    printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST to point Kubernetes Public IP\033[0m.\n"
+                    printf "\nIt could either be a Load balancer IP or a public IP of the node(s).\033[0m.\n"
                     printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
                     read -p "Press enter once you configured the DNS."
 
@@ -4635,6 +4731,16 @@ elif [[ "$1" == "restart" ]]; then
         source $i
     done;
 
+    # Check the availability of the docker image
+    # if ! command docker images | grep $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY | grep $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION > /dev/null; then
+
+    #   echo "Error: The image ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION) is currently not available."
+    #   echo "This could be an temporary issue, especially when there is a recent Kit release came up just a while ago."
+    #   echo "Please try it again after a while, or run 'hollaex server --build --local_build' to force build local image."
+    #   exit 1;
+    
+    # fi
+
     # Update random secrets if env generation is enabled.
     if [[ ! "$IGNORE_SETTINGS" ]]; then 
 
@@ -4798,6 +4904,11 @@ elif [[ "$1" == "build" ]]; then
                 IS_HOLLAEX_SETUP=true
                 shift; continue
                 ;;
+            --local_build)
+                LOCAL_BUILD=true
+                echo "Warning: HollaEx CLI will force build the local codebase instead of using the public image."
+                shift; continue
+                ;;
             --registry)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
@@ -4905,9 +5016,11 @@ elif [[ "$1" == "build" ]]; then
 
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-server-${ENVIRONMENT_DOCKER_IMAGE_VERSION}-$(date +%y%m%d%H%M)"
 
-    build_user_hollaex_core;
+   if ! build_user_hollaex_core; then 
+    
+        exit 1;
 
-    echo -e "\nPlease run 'hollaex apply --registry $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION $(if [[ "$USE_KUBERNETES" ]]; then echo "--kube"; fi)' to apply it on the server."
+   fi 
 
 elif [[ "$1" == "apply" ]]; then
 
@@ -5054,7 +5167,7 @@ elif [[ "$1" == "apply" ]]; then
         fi
         
         # DROP OLD INGRESS RULES IF IT EXISTS ON THE CLUSTER
-        if command kubectl get ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+        if command kubectl get ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
         
             kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order
             kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-admin
@@ -5202,13 +5315,23 @@ elif [[ "$1" == "upgrade" ]]; then
         source $i
     done;
 
+    # # Check the availability of the docker image
+    # if ! command docker images | grep $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY | grep $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION > /dev/null; then
+
+    #   echo "Error: The image ($ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION) is currently not available."
+    #   echo "This could be an temporary issue, especially when there is a recent Kit release came up just a while ago."
+    #   echo "Please try it again after a while, or run 'hollaex server --build --local_build' to force build local image."
+    #   exit 1;
+    
+    # fi
+
     # Update random secrets if env generation is enabled.
-    if [[ ! "$IGNORE_SETTINGS" ]]; then 
+    # if [[ ! "$IGNORE_SETTINGS" ]]; then 
 
-        #Regenerate random secrets
-        update_random_values_to_config;
+    #     #Regenerate random secrets
+    #     update_random_values_to_config;
 
-    fi
+    # fi
 
     # Update HollaEx CLI to latest if there is newer release available.
     update_hollaex_cli_to_latest;
@@ -5237,24 +5360,81 @@ elif [[ "$1" == "upgrade" ]]; then
 
     #hollaex build
 
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
+    # export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
     
-    # Update the Core version to the user specified version, or use a latest compatible one.
+    # # Update the Core version to the user specified version, or use a latest compatible one.
+    # if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
+
+    #     export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')-${ENVIORNMENT_HOLLAEX_CPU_ARCH}"
+    
+    # else 
+
+    #     export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
+
+    # fi     
+
+    # export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-server-${ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE}-$(date +%y%m%d%H%M)"
+    
+    # export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
+
     if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
 
-        export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')-${ENVIORNMENT_HOLLAEX_CPU_ARCH}"
-    
+        if [[ "$USE_KUBERNETES" ]]; then
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then 
+
+                hollaex server --build --is_hollaex_setup --kube --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+
+            else 
+
+                hollaex server --build --is_hollaex_setup --kube --skip --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+
+            fi
+
+        else
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then 
+
+                hollaex server --build --is_hollaex_setup --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+
+            else 
+
+                hollaex server --build --is_hollaex_setup --skip --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+
+            fi
+
+        fi
+
     else 
 
-        export ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
+        if [[ "$USE_KUBERNETES" ]]; then
 
-    fi     
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then 
 
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-server-${ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE}-$(date +%y%m%d%H%M)"
-    
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
+                hollaex server --build --is_hollaex_setup --kube --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
 
-    build_user_hollaex_core;
+            else 
+
+                hollaex server --build --is_hollaex_setup --kube --skip --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
+
+            fi
+
+        else
+
+            if [[ "$RUN_WITH_VERIFY" == true ]]; then 
+
+                hollaex server --build --is_hollaex_setup --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
+
+            else 
+
+                hollaex server --build --is_hollaex_setup --skip --registry ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
+
+            fi
+
+        fi
+
+    fi 
+        
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
@@ -5274,11 +5454,19 @@ elif [[ "$1" == "upgrade" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then 
 
-            hollaex apply --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE --kube
+            hollaex apply --kube
 
         else 
 
-            hollaex apply --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE --kube --skip
+            hollaex apply --kube --skip
+
+        fi
+
+        # upgrade backup cronjob if it exists
+        if [[ "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_ACCESSKEY" ]] && [[ "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_SECRETKEY" ]]; then
+
+            echo "Installing PostgreSQL database backup Cronjob..."
+            hollaex toolbox --set_backup_cronjob --kube --skip
 
         fi
 
@@ -5286,11 +5474,11 @@ elif [[ "$1" == "upgrade" ]]; then
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then 
 
-            hollaex apply --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE 
+            hollaex apply
 
         else 
 
-            hollaex apply --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE --skip
+            hollaex apply --skip
 
         fi
 
@@ -5411,7 +5599,7 @@ elif [[ "$1" == "terminate" ]]; then
         fi
 
         # DROP OLD INGRESS RULES IF IT EXISTS ON THE CLUSTER
-        if command kubectl get ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+        if command kubectl get ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
         
             kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order
             kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-admin
@@ -5765,7 +5953,11 @@ elif [[ "$1" == "web" ]]; then
         fi 
 
         export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat $HOLLAEX_CLI_INIT_PATH/web/package.json | jq -r '.version')-$(date +%y%m%d%H%M)"
-        build_user_hollaex_web;
+        if ! build_user_hollaex_web; then
+
+            exit 1;
+
+        fi 
 
         if [[ "$USE_KUBERNETES" ]]; then
 
@@ -5815,7 +6007,7 @@ elif [[ "$1" == "web" ]]; then
 
             
             # Create docker registry secret on Kubernetes.
-            if ! command kubectl get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+            if ! command kubectl get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null && [[ ! "$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" == "hollaex/hollaex-kit" ]]; then
 
                 create_kubernetes_docker_registry_secret;
             
@@ -6025,7 +6217,7 @@ elif [[ "$1" == "web" ]]; then
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
 
 
-            if ! command kubectl get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+            if ! command kubectl get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null && [[ ! "$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" == "hollaex/hollaex-kit" ]]; then
 
                 create_kubernetes_docker_registry_secret;
             
@@ -6471,7 +6663,11 @@ elif [[ "$1" == "web" ]]; then
 
         export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY=${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY}
         export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat version)-$(date +%y%m%d%H%M)"
-        build_user_hollaex_web;
+        if ! build_user_hollaex_web; then
+
+            exit 1;
+
+        fi 
 
         ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE_PARSED=${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY}
         ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE=${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION}
@@ -6499,7 +6695,11 @@ elif [[ "$1" == "web" ]]; then
     if [[ "$WEB_CLIENT_REBUILD" ]];  then
         
         export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat $HOLLAEX_CLI_INIT_PATH/web/package.json | jq -r '.version')-$(date +%y%m%d%H%M)"
-        build_user_hollaex_web;
+        if ! build_user_hollaex_web; then
+
+            exit 1;
+
+        fi 
 
         echo -e "\nPlease run 'hollaex web --apply --registry $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY --tag $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION $(if [[ "$USE_KUBERNETES" ]]; then echo "--kube"; fi)' to apply it on the server."
 
@@ -7037,7 +7237,7 @@ elif [[ "$1" == "toolbox" ]]; then
             kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
             # DROP OLD INGRESS RULES IF IT EXISTS ON THE CLUSTER
-            if command kubectl get ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+            if command kubectl get ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
             
                 kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order
                 kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-admin
