@@ -8989,7 +8989,7 @@ elif [[ "$1" == "logs" ]]; then
 
     function hollaex_log_target_whitelist() {
 
-        local whitelist=("api" "stream" "db" "redis")
+        local whitelist=("api" "stream" "db" "redis" "plugins")
 
         if ! command printf '%s\n' ${whitelist[@]} | grep $HOLLAEX_LOGS_TARGET > /dev/null; then
         
