@@ -2983,6 +2983,28 @@ elif [[ "$1" == "pull" ]]; then
         fi
 
     fi
+
+    # Avoid running cloud exchange as DIY
+    if [[ "$HOLLAEX_IS_SETUP" ]]; then 
+
+        export VERIFICATION_STATUS_CHECK=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" -w "=%{http_code}" \
+            --request POST \
+            -d '{"activation_code": "'$HOLLAEX_SECRET_ACTIVATION_CODE'"}' \
+            $hollaexAPIURL/v2/exchange/activate)
+
+        VERIFICATION_STATUS_CHECK_RESPOND=$(echo $VERIFICATION_STATUS_CHECK | cut -f1 -d "=")
+        VERIFICATION_STATUS_CHECK_RESPOND_HTTP_CODE=$(echo $VERIFICATION_STATUS_CHECK | cut -f2 -d "=")
+
+        if [[ ! "$VERIFICATION_STATUS_CHECK_RESPOND_HTTP_CODE" == "200" ]]; then
+
+            printf "\n\033[91mError: Exchange owner is not verified yet!\033[39m\n"
+            printf "Please visit https://dash.hollaex.com/verifyAgree and verify your account first.\n\n"
+
+            exit 1;
+
+        fi
+
+    fi
     
     # Avoid running multiple setup
     if [[ "$HOLLAEX_IS_SETUP" ]] && [[ ! "$HOLLAEX_SETUP_FORCE" ]]; then 
