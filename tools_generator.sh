@@ -2295,7 +2295,7 @@ function override_user_hollaex_core() {
   done
 
   # Update Helm chart's version data
-  sed -i.bak "s/^version:.*/version: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE/" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/Chart.yaml
+  sed -i.bak "s/^version:.*/version: $(echo $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE | cut f1 -d "-")/" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/Chart.yaml
   rm $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/Chart.yaml.bak
 
   rm $CONFIGMAP_FILE_PATH.bak
