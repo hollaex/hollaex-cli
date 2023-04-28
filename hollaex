@@ -2059,6 +2059,12 @@ elif [[ "$1" == "import" ]]; then
                 TARGET_AWS_S3_BUCKET=$1
                 shift; continue
                 ;;
+            --with_hc_vault)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HC_VAULT_PATH=$1
+                shift; continue
+                ;;
             --db_backup)
                 IS_DB_BACKUP=true
                 shift; continue
@@ -2093,8 +2099,6 @@ elif [[ "$1" == "import" ]]; then
         INIT_PATH_CHECK=$HOLLAEX_CLI_INIT_PATH/.hollaex
         
     fi
-    
-    
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
@@ -2117,72 +2121,73 @@ OLD_PAIRS=$(echo $HOLLAEX_CONFIGMAP_PAIRS)
 
 EOL
 
-    if [[ "$TARGET_AWS_S3_BUCKET" ]]; then 
 
-        if [[ "$ENVIRONMENT_EXCHANGE_NAME" == "hollaex" ]] && [[ "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME" ]] ; then
+    if [[ "$ENVIRONMENT_EXCHANGE_NAME" == "hollaex" ]] && [[ "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME" ]] ; then
 
-            echo "Error: Your haven't typed the exchange name yet."
-            echo "Please type the registered exchange name."
-            echo "The name will be used to point the AWS S3 folder."
-            read exchangeName
-            exchangeNameParsed=$(echo $exchangeName |  tr -dc '[^[:alnum:]-]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
-            
-            echo "Your exchange name: $exchangeNameParsed."
-            echo "Do you want to proceed with this name? (Y/n)"
-            read answer 
+        echo "Error: Your haven't typed the exchange name yet."
+        echo "Please type the registered exchange name."
+        echo "The name will be used to point the AWS S3 folder."
+        read exchangeName
+        exchangeNameParsed=$(echo $exchangeName |  tr -dc '[^[:alnum:]-]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+        
+        echo "Your exchange name: $exchangeNameParsed."
+        echo "Do you want to proceed with this name? (Y/n)"
+        read answer 
 
-            while true;
-                do if [[ ! "$answer" = "${answer#[Nn]}" ]]; then 
-                    echo "Please type the registered exchange name."
-                    read exchangeName
-                    exchangeNameParsed=$(echo $exchangeName |  tr -dc '[^[:alnum:]-]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
-                    
-                    echo "Your exchange name: $exchangeNameParsed."
-                    echo "Do you want to proceed with this name? (Y/n)"
-                    read answer
-                else
-                    break;
-                fi
-            done
-
-            export ENVIRONMENT_EXCHANGE_NAME=$exchangeNameParsed
-
-        fi 
-
-        if [[ "$IS_DB_BACKUP" ]]; then 
-
-            if [[ ! -d $HOLLAEX_CLI_INIT_PATH/backups ]]; then
-
-                echo "Creating '/backups' folder on HollaEx Kit directory"
-                mkdir $HOLLAEX_CLI_INIT_PATH/backups
-
+        while true;
+            do if [[ ! "$answer" = "${answer#[Nn]}" ]]; then 
+                echo "Please type the registered exchange name."
+                read exchangeName
+                exchangeNameParsed=$(echo $exchangeName |  tr -dc '[^[:alnum:]-]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+                
+                echo "Your exchange name: $exchangeNameParsed."
+                echo "Do you want to proceed with this name? (Y/n)"
+                read answer
+            else
+                break;
             fi
+        done
 
-            LATEST_DB_DUMP_FILE="$(aws s3 ls $TARGET_AWS_S3_BUCKET/backup/$ENVIRONMENT_EXCHANGE_NAME-postgres --recursive | sort | tail -n 1 | awk '{print $4}')"
-            LATEST_DB_DUMP_FILE_NAME=$(echo $LATEST_DB_DUMP_FILE | cut -f3 -d "/")
-            echo "Latest DB dump file: $LATEST_DB_DUMP_FILE_NAME"
+        export ENVIRONMENT_EXCHANGE_NAME=$exchangeNameParsed
 
-            echo "Pulling the db backup file from s3://$TARGET_AWS_S3_BUCKET/$LATEST_DB_DUMP_FILE AWS S3 bucket."
-            if command aws s3 cp s3://$TARGET_AWS_S3_BUCKET/$LATEST_DB_DUMP_FILE $HOLLAEX_CLI_INIT_PATH/backups/$LATEST_DB_DUMP_FILE_NAME; then
+    fi 
 
-                printf "\033[92mYour backup file has been downloaded at $HOLLAEX_CLI_INIT_PATH/backups.\033[39m\n"
-                echo "If you are going to run a db restore job, please run the command below."
-                echo "'hollaex toolbox --restore backups/$LATEST_DB_DUMP_FILE_NAME."
+    if [[ "$IS_DB_BACKUP" ]]; then 
 
-            else 
+        if [[ ! -d $HOLLAEX_CLI_INIT_PATH/backups ]]; then
 
-                echo "Error: Failed to pull the settings files from s3://$TARGET_AWS_S3_BUCKET/$LATEST_DB_DUMP_FILE."
-                echo "Please check the error logs and try again."
-
-                exit 1;
-
-            fi 
-
-            exit 0;
+            echo "Creating '/backups' folder on HollaEx Kit directory"
+            mkdir $HOLLAEX_CLI_INIT_PATH/backups
 
         fi
 
-        mkdir -p $HOLLAEX_CLI_INIT_PATH/.settings-temp
+        LATEST_DB_DUMP_FILE="$(aws s3 ls $TARGET_AWS_S3_BUCKET/backup/$ENVIRONMENT_EXCHANGE_NAME-postgres --recursive | sort | tail -n 1 | awk '{print $4}')"
+        LATEST_DB_DUMP_FILE_NAME=$(echo $LATEST_DB_DUMP_FILE | cut -f3 -d "/")
+        echo "Latest DB dump file: $LATEST_DB_DUMP_FILE_NAME"
+
+        echo "Pulling the db backup file from s3://$TARGET_AWS_S3_BUCKET/$LATEST_DB_DUMP_FILE AWS S3 bucket."
+        if command aws s3 cp s3://$TARGET_AWS_S3_BUCKET/$LATEST_DB_DUMP_FILE $HOLLAEX_CLI_INIT_PATH/backups/$LATEST_DB_DUMP_FILE_NAME; then
+
+            printf "\033[92mYour backup file has been downloaded at $HOLLAEX_CLI_INIT_PATH/backups.\033[39m\n"
+            echo "If you are going to run a db restore job, please run the command below."
+            echo "'hollaex toolbox --restore backups/$LATEST_DB_DUMP_FILE_NAME."
+
+        else 
+
+            echo "Error: Failed to pull the settings files from s3://$TARGET_AWS_S3_BUCKET/$LATEST_DB_DUMP_FILE."
+            echo "Please check the error logs and try again."
+
+            exit 1;
+
+        fi 
+
+        exit 0;
+
+    fi
+
+    mkdir -p $HOLLAEX_CLI_INIT_PATH/.settings-temp
+
+    if [[ "$TARGET_AWS_S3_BUCKET" ]]; then 
 
         echo "Pulling the settings files from s3://$TARGET_AWS_S3_BUCKET/hollaex-kit-settings/$ENVIRONMENT_EXCHANGE_NAME AWS S3 bucket."
         if ! command aws s3 cp --recursive s3://$TARGET_AWS_S3_BUCKET/hollaex-kit-settings/$ENVIRONMENT_EXCHANGE_NAME/ $HOLLAEX_CLI_INIT_PATH/.settings-temp; then
@@ -2194,125 +2199,80 @@ EOL
 
         fi 
 
-        export HOLLAEX_IMPORT_PATH=$HOLLAEX_CLI_INIT_PATH/.settings-temp
+    elif [[ "$HC_VAULT_PATH" ]]; then
 
-    fi 
+        if [[ ! "$VAULT_ADDR" ]] || [[ ! "$VAULT_TOKEN" ]]; then
 
-    if [[ "${HOLLAEX_IMPORT_PATH[@]}" == *"json"* ]]; then
-
-         # Returns error If 'jq' doesn't exists.
-        if ! command jq --version > /dev/null 2>&1; then
-
-            printf "\033[91mError: 'jq' (https://stedolan.github.io/jq/) has not been detected on your system.\033[39m\n"
-            echo "HollaEx CLI requires 'jq' to handle certain functionalities."
-            echo "Please install it first and try again."
-
-            printf "\nFor Ubuntu (Debian) users: 'apt-get install -y jq'\n"
-            printf "For macOS users with Homebrew: 'brew install jq'\n\n"
+            echo "Error: VAULT_ADDR or VAULT_TOKEN is missing."
+            echo "Please try it again."
 
             exit 1;
 
         fi
 
-        echo "Converting imported file to HollaEx CLI settings file format..."
+        if ! command vault kv get -field=configmap $HC_VAULT_PATH/$ENVIRONMENT_EXCHANGE_NAME > $HOLLAEX_CLI_INIT_PATH/.settings-temp/configmap; then
 
-        for i in ${CONFIG_FILE_PATH[@]}; do
+            echo "Error: Failed to pull the settings files from Hashicorp Vault - $HC_VAULT_PATH/$ENVIRONMENT_EXCHANGE_NAME."
+            echo "Please check the error logs and try again."
 
-        if command grep -q "HOLLAEX_CONFIGMAP_API_NAME=" $i > /dev/null ; then
+            exit 1;
 
-            export CONFIGMAP_FILE_PATH=$i
+        fi 
 
-        fi
+        vault kv get -field=secret $HC_VAULT_PATH/$ENVIRONMENT_EXCHANGE_NAME > $HOLLAEX_CLI_INIT_PATH/.settings-temp/secret
 
-        done
+    fi
 
-        for i in ${CONFIG_FILE_PATH[@]}; do
+    export HOLLAEX_IMPORT_PATH=$HOLLAEX_CLI_INIT_PATH/.settings-temp
 
-            if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE=" $i > /dev/null ; then
+    rm $CONFIG_FILE_PATH
 
-                export SECRET_FILE_PATH=$i
+    for i in ${HOLLAEX_IMPORT_PATH[@]}; do
 
+        if [[ -d "$i" ]]; then
+            
+            if command cp $i/* $IMPORT_FILE_PATH; then
+
+                IS_IMPORT_SUCCESS=true
+            
+            else 
+
+                IS_IMPORT_SUCCESS=false
+            
             fi
 
-        done
+        elif [[ -f "$i" ]]; then
+
+            if command cp $i $IMPORT_FILE_PATH; then
+
+                IS_IMPORT_SUCCESS=true
+            
+            else 
+
+                IS_IMPORT_SUCCESS=false
+            
+            fi
         
-        BITHOLLA_USER_EXCHANGE_LIST=$(cat $HOLLAEX_IMPORT_PATH)
+        fi
 
-        # SAVING USER ACTIVATION CODE.
-        export EXCHANGE_USER_ACTIVATION_CODE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[0].activation_code";);
-        sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=.*/HOLLAEX_SECRET_ACTIVATION_CODE=${EXCHANGE_USER_ACTIVATION_CODE}/" $SECRET_FILE_PATH;
-        rm $SECRET_FILE_PATH.bak
+    done;
 
-        BITHOLLA_USER_EXCHANGE_ORDER=0
-
-        hollaex_pull_and_apply_exchange_data;
-
-        apply_coins_config_to_settings_file;
-
-        apply_pairs_config_to_settings_file;
-
-        if command grep -q "ENVIRONMENT_ADD_COIN_${COIN_PREFIX}_COIN" $CONFIGMAP_FILE_PATH > /dev/null && command grep -q "ENVIRONMENT_ADD_PAIR_${PAIR_PREFIX}" $CONFIGMAP_FILE_PATH > /dev/null; then
+    if [[ -d "$HOLLAEX_IMPORT_PATH" ]]; then
+        
+        if command cp $HOLLAEX_IMPORT_PATH/* $IMPORT_FILE_PATH; then
 
             IS_IMPORT_SUCCESS=true
-
-        else 
-
-            IS_IMPORT_SUCCESS=false
-
-        fi
-
-    else 
-
-        rm $CONFIG_FILE_PATH
-
-        for i in ${HOLLAEX_IMPORT_PATH[@]}; do
-
-            if [[ -d "$i" ]]; then
-                
-                if command cp $i/* $IMPORT_FILE_PATH; then
-
-                    IS_IMPORT_SUCCESS=true
-                
-                else 
-
-                    IS_IMPORT_SUCCESS=false
-                
-                fi
-
-            elif [[ -f "$i" ]]; then
-
-                if command cp $i $IMPORT_FILE_PATH; then
-
-                    IS_IMPORT_SUCCESS=true
-                
-                else 
-
-                    IS_IMPORT_SUCCESS=false
-                
-                fi
-            
-            fi
-
-        done;
-
-        if [[ -d "$HOLLAEX_IMPORT_PATH" ]]; then
-            
-            if command cp $HOLLAEX_IMPORT_PATH/* $IMPORT_FILE_PATH; then
-
-                IS_IMPORT_SUCCESS=true
-            
-            fi
-
-        elif [[ -f "$HOLLAEX_IMPORT_PATH" ]]; then
-
-            if command cp $HOLLAEX_IMPORT_PATH $IMPORT_FILE_PATH; then
-
-                IS_IMPORT_SUCCESS=true
-            
-            fi
         
         fi
 
+    elif [[ -f "$HOLLAEX_IMPORT_PATH" ]]; then
+
+        if command cp $HOLLAEX_IMPORT_PATH $IMPORT_FILE_PATH; then
+
+            IS_IMPORT_SUCCESS=true
+        
+        fi
+    
     fi
 
     if [[ "$IS_IMPORT_SUCCESS" == true ]]; then 
@@ -2351,6 +2311,12 @@ elif [[ "$1" == "export" ]]; then
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 TARGET_AWS_S3_BUCKET=$1
+                shift; continue
+                ;;
+            --with_hc_vault)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                HC_VAULT_PATH=$1
                 shift; continue
                 ;;
             --db_backup)
@@ -2404,7 +2370,7 @@ elif [[ "$1" == "export" ]]; then
     fi
 
 
-    if [[ "$TARGET_AWS_S3_BUCKET" ]]; then 
+    
 
         if [[ "$ENVIRONMENT_EXCHANGE_NAME" == "hollaex" ]] && [[ "$HOLLAEX_CONFIGMAP_API_NAME" == "my-hollaex-exchange" ]]; then
 
@@ -2468,26 +2434,41 @@ elif [[ "$1" == "export" ]]; then
 
         fi
 
-        echo "Pushing the settings files to s3://$TARGET_AWS_S3_BUCKET/hollaex-kit-settings/$ENVIRONMENT_EXCHANGE_NAME AWS S3 bucket."
-        if ! command aws s3 cp --recursive $HOLLAEX_CLI_INIT_PATH/settings s3://$TARGET_AWS_S3_BUCKET/hollaex-kit-settings/$ENVIRONMENT_EXCHANGE_NAME; then
+        if [[ "$TARGET_AWS_S3_BUCKET" ]]; then 
 
-            echo "Error: Failed to push the settings files to s3://$TARGET_AWS_S3_BUCKET/hollaex-kit-settings/$ENVIRONMENT_EXCHANGE_NAME."
-            echo "Please check the error logs and try again."
+            echo "Pushing the settings files to s3://$TARGET_AWS_S3_BUCKET/hollaex-kit-settings/$ENVIRONMENT_EXCHANGE_NAME AWS S3 bucket."
+            if ! command aws s3 cp --recursive $HOLLAEX_CLI_INIT_PATH/settings s3://$TARGET_AWS_S3_BUCKET/hollaex-kit-settings/$ENVIRONMENT_EXCHANGE_NAME; then
 
-            exit 1;
+                echo "Error: Failed to push the settings files to s3://$TARGET_AWS_S3_BUCKET/hollaex-kit-settings/$ENVIRONMENT_EXCHANGE_NAME."
+                echo "Please check the error logs and try again."
 
-        fi 
+                exit 1;
 
-    elif [[ "$HOLLAEX_EXPORT_PATH_INPUT" ]]; then
+            fi
 
-        echo "Exporting HollaEx Kit settings files to $HOLLAEX_EXPORT_PATH_INPUT/hollaex-kit-settings/$ENVIRONMENT_EXCHANGE_NAME."
+            # Hashicorp Vault integration
+        elif [[ "$HC_VAULT_PATH" ]]; then
 
-        mkdir -p $HOLLAEX_EXPORT_PATH_INPUT/hollaex-kit-settings
-        mkdir -p $HOLLAEX_EXPORT_PATH_INPUT/hollaex-kit-settings/$ENVIRONMENT_EXCHANGE_NAME
-        
-        cp $HOLLAEX_CLI_INIT_PATH/settings/* $HOLLAEX_EXPORT_PATH_INPUT/hollaex-kit-settings/$ENVIRONMENT_EXCHANGE_NAME
+            if [[ ! "$VAULT_ADDR" ]] || [[ ! "$VAULT_TOKEN" ]]; then
 
-    fi 
+                echo "Error: VAULT_ADDR or VAULT_TOKEN is missing."
+                echo "Please try it again."
+
+                exit 1;
+
+
+            fi 
+
+            if ! command vault kv put $HC_VAULT_PATH/$ENVIRONMENT_EXCHANGE_NAME configmap=@$HOLLAEX_CLI_INIT_PATH/settings/configmap  secret=@$HOLLAEX_CLI_INIT_PATH/settings/secret; then
+
+                echo "Error: Failed to push the settings files to Hashicorp Vault - $HC_VAULT_PATH/$ENVIRONMENT_EXCHANGE_NAME path."
+                echo "Your VAULT_ADDR: $VAULT_ADDR"
+                echo "Please check the error logs and try again."
+
+                exit 1;
+
+            fi            
+        fi
 
     printf "\033[92mYour settings files has been exported successfully!\033[39m\n"
 
