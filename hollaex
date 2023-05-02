@@ -5329,12 +5329,12 @@ elif [[ "$1" == "upgrade" ]]; then
     # fi
 
     # Update random secrets if env generation is enabled.
-    # if [[ ! "$IGNORE_SETTINGS" ]]; then 
+    if [[ ! "$IGNORE_SETTINGS" ]]; then 
 
-    #     #Regenerate random secrets
-    #     update_random_values_to_config;
+        #Regenerate random secrets
+        update_random_values_to_config;
 
-    # fi
+    fi
 
     # Update HollaEx CLI to latest if there is newer release available.
     update_hollaex_cli_to_latest;
