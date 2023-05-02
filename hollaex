@@ -5186,6 +5186,15 @@ elif [[ "$1" == "apply" ]]; then
         else 
 
             run_and_upgrade_hollaex_on_kubernetes;
+
+            # Install / Upgrade status check logic
+            if [[ ! "$KUBERNETES_HELM_INSTALL_SERVER_API" ]] || [[ ! "$KUBERNETES_HELM_INSTALL_SERVER_STREAM" ]] || [[ ! "$KUBERNETES_HELM_INSTALL_SERVER_PLUGINS" ]]; then
+
+                echo "Error: One of the install / upgrade has failed to get applied on your Kubernetes cluster."
+                echo "Please review the logs."
+                exit 1;
+
+            fi 
     
         fi
         
