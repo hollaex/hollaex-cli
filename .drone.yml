@@ -99,9 +99,9 @@ steps:
   commands:
     - docker login -u $${DOCKER_USERNAME} -p $${DOCKER_PASSWORD}
     - export DOCKER_CLI_EXPERIMENTAL=enabled
-    - docker pull bitholla/hollaex-cli:$PACKAGE_VERSION-develop
-    - export DOCKER_CONTENT_TRUST=1
     - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION-develop" > .tags
+    - docker pull bitholla/hollaex-cli:$(cat .tags)
+    - export DOCKER_CONTENT_TRUST=1
     - echo -n $${DOCKER_CONTENT_TRUST_PRIVATE_KEY} | base64 -d > bitholla-cicd.key
     - chmod 600 bitholla-cicd.key
     - docker trust key load bitholla-cicd.key --name bitholla-cicd
