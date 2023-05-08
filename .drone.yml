@@ -109,8 +109,6 @@ steps:
     - mkdir $HOME/.docker/trust && mkdir $HOME/.docker/trust/private
     - echo -n $${DOCKER_CONTENT_TRUST_PRIVATE_KEY} | base64 -d > $HOME/.docker/trust/private/997ecb83770cb33bb1d77f4321c7ac48608df95b947b370b869cc2b8a03e5de9.key
     - echo -n $${DOCKER_CONTENT_TRUST_PUBLIC_KEY} | base64 -d > bitholla-cicd.pub
-    - cat bitholla-cicd.key
-    - cat bitholla-cicd.pub
     - chmod 600 $HOME/.docker/trust/private/997ecb83770cb33bb1d77f4321c7ac48608df95b947b370b869cc2b8a03e5de9.key
     - chmod 600 bitholla-cicd.pub
     - docker trust key load $HOME/.docker/trust/private/997ecb83770cb33bb1d77f4321c7ac48608df95b947b370b869cc2b8a03e5de9.key --name bitholla-cicd
