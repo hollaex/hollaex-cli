@@ -69,17 +69,17 @@ steps:
   when:
     branch: develop
 
-- name: docker_build
-  image: plugins/docker
-  settings:
-    repo: bitholla/hollaex-cli
-    dockerfile: docker/Dockerfile
-    username:
-      from_secret: docker_username
-    password:
-      from_secret: docker_password
-  when:
-    branch: develop
+# - name: docker_build
+#   image: plugins/docker
+#   settings:
+#     repo: bitholla/hollaex-cli
+#     dockerfile: docker/Dockerfile
+#     username:
+#       from_secret: docker_username
+#     password:
+#       from_secret: docker_password
+#   when:
+#     branch: develop
 
 - name: testnet_dct_signing
   image: docker:18.06.3-dind
@@ -99,6 +99,7 @@ steps:
   commands:
     - docker login -u $${DOCKER_USERNAME} -p $${DOCKER_PASSWORD}
     - export DOCKER_CLI_EXPERIMENTAL=enabled
+    - docker pull bitholla/hollaex-cli:$PACKAGE_VERSION-develop
     - export DOCKER_CONTENT_TRUST=1
     - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION-develop" > .tags
     - echo -n $${DOCKER_CONTENT_TRUST_PRIVATE_KEY} | base64 -d > bitholla-cicd.key
