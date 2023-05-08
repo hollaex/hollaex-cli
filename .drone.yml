@@ -43,14 +43,14 @@ name: releaes_notification
 
 steps:
 
-- name: notify_job_start
-  image: plugins/slack
-  settings:
-    template: "<{{build.link}}|HollaEx CLI merge> - #{{build.number}} started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
-  channel: deployment
-  environment:
-    SLACK_WEBHOOK:
-      from_secret: slack_webhook
+# - name: notify_job_start
+#   image: plugins/slack
+#   settings:
+#     template: "<{{build.link}}|HollaEx CLI merge> - #{{build.number}} started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
+#   channel: deployment
+#   environment:
+#     SLACK_WEBHOOK:
+#       from_secret: slack_webhook
   
 - name: docker_tag_for_release_testnet
   image: alpine
@@ -103,10 +103,10 @@ steps:
     - docker pull bitholla/hollaex-cli:$(cat .tags)
     - export DOCKER_CONTENT_TRUST=1
     - echo -n $${DOCKER_CONTENT_TRUST_PRIVATE_KEY} | base64 -d > bitholla-cicd.key
-    - echo -n $${DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE} | base64 -d > DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE
-    - cat DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE
-    - export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=$(cat DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE | base64 -d)
-    - export DOCKER_CONTENT_TRUST_ROOT_PASSPHRASE=$(cat DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE | base64 -d)
+    # - echo -n $${DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE} | base64 -d > DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE
+    # - cat DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE
+    # - export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=$(cat DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE | base64 -d)
+    # - export DOCKER_CONTENT_TRUST_ROOT_PASSPHRASE=$(cat DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE | base64 -d)
     - chmod 600 bitholla-cicd.key
     - docker trust key load bitholla-cicd.key --name bitholla-cicd
     - docker trust sign bitholla/hollaex-cli:$(cat .tags)
@@ -130,14 +130,14 @@ steps:
   when:
     branch: master
 
-- name: notify_job_done
-  image: bitholla/devops-tools:drone_slack-8a15f61
-  channel: deployment
-  environment:
-    SLACK_WEBHOOK:
-      from_secret: slack_webhook
-  when:
-    status: [ success, failure ]
+# - name: notify_job_done
+#   image: bitholla/devops-tools:drone_slack-8a15f61
+#   channel: deployment
+#   environment:
+#     SLACK_WEBHOOK:
+#       from_secret: slack_webhook
+#   when:
+#     status: [ success, failure ]
 
 - name: notify_to_releases
   image: bitholla/devops-tools:drone_partymaker-0.1.4
