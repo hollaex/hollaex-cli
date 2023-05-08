@@ -82,7 +82,7 @@ steps:
 #     branch: develop
 
 - name: testnet_dct_signing
-  image: docker:18.06.3-dind
+  image: docker:20.10-dind
   privileged: true
   environment:
     DOCKER_USERNAME:
