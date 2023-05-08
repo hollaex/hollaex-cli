@@ -106,13 +106,13 @@ steps:
     - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION-develop" > .tags
     - docker pull bitholla/hollaex-cli:$(cat .tags)
     - export DOCKER_CONTENT_TRUST=1
-    - echo -n $${DOCKER_CONTENT_TRUST_PRIVATE_KEY} | base64 -d > bitholla-cicd.key
+    - echo -n $${DOCKER_CONTENT_TRUST_PRIVATE_KEY} | base64 -d > $HOME/.docker/trust/private/997ecb83770cb33bb1d77f4321c7ac48608df95b947b370b869cc2b8a03e5de9.key
     - echo -n $${DOCKER_CONTENT_TRUST_PUBLIC_KEY} | base64 -d > bitholla-cicd.pub
     - cat bitholla-cicd.key
     - cat bitholla-cicd.pub
-    - chmod 600 bitholla-cicd.key
+    - chmod 600 $HOME/.docker/trust/private/997ecb83770cb33bb1d77f4321c7ac48608df95b947b370b869cc2b8a03e5de9.key
     - chmod 600 bitholla-cicd.pub
-    - docker trust key load bitholla-cicd.key --name bitholla-cicd
+    - docker trust key load $HOME/.docker/trust/private/997ecb83770cb33bb1d77f4321c7ac48608df95b947b370b869cc2b8a03e5de9.key --name bitholla-cicd
     - docker trust signer add --key bitholla-cicd.pub bitholla-cicd bitholla/hollaex-cli
     - docker trust sign bitholla/hollaex-cli:$(cat .tags)
 
