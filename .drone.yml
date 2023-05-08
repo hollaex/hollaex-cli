@@ -86,11 +86,11 @@ steps:
   privileged: true
   environment:
     DOCKER_USERNAME:
-      from_secret: docker_username
+      from_secret: docker_username_yechan
     DOCKER_PASSWORD:
-      from_secret: docker_password
-    # DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE:
-    #   from_secret: DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE
+      from_secret: docker_password_yechan
+    DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE:
+      from_secret: DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE
     DOCKER_CONTENT_TRUST_PRIVATE_KEY:
       from_secret: DOCKER_CONTENT_TRUST_PRIVATE_KEY
   volumes:
