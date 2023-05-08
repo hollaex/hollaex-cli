@@ -104,8 +104,8 @@ steps:
     - export DOCKER_CONTENT_TRUST=1
     - echo -n $${DOCKER_CONTENT_TRUST_PRIVATE_KEY} | base64 -d > bitholla-cicd.key
     - echo -n $${DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE} | base64 -d > DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE
-    - cat DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE
     - export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=$(cat DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE | base64 -d)
+    - export DOCKER_CONTENT_TRUST_ROOT_PASSPHRASE=$(cat DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE | base64 -d)
     - chmod 600 bitholla-cicd.key
     - docker trust key load bitholla-cicd.key --name bitholla-cicd
     - docker trust sign bitholla/hollaex-cli:$(cat .tags)
