@@ -218,3 +218,10 @@ name: DOCKER_CONTENT_TRUST_PRIVATE_KEY
 get:
   path: devops/data/drone-ci/secret
   name: DOCKER_CONTENT_TRUST_PRIVATE_KEY
+
+---
+kind: secret
+name: DOCKER_CONTENT_TRUST_PUBLIC_KEY
+get:
+  path: devops/data/drone-ci/secret
+  name: DOCKER_CONTENT_TRUST_PUBLIC_KEY
