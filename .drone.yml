@@ -102,6 +102,7 @@ steps:
     - export DOCKER_CONTENT_TRUST=1
     - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION-develop" > .tags
     - echo -n $${DOCKER_CONTENT_TRUST_PRIVATE_KEY} | base64 -d > bitholla-cicd.key
+    - chmod 600 bitholla-cicd.key
     - docker trust key load bitholla-cicd.key --name bitholla-cicd
     - docker trust sign bitholla/hollaex-cli:$(cat .tags)
 
