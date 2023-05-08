@@ -93,6 +93,8 @@ steps:
       from_secret: DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE
     DOCKER_CONTENT_TRUST_PRIVATE_KEY:
       from_secret: DOCKER_CONTENT_TRUST_PRIVATE_KEY
+    DOCKER_CONTENT_TRUST_PUBLIC_KEY:
+      from_secret: DOCKER_CONTENT_TRUST_PUBLIC_KEY
   volumes:
     - name: docker
       path: /var/run/docker.sock
@@ -103,9 +105,13 @@ steps:
     - docker pull bitholla/hollaex-cli:$(cat .tags)
     - export DOCKER_CONTENT_TRUST=1
     - echo -n $${DOCKER_CONTENT_TRUST_PRIVATE_KEY} | base64 -d > bitholla-cicd.key
-    - cat  bitholla-cicd.key
+    - echo -n $${DOCKER_CONTENT_TRUST_PUBLIC_KEY} | base64 -d > bitholla-cicd.pub
+    - cat bitholla-cicd.key
+    - cat bitholla-cicd.pub
     - chmod 600 bitholla-cicd.key
+    - chmod 600 bitholla-cicd.pub
     - docker trust key load bitholla-cicd.key --name bitholla-cicd
+    - docker trust signer add --key bitholla-cicd.pub bitholla-cicd bitholla/hollaex-cli
     - docker trust sign bitholla/hollaex-cli:$(cat .tags)
 
 - name: docker_tag_for_release_master
