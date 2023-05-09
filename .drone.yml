@@ -43,14 +43,14 @@ name: releaes_notification
 
 steps:
 
-# - name: notify_job_start
-#   image: plugins/slack
-#   settings:
-#     template: "<{{build.link}}|HollaEx CLI merge> - #{{build.number}} started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
-#   channel: deployment
-#   environment:
-#     SLACK_WEBHOOK:
-#       from_secret: slack_webhook
+- name: notify_job_start
+  image: plugins/slack
+  settings:
+    template: "<{{build.link}}|HollaEx CLI merge> - #{{build.number}} started on <https://github.com/{{repo.owner}}/{{repo.name}}/tree/{{build.branch}}|{{repo.name}} / {{build.branch}}> by {{build.author}}"
+  channel: deployment
+  environment:
+    SLACK_WEBHOOK:
+      from_secret: slack_webhook
   
 - name: docker_tag_for_release_testnet
   image: alpine
@@ -60,28 +60,7 @@ steps:
   when:
     branch: testnet
 
-# test
-- name: docker_tag_for_release_develop
-  image: alpine
-  commands:
-  - export PACKAGE_VERSION="$(cat version)" && echo "$PACKAGE_VERSION-develop" > .tags
-  - echo "Current Release tag is :" && cat .tags
-  when:
-    branch: develop
-
-# - name: docker_build
-#   image: plugins/docker
-#   settings:
-#     repo: bitholla/hollaex-cli
-#     dockerfile: docker/Dockerfile
-#     username:
-#       from_secret: docker_username
-#     password:
-#       from_secret: docker_password
-#   when:
-#     branch: develop
-
-- name: testnet_dct_signing
+- name: dct_signing
   image: docker:20.10-dind
   privileged: true
   environment:
@@ -91,12 +70,9 @@ steps:
       from_secret: docker_password_yechan
     DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE:
       from_secret: DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE
-    DOCKER_CONTENT_TRUST_ROOT_PASSPHRASE:
-      from_secret: DOCKER_CONTENT_TRUST_ROOT_PASSPHRASE
     DOCKER_CONTENT_TRUST_PRIVATE_KEY:
       from_secret: DOCKER_CONTENT_TRUST_PRIVATE_KEY
-    DOCKER_CONTENT_TRUST_PUBLIC_KEY:
-      from_secret: DOCKER_CONTENT_TRUST_PUBLIC_KEY
+
   volumes:
     - name: docker
       path: /var/run/docker.sock
@@ -131,14 +107,14 @@ steps:
   when:
     branch: master
 
-# - name: notify_job_done
-#   image: bitholla/devops-tools:drone_slack-8a15f61
-#   channel: deployment
-#   environment:
-#     SLACK_WEBHOOK:
-#       from_secret: slack_webhook
-#   when:
-#     status: [ success, failure ]
+- name: notify_job_done
+  image: bitholla/devops-tools:drone_slack-8a15f61
+  channel: deployment
+  environment:
+    SLACK_WEBHOOK:
+      from_secret: slack_webhook
+  when:
+    status: [ success, failure ]
 
 - name: notify_to_releases
   image: bitholla/devops-tools:drone_partymaker-0.1.4
@@ -171,7 +147,6 @@ trigger:
   branch: 
     - master
     - testnet
-    - develop
   event:
     - push
 
@@ -216,17 +191,3 @@ name: DOCKER_CONTENT_TRUST_PRIVATE_KEY
 get:
   path: devops/data/drone-ci/secret
   name: DOCKER_CONTENT_TRUST_PRIVATE_KEY
-
----
-kind: secret
-name: DOCKER_CONTENT_TRUST_PUBLIC_KEY
-get:
-  path: devops/data/drone-ci/secret
-  name: DOCKER_CONTENT_TRUST_PUBLIC_KEY
-
----
-kind: secret
-name: DOCKER_CONTENT_TRUST_ROOT_PASSPHRASE
-get:
-  path: devops/data/drone-ci/secret
-  name: DOCKER_CONTENT_TRUST_ROOT_PASSPHRASE
