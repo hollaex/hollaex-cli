@@ -2295,7 +2295,7 @@ function override_user_hollaex_core() {
   done
 
   # Update Helm chart's version data
-  sed -i.bak "s/^version:.*/version: $(echo $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE | cut -f3 -d "-")/" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/Chart.yaml
+  sed -i.bak "s/^version:.*/version: $(cat $HOLLAEX_CLI_INIT_PATH/version)/" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/Chart.yaml
   rm $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/Chart.yaml.bak
 
   rm $CONFIGMAP_FILE_PATH.bak
@@ -4826,6 +4826,7 @@ function hollaex_login_form() {
 
       else 
 
+        echo $BITHOLLA_VERIFICATION_CODE_CHECK
         printf "\033[91mInvalid email code.\033[39m\n"
         echo "Please try it again."
         exit 1;
@@ -5010,7 +5011,7 @@ function run_and_upgrade_hollaex_on_kubernetes() {
   generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATEFUL_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateful
   generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateless
 
-  helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api \
+  if command helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api \
                     --namespace $ENVIRONMENT_EXCHANGE_NAME \
                     --set DEPLOYMENT_MODE="api" \
                     --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
@@ -5028,9 +5029,13 @@ function run_and_upgrade_hollaex_on_kubernetes() {
                     --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
                     -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
-                    $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+                    $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
 
-  helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream \
+      export KUBERNETES_HELM_INSTALL_SERVER_API=true
+
+  fi
+
+  if command helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream \
               --namespace $ENVIRONMENT_EXCHANGE_NAME \
               --set DEPLOYMENT_MODE="stream" \
               --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
@@ -5048,9 +5053,13 @@ function run_and_upgrade_hollaex_on_kubernetes() {
               --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
               -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
               -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
-              $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+              $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
 
-  helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-plugins \
+      export KUBERNETES_HELM_INSTALL_SERVER_STREAM=true
+
+  fi 
+
+  if command helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-plugins \
                      --namespace $ENVIRONMENT_EXCHANGE_NAME \
                      --set DEPLOYMENT_MODE="plugins" \
                      --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
@@ -5063,7 +5072,11 @@ function run_and_upgrade_hollaex_on_kubernetes() {
                      --set resources.requests.memory="${ENVIRONMENT_PLUGINS_MEMORY_REQUESTS:-700Mi}" \
                      --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
                      -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
-                     -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server
+                     -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+
+      export KUBERNETES_HELM_INSTALL_SERVER_PLUGINS=true
+
+  fi
 
 
   if [[ "$HOLLAEX_IS_SETUP" == true ]]; then 
