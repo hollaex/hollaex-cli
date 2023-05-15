@@ -4826,6 +4826,7 @@ function hollaex_login_form() {
 
       else 
 
+        echo $BITHOLLA_VERIFICATION_CODE_CHECK
         printf "\033[91mInvalid email code.\033[39m\n"
         echo "Please try it again."
         exit 1;
