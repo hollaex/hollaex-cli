@@ -2965,18 +2965,22 @@ elif [[ "$1" == "pull" ]]; then
 
     fi
 
-    # Avoid running cloud exchange as DIY
+    # Exchange owner verification
     if [[ "$HOLLAEX_IS_SETUP" ]]; then 
 
-        export VERIFICATION_STATUS_CHECK=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" -w "=%{http_code}" \
+        export VERIFICATION_STATUS_CHECK=$(curl -s -H "Content-Type: application/json" -o /dev/null -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" -w "%{http_code}" \
             --request POST \
             -d '{"activation_code": "'$HOLLAEX_SECRET_ACTIVATION_CODE'"}' \
             $hollaexAPIURL/v2/exchange/activate)
 
-        VERIFICATION_STATUS_CHECK_RESPOND=$(echo $VERIFICATION_STATUS_CHECK | cut -f1 -d "=")
-        VERIFICATION_STATUS_CHECK_RESPOND_HTTP_CODE=$(echo $VERIFICATION_STATUS_CHECK | cut -f2 -d "=")
+        VERIFICATION_STATUS_CHECK_RESPOND_HTTP_CODE=$(echo $VERIFICATION_STATUS_CHECK)
 
         if [[ ! "$VERIFICATION_STATUS_CHECK_RESPOND_HTTP_CODE" == "200" ]]; then
+            
+            curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN" \
+            --request POST \
+            -d '{"activation_code": "'$HOLLAEX_SECRET_ACTIVATION_CODE'"}' \
+            $hollaexAPIURL/v2/exchange/activate
 
             printf "\n\033[91mError: Exchange owner is not verified yet!\033[39m\n"
             printf "Please visit https://dash.hollaex.com/verifyAgree and verify your account first.\n\n"
@@ -5186,6 +5190,15 @@ elif [[ "$1" == "apply" ]]; then
         else 
 
             run_and_upgrade_hollaex_on_kubernetes;
+
+            # Install / Upgrade status check logic
+            if [[ ! "$KUBERNETES_HELM_INSTALL_SERVER_API" ]] || [[ ! "$KUBERNETES_HELM_INSTALL_SERVER_STREAM" ]] || [[ ! "$KUBERNETES_HELM_INSTALL_SERVER_PLUGINS" ]]; then
+
+                echo "Error: One of the install / upgrade has failed to get applied on your Kubernetes cluster."
+                echo "Please review the logs."
+                exit 1;
+
+            fi 
     
         fi
         
