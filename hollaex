@@ -6240,7 +6240,7 @@ elif [[ "$1" == "web" ]]; then
             fi
 
             echo "Starting (Scaling up) the web server on Kubernetes..."
-            if command kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-web --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 ; then
+            if command kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-web --replicas=${ENVIRONMENT_WEB_SERVER_REPLICAS:-1} --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 ; then
 
                 hollaex_ascii_web_server_is_up;
 
@@ -6888,7 +6888,7 @@ elif [[ "$1" == "web" ]]; then
                     # Update exchange name
                     if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
                         CONFIGMAP_FILE_PATH=$i
-                        sed -i.bak "s/$ENVIRONMENT_WEB_SERVER_REPLICAS=.*/$ENVIRONMENT_WEB_SERVER_REPLICAS=$HOLLAEX_WEB_SCALE_TARGET_REPLICAS/" $CONFIGMAP_FILE_PATH
+                        sed -i.bak "s/ENVIRONMENT_WEB_SERVER_REPLICAS=.*/ENVIRONMENT_WEB_SERVER_REPLICAS=$HOLLAEX_WEB_SCALE_TARGET_REPLICAS/" $CONFIGMAP_FILE_PATH
                         rm $CONFIGMAP_FILE_PATH.bak
                     fi
                     
