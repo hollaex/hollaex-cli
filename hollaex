@@ -2982,8 +2982,9 @@ elif [[ "$1" == "pull" ]]; then
             -d '{"activation_code": "'$HOLLAEX_SECRET_ACTIVATION_CODE'"}' \
             $hollaexAPIURL/v2/exchange/activate
 
-            printf "\n\033[91mError: Exchange owner is not verified yet!\033[39m\n"
-            printf "Please visit https://dash.hollaex.com/verifyAgree and verify your account first.\n\n"
+            printf "\n\033[91mAn error has been occurred.\033[39m\n"
+            printf "Please check the error message above and try again.\n\n"
+            printf "If you haven't verified yourself, please visit https://dash.hollaex.com/verifyAgree and verify your account first.\n\n"
 
             exit 1;
 
