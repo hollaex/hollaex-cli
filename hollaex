@@ -2982,8 +2982,9 @@ elif [[ "$1" == "pull" ]]; then
             -d '{"activation_code": "'$HOLLAEX_SECRET_ACTIVATION_CODE'"}' \
             $hollaexAPIURL/v2/exchange/activate
 
-            printf "\n\033[91mError: Exchange owner is not verified yet!\033[39m\n"
-            printf "Please visit https://dash.hollaex.com/verifyAgree and verify your account first.\n\n"
+            printf "\n\033[91mAn error has been occurred.\033[39m\n"
+            printf "Please check the error message above and try again.\n\n"
+            printf "If you haven't verified yourself, please visit https://dash.hollaex.com/verifyAgree and verify your account first.\n\n"
 
             exit 1;
 
@@ -6240,7 +6241,7 @@ elif [[ "$1" == "web" ]]; then
             fi
 
             echo "Starting (Scaling up) the web server on Kubernetes..."
-            if command kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-web --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 ; then
+            if command kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-web --replicas=${ENVIRONMENT_WEB_SERVER_REPLICAS:-1} --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 ; then
 
                 hollaex_ascii_web_server_is_up;
 
@@ -6888,7 +6889,7 @@ elif [[ "$1" == "web" ]]; then
                     # Update exchange name
                     if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
                         CONFIGMAP_FILE_PATH=$i
-                        sed -i.bak "s/$ENVIRONMENT_WEB_SERVER_REPLICAS=.*/$ENVIRONMENT_WEB_SERVER_REPLICAS=$HOLLAEX_WEB_SCALE_TARGET_REPLICAS/" $CONFIGMAP_FILE_PATH
+                        sed -i.bak "s/ENVIRONMENT_WEB_SERVER_REPLICAS=.*/ENVIRONMENT_WEB_SERVER_REPLICAS=$HOLLAEX_WEB_SCALE_TARGET_REPLICAS/" $CONFIGMAP_FILE_PATH
                         rm $CONFIGMAP_FILE_PATH.bak
                     fi
                     
