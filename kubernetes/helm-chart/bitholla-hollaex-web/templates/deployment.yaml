@@ -65,8 +65,8 @@ spec:
             command:
             - curl
             - http://localhost
-          initialDelaySeconds: 1
-          periodSeconds: 5
+          initialDelaySeconds: 15
+          periodSeconds: 15
 
 {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
