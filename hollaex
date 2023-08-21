@@ -8370,9 +8370,14 @@ elif [[ "$1" == "toolbox" ]]; then
             --request GET \
             $hollaexAPIURL/v2/exchange/html?exchange_id=$HOLLAEX_CLOUD_EXCHANGE_ID > $HOLLAEX_CLI_INIT_PATH/web/public/index.html
 
+            cat $HOLLAEX_CLI_INIT_PATH/web/public/index.html
+
         else 
 
             echo -e "\033[91m\nError: Failed to download the custom SEO settings.\033[39m"
+
+            echo "HTTP CODE: $HOLLAEX_CLOUD_SEO_HTML_CODE"
+            echo -e "\n$HOLLAEX_CLOUD_SEO_HTML"
             exit 1;
 
         fi 
