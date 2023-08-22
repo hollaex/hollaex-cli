@@ -21,7 +21,7 @@ function local_hollaex_network_database_init() {
       fi
 
       echo "Running database triggers"
-      if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js; then
+      if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/runTriggers.js; then
         
         printf "\n\033[91mError: Something went wrong while setting up the database (runTriggers).\033[39m\n"
         echo "Please check the server status try it again."
@@ -39,11 +39,11 @@ function local_hollaex_network_database_init() {
       fi
 
       echo "Setting up the InfluxDB"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/createInflux.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/createInflux.js
 
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/migrateInflux.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/migrateInflux.js
 
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/initializeInflux.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/initializeInflux.js
 
     elif [[ "$1" == 'upgrade' ]]; then
 
@@ -53,10 +53,10 @@ function local_hollaex_network_database_init() {
       docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 sequelize db:migrate
 
       echo "Running database triggers"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 node tools/dbs/runTriggers.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}_1 ts-node tools/dbs/runTriggers.js
 
       echo "Initializing the InfluxDB"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/initializeInflux.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/initializeInflux.js
     
     fi
 }
@@ -80,7 +80,7 @@ function local_database_init() {
       fi
 
       echo "Running database triggers"
-      if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js; then
+      if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/runTriggers.js; then
 
         printf "\n\033[91mError: Something went wrong while setting up the database (runTriggers).\033[39m\n"
         echo "Please check the server status try it again."
@@ -98,13 +98,13 @@ function local_database_init() {
       fi
 
       echo "Setting up the exchange with provided activation code"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/setActivationCode.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/setActivationCode.js
 
       echo "Updating the secrets.."
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/checkConfig.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/checkConfig.js
 
       echo "Setting up the version number based on the current Kit."
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/setKitVersion.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/setKitVersion.js
 
     elif [[ "$1" == 'upgrade' ]]; then
 
@@ -120,7 +120,7 @@ function local_database_init() {
       fi
 
       echo "Running database triggers"
-      if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js; then
+      if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/runTriggers.js; then
 
         printf "\n\033[91mError: Something went wrong while setting up the database (runTriggers).\033[39m\n"
         echo "Please check the server status try it again."
@@ -129,10 +129,10 @@ function local_database_init() {
       fi
 
       echo "Updating the secrets.."
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/checkConfig.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/checkConfig.js
 
       echo "Setting up the version number based on the current Kit."
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/setKitVersion.js
+      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/setKitVersion.js
     
     fi
 }
@@ -162,7 +162,7 @@ function kubernetes_database_init() {
     fi
 
     echo "Running Database Triggers"
-    if ! command kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/runTriggers.js; then
+    if ! command kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- ts-node tools/dbs/runTriggers.js; then
 
       printf "\n\033[91mError: Something went wrong while setting up the database (runTriggers).\033[39m\n"
       echo "Please check the server status try it again."
@@ -180,13 +180,13 @@ function kubernetes_database_init() {
     fi
 
     echo "Setting up the exchange with provided activation code"
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/setActivationCode.js
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- ts-node tools/dbs/setActivationCode.js
 
     echo "Setting up the secret"
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/checkConfig.js
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- ts-node tools/dbs/checkConfig.js
 
     echo "Setting up the version"
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/setKitVersion.js
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- ts-node tools/dbs/setKitVersion.js
     
   elif [[ "$1" == "upgrade" ]]; then
 
@@ -255,7 +255,7 @@ function kubernetes_run_checkconfig() {
   sleep 10;
 
   echo "Running checkConfig"
-  kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/checkConfig.js
+  kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- ts-node tools/dbs/checkConfig.js
 
 }
 
@@ -268,7 +268,7 @@ function local_run_checkconfig() {
   IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
   echo "Running checkConfig"
-  docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/checkConfig.js
+  docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/checkConfig.js
       
 }
 
@@ -291,15 +291,15 @@ function kubernetes_hollaex_network_database_init() {
     kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:migrate 
 
     echo "Running Database Triggers"
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/runTriggers.js
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- ts-node tools/dbs/runTriggers.js
 
     echo "Running sequelize db:seed:all"
     kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:seed:all 
 
     echo "Running InfluxDB initialization jobs"
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/createInflux.js
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/migrateInflux.js
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- ts-node tools/dbs/createInflux.js
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- ts-node tools/dbs/migrateInflux.js
+    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- ts-node tools/dbs/initializeInflux.js
     
   elif [[ "$1" == "upgrade" ]]; then
 
@@ -1075,7 +1075,7 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
     env_file:
       - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
     entrypoint:
-      - node
+      - ts-node
     deploy:
       resources:
         limits:
@@ -1097,9 +1097,9 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
           $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_STREAM_MEMORY_REQUESTS:-256M}" | sed 's/i//g' ; fi) 
           $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo memory: "${ENVIRONMENT_PLUGINS_MEMORY_REQUESTS:-700M}" | sed 's/i//g' ; fi) 
     command:
-      $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- app.js"; fi) 
-      $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- ws/index.js"; fi) 
-      $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- plugins/index.js"; fi) 
+      $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- app.ts"; fi) 
+      $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- ws/index.ts"; fi) 
+      $(if [[ "${i}" == "plugins" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- plugins/index.ts"; fi) 
     $(if [[ "${i}" == "api" ]] || [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "ports:"; fi)
       $(if [[ "${i}" == "api" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- 10010:10010"; fi) 
       $(if [[ "${i}" == "stream" ]] && [[ ! "$ENVIRONMENT_HOLLAEX_SCALEING" ]]; then echo "- 10080:10080"; fi)
@@ -2168,7 +2168,7 @@ EOL
 function generate_random_values() {
 
   # Runs random.js through docker with latest compatible HollaEx Server (minimum 1.23.0)
-  docker run --rm --entrypoint node $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION tools/general/random.js
+  docker run --rm --entrypoint ts-node $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION tools/general/random.js
   
 }
 
@@ -3774,7 +3774,7 @@ EOL
     # fi
 
     echo "Setting up the exchange with provided activation code"
-    docker exec --env "ACTIVATION_CODE=${HOLLAEX_SECRET_ACTIVATION_CODE}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/setActivationCode.js
+    docker exec --env "ACTIVATION_CODE=${HOLLAEX_SECRET_ACTIVATION_CODE}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/setActivationCode.js
           
   fi
 
@@ -3846,7 +3846,7 @@ EOL
     IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
         
     echo "Updating constants..."
-    if command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/checkConstants.js; then
+    if command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/checkConstants.js; then
 
         echo "Successfully updated the missing database constants with your local configmap values."
         echo "Make sure to run 'hollaex restart' to fully apply it."
@@ -3934,7 +3934,7 @@ EOL
     # fi
 
     echo "Updating constants..."
-    if command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/setConfig.js; then
+    if command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/setConfig.js; then
 
         echo "Successfully updated database constants with your local configmap values."
         echo "Make sure to run 'hollaex restart' to fully apply it."
@@ -4146,7 +4146,7 @@ EOL
                 --env CAPTCHA_SITE_KEY=$HOLLAEX_CONFIGMAP_CAPTCHA_SITE_KEY \
                 --env CAPTCHA_SECRET_KEY=$HOLLAEX_SECRET_CAPTCHA_SECRET_KEY \
                 ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 \
-                node tools/dbs/setSecurity.js; then
+                ts-node tools/dbs/setSecurity.js; then
 
         echo "Successfully updated exchange security values with the new ones."
         echo "Make sure to run 'hollaex restart' to fully apply it."
@@ -5100,7 +5100,7 @@ function run_and_upgrade_hollaex_on_kubernetes() {
   fi
 
   echo "Flushing Redis..."
-  kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/flushRedis.js
+  kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- ts-node tools/dbs/flushRedis.js
 
   echo "Restarting all containers to apply latest database changes..."
   kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
@@ -5324,7 +5324,7 @@ function run_and_upgrade_hollaex_network_on_kubernetes() {
   fi
 
   echo "Flushing Redis..."
-  kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/flushRedis.js
+  kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- ts-node tools/dbs/flushRedis.js
 
   echo "Restarting all containers to apply latest database changes..."
   kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
@@ -6123,7 +6123,7 @@ EOL
                   --env "COIN_INCREMENT_UNIT=$(echo ${!COIN_INCREMENT_UNIT_OVERRIDE})" \
                   --env "COIN_ACTIVE=$(echo ${!COIN_ACTIVE_OVERRIDE})"  \
                   ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 \
-                  node tools/dbs/addCoin.js; then
+                  ts-node tools/dbs/addCoin.js; then
 
          echo "Updating configmap file to add new $COIN_CODE."
          for i in ${CONFIG_FILE_PATH[@]}; do
@@ -6157,7 +6157,7 @@ EOL
         if [[ ! "$IS_HOLLAEX_SETUP" ]]; then
 
           echo "Running database triggers"
-          docker exec --env "CURRENCIES=${HOLLAEX_CONFIGMAP_CURRENCIES}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js > /dev/null
+          docker exec --env "CURRENCIES=${HOLLAEX_CONFIGMAP_CURRENCIES}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/runTriggers.js > /dev/null
         
         fi
 
@@ -6373,7 +6373,7 @@ function remove_coin_exec() {
     echo "Removing new coin $COIN_CODE on local docker"
     if command docker exec --env "COIN_CODE=${COIN_CODE}" \
                 ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 \
-                node tools/dbs/removeCoin.js; then
+                ts-node tools/dbs/removeCoin.js; then
 
       echo "Updating settings file to remove $COIN_CODE."
       for i in ${CONFIG_FILE_PATH[@]}; do
@@ -6419,7 +6419,7 @@ function remove_coin_exec() {
       # fi
 
       # Running database triggers
-      docker exec --env="CURRENCIES=${HOLLAEX_CONFIGMAP_CURRENCIES}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js > /dev/null
+      docker exec --env="CURRENCIES=${HOLLAEX_CONFIGMAP_CURRENCIES}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/runTriggers.js > /dev/null
 
       echo "Coin $COIN_CODE has been successfully removed."
       echo "Please run 'hollaex restart' to apply it."
@@ -6862,7 +6862,7 @@ EOL
                   --env "INCREMENT_PRICE=$(echo ${!INCREMENT_PRICE_OVERRIDE})"  \
                   --env "PAIR_ACTIVE=$(echo ${!PAIR_ACTIVE_OVERRIDE})" \
                   ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 \
-                  node tools/dbs/addPair.js; then
+                  ts-node tools/dbs/addPair.js; then
 
           echo "Updating settings file to add new $PAIR_CODE."
           for i in ${CONFIG_FILE_PATH[@]}; do
@@ -6898,7 +6898,7 @@ EOL
           if [[ ! "$IS_HOLLAEX_SETUP" ]]; then
 
             # Running database triggers
-            docker exec  --env "PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js > /dev/null
+            docker exec  --env "PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/runTriggers.js > /dev/null
 
           fi
 
@@ -7091,7 +7091,7 @@ function remove_pair_exec() {
       IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
       echo "*** Removing new pair $PAIR_CODE on local exchange ***"
-      if command docker exec --env "PAIR_CODE=${PAIR_CODE}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/removePair.js; then
+      if command docker exec --env "PAIR_CODE=${PAIR_CODE}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/removePair.js; then
 
         echo "*** Updating settings file to remove existing $PAIR_CODE. ***"
         for i in ${CONFIG_FILE_PATH[@]}; do
@@ -7120,7 +7120,7 @@ function remove_pair_exec() {
         generate_local_docker_compose;
         
         # Running database triggers
-        docker exec --env="PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js > /dev/null
+        docker exec --env="PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/runTriggers.js > /dev/null
 
         echo "Trading pair $PAIR_CODE has been successfully removed."
         echo "Please run 'hollaex restart' to fully apply it."
@@ -7261,7 +7261,7 @@ EOL
                   --env "COIN_CODE=$COIN_CODE" \
                   --env "COIN_OWNER_ID=$COIN_OWNER_ID" \
                   ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 \
-                  node tools/dbs/changeCoinOwner.js; then
+                  ts-node tools/dbs/changeCoinOwner.js; then
 
          
         echo "Successfully changed the ownership of $COIN_CODE!"
@@ -7417,7 +7417,7 @@ EOL
       if command docker exec \
                   --env "COIN_CODE=$COIN_CODE" \
                   ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 \
-                  node tools/dbs/activateCoin.js; then
+                  ts-node tools/dbs/activateCoin.js; then
 
          
         echo "Successfully activated $COIN_CODE!"
@@ -7448,7 +7448,7 @@ EOL
         if [[ ! "$IS_HOLLAEX_SETUP" ]]; then
 
             # Running database triggers
-            docker exec  --env "PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js > /dev/null
+            docker exec  --env "PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/runTriggers.js > /dev/null
 
           fi
 
@@ -7594,7 +7594,7 @@ EOL
                   --env "PAIR_CODE=$PAIR_CODE" \
                   --env "PAIR_OWNER_ID=$PAIR_OWNER_ID" \
                   ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 \
-                  node tools/dbs/changePairOwner.js; then
+                  ts-node tools/dbs/changePairOwner.js; then
 
          
         echo "Successfully changed the ownership of $PAIR_CODE!"
@@ -7769,7 +7769,7 @@ EOL
       if command docker exec \
                   --env "PAIR_CODE=$PAIR_CODE" \
                   ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 \
-                  node tools/dbs/activatePair.js; then
+                  ts-node tools/dbs/activatePair.js; then
 
          
         echo "Successfully activated $PAIR_CODE!"
@@ -7805,7 +7805,7 @@ EOL
         generate_local_docker_compose_for_network;
 
         # Running database triggers
-        docker exec  --env "PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js > /dev/null
+        docker exec  --env "PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 ts-node tools/dbs/runTriggers.js > /dev/null
 
         hollaex_ascii_pair_has_been_added
 
