@@ -1,7 +1,7 @@
 # Default values for bitholla-hollaex-nginx.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
-imageRegistry: bitholla/hollaex-kit
+imageRegistry: bitholla/hollaex-core
 dockerTag:
   
 imagePullSecrets:

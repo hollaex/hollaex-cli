@@ -25,50 +25,50 @@ spec:
 {{- if eq .Values.job.mode "add_coin" }}
 
         args:
-          - ts-node tools/dbs/addCoin.js;
+          - node tools/dbs/addCoin.js;
 
 {{- else if eq .Values.job.mode "remove_coin" }}
 
         args:
-          - ts-node tools/dbs/removeCoin.js;
+          - node tools/dbs/removeCoin.js;
 
 {{- else if eq .Values.job.mode "add_pair" }}
 
         args:
-          - ts-node tools/dbs/addPair.js;
+          - node tools/dbs/addPair.js;
 
 {{- else if eq .Values.job.mode "remove_pair" }}
 
         args:
-          - ts-node tools/dbs/removePair.js;
+          - node tools/dbs/removePair.js;
 
 {{- else if eq .Values.job.mode "set_activation_code" }}
 
         args:
-          - ts-node tools/dbs/setActivationCode.js;
+          - node tools/dbs/setActivationCode.js;
 
 {{- else if eq .Values.job.mode "check_constants" }}
 
         args:
-          - ts-node tools/dbs/checkConstants.js;
+          - node tools/dbs/checkConstants.js;
 
 {{- else if eq .Values.job.mode "set_config" }}
 
         args:
-          - ts-node tools/dbs/setConfig.js;
+          - node tools/dbs/setConfig.js;
 
 {{- else if eq .Values.job.mode "set_security" }}
 
         args:
-          - ts-node tools/dbs/setSecurity.js;
+          - node tools/dbs/setSecurity.js;
 
 {{- else if eq .Values.job.mode "hollaex_upgrade" }}
 
         args:
           - sequelize db:migrate;
-            ts-node tools/dbs/runTriggers.js;
-            ts-node tools/dbs/checkConfig.js;
-            ts-node tools/dbs/setKitVersion.js;
+            node tools/dbs/runTriggers.js;
+            node tools/dbs/checkConfig.js;
+            node tools/dbs/setKitVersion.js;
 
 {{- end }}
 

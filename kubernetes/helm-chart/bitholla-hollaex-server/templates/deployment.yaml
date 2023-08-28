@@ -79,17 +79,17 @@ spec:
 {{- if eq .Values.DEPLOYMENT_MODE "api" }}
 
         command: ["/bin/bash"]
-        args: ["-c", "ts-node app.ts"]
+        args: ["-c", "node app.js"]
 
 {{- else if eq .Values.DEPLOYMENT_MODE "stream" }}
 
         command: ["/bin/bash"]
-        args: ["-c", "ts-node ws/index.ts"]
+        args: ["-c", "node ws/index.js"]
 
 {{- else if eq .Values.DEPLOYMENT_MODE "plugins" }}
 
         command: ["/bin/bash"]
-        args: ["-c", "ts-node plugins/index.ts"]
+        args: ["-c", "node plugins/index.js"]
 
 {{- end }}
 
