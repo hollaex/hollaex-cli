@@ -1001,7 +1001,7 @@ EOL
 
 function generate_local_docker_compose() {
 
-if [[ -f "$TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml" ]] && [[ ! "$UPGRADE_PSQL_DB_VERSION" ]]; then
+if [[ -f "$TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml" ]] && [[ ! "$UPGRADE_PSQL_DB_VERSION" ]] && [[ ! "$HOLLAEX_IS_SETUP" ]]; then
 
   DOCKER_CONTAINER_NAME=$(docker ps -a | grep $HOLLAEX_SECRET_DB_HOST | cut -f1 -d " ")
   EXISTING_DB_DOCKER_IMAGE=$(docker inspect --format='{{.Config.Image}}' $DOCKER_CONTAINER_NAME)
