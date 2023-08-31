@@ -5006,6 +5006,17 @@ function run_and_upgrade_hollaex_on_kubernetes() {
 
         export KUBERNETES_PSQL_DB_EXISTS=true
 
+       EXISTING_DB_DOCKER_IMAGE=$(kubectl get -n $ENVIRONMENT_EXCHANGE_NAME deployment/$ENVIRONMENT_EXCHANGE_NAME-db -o jsonpath="{.spec.template.spec.containers[0].image}")
+       EXISTING_DB_DOCKER_IMAGE_TAG=$(echo $EXISTING_DB_DOCKER_IMAGE | cut -f2 -d":")
+       
+        if [[ -z "$EXISTING_DB_DOCKER_IMAGE_TAG" ]]; then
+
+          echo "Failed to parse the existing DB's Docker Image Tag!"
+          echo "Please check the logs and try again."
+          exit 1;
+
+        fi
+
       fi
 
       helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db \
@@ -5021,7 +5032,7 @@ function run_and_upgrade_hollaex_on_kubernetes() {
                   --set resources.requests.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_REQUESTS:-100Mi}" \
                   -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml \
                   -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml \
-                  $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $(if [[ "$KUBERNETES_PSQL_DB_EXISTS" ]]; then echo $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_PREVIOUS_VERSION; else echo $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION; fi)) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
+                  $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $(if [[ "$KUBERNETES_PSQL_DB_EXISTS" ]]; then echo $EXISTING_DB_DOCKER_IMAGE_TAG; else echo $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION; fi)) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
 
                   echo "Waiting until the database to be fully initialized"
                   sleep 60
