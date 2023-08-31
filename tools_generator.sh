@@ -1001,6 +1001,12 @@ EOL
 
 function generate_local_docker_compose() {
 
+if [[ -f "$TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml" ]] && [[ ! "$UPGRADE_PSQL_DB_VERSION" ]]; then
+
+  DOCKER_COMPOSE_FILE_EXISTS=true
+
+fi
+
 # Generate docker-compose
 cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
 version: '3'
@@ -1039,7 +1045,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
   ${HOLLAEX_SECRET_DB_HOST}:
-    image: ${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY:-postgres}:${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION:-10.9}
+    image: ${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY:-postgres}:$(if [[ "$DOCKER_COMPOSE_FILE_EXISTS" ]]; then echo "${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_PREVIOUS_VERSION:-10.9-alpine}"; else echo "${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION}"; fi)
     restart: unless-stopped
     ports:
       - 5432:5432
@@ -4987,6 +4993,12 @@ function run_and_upgrade_hollaex_on_kubernetes() {
 
       generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
 
+      if command helm ls -n $ENVIRONMENT_EXCHANGE_NAME | grep $ENVIRONMENT_EXCHANGE_NAME-db; then
+
+        export KUBERNETES_PSQL_DB_EXISTS=true
+
+      fi
+
       helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db \
                   --namespace $ENVIRONMENT_EXCHANGE_NAME \
                   --wait \
@@ -5000,7 +5012,7 @@ function run_and_upgrade_hollaex_on_kubernetes() {
                   --set resources.requests.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_REQUESTS:-100Mi}" \
                   -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml \
                   -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml \
-                  $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
+                  $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(if [[ "$KUBERNETES_PSQL_DB_EXISTS" ]]; then $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_PREVIOUS_VERSION); else $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_PREVIOUS_VERSION); fi) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
 
                   echo "Waiting until the database to be fully initialized"
                   sleep 60

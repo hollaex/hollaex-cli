@@ -8457,6 +8457,7 @@ elif [[ "$1" == "toolbox" ]]; then
     elif [[ "$UPGRADE_PSQL_DB_VERSION" ]]; then
 
         echo "Do you want to upgrade the PSQL DB to v$UPGRADE_PSQL_DB_VERSION? (y/N)"
+        echo "Please make sure that your exchange is running."
         echo "Current Version: $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION."
         read answer
 
@@ -8473,6 +8474,30 @@ elif [[ "$1" == "toolbox" ]]; then
 
         fi
 
+        echo "Updating the DB to v$UPGRADE_PSQL_DB_VERSION..."
+        for i in ${CONFIG_FILE_PATH[@]}; do
+            if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+                CONFIGMAP_FILE_PATH=$i
+
+                sed -i.bak "s/ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION=.*/ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION=$UPGRADE_PSQL_DB_VERSION/" $CONFIGMAP_FILE_PATH
+                rm $CONFIGMAP_FILE_PATH.bak
+            fi
+        done
+
+    
+        for i in ${CONFIG_FILE_PATH[@]}; do
+
+            if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE=" $i > /dev/null ; then
+
+                export SECRET_FILE_PATH=$i
+
+                sed -i.bak "s/HOLLAEX_SECRET_DB_HOST=.*/HOLLAEX_SECRET_DB_HOST=$(echo $UPGRADE_PSQL_DB_VERSION |  tr -dc '[^[:alnum:]-]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')-${ENVIRONMENT_EXCHANGE_NAME}-db/" $SECRET_FILE_PATH
+                rm $SECRET_FILE_PATH.bak
+
+            fi
+
+        done
+
         if [[ "$USE_KUBERNETES" ]]; then
 
             echo "Getting a database dump..."
@@ -8482,9 +8507,31 @@ elif [[ "$1" == "toolbox" ]]; then
                 exit 1; 
 
             fi 
+
+            if [[ "$ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB" == true ]]; then
+
+                generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
+
+                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db \
+                            --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                            --wait \
+                            --set pvc.create=true \
+                            --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" \
+                            --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" \
+                            --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                            --set resources.limits.cpu="${ENVIRONMENT_POSTGRESQL_CPU_LIMITS:-100m}" \
+                            --set resources.limits.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_LIMITS:-200Mi}" \
+                            --set resources.requests.cpu="${ENVIRONMENT_POSTGRESQL_CPU_REQUESTS:-10m}" \
+                            --set resources.requests.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_REQUESTS:-100Mi}" \
+                            -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml \
+                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml \
+                            $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
+
+                            echo "Waiting until the database to be fully initialized"
+                            sleep 60
+
+            fi
             
-
-
         else
 
             echo "Getting a database dump..."
@@ -8493,32 +8540,8 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "Failed to get a database dump. Aborting the job."
                 exit 1; 
 
-            fi 
+            fi
             
-            echo "Updating the DB to v$UPGRADE_PSQL_DB_VERSION..."
-            for i in ${CONFIG_FILE_PATH[@]}; do
-                if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
-                    CONFIGMAP_FILE_PATH=$i
-
-                    sed -i.bak "s/ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION=.*/ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION=$UPGRADE_PSQL_DB_VERSION/" $CONFIGMAP_FILE_PATH
-                    rm $CONFIGMAP_FILE_PATH.bak
-                fi
-            done
-
-     
-            for i in ${CONFIG_FILE_PATH[@]}; do
-
-                if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE=" $i > /dev/null ; then
-
-                    export SECRET_FILE_PATH=$i
-
-                    sed -i.bak "s/HOLLAEX_SECRET_DB_HOST=.*/HOLLAEX_SECRET_DB_HOST=$(echo $UPGRADE_PSQL_DB_VERSION |  tr -dc '[^[:alnum:]-]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')-${ENVIRONMENT_EXCHANGE_NAME}-db/" $SECRET_FILE_PATH
-                    rm $SECRET_FILE_PATH.bak
-
-                fi
-
-            done
-
             if ! command hollaex server --stop --skip; then 
 
                 echo "Something went wrong while restarting the exchange!"
