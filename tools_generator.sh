@@ -1003,7 +1003,8 @@ function generate_local_docker_compose() {
 
 if [[ -f "$TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml" ]] && [[ ! "$UPGRADE_PSQL_DB_VERSION" ]]; then
 
-  EXISTING_DB_DOCKER_IMAGE=$(docker inspect --format='{{.Config.Image}}' $HOLLAEX_SECRET_DB_HOST)
+  DOCKER_CONTAINER_NAME=$(docker ps -a | grep $HOLLAEX_SECRET_DB_HOST | cut -f1 -d " ")
+  EXISTING_DB_DOCKER_IMAGE=$(docker inspect --format='{{.Config.Image}}' $DOCKER_CONTAINER_NAME)
   EXISTING_DB_DOCKER_IMAGE_TAG=$(echo $EXISTING_DB_DOCKER_IMAGE | cut -f2 -d":")
 
   if [[ -z "$EXISTING_DB_DOCKER_IMAGE_TAG" ]]; then
