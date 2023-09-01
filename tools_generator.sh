@@ -1001,6 +1001,22 @@ EOL
 
 function generate_local_docker_compose() {
 
+if [[ -f "$TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml" ]] && [[ ! "$UPGRADE_PSQL_DB_VERSION" ]] && [[ ! "$HOLLAEX_IS_SETUP" ]]; then
+
+  DOCKER_CONTAINER_NAME=$(docker ps -a | grep $HOLLAEX_SECRET_DB_HOST | cut -f1 -d " ")
+  EXISTING_DB_DOCKER_IMAGE=$(docker inspect --format='{{.Config.Image}}' $DOCKER_CONTAINER_NAME)
+  EXISTING_DB_DOCKER_IMAGE_TAG=$(echo $EXISTING_DB_DOCKER_IMAGE | cut -f2 -d":")
+
+  if [[ -z "$EXISTING_DB_DOCKER_IMAGE_TAG" ]]; then
+
+    echo "Failed to parse the existing DB's Docker Image Tag!"
+    echo "Please check the logs and try again."
+    exit 1;
+
+  fi
+
+fi
+
 # Generate docker-compose
 cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
 version: '3'
@@ -1011,11 +1027,11 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]]; then
 
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
-  ${ENVIRONMENT_EXCHANGE_NAME}-redis:
+  ${HOLLAEX_SECRET_REDIS_HOST}:
     image: ${ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY:-redis}:${ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION:-6.0.9-alpine}
     restart: unless-stopped
     depends_on:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-db
+      - ${HOLLAEX_SECRET_DB_HOST}
     ports:
       - 6379:6379
     env_file:
@@ -1038,8 +1054,8 @@ fi
 if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then 
   # Generate docker-compose
   cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
-  ${ENVIRONMENT_EXCHANGE_NAME}-db:
-    image: ${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY:-postgres}:${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION:-10.9}
+  ${HOLLAEX_SECRET_DB_HOST}:
+    image: ${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY:-postgres}:$(if [[ "$EXISTING_DB_DOCKER_IMAGE_TAG" ]]; then echo "${EXISTING_DB_DOCKER_IMAGE_TAG}"; else echo "${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION}"; fi)
     restart: unless-stopped
     ports:
       - 5432:5432
@@ -1107,8 +1123,8 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
     networks:
       - $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "local_hollaex-network-network"; else echo "${ENVIRONMENT_EXCHANGE_NAME}-network"; fi)
     $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" ]] || [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" ]] || [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" ]]; then echo "depends_on:"; fi)
-      $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-redis"; fi)
-      $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-db"; fi)
+      $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" ]]; then echo "- $HOLLAEX_SECRET_REDIS_HOST"; fi)
+      $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" ]]; then echo "- $HOLLAEX_SECRET_DB_HOST"; fi)
 
 EOL
   
@@ -4987,6 +5003,23 @@ function run_and_upgrade_hollaex_on_kubernetes() {
 
       generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
 
+      if command helm ls -n $ENVIRONMENT_EXCHANGE_NAME | grep $ENVIRONMENT_EXCHANGE_NAME-db; then
+
+        export KUBERNETES_PSQL_DB_EXISTS=true
+
+       EXISTING_DB_DOCKER_IMAGE=$(kubectl get -n $ENVIRONMENT_EXCHANGE_NAME deployment/$ENVIRONMENT_EXCHANGE_NAME-db -o jsonpath="{.spec.template.spec.containers[0].image}")
+       EXISTING_DB_DOCKER_IMAGE_TAG=$(echo $EXISTING_DB_DOCKER_IMAGE | cut -f2 -d":")
+       
+        if [[ -z "$EXISTING_DB_DOCKER_IMAGE_TAG" ]]; then
+
+          echo "Failed to parse the existing DB's Docker Image Tag!"
+          echo "Please check the logs and try again."
+          exit 1;
+
+        fi
+
+      fi
+
       helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db \
                   --namespace $ENVIRONMENT_EXCHANGE_NAME \
                   --wait \
@@ -5000,7 +5033,7 @@ function run_and_upgrade_hollaex_on_kubernetes() {
                   --set resources.requests.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_REQUESTS:-100Mi}" \
                   -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml \
                   -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml \
-                  $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
+                  $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $(if [[ "$KUBERNETES_PSQL_DB_EXISTS" ]]; then echo $EXISTING_DB_DOCKER_IMAGE_TAG; else echo $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION; fi)) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
 
                   echo "Waiting until the database to be fully initialized"
                   sleep 60

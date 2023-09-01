@@ -7105,6 +7105,13 @@ elif [[ "$1" == "toolbox" ]]; then
                 TOOLBOX_ENABLE=true
                 shift; continue
                 ;;
+            --upgrade-psql-db-version)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                UPGRADE_PSQL_DB_VERSION=$1
+                TOOLBOX_ENABLE=true
+                shift; continue
+                ;;
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
@@ -8370,9 +8377,14 @@ elif [[ "$1" == "toolbox" ]]; then
             --request GET \
             $hollaexAPIURL/v2/exchange/html?exchange_id=$HOLLAEX_CLOUD_EXCHANGE_ID > $HOLLAEX_CLI_INIT_PATH/web/public/index.html
 
+            cat $HOLLAEX_CLI_INIT_PATH/web/public/index.html
+
         else 
 
             echo -e "\033[91m\nError: Failed to download the custom SEO settings.\033[39m"
+
+            echo "HTTP CODE: $HOLLAEX_CLOUD_SEO_HTML_CODE"
+            echo -e "\n$HOLLAEX_CLOUD_SEO_HTML"
             exit 1;
 
         fi 
@@ -8441,6 +8453,123 @@ elif [[ "$1" == "toolbox" ]]; then
         echo -e "Requests from all IPs will be allowed with no restriction."
 
         echo -e "To enable the maintenance mode, run 'hollaex toolbox --disable_maintenance_mode --whitelist-ip <MY_IP> (--kube).\n"
+    
+    elif [[ "$UPGRADE_PSQL_DB_VERSION" ]]; then
+
+        echo "Do you want to upgrade the PSQL DB to v$UPGRADE_PSQL_DB_VERSION? (y/N)"
+        echo "Please make sure that your exchange is running."
+        echo "Current Version: $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION."
+        read answer
+
+        if [[ "$answer" = "${answer#[Yy]}" ]]; then
+            echo "Exiting..."
+            exit 0;
+        fi
+
+        echo "Checking whether v$UPGRADE_PSQL_DB_VERSION is a valid PSQL release..."
+        if ! command curl -s -S https://registry.hub.docker.com/v2/repositories/library/postgres/tags?page_size=1000 | jq -r '."results"[]["name"]' | grep $UPGRADE_PSQL_DB_VERSION | sed -n 1p; then 
+
+            echo "Error: v$UPGRADE_PSQL_DB_VERSION is incompatible with the HollaEx Kit or invalid on the public repository."
+            exit 1;
+
+        fi
+
+        echo "Updating the DB to v$UPGRADE_PSQL_DB_VERSION..."
+        for i in ${CONFIG_FILE_PATH[@]}; do
+            if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
+                CONFIGMAP_FILE_PATH=$i
+
+                sed -i.bak "s/ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION=.*/ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION=$UPGRADE_PSQL_DB_VERSION/" $CONFIGMAP_FILE_PATH
+                rm $CONFIGMAP_FILE_PATH.bak
+            fi
+        done
+
+    
+        for i in ${CONFIG_FILE_PATH[@]}; do
+
+            if command grep -q "HOLLAEX_SECRET_ACTIVATION_CODE=" $i > /dev/null ; then
+
+                export SECRET_FILE_PATH=$i
+
+                sed -i.bak "s/HOLLAEX_SECRET_DB_HOST=.*/HOLLAEX_SECRET_DB_HOST=$(echo $UPGRADE_PSQL_DB_VERSION |  tr -dc '[^[:alnum:]-]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')-${ENVIRONMENT_EXCHANGE_NAME}-db/" $SECRET_FILE_PATH
+                rm $SECRET_FILE_PATH.bak
+
+            fi
+
+        done
+
+        if [[ "$USE_KUBERNETES" ]]; then
+
+            echo "Getting a database dump..."
+            if ! command hollaex toolbox --backup --kube --skip; then
+
+                echo "Failed to get a database dump. Aborting the job."
+                exit 1; 
+
+            fi 
+
+            if [[ "$ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB" == true ]]; then
+
+                generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
+
+                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db \
+                            --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                            --wait \
+                            --set pvc.create=true \
+                            --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" \
+                            --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" \
+                            --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                            --set resources.limits.cpu="${ENVIRONMENT_POSTGRESQL_CPU_LIMITS:-100m}" \
+                            --set resources.limits.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_LIMITS:-200Mi}" \
+                            --set resources.requests.cpu="${ENVIRONMENT_POSTGRESQL_CPU_REQUESTS:-10m}" \
+                            --set resources.requests.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_REQUESTS:-100Mi}" \
+                            -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml \
+                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml \
+                            $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
+
+                            echo "Waiting until the database to be fully initialized"
+                            sleep 60
+
+            fi
+            
+        else
+
+            echo "Getting a database dump..."
+            if ! command hollaex toolbox --backup --skip; then
+
+                echo "Failed to get a database dump. Aborting the job."
+                exit 1; 
+
+            fi
+            
+            if ! command hollaex server --stop --skip; then 
+
+                echo "Something went wrong while restarting the exchange!"
+                exit 1;
+
+            fi
+
+            if ! command hollaex server --start --skip --is_hollaex_setup; then 
+
+                echo "Something went wrong while restarting the exchange!"
+                exit 1;
+
+            fi
+
+            echo "Waiting until the DB become ready"
+            sleep 30
+
+            BACKUP_FILE_PATH="backups/$(ls backups/ | tail -1)"
+
+            if ! command hollaex toolbox --skip --restore $BACKUP_FILE_PATH; then
+
+                echo "Failed to restore the DB. Please check the error logs."
+                exit 1;
+
+            fi 
+
+        fi
+
 
     fi
 
