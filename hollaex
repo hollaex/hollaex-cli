@@ -171,6 +171,7 @@ Options:
         --enable_maintenance_mode, Maintenance mode. Giving HTTP 503 for non-whitelisted IPs.
         --whitelist-ip, List of whitelist IPs for the maintenance mode. Comma separated, no spaces.
         --disable_maintenance_mode, Disabling maintenance mode.
+        --upgrade-psql-db-version, Upgrade PostgreSQL DB to a specific version.
 
     dev: Running an exchange in a dev mode.
         --setup, Setup an exchange in a dev mode.
@@ -1992,13 +1993,17 @@ elif [[ "$1" == "setup" ]]; then
             
             sleep 5
             
-            IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+            if [[ ! "$IS_HOLLAEX_SETUP" ]]; then
+                    
+                IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
 
-            # Confirm that the local API server is up.
-            while ! [[ $(docker inspect -f "{{.Name}} {{.State.Status}}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1) == *"running"* ]] ;
-                do echo "Waiting for the containers to get fully initialized..."
-                sleep 5;
-            done;
+                # Confirm that the local API server is up.
+                while ! [[ $(docker inspect -f "{{.Name}} {{.State.Status}}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1) == *"running"* ]] ;
+                    do echo "Waiting for the containers to get fully initialized..."
+                    sleep 5;
+                done;
+
+            fi
 
             if [[ "$HOLLAEX_NETWORK_SETUP" ]]; then
 
@@ -2006,7 +2011,7 @@ elif [[ "$1" == "setup" ]]; then
 
             else 
 
-                if [[ ! "$RESTORE_FROM_BACKUP" ]]; then
+                if [[ ! "$RESTORE_FROM_BACKUP" ]] || [[ ! "$UPGRADE_PSQL_DB_VERSION" ]]; then
 
                     local_database_init start;
                 
@@ -3085,7 +3090,7 @@ elif [[ "$1" == "start" ]]; then
                 shift; continue
                 ;;
             --is_hollaex_setup)
-                IS_HOLLAEX_SETUP=true
+                export IS_HOLLAEX_SETUP=true
                 shift; continue
                 ;;
             --skip)
@@ -7108,7 +7113,7 @@ elif [[ "$1" == "toolbox" ]]; then
             --upgrade-psql-db-version)
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                UPGRADE_PSQL_DB_VERSION=$1
+                export UPGRADE_PSQL_DB_VERSION=$1
                 TOOLBOX_ENABLE=true
                 shift; continue
                 ;;
@@ -8498,6 +8503,10 @@ elif [[ "$1" == "toolbox" ]]; then
 
         done
 
+        for i in ${CONFIG_FILE_PATH[@]}; do
+            source $i
+        done;
+
         if [[ "$USE_KUBERNETES" ]]; then
 
             echo "Getting a database dump..."
@@ -8548,6 +8557,10 @@ elif [[ "$1" == "toolbox" ]]; then
                 exit 1;
 
             fi
+
+            for i in ${CONFIG_FILE_PATH[@]}; do
+                source $i
+            done;
 
             if ! command hollaex server --start --skip --is_hollaex_setup; then 
 
