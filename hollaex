@@ -3249,7 +3249,7 @@ elif [[ "$1" == "start" ]]; then
             echo "Scaling up containers on the cluster..."
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-db --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+            kubectl scale deployment/$HOLLAEX_SECRET_DB_HOST --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
             if [[ "$HOLLAEX_NETWORK_START" ]]; then 
 
@@ -4592,7 +4592,7 @@ elif [[ "$1" == "stop" ]]; then
 
         kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-db --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
+        kubectl scale deployment/$HOLLAEX_SECRET_DB_HOST --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
         if [[ "$HOLLAEX_NETWORK_STOP" ]]; then 
 
@@ -7281,7 +7281,7 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "Upgrading PostgreSQL DB"
                 generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
 
-                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db \
+                helm upgrade --install $HOLLAEX_SECRET_DB_HOST \
                         --namespace $ENVIRONMENT_EXCHANGE_NAME \
                         --set pvc.create=true \
                         --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" \
@@ -7393,7 +7393,7 @@ elif [[ "$1" == "toolbox" ]]; then
             echo "HollaEx CLI will open proxy tunnel between your machine and remote proxy with kubectl proxy."
 
             echo "Opening local proxy on 5432 port of your machine..."
-            kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-db" -o name | sed 's/pod\///' | head -n 1) 5432:5432 &
+            kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$HOLLAEX_SECRET_DB_HOST" -o name | sed 's/pod\///' | head -n 1) 5432:5432 &
 
             echo "Waiting for the proxy tunnel get fully ready..."
             sleep 10;
@@ -7522,7 +7522,7 @@ elif [[ "$1" == "toolbox" ]]; then
             echo "HollaEx CLI will open proxy tunnel between your machine and remote proxy with kubectl proxy."
 
             echo "Opening local proxy on 5432 port of your machine..."
-            kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-db" -o name | sed 's/pod\///' | head -n 1) 5432:5432 &
+            kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$HOLLAEX_SECRET_DB_HOST" -o name | sed 's/pod\///' | head -n 1) 5432:5432 &
 
             echo "Waiting for the proxy tunnel get fully ready..."
             sleep 10;
@@ -7605,7 +7605,7 @@ elif [[ "$1" == "toolbox" ]]; then
             generate_db_s3_backup_cronjob_config;
 
             echo "Installing cronjob for database backup on Kubernetes."
-            if command helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db-backup-s3 \
+            if command helm upgrade --install $HOLLAEX_SECRET_DB_HOST-backup-s3 \
                         --namespace $ENVIRONMENT_EXCHANGE_NAME \
                         -f $TEMPLATE_GENERATE_PATH/kubernetes/config/db-s3-backup-cronjob.yaml \
                         $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres-s3-backup-cronjob; then
@@ -8044,12 +8044,12 @@ elif [[ "$1" == "toolbox" ]]; then
 
             check_kubernetes_dependencies;
 
-            if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 && command kubectl get pods -n $ENVIRONMENT_EXCHANGE_NAME -l app=$ENVIRONMENT_EXCHANGE_NAME-db > /dev/null 2>&1; then
+            if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 && command kubectl get pods -n $ENVIRONMENT_EXCHANGE_NAME -l app=$HOLLAEX_SECRET_DB_HOST > /dev/null 2>&1; then
 
                 echo "Successfully detected the PostgreSQL DB created by HollaEx CLI."
                 echo "Opening kube-proxy tunnel for database connection..."
 
-                kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-db" -o name | sed 's/pod\///' | head -n 1) 5432:5432 &
+                kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$HOLLAEX_SECRET_DB_HOST" -o name | sed 's/pod\///' | head -n 1) 5432:5432 &
                 sleep 5;
                 
                 echo "Opening local proxy on 5432 port of your machine..."
@@ -8078,7 +8078,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
             check_docker_compose_dependencies;
 
-            if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-db > /dev/null 2>&1; then
+            if command docker ps | grep $HOLLAEX_SECRET_DB_HOST > /dev/null 2>&1; then
 
                 echo "Successfully detected the PostgreSQL DB created by HollaEx CLI."
 
@@ -8479,6 +8479,42 @@ elif [[ "$1" == "toolbox" ]]; then
 
         fi
 
+        if [[ "$USE_KUBERNETES" ]]; then
+
+            echo "Getting a database dump..."
+            if ! command hollaex toolbox --backup --kube --skip; then
+
+                echo "Failed to get a database dump. Aborting the job."
+                exit 1; 
+
+            fi 
+
+            if ! command hollaex server --stop --kube  --skip; then 
+
+                echo "Something went wrong while restarting the exchange!"
+                exit 1;
+
+            fi
+        
+        else
+
+            echo "Getting a database dump..."
+            if ! command hollaex toolbox --backup --skip; then
+
+                echo "Failed to get a database dump. Aborting the job."
+                exit 1; 
+
+            fi
+
+            if ! command hollaex server --stop --skip; then 
+
+                echo "Something went wrong while restarting the exchange!"
+                exit 1;
+
+            fi
+
+        fi
+
         echo "Updating the DB to v$UPGRADE_PSQL_DB_VERSION..."
         for i in ${CONFIG_FILE_PATH[@]}; do
             if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
@@ -8496,7 +8532,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
                 export SECRET_FILE_PATH=$i
 
-                sed -i.bak "s/HOLLAEX_SECRET_DB_HOST=.*/HOLLAEX_SECRET_DB_HOST=$(echo $UPGRADE_PSQL_DB_VERSION |  tr -dc '[^[:alnum:]-]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')-${ENVIRONMENT_EXCHANGE_NAME}-db/" $SECRET_FILE_PATH
+                sed -i.bak "s/HOLLAEX_SECRET_DB_HOST=.*/HOLLAEX_SECRET_DB_HOST=${ENVIRONMENT_EXCHANGE_NAME}-db-$(echo $UPGRADE_PSQL_DB_VERSION |  tr -dc '[^[:alnum:]-]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')/" $SECRET_FILE_PATH
                 rm $SECRET_FILE_PATH.bak
 
             fi
@@ -8509,54 +8545,45 @@ elif [[ "$1" == "toolbox" ]]; then
 
         if [[ "$USE_KUBERNETES" ]]; then
 
-            echo "Getting a database dump..."
-            if ! command hollaex toolbox --backup --kube --skip; then
+            for i in ${CONFIG_FILE_PATH[@]}; do
+                source $i
+            done;
 
-                echo "Failed to get a database dump. Aborting the job."
-                exit 1; 
+            helm upgrade --install $HOLLAEX_SECRET_DB_HOST \
+            --namespace $ENVIRONMENT_EXCHANGE_NAME \
+            --wait \
+            --set pvc.create=true \
+            --set pvc.name="$HOLLAEX_SECRET_DB_HOST-postgres-volume" \
+            --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" \
+            --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+            --set resources.limits.cpu="${ENVIRONMENT_POSTGRESQL_CPU_LIMITS:-100m}" \
+            --set resources.limits.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_LIMITS:-200Mi}" \
+            --set resources.requests.cpu="${ENVIRONMENT_POSTGRESQL_CPU_REQUESTS:-10m}" \
+            --set resources.requests.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_REQUESTS:-100Mi}" \
+            -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml \
+            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml \
+            $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $(if [[ "$KUBERNETES_PSQL_DB_EXISTS" ]]; then echo $EXISTING_DB_DOCKER_IMAGE_TAG; else echo $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION; fi)) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
+
+            echo "Waiting until the DB become ready"
+            sleep 30
+
+            BACKUP_FILE_PATH="backups/$(ls backups/ | tail -1)"
+
+            if ! command hollaex toolbox --kube --skip --restore $BACKUP_FILE_PATH; then
+
+                echo "Failed to restore the DB. Please check the error logs."
+                exit 1;
 
             fi 
 
-            if [[ "$ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB" == true ]]; then
+            if ! command hollaex server --start --skip --kube; then 
 
-                generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
-
-                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db \
-                            --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                            --wait \
-                            --set pvc.create=true \
-                            --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" \
-                            --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" \
-                            --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                            --set resources.limits.cpu="${ENVIRONMENT_POSTGRESQL_CPU_LIMITS:-100m}" \
-                            --set resources.limits.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_LIMITS:-200Mi}" \
-                            --set resources.requests.cpu="${ENVIRONMENT_POSTGRESQL_CPU_REQUESTS:-10m}" \
-                            --set resources.requests.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_REQUESTS:-100Mi}" \
-                            -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml \
-                            -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml \
-                            $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
-
-                            echo "Waiting until the database to be fully initialized"
-                            sleep 60
+                echo "Something went wrong while starting the exchange!"
+                exit 1;
 
             fi
             
         else
-
-            echo "Getting a database dump..."
-            if ! command hollaex toolbox --backup --skip; then
-
-                echo "Failed to get a database dump. Aborting the job."
-                exit 1; 
-
-            fi
-            
-            if ! command hollaex server --stop --skip; then 
-
-                echo "Something went wrong while restarting the exchange!"
-                exit 1;
-
-            fi
 
             for i in ${CONFIG_FILE_PATH[@]}; do
                 source $i
@@ -8580,6 +8607,13 @@ elif [[ "$1" == "toolbox" ]]; then
                 exit 1;
 
             fi 
+
+            if ! command hollaex server --start --skip; then 
+
+                echo "Something went wrong while starting the exchange!"
+                exit 1;
+
+            fi
 
         fi
 

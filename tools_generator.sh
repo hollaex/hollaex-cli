@@ -5003,11 +5003,11 @@ function run_and_upgrade_hollaex_on_kubernetes() {
 
       generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
 
-      if command helm ls -n $ENVIRONMENT_EXCHANGE_NAME | grep $ENVIRONMENT_EXCHANGE_NAME-db; then
+      if command helm ls -n $ENVIRONMENT_EXCHANGE_NAME | grep $HOLLAEX_SECRET_DB_HOST; then
 
         export KUBERNETES_PSQL_DB_EXISTS=true
 
-       EXISTING_DB_DOCKER_IMAGE=$(kubectl get -n $ENVIRONMENT_EXCHANGE_NAME deployment/$ENVIRONMENT_EXCHANGE_NAME-db -o jsonpath="{.spec.template.spec.containers[0].image}")
+       EXISTING_DB_DOCKER_IMAGE=$(kubectl get -n $ENVIRONMENT_EXCHANGE_NAME deployment/$HOLLAEX_SECRET_DB_HOST -o jsonpath="{.spec.template.spec.containers[0].image}")
        EXISTING_DB_DOCKER_IMAGE_TAG=$(echo $EXISTING_DB_DOCKER_IMAGE | cut -f2 -d":")
        
         if [[ -z "$EXISTING_DB_DOCKER_IMAGE_TAG" ]]; then
@@ -5020,7 +5020,7 @@ function run_and_upgrade_hollaex_on_kubernetes() {
 
       fi
 
-      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db \
+      helm upgrade --install $HOLLAEX_SECRET_DB_HOST \
                   --namespace $ENVIRONMENT_EXCHANGE_NAME \
                   --wait \
                   --set pvc.create=true \
@@ -5216,7 +5216,7 @@ function run_and_upgrade_hollaex_network_on_kubernetes() {
 
       generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
 
-      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db \
+      helm upgrade --install $HOLLAEX_SECRET_DB_HOST \
                   --namespace $ENVIRONMENT_EXCHANGE_NAME \
                   --wait \
                   --set pvc.create=true \
