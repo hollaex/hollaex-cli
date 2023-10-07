@@ -1874,6 +1874,45 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-api-admin
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
+    nginx.ingress.kubernetes.io/proxy-body-size: "6m"
+    #nginx.ingress.kubernetes.io/whitelist-source-range: ""
+    nginx.ingress.kubernetes.io/rewrite-target: /v2/admin/\$2
+    nginx.ingress.kubernetes.io/server-snippet: |
+        location @maintenance_503 {
+          internal;
+          return 503;
+        }
+        real_ip_header    X-Forwarded-For;
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=10 nodelay;
+      limit_req_log_level notice;
+      limit_req_status 429;'; fi)
+
+      #error_page 403 @maintenance_503;
+
+spec:
+  rules:
+  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+    http:
+      paths:
+      - pathType: Prefix
+        path: /api/v2/admin(/|$)(.*)
+        backend:
+          service:
+            name: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
+            port:
+              number: 10010
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_web_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
   name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-plugins
   namespace: ${ENVIRONMENT_EXCHANGE_NAME}
   annotations:
