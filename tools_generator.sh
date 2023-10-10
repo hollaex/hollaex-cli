@@ -1057,6 +1057,8 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
   ${HOLLAEX_SECRET_DB_HOST}:
     image: ${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY:-postgres}:$(if [[ "$EXISTING_DB_DOCKER_IMAGE_TAG" ]]; then echo "${EXISTING_DB_DOCKER_IMAGE_TAG}"; else echo "${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION}"; fi)
     restart: unless-stopped
+    $(if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION" == *"10"* ]]; then echo "volumes:
+      - ${ENVIRONMENT_EXCHANGE_NAME}_db_vol:/var/lib/postgresql/data"; fi)
     ports:
       - 5432:5432
     env_file:
@@ -1167,6 +1169,16 @@ networks:
   $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "local_hollaex-network-network:"; else echo "${ENVIRONMENT_EXCHANGE_NAME}-network:"; fi)
     $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "external: true"; fi)
 EOL
+
+if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION" == *"10"* ]]; then 
+
+cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+volumes:
+  ${ENVIRONMENT_EXCHANGE_NAME}_db_vol:
+
+EOL
+
+fi
 
 }
 
@@ -1864,6 +1876,45 @@ spec:
       paths:
       - pathType: Prefix
         path: /api(/|$)(.*)
+        backend:
+          service:
+            name: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
+            port:
+              number: 10010
+  $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_web_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-ingress-api-admin
+  namespace: ${ENVIRONMENT_EXCHANGE_NAME}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo 'kubernetes.io/tls-acme: "true"';  fi)
+    $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
+    nginx.ingress.kubernetes.io/proxy-body-size: "6m"
+    #nginx.ingress.kubernetes.io/whitelist-source-range: ""
+    nginx.ingress.kubernetes.io/rewrite-target: /v2/admin/\$2
+    nginx.ingress.kubernetes.io/server-snippet: |
+        location @maintenance_503 {
+          internal;
+          return 503;
+        }
+        real_ip_header    X-Forwarded-For;
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=10 nodelay;
+      limit_req_log_level notice;
+      limit_req_status 429;'; fi)
+
+      #error_page 403 @maintenance_503;
+
+spec:
+  rules:
+  - host: $(echo ${HOLLAEX_CONFIGMAP_API_HOST} | cut -f3 -d "/")
+    http:
+      paths:
+      - pathType: Prefix
+        path: /api/v2/admin(/|$)(.*)
         backend:
           service:
             name: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
