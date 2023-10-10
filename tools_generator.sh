@@ -1057,6 +1057,8 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
   ${HOLLAEX_SECRET_DB_HOST}:
     image: ${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY:-postgres}:$(if [[ "$EXISTING_DB_DOCKER_IMAGE_TAG" ]]; then echo "${EXISTING_DB_DOCKER_IMAGE_TAG}"; else echo "${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION}"; fi)
     restart: unless-stopped
+    $(if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION" == *"10"* ]]; then echo "volumes:
+      - $ENVIRONMENT_EXCHANGE_NAME_db_vol:/var/lib/postgresql/data"; fi)
     ports:
       - 5432:5432
     env_file:
@@ -1449,6 +1451,17 @@ networks:
   ${ENVIRONMENT_EXCHANGE_NAME}-network:
 
 EOL
+
+
+if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION" == *"10"* ]]; then 
+
+cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+volumes:
+  ${ENVIRONMENT_EXCHANGE_NAME}_db_vol:
+
+EOL
+
+fi
 
 }
 
