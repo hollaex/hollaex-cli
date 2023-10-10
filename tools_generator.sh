@@ -1170,6 +1170,16 @@ networks:
     $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "external: true"; fi)
 EOL
 
+if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION" == *"10"* ]]; then 
+
+cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+  volumes:
+    ${ENVIRONMENT_EXCHANGE_NAME}_db_vol:
+
+EOL
+
+fi
+
 }
 
 function generate_local_docker_compose_for_network() {
@@ -1451,16 +1461,6 @@ networks:
   ${ENVIRONMENT_EXCHANGE_NAME}-network:
 
 EOL
-
-if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION" == *"10"* ]]; then 
-
-cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
-  volumes:
-    ${ENVIRONMENT_EXCHANGE_NAME}_db_vol:
-
-EOL
-
-fi
 
 }
 
