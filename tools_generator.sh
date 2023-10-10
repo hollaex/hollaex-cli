@@ -1173,8 +1173,8 @@ EOL
 if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION" == *"10"* ]]; then 
 
 cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
-  volumes:
-    ${ENVIRONMENT_EXCHANGE_NAME}_db_vol:
+volumes:
+  ${ENVIRONMENT_EXCHANGE_NAME}_db_vol:
 
 EOL
 
