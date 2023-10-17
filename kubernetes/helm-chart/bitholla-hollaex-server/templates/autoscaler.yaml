@@ -21,6 +21,6 @@ spec:
       name: memory
       target: 
         type: Utilization
-        averageUtilization: "{{ .Values.autoscaling.hpa.memory.threshold }}"
-
+        averageUtilization: {{ .Values.autoScaling.hpa.memory.threshold }}
+        
 {{- end }}
