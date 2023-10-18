@@ -5102,8 +5102,6 @@ function run_and_upgrade_hollaex_on_kubernetes() {
                     --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
                     --set stable.replicaCount="${ENVIRONMENT_API_SERVER_REPLICAS:-1}" \
                     --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_API_HPA_ENABLE:-false}" \
-                    --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_API_HPA_AVGMEMORY:-1300000000}" \
-                    --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_API_HPA_MAXREPLICAS:-4}" \
                     --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                     --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                     --set resources.limits.cpu="${ENVIRONMENT_API_CPU_LIMITS:-1000m}" \
@@ -5126,8 +5124,6 @@ function run_and_upgrade_hollaex_on_kubernetes() {
               --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
               --set stable.replicaCount="${ENVIRONMENT_STREAM_SERVER_REPLICAS:-1}" \
               --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_STREAM_HPA_ENABLE:-false}" \
-              --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_STREAM_HPA_AVGMEMORY:-300000000}" \
-              --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_STREAM_HPA_MAXREPLICAS:-4}" \
               --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
               --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
               --set resources.limits.cpu="${ENVIRONMENT_STREAM_CPU_LIMITS:-1000m}" \
