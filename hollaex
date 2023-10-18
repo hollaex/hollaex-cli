@@ -6045,8 +6045,6 @@ elif [[ "$1" == "web" ]]; then
                         --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION" \
                         --set stable.replicaCount="${ENVIRONMENT_WEB_SERVER_REPLICAS:-1}" \
                         --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_WEB_HPA_ENABLE:-false}" \
-                        --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_WEB_HPA_AVGMEMORY:-500000000}" \
-                        --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_WEB_HPA_MAXREPLICAS:-4}" \
                         --set resources.limits.cpu="${ENVIRONMENT_WEB_CPU_LIMITS:-1000m}" \
                         --set resources.limits.memory="${ENVIRONMENT_WEB_MEMORY_LIMITS:-1024Mi}" \
                         --set resources.requests.cpu="${ENVIRONMENT_WEB_CPU_REQUESTS:-2m}" \
@@ -6566,8 +6564,6 @@ elif [[ "$1" == "web" ]]; then
                         --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION" \
                         --set stable.replicaCount="${ENVIRONMENT_WEB_SERVER_REPLICAS:-1}" \
                         --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_WEB_HPA_ENABLE:-false}" \
-                        --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_WEB_HPA_AVGMEMORY:-500000000}" \
-                        --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_WEB_HPA_MAXREPLICAS:-4}" \
                         --set envName="$ENVIRONMENT_EXCHANGE_NAME-web-env" \
                         --set resources.limits.cpu="${ENVIRONMENT_WEB_CPU_LIMITS:-1000m}" \
                         --set resources.limits.memory="${ENVIRONMENT_WEB_MEMORY_LIMITS:-1024Mi}" \

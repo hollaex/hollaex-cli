@@ -26,8 +26,8 @@ nodeSelector: {}
 autoScaling:
   hpa:
     enable: false 
-    maxReplicas: 4
-    avgMemory: 1300000000
+    memory:
+      threshold: 80
 
 APM_URL:
 

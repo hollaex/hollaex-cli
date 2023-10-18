@@ -1,23 +1,26 @@
 {{- if .Values.autoScaling.hpa.enable }}
 
-apiVersion: autoscaling/v2beta2
+{{- $minReplicas := .Values.stable.replicaCount | int }}
+{{- $maxReplicas := add 1 $minReplicas }}
+
+apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: {{.Release.Name}}
-  namespace: {{.Release.NameSpace}}
+  namespace: {{.Release.Namespace}}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
     name: {{.Release.Name}}
-  minReplicas: {{.Values.stable.replicaCount}}
-  maxReplicas: {{.Values.autoScaling.hpa.maxReplicas}}
+  minReplicas: {{ $minReplicas }}
+  maxReplicas: {{ $maxReplicas }}
   metrics:
   - type: Resource
     resource:
       name: memory
-      target:
-        type: AverageValue
-        averageValue: {{.Values.autoScaling.hpa.avgMemory}}
-
+      target: 
+        type: Utilization
+        averageUtilization: {{ .Values.autoScaling.hpa.memory.threshold }}
+        
 {{- end }}
