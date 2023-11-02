@@ -70,6 +70,11 @@ spec:
             node tools/dbs/checkConfig.js;
             node tools/dbs/setKitVersion.js;
 
+{{- else if eq .Values.job.mode "changeEmail" }}
+
+        args:
+          - node tools/dbs/changeEmail.js;
+
 {{- end }}
 
         imagePullPolicy: Always
@@ -160,14 +165,20 @@ spec:
           - name: CAPTCHA_SECRET_KEY
             value: "{{.Values.job.env.captcha_secret_key}}"
 
+{{- else if eq .Values.job.mode "changeEmail" }}
+
+          - name: USER_ID
+            value: "{{.Values.job.env.targetUserID}}"
+          - name: EMAIL
+            value: "{{.Values.job.env.newUserEmail}}"
+
 {{- end }}
 
         resources:
           limits:
-            memory: "300Mi"
-            cpu: "100m"
+            memory: "500Mi"
           requests:
-            memory: "50Mi"
+            memory: "100Mi"
             cpu: "15m"
 
 {{- if .Values.imagePullSecrets }}
