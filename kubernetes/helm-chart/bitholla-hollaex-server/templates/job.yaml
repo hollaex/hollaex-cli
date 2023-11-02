@@ -176,10 +176,9 @@ spec:
 
         resources:
           limits:
-            memory: "300Mi"
-            cpu: "100m"
+            memory: "500Mi"
           requests:
-            memory: "50Mi"
+            memory: "100Mi"
             cpu: "15m"
 
 {{- if .Values.imagePullSecrets }}
