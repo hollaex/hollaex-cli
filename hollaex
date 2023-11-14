@@ -1,7 +1,4 @@
 #!/bin/bash 
-
-set -e 
-
 SCRIPTPATH="$HOME/.hollaex-cli"
 
 #### HollaEx CLI Settings ####
