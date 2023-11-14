@@ -364,6 +364,8 @@ function local_code_test() {
 
 function check_kubernetes_dependencies() {
 
+    set -e
+
     # Checking kubectl and helm are installed on this machine.
     if command kubectl version > /dev/null 2>&1 && command helm version > /dev/null 2>&1; then
 
