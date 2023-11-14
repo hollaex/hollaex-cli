@@ -1826,7 +1826,7 @@ elif [[ "$1" == "setup" ]]; then
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
+        trap 'exit $?' ERR && check_kubernetes_dependencies;
 
         #Creating kubernetes_config directory for generating config for Kubernetes.
 
@@ -3184,8 +3184,9 @@ elif [[ "$1" == "start" ]]; then
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
-
+        
+        trap 'exit $?' ERR && check_kubernetes_dependencies;
+    
         #Creating kubernetes_config directory for generating config for Kubernetes.
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
@@ -3598,7 +3599,7 @@ elif [[ "$1" == "scale" ]]; then
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
+        trap 'exit $?' ERR && check_kubernetes_dependencies;
 
         #Creating kubernetes_config directory for generating config for Kubernetes.
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
@@ -4549,7 +4550,7 @@ elif [[ "$1" == "stop" ]]; then
         
 
          #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
+        trap 'exit $?' ERR && check_kubernetes_dependencies;
 
         echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
@@ -4789,7 +4790,7 @@ elif [[ "$1" == "restart" ]]; then
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
+        trap 'exit $?' ERR && check_kubernetes_dependencies;
 
         #Creating kubernetes_config directory for generating config for Kubernetes.
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
@@ -5171,7 +5172,7 @@ elif [[ "$1" == "apply" ]]; then
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
+        trap 'exit $?' ERR && check_kubernetes_dependencies;
 
         # Only tries to attempt remove ingress rules from Kubernetes if it exists.
         if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
@@ -5592,7 +5593,7 @@ elif [[ "$1" == "terminate" ]]; then
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
+        trap 'exit $?' ERR && check_kubernetes_dependencies;
 
         echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
@@ -5986,7 +5987,7 @@ elif [[ "$1" == "web" ]]; then
         if [[ "$USE_KUBERNETES" ]]; then
 
             #Checking Kubernetes dependencies
-            check_kubernetes_dependencies;
+            trap 'exit $?' ERR && check_kubernetes_dependencies;
 
             echo "*********************************************"
             #Verify remote Kubernetes cluster is correct.
@@ -6201,7 +6202,7 @@ elif [[ "$1" == "web" ]]; then
         if [[ "$USE_KUBERNETES" ]]; then
 
             #Checking Kubernetes dependencies
-            check_kubernetes_dependencies;
+            trap 'exit $?' ERR && check_kubernetes_dependencies;
 
             echo "*********************************************"
             #Verify remote Kubernetes cluster is correct.
@@ -6384,7 +6385,7 @@ elif [[ "$1" == "web" ]]; then
         if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
+        trap 'exit $?' ERR && check_kubernetes_dependencies;
 
         echo "*********************************************"
         #Verify remote Kubernetes cluster is correct.
@@ -6529,7 +6530,7 @@ elif [[ "$1" == "web" ]]; then
         if [[ "$USE_KUBERNETES" ]]; then
 
             #Checking Kubernetes dependencies
-            check_kubernetes_dependencies;
+            trap 'exit $?' ERR && check_kubernetes_dependencies;
 
             echo "*********************************************"
             #Verify remote Kubernetes cluster is correct.
@@ -6769,7 +6770,7 @@ elif [[ "$1" == "web" ]]; then
         if [[ "$USE_KUBERNETES" ]]; then
 
             #Checking Kubernetes dependencies
-            check_kubernetes_dependencies;
+            trap 'exit $?' ERR && check_kubernetes_dependencies;
 
             echo "*********************************************"
             #Verify remote Kubernetes cluster is correct.
@@ -6874,7 +6875,7 @@ elif [[ "$1" == "web" ]]; then
         if [[ "$USE_KUBERNETES" ]]; then
 
             #Checking Kubernetes dependencies
-            check_kubernetes_dependencies;
+            trap 'exit $?' ERR && check_kubernetes_dependencies;
 
             echo "*********************************************"
             echo "Verifying current KUBECONFIG on the machine"
@@ -7247,7 +7248,7 @@ elif [[ "$1" == "toolbox" ]]; then
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
+        trap 'exit $?' ERR && check_kubernetes_dependencies;
 
         echo "*********************************************"
         #Verify remote Kubernetes cluster is correct.
@@ -7812,7 +7813,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         fi
 
-        check_kubernetes_dependencies;
+        trap 'exit $?' ERR && check_kubernetes_dependencies;
         
         echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
@@ -7859,7 +7860,7 @@ elif [[ "$1" == "toolbox" ]]; then
         
         if [[ "$USE_KUBERNETES" ]]; then 
 
-            check_kubernetes_dependencies;
+            trap 'exit $?' ERR && check_kubernetes_dependencies;
         
             echo "*********************************************"
             echo "Verifying current KUBECONFIG on the machine"
@@ -8059,7 +8060,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         if [[ "$USE_KUBERNETES" ]]; then 
 
-            check_kubernetes_dependencies;
+            trap 'exit $?' ERR && check_kubernetes_dependencies;
 
             if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 && command kubectl get pods -n $ENVIRONMENT_EXCHANGE_NAME -l app=$HOLLAEX_SECRET_DB_HOST > /dev/null 2>&1; then
 
@@ -8131,7 +8132,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         if [[ "$USE_KUBERNETES" ]]; then 
 
-            check_kubernetes_dependencies;
+            trap 'exit $?' ERR && check_kubernetes_dependencies;
 
             if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 && command kubectl get pods -n $ENVIRONMENT_EXCHANGE_NAME -l app=$ENVIRONMENT_EXCHANGE_NAME-redis > /dev/null 2>&1; then
 
@@ -9165,7 +9166,7 @@ elif [[ "$1" == "status" ]]; then
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
+        trap 'exit $?' ERR && check_kubernetes_dependencies;
 
         kubectl get pods --namespace $ENVIRONMENT_EXCHANGE_NAME
 
@@ -9312,7 +9313,7 @@ elif [[ "$1" == "logs" ]]; then
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
+        trap 'exit $?' ERR && check_kubernetes_dependencies;
 
         function show_kubernetes_logs_simple() {
 
