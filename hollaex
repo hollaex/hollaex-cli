@@ -172,6 +172,9 @@ Options:
         --whitelist-ip, List of whitelist IPs for the maintenance mode. Comma separated, no spaces.
         --disable_maintenance_mode, Disabling maintenance mode.
         --upgrade-psql-db-version, Upgrade PostgreSQL DB to a specific version.
+        --change-user-email, Force change exchange user's email address.
+            --user-id, Target User ID.
+            --user-email, New User Email Address.
 
     dev: Running an exchange in a dev mode.
         --setup, Setup an exchange in a dev mode.
@@ -7113,6 +7116,25 @@ elif [[ "$1" == "toolbox" ]]; then
                 TOOLBOX_ENABLE=true
                 shift; continue
                 ;;
+            --change-user-email)
+                export CHANGE_USER_EMAIL=true
+                TOOLBOX_ENABLE=true
+                shift; continue
+                ;;
+            --user-id)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                export CHANGE_USER_EMAIL_USER_ID=$1
+                TOOLBOX_ENABLE=true
+                shift; continue
+                ;;
+            --user-email)
+                shift 
+                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
+                export CHANGE_USER_EMAIL_USER_EMAIL_ADDR=$1
+                TOOLBOX_ENABLE=true
+                shift; continue
+                ;;
             --skip)
                 RUN_WITH_VERIFY=false
                 echo "Skipping the command confirmation."
@@ -8613,6 +8635,91 @@ elif [[ "$1" == "toolbox" ]]; then
 
         fi
 
+
+    elif [[ "$CHANGE_USER_EMAIL" ]]; then
+
+
+        if [[ ! "$CHANGE_USER_EMAIL_USER_ID" ]] || [[ ! "$CHANGE_USER_EMAIL_USER_EMAIL_ADDR" ]]; then 
+
+
+            echo "Error: Either Target User ID or Target User Email Addr is missing!"
+            echo "Please set them by passing --user-id and --user-email flags!"
+            exit 1;
+
+        fi
+
+        echo "Target User ID: $CHANGE_USER_EMAIL_USER_ID"
+        echo "New User Email: $CHANGE_USER_EMAIL_USER_EMAIL_ADDR"
+
+        if [[ "$USE_KUBERNETES" ]]; then
+
+     
+cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/changeEmail.yaml <<EOL
+job:
+  enable: true
+  mode: changeEmail
+  env:
+    targetUserID: ${CHANGE_USER_EMAIL_USER_ID}
+    newUserEmail: ${CHANGE_USER_EMAIL_USER_EMAIL_ADDR}
+
+EOL
+
+            if command helm install $ENVIRONMENT_EXCHANGE_NAME-change-email \
+                --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                --set DEPLOYMENT_MODE="api" \
+                --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+                --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+                --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                --set job.enable=true \
+                --set job.mode=changeEmail \
+                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
+                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/changeEmail.yaml \
+                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+
+                while ! [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-change-email --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]] ;
+                    do echo "Waiting for the changeEmail job gets done..."
+                    sleep 10;
+                done;
+
+                echo "Successfully ran the changeEmail job!"
+                kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-change-email
+
+                echo "Removing the Kubernetes Job for running changeEmail jobs..."
+                helm uninstall $ENVIRONMENT_EXCHANGE_NAME-change-email --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+            else 
+
+                printf "\033[91mFailed to create Kubernetes Job for running changeEmail job, Please confirm your input values and try again.\033[39m\n"
+
+                echo "Displayling logs..."
+                kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-change-email
+                
+                helm uninstall $ENVIRONMENT_EXCHANGE_NAME-change-email --namespace $ENVIRONMENT_EXCHANGE_NAME
+
+                exit 1;
+
+            fi
+
+        else
+
+            IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+
+            if command docker exec --env "USER_ID=${CHANGE_USER_EMAIL_USER_ID}" --env "EMAIL=${CHANGE_USER_EMAIL_USER_EMAIL_ADDR}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/changeEmail.js; then 
+
+                echo "Successfully updated user $CHANGE_USER_EMAIL_USER_ID's email to $CHANGE_USER_EMAIL_USER_EMAIL_ADDR."
+                
+                exit 0;
+
+            else
+
+                echo "Failed to run the command!"
+                exit 1;
+
+            fi
+
+        fi
 
     fi
 
