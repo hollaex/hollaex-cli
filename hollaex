@@ -1,4 +1,33 @@
 #!/bin/bash 
+
+### DEPRECATION WARNING ###
+function hollaex_ascii_cli_is_deprecated() {
+
+  /bin/cat << EOF
+
+:tt1   ;tti          LCC:1CC1         ,11tffttt            :tt;  ;tfi.tt1 ,,,
+t@@8   f@@0  ,;ii;.  8@@;L@@f .:i1i:. ;@@@CLCGC;ii; ,iii.  t@@L,C@@L,.CCf,0@@;,
+t@@8LLf0@@G,C@@G0@8L.0@@;L@@t.C80L0@8i:@@8tt;  :8@@1G@@1.  t@@0@@8:  ,8888@@@8G
+t@@8CCC0@@CC@@L  G@@fG@@;L@@t,fCCfG@@L:@@@LLi    C@@@8,    t@@@C8@0: ,@@G.G@@,
+t@@8   L@@G1@@0;;8@@i0@@;L@@fC@@Li0@@f:@@@iii11:i8@G@@C,   t@@L :0@@1,@@0 G@@1;
+iGGL   tGGf ;LG00Gf: CGG:tGG1:LGGCLCG1:GGG0000fiGGL 1GGf.  iCC1  .LGG1CGf :LG0G,
+
+HollaEx CLI is DEPRECATED!
+
+From the HollaEx Kit v2.10, HollaEx CLI is officially deprecated and not recommended for use.
+Please visit https://github.com/hollaex/hollaex-kit for more details.
+                 
+---------------------------------
+EOF
+
+}
+
+hollaex_ascii_cli_is_deprecated;
+
+sleep 1;
+
+############################
+
 SCRIPTPATH="$HOME/.hollaex-cli"
 
 #### HollaEx CLI Settings ####
@@ -1691,12 +1720,12 @@ elif [[ "$1" == "setup" ]]; then
 
     if [[ ! "$HOLLAEX_NETWORK_SETUP" ]]; then 
 
-        if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
+        # if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
 
-            # Check Kit version compatibility range.
-            check_kit_version_compatibility_range;
+        #     # Check Kit version compatibility range.
+        #     check_kit_version_compatibility_range;
         
-        fi 
+        # fi 
 
         for i in ${CONFIG_FILE_PATH[@]}; do
             source $i
@@ -3162,16 +3191,16 @@ elif [[ "$1" == "start" ]]; then
     #Validate the envs
     essential_secret_validator;
 
-    if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
+    # if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
 
-        if [[ ! "$HOLLAEX_NETWORK_START" ]]; then 
+    #     if [[ ! "$HOLLAEX_NETWORK_START" ]]; then 
 
-            # Check Kit version compatibility range.
-            check_kit_version_compatibility_range;
+    #         # Check Kit version compatibility range.
+    #         check_kit_version_compatibility_range;
         
-        fi 
+    #     fi 
     
-    fi 
+    # fi 
 
     if [[ "$IGNORE_SETTINGS" ]]; then
 
@@ -3554,12 +3583,12 @@ elif [[ "$1" == "scale" ]]; then
 
     load_config_variables;
 
-    if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
+    # if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
 
-        # Check Kit version compatibility range.
-        check_kit_version_compatibility_range;
+    #     # Check Kit version compatibility range.
+    #     check_kit_version_compatibility_range;
     
-    fi 
+    # fi 
 
     if [[ "$IGNORE_SETTINGS" ]]; then
 
@@ -4535,16 +4564,16 @@ elif [[ "$1" == "stop" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
-    if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
+    # if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
 
-        if [[ ! "$HOLLAEX_NETWORK_STOP" ]]; then 
+    #     if [[ ! "$HOLLAEX_NETWORK_STOP" ]]; then 
 
-            # Check Kit version compatibility range.
-            check_kit_version_compatibility_range;
+    #         # Check Kit version compatibility range.
+    #         check_kit_version_compatibility_range;
         
-        fi 
+    #     fi 
     
-    fi 
+    # fi 
 
     if [[ "$USE_KUBERNETES" ]]; then
         
@@ -4772,12 +4801,12 @@ elif [[ "$1" == "restart" ]]; then
 
     fi
 
-    if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]] && [[ ! "$HOLLAEX_NETWORK_RESTART" ]]; then 
+    # if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]] && [[ ! "$HOLLAEX_NETWORK_RESTART" ]]; then 
 
-            # Check Kit version compatibility range.
-            check_kit_version_compatibility_range;
+    #         # Check Kit version compatibility range.
+    #         check_kit_version_compatibility_range;
     
-    fi
+    # fi
 
     if [[ "$IGNORE_SETTINGS" ]]; then
 
@@ -5379,7 +5408,7 @@ elif [[ "$1" == "upgrade" ]]; then
         fi
 
         # Check Kit version compatibility range.
-        check_kit_version_compatibility_range;
+        # check_kit_version_compatibility_range;
 
     fi
 
@@ -5571,16 +5600,16 @@ elif [[ "$1" == "terminate" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
-    if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
+    # if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
 
-        if [[ ! "$HOLLAEX_NETWORK_TERMINATE" ]]; then 
+    #     if [[ ! "$HOLLAEX_NETWORK_TERMINATE" ]]; then 
 
-            # Check Kit version compatibility range.
-            check_kit_version_compatibility_range;
+    #         # Check Kit version compatibility range.
+    #         check_kit_version_compatibility_range;
         
-        fi
+    #     fi
     
-    fi 
+    # fi 
 
     echo -e "\n# # # # # #  \033[1mW A R N I N G\033[0m  # # # # # #\n"
     echo -e "\033[91mYou are now trying to TERMINATE your exchange!\033[39m"
