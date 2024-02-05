@@ -1,5 +1,33 @@
 #!/bin/bash 
 
+### DEPRECATION WARNING ###
+function hollaex_ascii_cli_is_deprecated() {
+
+  /bin/cat << EOF
+
+:tt1   ;tti          LCC:1CC1         ,11tffttt            :tt;  ;tfi.tt1 ,,,
+t@@8   f@@0  ,;ii;.  8@@;L@@f .:i1i:. ;@@@CLCGC;ii; ,iii.  t@@L,C@@L,.CCf,0@@;,
+t@@8LLf0@@G,C@@G0@8L.0@@;L@@t.C80L0@8i:@@8tt;  :8@@1G@@1.  t@@0@@8:  ,8888@@@8G
+t@@8CCC0@@CC@@L  G@@fG@@;L@@t,fCCfG@@L:@@@LLi    C@@@8,    t@@@C8@0: ,@@G.G@@,
+t@@8   L@@G1@@0;;8@@i0@@;L@@fC@@Li0@@f:@@@iii11:i8@G@@C,   t@@L :0@@1,@@0 G@@1;
+iGGL   tGGf ;LG00Gf: CGG:tGG1:LGGCLCG1:GGG0000fiGGL 1GGf.  iCC1  .LGG1CGf :LG0G,
+
+HollaEx CLI is DEPRECATED!
+
+From the HollaEx Kit v2.10, HollaEx CLI is officially deprecated and not recommended for use.
+Please visit https://github.com/hollaex/hollaex-kit for more details.
+                 
+---------------------------------
+EOF
+
+}
+
+hollaex_ascii_cli_is_deprecated;
+
+sleep 1;
+
+############################
+
 SCRIPTPATH="$HOME/.hollaex-cli"
 
 #### HollaEx CLI Settings ####
@@ -1692,12 +1720,12 @@ elif [[ "$1" == "setup" ]]; then
 
     if [[ ! "$HOLLAEX_NETWORK_SETUP" ]]; then 
 
-        if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
+        # if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
 
-            # Check Kit version compatibility range.
-            check_kit_version_compatibility_range;
+        #     # Check Kit version compatibility range.
+        #     check_kit_version_compatibility_range;
         
-        fi 
+        # fi 
 
         for i in ${CONFIG_FILE_PATH[@]}; do
             source $i
@@ -1827,7 +1855,7 @@ elif [[ "$1" == "setup" ]]; then
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
+        if ! check_kubernetes_dependencies; then exit 1; fi;
 
         #Creating kubernetes_config directory for generating config for Kubernetes.
 
@@ -3163,16 +3191,16 @@ elif [[ "$1" == "start" ]]; then
     #Validate the envs
     essential_secret_validator;
 
-    if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
+    # if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
 
-        if [[ ! "$HOLLAEX_NETWORK_START" ]]; then 
+    #     if [[ ! "$HOLLAEX_NETWORK_START" ]]; then 
 
-            # Check Kit version compatibility range.
-            check_kit_version_compatibility_range;
+    #         # Check Kit version compatibility range.
+    #         check_kit_version_compatibility_range;
         
-        fi 
+    #     fi 
     
-    fi 
+    # fi 
 
     if [[ "$IGNORE_SETTINGS" ]]; then
 
@@ -3185,8 +3213,9 @@ elif [[ "$1" == "start" ]]; then
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
-
+        
+        if ! check_kubernetes_dependencies; then exit 1; fi;
+    
         #Creating kubernetes_config directory for generating config for Kubernetes.
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
@@ -3554,12 +3583,12 @@ elif [[ "$1" == "scale" ]]; then
 
     load_config_variables;
 
-    if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
+    # if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
 
-        # Check Kit version compatibility range.
-        check_kit_version_compatibility_range;
+    #     # Check Kit version compatibility range.
+    #     check_kit_version_compatibility_range;
     
-    fi 
+    # fi 
 
     if [[ "$IGNORE_SETTINGS" ]]; then
 
@@ -3599,7 +3628,7 @@ elif [[ "$1" == "scale" ]]; then
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
+        if ! check_kubernetes_dependencies; then exit 1; fi;
 
         #Creating kubernetes_config directory for generating config for Kubernetes.
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
@@ -4535,22 +4564,22 @@ elif [[ "$1" == "stop" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
-    if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
+    # if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
 
-        if [[ ! "$HOLLAEX_NETWORK_STOP" ]]; then 
+    #     if [[ ! "$HOLLAEX_NETWORK_STOP" ]]; then 
 
-            # Check Kit version compatibility range.
-            check_kit_version_compatibility_range;
+    #         # Check Kit version compatibility range.
+    #         check_kit_version_compatibility_range;
         
-        fi 
+    #     fi 
     
-    fi 
+    # fi 
 
     if [[ "$USE_KUBERNETES" ]]; then
         
 
          #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
+        if ! check_kubernetes_dependencies; then exit 1; fi;
 
         echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
@@ -4772,12 +4801,12 @@ elif [[ "$1" == "restart" ]]; then
 
     fi
 
-    if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]] && [[ ! "$HOLLAEX_NETWORK_RESTART" ]]; then 
+    # if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]] && [[ ! "$HOLLAEX_NETWORK_RESTART" ]]; then 
 
-            # Check Kit version compatibility range.
-            check_kit_version_compatibility_range;
+    #         # Check Kit version compatibility range.
+    #         check_kit_version_compatibility_range;
     
-    fi
+    # fi
 
     if [[ "$IGNORE_SETTINGS" ]]; then
 
@@ -4790,7 +4819,7 @@ elif [[ "$1" == "restart" ]]; then
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
+        if ! check_kubernetes_dependencies; then exit 1; fi;
 
         #Creating kubernetes_config directory for generating config for Kubernetes.
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
@@ -5172,7 +5201,7 @@ elif [[ "$1" == "apply" ]]; then
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
+        if ! check_kubernetes_dependencies; then exit 1; fi;
 
         # Only tries to attempt remove ingress rules from Kubernetes if it exists.
         if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
@@ -5379,7 +5408,7 @@ elif [[ "$1" == "upgrade" ]]; then
         fi
 
         # Check Kit version compatibility range.
-        check_kit_version_compatibility_range;
+        # check_kit_version_compatibility_range;
 
     fi
 
@@ -5571,16 +5600,16 @@ elif [[ "$1" == "terminate" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
-    if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
+    # if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
 
-        if [[ ! "$HOLLAEX_NETWORK_TERMINATE" ]]; then 
+    #     if [[ ! "$HOLLAEX_NETWORK_TERMINATE" ]]; then 
 
-            # Check Kit version compatibility range.
-            check_kit_version_compatibility_range;
+    #         # Check Kit version compatibility range.
+    #         check_kit_version_compatibility_range;
         
-        fi
+    #     fi
     
-    fi 
+    # fi 
 
     echo -e "\n# # # # # #  \033[1mW A R N I N G\033[0m  # # # # # #\n"
     echo -e "\033[91mYou are now trying to TERMINATE your exchange!\033[39m"
@@ -5593,7 +5622,7 @@ elif [[ "$1" == "terminate" ]]; then
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
+        if ! check_kubernetes_dependencies; then exit 1; fi;
 
         echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
@@ -5987,7 +6016,7 @@ elif [[ "$1" == "web" ]]; then
         if [[ "$USE_KUBERNETES" ]]; then
 
             #Checking Kubernetes dependencies
-            check_kubernetes_dependencies;
+            if ! check_kubernetes_dependencies; then exit 1; fi;
 
             echo "*********************************************"
             #Verify remote Kubernetes cluster is correct.
@@ -6202,7 +6231,7 @@ elif [[ "$1" == "web" ]]; then
         if [[ "$USE_KUBERNETES" ]]; then
 
             #Checking Kubernetes dependencies
-            check_kubernetes_dependencies;
+            if ! check_kubernetes_dependencies; then exit 1; fi;
 
             echo "*********************************************"
             #Verify remote Kubernetes cluster is correct.
@@ -6385,7 +6414,7 @@ elif [[ "$1" == "web" ]]; then
         if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
+        if ! check_kubernetes_dependencies; then exit 1; fi;
 
         echo "*********************************************"
         #Verify remote Kubernetes cluster is correct.
@@ -6530,7 +6559,7 @@ elif [[ "$1" == "web" ]]; then
         if [[ "$USE_KUBERNETES" ]]; then
 
             #Checking Kubernetes dependencies
-            check_kubernetes_dependencies;
+            if ! check_kubernetes_dependencies; then exit 1; fi;
 
             echo "*********************************************"
             #Verify remote Kubernetes cluster is correct.
@@ -6770,7 +6799,7 @@ elif [[ "$1" == "web" ]]; then
         if [[ "$USE_KUBERNETES" ]]; then
 
             #Checking Kubernetes dependencies
-            check_kubernetes_dependencies;
+            if ! check_kubernetes_dependencies; then exit 1; fi;
 
             echo "*********************************************"
             #Verify remote Kubernetes cluster is correct.
@@ -6875,7 +6904,7 @@ elif [[ "$1" == "web" ]]; then
         if [[ "$USE_KUBERNETES" ]]; then
 
             #Checking Kubernetes dependencies
-            check_kubernetes_dependencies;
+            if ! check_kubernetes_dependencies; then exit 1; fi;
 
             echo "*********************************************"
             echo "Verifying current KUBECONFIG on the machine"
@@ -7248,7 +7277,7 @@ elif [[ "$1" == "toolbox" ]]; then
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
+        if ! check_kubernetes_dependencies; then exit 1; fi;
 
         echo "*********************************************"
         #Verify remote Kubernetes cluster is correct.
@@ -7813,7 +7842,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         fi
 
-        check_kubernetes_dependencies;
+        if ! check_kubernetes_dependencies; then exit 1; fi;
         
         echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
@@ -7860,7 +7889,7 @@ elif [[ "$1" == "toolbox" ]]; then
         
         if [[ "$USE_KUBERNETES" ]]; then 
 
-            check_kubernetes_dependencies;
+            if ! check_kubernetes_dependencies; then exit 1; fi;
         
             echo "*********************************************"
             echo "Verifying current KUBECONFIG on the machine"
@@ -8060,7 +8089,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         if [[ "$USE_KUBERNETES" ]]; then 
 
-            check_kubernetes_dependencies;
+            if ! check_kubernetes_dependencies; then exit 1; fi;
 
             if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 && command kubectl get pods -n $ENVIRONMENT_EXCHANGE_NAME -l app=$HOLLAEX_SECRET_DB_HOST > /dev/null 2>&1; then
 
@@ -8132,7 +8161,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         if [[ "$USE_KUBERNETES" ]]; then 
 
-            check_kubernetes_dependencies;
+            if ! check_kubernetes_dependencies; then exit 1; fi;
 
             if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 && command kubectl get pods -n $ENVIRONMENT_EXCHANGE_NAME -l app=$ENVIRONMENT_EXCHANGE_NAME-redis > /dev/null 2>&1; then
 
@@ -9166,7 +9195,7 @@ elif [[ "$1" == "status" ]]; then
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
+        if ! check_kubernetes_dependencies; then exit 1; fi;
 
         kubectl get pods --namespace $ENVIRONMENT_EXCHANGE_NAME
 
@@ -9313,7 +9342,7 @@ elif [[ "$1" == "logs" ]]; then
     if [[ "$USE_KUBERNETES" ]]; then
 
         #Checking Kubernetes dependencies
-        check_kubernetes_dependencies;
+        if ! check_kubernetes_dependencies; then exit 1; fi;
 
         function show_kubernetes_logs_simple() {
 
@@ -9704,4 +9733,4 @@ else
 
 fi
 
-exit 0;
+#exit 0;
