@@ -1617,7 +1617,7 @@ metadata:
 
         real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/configuration-snippet: |
-      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=10 nodelay;
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=12 nodelay;
       limit_req_log_level notice;
       limit_req_status 429;'; fi)
 
@@ -1728,7 +1728,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-body-size: "6m"
     nginx.ingress.kubernetes.io/configuration-snippet: |
       #error_page 403 @maintenance_503;
-      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=sms burst=10 nodelay;
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=sms burst=12 nodelay;
       limit_req_log_level notice;
       limit_req_status 429;'; fi)
 
@@ -1863,7 +1863,7 @@ metadata:
         }
         real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/configuration-snippet: |
-      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=10 nodelay;
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=12 nodelay;
       limit_req_log_level notice;
       limit_req_status 429;'; fi)
 
@@ -1902,7 +1902,7 @@ metadata:
         }
         real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/configuration-snippet: |
-      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=10 nodelay;
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=12 nodelay;
       limit_req_log_level notice;
       limit_req_status 429;'; fi)
 
@@ -1978,7 +1978,7 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /plugins/sms/verify/\$2
     nginx.ingress.kubernetes.io/configuration-snippet: |
       #error_page 403 @maintenance_503;
-      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=sms burst=10 nodelay;
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=sms burst=12 nodelay;
       limit_req_log_level notice;
       limit_req_status 429;'; fi)
 
@@ -2057,7 +2057,7 @@ EOL
 #     $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
 #     nginx.ingress.kubernetes.io/proxy-body-size: "6m"
 #     nginx.ingress.kubernetes.io/configuration-snippet: |
-#       limit_req zone=api burst=10 nodelay;
+#       limit_req zone=api burst=12 nodelay;
 #       limit_req_log_level notice;
 #       limit_req_status 429;
 # spec:
@@ -2087,7 +2087,7 @@ EOL
 #     $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
 #     nginx.ingress.kubernetes.io/proxy-body-size: "6m"
 #     nginx.ingress.kubernetes.io/configuration-snippet: |
-#       limit_req zone=api burst=10 nodelay;
+#       limit_req zone=api burst=12 nodelay;
 #       limit_req_log_level notice;
 #       limit_req_status 429;
 # spec:
@@ -4294,57 +4294,57 @@ function check_docker_compose_is_installed() {
 }
 
 
-function check_kit_version_compatibility_range() {
+# function check_kit_version_compatibility_range() {
 
-  CURRENT_HOLLAEX_KIT_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/version)
+#   CURRENT_HOLLAEX_KIT_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/version)
 
-  CURRENT_HOLLAEX_KIT_MAJOR_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/version | cut -f1 -d ".")
-  CURRENT_HOLLAEX_KIT_MINOR_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/version | cut -f2 -d ".")
+#   CURRENT_HOLLAEX_KIT_MAJOR_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/version | cut -f1 -d ".")
+#   CURRENT_HOLLAEX_KIT_MINOR_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/version | cut -f2 -d ".")
 
-  HOLLAEX_KIT_MINIMUM_COMPATIBLE_MAJOR_VERSION=$(echo $HOLLAEX_KIT_MINIMUM_COMPATIBLE | cut -f1 -d ".")
-  HOLLAEX_KIT_MINIMUM_COMPATIBLE_MINOR_VERSION=$(echo $HOLLAEX_KIT_MINIMUM_COMPATIBLE | cut -f2 -d ".")
+#   HOLLAEX_KIT_MINIMUM_COMPATIBLE_MAJOR_VERSION=$(echo $HOLLAEX_KIT_MINIMUM_COMPATIBLE | cut -f1 -d ".")
+#   HOLLAEX_KIT_MINIMUM_COMPATIBLE_MINOR_VERSION=$(echo $HOLLAEX_KIT_MINIMUM_COMPATIBLE | cut -f2 -d ".")
 
-  HOLLAEX_KIT_MAXIMUM_COMPATIBLE_MAJOR_VERSION=$(echo $HOLLAEX_KIT_MAXIMUM_COMPATIBLE | cut -f1 -d ".")
-  HOLLAEX_KIT_MAXIMUM_COMPATIBLE_MINOR_VERSION=$(echo $HOLLAEX_KIT_MAXIMUM_COMPATIBLE | cut -f2 -d ".")
+#   HOLLAEX_KIT_MAXIMUM_COMPATIBLE_MAJOR_VERSION=$(echo $HOLLAEX_KIT_MAXIMUM_COMPATIBLE | cut -f1 -d ".")
+#   HOLLAEX_KIT_MAXIMUM_COMPATIBLE_MINOR_VERSION=$(echo $HOLLAEX_KIT_MAXIMUM_COMPATIBLE | cut -f2 -d ".")
 
-  if [[ "$CURRENT_HOLLAEX_KIT_MAJOR_VERSION" < "$HOLLAEX_KIT_MINIMUM_COMPATIBLE_MAJOR_VERSION" ]] || [[ "$CURRENT_HOLLAEX_KIT_MAJOR_VERSION" > "$HOLLAEX_KIT_MAXIMUM_COMPATIBLE_MAJOR_VERSION" ]]; then
+#   if [[ "$CURRENT_HOLLAEX_KIT_MAJOR_VERSION" < "$HOLLAEX_KIT_MINIMUM_COMPATIBLE_MAJOR_VERSION" ]] || [[ "$CURRENT_HOLLAEX_KIT_MAJOR_VERSION" > "$HOLLAEX_KIT_MAXIMUM_COMPATIBLE_MAJOR_VERSION" ]]; then
 
-    printf "\n\033[91mError: The HollaEx Kit version that you are trying to run is not compatible with the installed CLI.\033[39m\n"
-    printf "Your HollaEx Kit version: \033[1m$CURRENT_HOLLAEX_KIT_VERSION\033[0m\n"
-    printf "Supported HollaEx Kit version range: \033[1m$HOLLAEX_KIT_MINIMUM_COMPATIBLE ~ $HOLLAEX_KIT_MAXIMUM_COMPATIBLE.\033[0m\n\n"
+#     printf "\n\033[91mError: The HollaEx Kit version that you are trying to run is not compatible with the installed CLI.\033[39m\n"
+#     printf "Your HollaEx Kit version: \033[1m$CURRENT_HOLLAEX_KIT_VERSION\033[0m\n"
+#     printf "Supported HollaEx Kit version range: \033[1m$HOLLAEX_KIT_MINIMUM_COMPATIBLE ~ $HOLLAEX_KIT_MAXIMUM_COMPATIBLE.\033[0m\n\n"
 
-    exit 1;
+#     exit 1;
 
-  fi 
+#   fi 
 
-  if [[ "$CURRENT_HOLLAEX_KIT_MINOR_VERSION" < "$HOLLAEX_KIT_MINIMUM_COMPATIBLE_MINOR_VERSION" ]] || [[ "$CURRENT_HOLLAEX_KIT_MINOR_VERSION" > "$HOLLAEX_KIT_MAXIMUM_COMPATIBLE_MINOR_VERSION" ]]; then
+#   if [[ "$CURRENT_HOLLAEX_KIT_MINOR_VERSION" < "$HOLLAEX_KIT_MINIMUM_COMPATIBLE_MINOR_VERSION" ]] || [[ "$CURRENT_HOLLAEX_KIT_MINOR_VERSION" > "$HOLLAEX_KIT_MAXIMUM_COMPATIBLE_MINOR_VERSION" ]]; then
 
-    printf "\n\033[91mError: The HollaEx Kit version that you are trying to run is not compatible with the installed CLI.\033[39m\n"
-    printf "Your HollaEx Kit version: \033[1m$CURRENT_HOLLAEX_KIT_VERSION\033[0m\n"
-    printf "Supported HollaEx Kit version range: \033[1m$HOLLAEX_KIT_MINIMUM_COMPATIBLE ~ $HOLLAEX_KIT_MAXIMUM_COMPATIBLE.\033[0m\n"
+#     printf "\n\033[91mError: The HollaEx Kit version that you are trying to run is not compatible with the installed CLI.\033[39m\n"
+#     printf "Your HollaEx Kit version: \033[1m$CURRENT_HOLLAEX_KIT_VERSION\033[0m\n"
+#     printf "Supported HollaEx Kit version range: \033[1m$HOLLAEX_KIT_MINIMUM_COMPATIBLE ~ $HOLLAEX_KIT_MAXIMUM_COMPATIBLE.\033[0m\n"
 
-    if [[ "$CURRENT_HOLLAEX_KIT_MINOR_VERSION" > "$HOLLAEX_KIT_MAXIMUM_COMPATIBLE_MINOR_VERSION" ]]; then
+#     if [[ "$CURRENT_HOLLAEX_KIT_MINOR_VERSION" > "$HOLLAEX_KIT_MAXIMUM_COMPATIBLE_MINOR_VERSION" ]]; then
 
-      printf "\nYour Kit version is \033[1mhigher than the maximum compatible version\033[0m of your CLI.\n"
-      printf "You can \033[1mreinstall the HollaEx CLI\033[0m to higher version.\n\n"
-      printf "To reinstall the HollaEx CLI to a compatible version, Please run '\033[1mhollaex toolbox --install_cli <VERSION_NUMBER>\033[0m.\n"
+#       printf "\nYour Kit version is \033[1mhigher than the maximum compatible version\033[0m of your CLI.\n"
+#       printf "You can \033[1mreinstall the HollaEx CLI\033[0m to higher version.\n\n"
+#       printf "To reinstall the HollaEx CLI to a compatible version, Please run '\033[1mhollaex toolbox --install_cli <VERSION_NUMBER>\033[0m.\n"
 
-    elif [[ "$CURRENT_HOLLAEX_KIT_MINOR_VERSION" < "$HOLLAEX_KIT_MINIMUM_COMPATIBLE_MINOR_VERSION" ]]; then
+#     elif [[ "$CURRENT_HOLLAEX_KIT_MINOR_VERSION" < "$HOLLAEX_KIT_MINIMUM_COMPATIBLE_MINOR_VERSION" ]]; then
 
-      printf "\nYour Kit version is \033[1mlower than the minimum compatible version\033[0m of your CLI.\n"
-      printf "\nYou can either \033[1mreinstall the HollaEx CLI, or upgrade your HollaEx Kit\033[0m.\n\n"
-      printf "To reinstall the HollaEx CLI to a compatible version, Please run '\033[1mhollaex toolbox --install_cli <VERSION_NUMBER>\033[0m.\n"
-      printf "To see how to upgrade your HollaEx Kit, Please \033[1mcheck our official upgrade docs (docs.bitholla.com/hollaex-kit/upgrade)\033[0m.\n"
+#       printf "\nYour Kit version is \033[1mlower than the minimum compatible version\033[0m of your CLI.\n"
+#       printf "\nYou can either \033[1mreinstall the HollaEx CLI, or upgrade your HollaEx Kit\033[0m.\n\n"
+#       printf "To reinstall the HollaEx CLI to a compatible version, Please run '\033[1mhollaex toolbox --install_cli <VERSION_NUMBER>\033[0m.\n"
+#       printf "To see how to upgrade your HollaEx Kit, Please \033[1mcheck our official upgrade docs (docs.bitholla.com/hollaex-kit/upgrade)\033[0m.\n"
 
-    fi
+#     fi
 
-    printf "\nYou can see the version compatibility range of between CLI and Kit at our \033[1mofficial docs (docs.bitholla.com/hollaex-kit/upgrade/version-compatibility)\033[0m.\n\n"
+#     printf "\nYou can see the version compatibility range of between CLI and Kit at our \033[1mofficial docs (docs.bitholla.com/hollaex-kit/upgrade/version-compatibility)\033[0m.\n\n"
 
-    exit 1;
+#     exit 1;
 
-  fi
+#   fi
 
-}
+# }
 
 function generate_backend_passwords() {
 
