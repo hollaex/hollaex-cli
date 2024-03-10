@@ -1617,7 +1617,7 @@ metadata:
 
         real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/configuration-snippet: |
-      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=12 nodelay;
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=14 nodelay;
       limit_req_log_level notice;
       limit_req_status 429;'; fi)
 
@@ -1728,7 +1728,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-body-size: "6m"
     nginx.ingress.kubernetes.io/configuration-snippet: |
       #error_page 403 @maintenance_503;
-      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=sms burst=12 nodelay;
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=sms burst=14 nodelay;
       limit_req_log_level notice;
       limit_req_status 429;'; fi)
 
@@ -1863,7 +1863,7 @@ metadata:
         }
         real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/configuration-snippet: |
-      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=12 nodelay;
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=14 nodelay;
       limit_req_log_level notice;
       limit_req_status 429;'; fi)
 
@@ -1902,7 +1902,7 @@ metadata:
         }
         real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/configuration-snippet: |
-      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=12 nodelay;
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=14 nodelay;
       limit_req_log_level notice;
       limit_req_status 429;'; fi)
 
@@ -1978,7 +1978,7 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /plugins/sms/verify/\$2
     nginx.ingress.kubernetes.io/configuration-snippet: |
       #error_page 403 @maintenance_503;
-      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=sms burst=12 nodelay;
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=sms burst=14 nodelay;
       limit_req_log_level notice;
       limit_req_status 429;'; fi)
 
@@ -2057,7 +2057,7 @@ EOL
 #     $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
 #     nginx.ingress.kubernetes.io/proxy-body-size: "6m"
 #     nginx.ingress.kubernetes.io/configuration-snippet: |
-#       limit_req zone=api burst=12 nodelay;
+#       limit_req zone=api burst=14 nodelay;
 #       limit_req_log_level notice;
 #       limit_req_status 429;
 # spec:
@@ -2087,7 +2087,7 @@ EOL
 #     $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then echo "cert-manager.io/cluster-issuer: ${ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER}";  fi)
 #     nginx.ingress.kubernetes.io/proxy-body-size: "6m"
 #     nginx.ingress.kubernetes.io/configuration-snippet: |
-#       limit_req zone=api burst=12 nodelay;
+#       limit_req zone=api burst=14 nodelay;
 #       limit_req_log_level notice;
 #       limit_req_status 429;
 # spec:
