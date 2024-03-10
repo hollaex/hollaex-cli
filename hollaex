@@ -1,28 +1,28 @@
 #!/bin/bash 
 
 ### DEPRECATION WARNING ###
-function hollaex_ascii_cli_is_deprecated() {
+# function hollaex_ascii_cli_is_deprecated() {
 
-  /bin/cat << EOF
+#   /bin/cat << EOF
 
-:tt1   ;tti          LCC:1CC1         ,11tffttt            :tt;  ;tfi.tt1 ,,,
-t@@8   f@@0  ,;ii;.  8@@;L@@f .:i1i:. ;@@@CLCGC;ii; ,iii.  t@@L,C@@L,.CCf,0@@;,
-t@@8LLf0@@G,C@@G0@8L.0@@;L@@t.C80L0@8i:@@8tt;  :8@@1G@@1.  t@@0@@8:  ,8888@@@8G
-t@@8CCC0@@CC@@L  G@@fG@@;L@@t,fCCfG@@L:@@@LLi    C@@@8,    t@@@C8@0: ,@@G.G@@,
-t@@8   L@@G1@@0;;8@@i0@@;L@@fC@@Li0@@f:@@@iii11:i8@G@@C,   t@@L :0@@1,@@0 G@@1;
-iGGL   tGGf ;LG00Gf: CGG:tGG1:LGGCLCG1:GGG0000fiGGL 1GGf.  iCC1  .LGG1CGf :LG0G,
+# :tt1   ;tti          LCC:1CC1         ,11tffttt            :tt;  ;tfi.tt1 ,,,
+# t@@8   f@@0  ,;ii;.  8@@;L@@f .:i1i:. ;@@@CLCGC;ii; ,iii.  t@@L,C@@L,.CCf,0@@;,
+# t@@8LLf0@@G,C@@G0@8L.0@@;L@@t.C80L0@8i:@@8tt;  :8@@1G@@1.  t@@0@@8:  ,8888@@@8G
+# t@@8CCC0@@CC@@L  G@@fG@@;L@@t,fCCfG@@L:@@@LLi    C@@@8,    t@@@C8@0: ,@@G.G@@,
+# t@@8   L@@G1@@0;;8@@i0@@;L@@fC@@Li0@@f:@@@iii11:i8@G@@C,   t@@L :0@@1,@@0 G@@1;
+# iGGL   tGGf ;LG00Gf: CGG:tGG1:LGGCLCG1:GGG0000fiGGL 1GGf.  iCC1  .LGG1CGf :LG0G,
 
-HollaEx CLI is DEPRECATED!
+# HollaEx CLI is DEPRECATED!
 
-From the HollaEx Kit v2.10, HollaEx CLI is officially deprecated and not recommended for use.
-Please visit https://github.com/hollaex/hollaex-kit for more details.
+# From the HollaEx Kit v2.10, HollaEx CLI is officially deprecated and not recommended for use.
+# Please visit https://github.com/hollaex/hollaex-kit for more details.
                  
----------------------------------
-EOF
+# ---------------------------------
+# EOF
 
-}
+# }
 
-hollaex_ascii_cli_is_deprecated;
+# hollaex_ascii_cli_is_deprecated;
 
 sleep 1;
 
