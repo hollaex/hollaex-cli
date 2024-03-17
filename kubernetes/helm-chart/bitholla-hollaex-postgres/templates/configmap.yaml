@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-initdb-remove-local-nopasswd-access
+  name: {{.Release.Name}}-init-drop-local-nopasswd-acc
   namespace: {{.Release.Namespace}}
   labels:
     app: {{.Release.Name}}
