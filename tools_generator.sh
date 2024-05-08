@@ -444,7 +444,7 @@ function load_config_variables() {
 function generate_local_env() {
 
 # Generate local env
-cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local <<EOL
+cat > $HOLLAEX_CLI_INIT_PATH/server/hollaex-kit.env <<EOL
 DB_DIALECT=postgres
 
 $(echo "$HOLLAEX_CONFIGMAP_VARIABLES" | tr -d '\'\')
@@ -461,7 +461,7 @@ IFS=',' read -ra LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE <<< "$ENVIRONMENT_EX
 for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
   
   # Generate local nginx conf
-  cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
+  cat > $HOLLAEX_CLI_INIT_PATH/nginx/conf.d/upstream.conf <<EOL
   upstream api {
     server ${ENVIRONMENT_EXCHANGE_NAME}-server-api:10010;
   }
@@ -486,7 +486,7 @@ IFS=',' read -ra LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE <<< "$ENVIRONMENT_EX
 for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
   
   # Generate local nginx conf
-  cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream.conf <<EOL
+  cat > $HOLLAEX_CLI_INIT_PATH/nginx/conf.d/upstream.conf <<EOL
   upstream api {
     server ${ENVIRONMENT_EXCHANGE_NAME}-server-api:10010;
   }
@@ -503,7 +503,7 @@ done
 function generate_nginx_upstream_for_web(){
 
   # Generate local nginx conf
-  cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/upstream-web.conf <<EOL
+  cat > $HOLLAEX_CLI_INIT_PATH/nginx/conf.d/upstream-web.conf <<EOL
 
   upstream web {
     server ${ENVIRONMENT_EXCHANGE_NAME}-web:80;
@@ -516,13 +516,13 @@ function apply_nginx_user_defined_values_api_subdomain(){
     #sed -i.bak "s/$ENVIRONMENT_DOCKER_IMAGE_VERSION/$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
     local SERVER_DOMAIN=$(echo $HOLLAEX_CONFIGMAP_API_HOST | cut -f3 -d "/")
-    sed -i.bak "s/server_name.*\#Server.*/server_name $SERVER_DOMAIN; \#Server domain/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
-    rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
+    sed -i.bak "s/server_name.*\#Server.*/server_name $SERVER_DOMAIN; \#Server domain/" $HOLLAEX_CLI_INIT_PATH/nginx/nginx.conf
+    rm $HOLLAEX_CLI_INIT_PATH/nginx/nginx.conf.bak
 
-    if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then 
+    if [[ -f "$HOLLAEX_CLI_INIT_PATH/nginx/conf.d/web.conf" ]]; then 
       CLIENT_DOMAIN=$(echo $HOLLAEX_CONFIGMAP_DOMAIN | cut -f3 -d "/")
-      sed -i.bak "s/server_name.*\#Client.*/server_name $CLIENT_DOMAIN; \#Client domain/" $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
-      rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf.bak
+      sed -i.bak "s/server_name.*\#Client.*/server_name $CLIENT_DOMAIN; \#Client domain/" $HOLLAEX_CLI_INIT_PATH/nginx/conf.d/web.conf
+      rm $HOLLAEX_CLI_INIT_PATH/nginx/conf.d/web.conf.bak
     fi
 }
 
@@ -530,34 +530,34 @@ function apply_nginx_user_defined_values(){
     #sed -i.bak "s/$ENVIRONMENT_DOCKER_IMAGE_VERSION/$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
     local SERVER_DOMAIN=$(echo $HOLLAEX_CONFIGMAP_DOMAIN | cut -f3 -d "/")
-    sed -i.bak "s/server_name.*\#Server.*/server_name $SERVER_DOMAIN; \#Server domain/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
-    rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
+    sed -i.bak "s/server_name.*\#Server.*/server_name $SERVER_DOMAIN; \#Server domain/" $HOLLAEX_CLI_INIT_PATH/nginx/nginx.conf
+    rm $HOLLAEX_CLI_INIT_PATH/nginx/nginx.conf.bak
 
-    if [[ -f "$TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf" ]]; then 
+    if [[ -f "$HOLLAEX_CLI_INIT_PATH/nginx/conf.d/web.conf" ]]; then 
       CLIENT_DOMAIN=$(echo $HOLLAEX_CONFIGMAP_DOMAIN | cut -f3 -d "/")
-      sed -i.bak "s/server_name.*\#Client.*/server_name $CLIENT_DOMAIN; \#Client domain/" $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf
-      rm $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf.bak
+      sed -i.bak "s/server_name.*\#Client.*/server_name $CLIENT_DOMAIN; \#Client domain/" $HOLLAEX_CLI_INIT_PATH/nginx/conf.d/web.conf
+      rm $HOLLAEX_CLI_INIT_PATH/nginx/conf.d/web.conf.bak
     fi
 }
 
 function apply_nginx_root_domain_to_api(){
 
-    sed -i.bak "s/.*\#Root.*/        proxy_pass http:\/\/api; \#Root path/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
-    rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
+    sed -i.bak "s/.*\#Root.*/        proxy_pass http:\/\/api; \#Root path/" $HOLLAEX_CLI_INIT_PATH/nginx/nginx.conf
+    rm $HOLLAEX_CLI_INIT_PATH/nginx/nginx.conf.bak
 
 }
 
 function apply_nginx_root_domain_to_web(){
 
-    sed -i.bak "s/.*\#Root.*/        proxy_pass http:\/\/web; \#Root path/" $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf
-    rm $TEMPLATE_GENERATE_PATH/local/nginx/nginx.conf.bak
+    sed -i.bak "s/.*\#Root.*/        proxy_pass http:\/\/web; \#Root path/" $HOLLAEX_CLI_INIT_PATH/nginx/nginx.conf
+    rm $HOLLAEX_CLI_INIT_PATH/nginx/nginx.conf.bak
 
 }
 
 function generate_local_docker_compose_for_core_dev() {
 
 # Generate docker-compose
-cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+cat > $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml <<EOL
 version: '3'
 services:
 
@@ -762,13 +762,13 @@ EOL
     TRADE_PARIS_DEPLOYMENT=$(echo $j | cut -f1 -d ",")
 
   # Generate docker-compose
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+  cat >> $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml <<EOL
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-engine-$TRADE_PARIS_DEPLOYMENT:
     image: ${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}:${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
     restart: unless-stopped
     env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+      - hollaex-kit.env
     environment:
       - DEPLOYMENT_MODE=queue ${TRADE_PARIS_DEPLOYMENT}
     entrypoint:
@@ -807,7 +807,7 @@ EOL
   done
 
 # Generate docker-compose
-cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+cat >> $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml <<EOL
 networks:
   ${ENVIRONMENT_EXCHANGE_NAME}-network:
   
@@ -817,7 +817,7 @@ EOL
 function generate_local_docker_compose_for_dev() {
 
 # Generate docker-compose
-cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+cat > $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml <<EOL
 version: '3'
 services:
 
@@ -992,16 +992,24 @@ services:
 EOL
 
 # Generate docker-compose
-cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+cat >> $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml <<EOL
 networks:
   ${ENVIRONMENT_EXCHANGE_NAME}-network:
   
 EOL
 }
 
+function update_local_docker_compose() {
+
+  # Update Docker Image
+  yq e -i ".services.*-server-*.image = \"$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION\"" $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml
+
+}
+
+
 function generate_local_docker_compose() {
 
-if [[ -f "$TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml" ]] && [[ ! "$UPGRADE_PSQL_DB_VERSION" ]] && [[ ! "$HOLLAEX_IS_SETUP" ]]; then
+if [[ -f "$HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml" ]] && [[ ! "$UPGRADE_PSQL_DB_VERSION" ]] && [[ ! "$HOLLAEX_IS_SETUP" ]]; then
 
   DOCKER_CONTAINER_NAME=$(docker ps -a | grep $ENVIRONMENT_EXCHANGE_NAME | grep "\-db" | cut -f1 -d " " | head -n 1)
   EXISTING_DB_DOCKER_IMAGE=$(docker inspect --format='{{.Config.Image}}' $DOCKER_CONTAINER_NAME)
@@ -1018,7 +1026,7 @@ if [[ -f "$TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-comp
 fi
 
 # Generate docker-compose
-cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+cat > $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml <<EOL
 version: '3'
 services:
 EOL
@@ -1026,7 +1034,7 @@ EOL
 if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]]; then 
 
   # Generate docker-compose
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+  cat >> $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml <<EOL
   ${HOLLAEX_SECRET_REDIS_HOST}:
     image: ${ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY:-redis}:${ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION:-6.0.9-alpine}
     restart: unless-stopped
@@ -1035,7 +1043,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]]; then
     ports:
       - 6379:6379
     env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+      - hollaex-kit.env
     command : ["sh", "-c", "redis-server --requirepass \$\${REDIS_PASSWORD}"]
     deploy:
       resources:
@@ -1053,7 +1061,7 @@ fi
 
 if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then 
   # Generate docker-compose
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+  cat >> $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml <<EOL
   ${HOLLAEX_SECRET_DB_HOST}:
     image: ${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY:-postgres}:$(if [[ "$EXISTING_DB_DOCKER_IMAGE_TAG" ]]; then echo "${EXISTING_DB_DOCKER_IMAGE_TAG}"; else echo "${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION}"; fi)
     restart: unless-stopped
@@ -1062,7 +1070,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
     ports:
       - 5432:5432
     env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+      - hollaex-kit.env
     deploy:
       resources:
         limits:
@@ -1085,13 +1093,13 @@ IFS=',' read -ra LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE <<< "$ENVIRONMENT_EX
 for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
 
   # Generate docker-compose
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+  cat >> $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml <<EOL
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-${i}:
     image: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
     restart: unless-stopped
     env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+      - hollaex-kit.env
     entrypoint:
       - node
     deploy:
@@ -1129,42 +1137,11 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
       $(if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" ]]; then echo "- $HOLLAEX_SECRET_DB_HOST"; fi)
 
 EOL
-  
-  if [[ "$i" == "api" ]]; then
-  # Generate docker-compose
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
-
-  ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
-    image: ${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_REGISTRY:-bitholla/nginx-with-certbot}:${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_VERSION:-1.15.8}
-    restart: unless-stopped
-    volumes:
-      - ./nginx:/etc/nginx
-      - ./logs/nginx:/var/log/nginx
-      - ./nginx/static/:/usr/share/nginx/html
-      - ./letsencrypt:/etc/letsencrypt
-    ports:
-      - ${ENVIRONMENT_LOCAL_NGINX_HTTP_PORT:-80}:80
-      - ${ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT:-443}:443
-    environment:
-      - NGINX_PORT=80
-    entrypoint: 
-      - /bin/sh
-      - -c 
-      - ip -4 route list match 0/0 | awk '{print \$\$3 " host.access"}' >> /etc/hosts && nginx -g "daemon off;"
-    depends_on:
-      - ${ENVIRONMENT_EXCHANGE_NAME}-server-${i}
-      $(if [[ "$ENVIRONMENT_WEB_ENABLE" == true ]]; then echo "- ${ENVIRONMENT_EXCHANGE_NAME}-web"; fi)
-    networks:
-      - $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "local_hollaex-network-network"; else echo "${ENVIRONMENT_EXCHANGE_NAME}-network"; fi)
-      
-EOL
-
-  fi
 
 done
 
 # Generate docker-compose
-cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+cat >> $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml <<EOL
 networks:
   $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "local_hollaex-network-network:"; else echo "${ENVIRONMENT_EXCHANGE_NAME}-network:"; fi)
     $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "external: true"; fi)
@@ -1172,7 +1149,7 @@ EOL
 
 if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION" == *"10"* ]]; then 
 
-cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+cat >> $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml <<EOL
 volumes:
   ${ENVIRONMENT_EXCHANGE_NAME}_db_vol:
 
@@ -1185,7 +1162,7 @@ fi
 function generate_local_docker_compose_for_network() {
 
 # Generate docker-compose
-cat > $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+cat > $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml <<EOL
 version: '3'
 services:
 EOL
@@ -1193,7 +1170,7 @@ EOL
 if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]]; then 
 
   # Generate docker-compose
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+  cat >> $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-redis:
     image: ${ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY:-redis}:${ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION:-6.0.9-alpine}
     restart: unless-stopped
@@ -1202,7 +1179,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_REDIS" == "true" ]]; then
     ports:
       - 6380:6379
     env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+      - hollaex-kit.env
     command : ["sh", "-c", "redis-server --requirepass \$\${REDIS_PASSWORD}"]
     deploy:
       resources:
@@ -1220,7 +1197,7 @@ fi
 
 if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then 
   # Generate docker-compose
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+  cat >> $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-db:
     image: ${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY:-postgres}:${ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION:-10.9}
     restart: unless-stopped
@@ -1229,7 +1206,7 @@ if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_POSTGRESQL_DB" == "true" ]]; then
       - 5433:5432
 
     env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+      - hollaex-kit.env
     deploy:
       resources:
         limits:
@@ -1247,7 +1224,7 @@ fi
 
 if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_INFLUXDB" == "true" ]]; then 
   # Generate docker-compose
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+  cat >> $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-influxdb:
     image: ${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_REGISTRY:-influxdb}:${ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION:-1.8.3}
     restart: unless-stopped
@@ -1281,7 +1258,7 @@ fi
 
 if [[ "$ENVIRONMENT_DOCKER_COMPOSE_RUN_MONGODB" == "true" ]]; then 
   # Generate docker-compose
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+  cat >> $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml <<EOL
   ${ENVIRONMENT_EXCHANGE_NAME}-mongodb:
     image: ${ENVIRONMENT_DOCKER_IMAGE_MONGODB_REGISTRY:-mongo}:${ENVIRONMENT_DOCKER_IMAGE_MONGODB_VERSION:-4.4.6-bionic}
     restart: unless-stopped
@@ -1315,13 +1292,13 @@ for i in ${LOCAL_DEPLOYMENT_MODE_DOCKER_COMPOSE_PARSE[@]}; do
   if [[ ! "$i" == "engine" ]]; then
 
   # Generate docker-compose
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+  cat >> $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml <<EOL
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-${i}:
     image: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
     restart: unless-stopped
     env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+      - hollaex-kit.env
     entrypoint:
       - node
     deploy:
@@ -1373,13 +1350,13 @@ EOL
       TRADE_PARIS_DEPLOYMENT=$(echo $j | cut -f1 -d ",")
 
     # Generate docker-compose
-    cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+    cat >> $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml <<EOL
 
   ${ENVIRONMENT_EXCHANGE_NAME}-server-${i}-$TRADE_PARIS_DEPLOYMENT:
     image: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
     restart: unless-stopped
     env_file:
-      - ${ENVIRONMENT_EXCHANGE_NAME}.env.local
+      - hollaex-kit.env
     environment:
       - PAIR=${TRADE_PARIS_DEPLOYMENT}
     entrypoint:
@@ -1423,7 +1400,7 @@ EOL
 
   if [[ "$i" == "api" ]]; then
   # Generate docker-compose
-  cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+  cat >> $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml <<EOL
 
   ${ENVIRONMENT_EXCHANGE_NAME}-nginx:
     image: ${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_REGISTRY:-bitholla/nginx-with-certbot}:${ENVIRONMENT_DOCKER_IMAGE_LOCAL_NGINX_VERSION:-1.15.8}
@@ -1456,7 +1433,7 @@ EOL
 done
 
 # Generate docker-compose
-cat >> $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml <<EOL
+cat >> $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml <<EOL
 networks:
   ${ENVIRONMENT_EXCHANGE_NAME}-network:
 
@@ -2515,7 +2492,7 @@ fi
 
 function generate_hollaex_web_local_nginx_conf() {
 
-cat > $TEMPLATE_GENERATE_PATH/local/nginx/conf.d/web.conf <<EOL
+cat > $HOLLAEX_CLI_INIT_PATH/nginx/conf.d/web.conf <<EOL
 server {
     listen 80;
     server_name hollaex.exchange; #Client domain
@@ -4252,7 +4229,7 @@ function hollaex_pull_and_apply_exchange_data() {
 
   local HOLLAEX_CONFIGMAP_API_NAME_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].name";)
 
-  local ENVIRONMENT_EXCHANGE_NAME_OVERRIDE=$(echo $HOLLAEX_CONFIGMAP_API_NAME_OVERRIDE |  tr -dc '[^[:alnum:]-]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+  # local ENVIRONMENT_EXCHANGE_NAME_OVERRIDE=$(echo $HOLLAEX_CONFIGMAP_API_NAME_OVERRIDE |  tr -dc '[^[:alnum:]-]\n\r' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
 
   #LOGO PATH ESCAPING
   # local ORIGINAL_CHARACTER_FOR_LOGO_IMAGE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].info.biz.LOGO_IMAGE";)
@@ -4262,7 +4239,7 @@ function hollaex_pull_and_apply_exchange_data() {
   local ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
 
   # CONFIGMAP 
-  sed -i.bak "s/ENVIRONMENT_EXCHANGE_NAME=.*/ENVIRONMENT_EXCHANGE_NAME=$ENVIRONMENT_EXCHANGE_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
+  sed -i.bak "s/ENVIRONMENT_EXCHANGE_NAME=.*/ENVIRONMENT_EXCHANGE_NAME=hollaex-kit/" $CONFIGMAP_FILE_PATH
 
   sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=.*/HOLLAEX_CONFIGMAP_API_NAME=$HOLLAEX_CONFIGMAP_API_NAME_OVERRIDE/" $CONFIGMAP_FILE_PATH
 
