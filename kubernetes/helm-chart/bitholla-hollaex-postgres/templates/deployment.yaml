@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   labels:
     app: {{.Release.Name}}
-    deployment_mode: {{.Values.DEPLOYMENT_MODE}}
+   
   name: {{.Release.Name}}
   namespace: {{.Release.namespace}}
 spec:
@@ -23,7 +23,7 @@ spec:
         app: {{.Release.Name}}
         role: master
         tier: backend
-        deployment_mode: {{.Values.DEPLOYMENT_MODE}}
+        
     spec:
       volumes:
       - name: {{.Release.Name}}-init-drop-local-nopasswd-acc
