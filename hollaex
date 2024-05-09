@@ -1556,10 +1556,10 @@ elif [[ "$1" == "setup" ]]; then
                 shift; continue
                 ;;
             --restore_from_backup)
+                export RESTORE_FROM_BACKUP=true
                 shift 
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 BACKUP_DUMP_FILE_PATH=$1
-                export RESTORE_FROM_BACKUP=true
                 echo "Restore from the backup mode is activated."
                 shift; continue
                 ;;
@@ -2042,11 +2042,11 @@ elif [[ "$1" == "setup" ]]; then
 
             else 
 
-                if [[ ! "$RESTORE_FROM_BACKUP" ]] || [[ ! "$UPGRADE_PSQL_DB_VERSION" ]]; then
+                if [[ ! "$RESTORE_FROM_BACKUP" ]] && [[ ! "$UPGRADE_PSQL_DB_VERSION" ]]; then
 
-                    local_database_init start;
-                
-                fi 
+                     local_database_init start;
+
+                fi
 
             fi
 
