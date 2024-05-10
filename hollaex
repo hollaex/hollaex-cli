@@ -291,7 +291,7 @@ function kit_cross_compatibility_converter() {
 
     echo "Env file generated with HollaEx CLI v2 has been detected!"
     echo "Converting it to the v3 format..."
-    cp -f $(pwd)/templates/local/$ENVIRONMENT_EXCHANGE_NAME.env.local $(pwd)/server/hollaex-kit.env
+    mv $(pwd)/templates/local/$ENVIRONMENT_EXCHANGE_NAME.env.local $(pwd)/server/hollaex-kit.env
 
   fi
 
@@ -309,8 +309,18 @@ function kit_cross_compatibility_converter() {
 
     echo "Nginx configuration files generated with HollaEx CLI v2 has been detected!"
     echo "Copying the existing Nginx files to the new directory..."
-    cp -rf $(pwd)/templates/local/nginx/conf.d/* $(pwd)/nginx/conf.d
-    cp -f $(pwd)/templates/local/nginx/nginx.conf $(pwd)/nginx/nginx.conf
+    mv $(pwd)/templates/local/nginx/conf.d/* $(pwd)/nginx/conf.d
+    mv $(pwd)/templates/local/nginx/nginx.conf $(pwd)/nginx/nginx.conf
+
+  fi
+
+  # Local web docker-compose
+
+  if [[ -f "$(pwd)/templates/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose-web.yaml" ]]; then
+
+    echo "Web doker-compose file generated with HollaEx CLI v2 has been detected."
+    echo "Converting it..."
+    mv $(pwd)/templates/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose-web.yaml $(pwd)/web/docker-compose.yaml
 
   fi
 
