@@ -3083,7 +3083,7 @@ elif [[ "$1" == "scale" ]]; then
         if command docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml up -d --no-recreate --scale $HOLLAEX_SCALE_TARGET_CONVERTED=$HOLLAEX_SCALE_TARGET_REPLICAS; then
             
             # Nginx Reload
-            docker exec -it $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
+            docker exec -it $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-prod-nginx | cut -f1 -d " ") nginx -s reload
 
             printf "\033[92m\nTarget $HOLLAEX_SCALE_TARGET has been successfully scaled to $HOLLAEX_SCALE_TARGET_REPLICAS.\033[39m\n"
         
@@ -5385,7 +5385,7 @@ elif [[ "$1" == "web" ]]; then
             if command docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client up -d; then
 
                 echo "Reloading Nginx..."
-                if command docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload; then
+                if command docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-prod-nginx | cut -f1 -d " ") nginx -s reload; then
                 
                     printf "\n\033[92mSuccessfully reloaded the Nginx\033[39m\n"
         
@@ -5571,7 +5571,7 @@ elif [[ "$1" == "web" ]]; then
             if command docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client up -d; then
 
                 # echo "Reloading Nginx..."
-                # if command docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload; then
+                # if command docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-prod-nginx | cut -f1 -d " ") nginx -s reload; then
                 
                 #     printf "\n\033[92mSuccessfully reloaded the Nginx\033[39m\n"
         
@@ -5683,7 +5683,7 @@ elif [[ "$1" == "web" ]]; then
             if command docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client stop; then
 
                 # echo "Reloading Nginx..."
-                # if command docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload; then
+                # if command docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-prod-nginx | cut -f1 -d " ") nginx -s reload; then
                 
                 #     printf "\n\033[92mSuccessfully reloaded the Nginx\033[39m\n"
         
@@ -6162,7 +6162,7 @@ elif [[ "$1" == "web" ]]; then
             if command docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client up -d --no-recreate --scale $ENVIRONMENT_EXCHANGE_NAME-web=$HOLLAEX_WEB_SCALE_TARGET_REPLICAS; then
                 
                 # Nginx Reload
-                # docker exec -it $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
+                # docker exec -it $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-prod-nginx | cut -f1 -d " ") nginx -s reload
 
                 printf "\033[92m\nWeb server has been successfully scaled to $HOLLAEX_WEB_SCALE_TARGET_REPLICAS.\033[39m\n"
             
@@ -6936,7 +6936,7 @@ elif [[ "$1" == "toolbox" ]]; then
             fi
 
             echo "Shutting down Nginx to block exchange external access"
-            docker stop $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ")
+            docker stop $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-prod-nginx | cut -f1 -d " ")
 
             IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
             
@@ -6966,7 +6966,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         echo "Issuing SSL..."
 
-        if command docker exec -it $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") certbot --nginx; then
+        if command docker exec -it $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-prod-nginx | cut -f1 -d " ") certbot --nginx; then
             
             echo "SSL cert has been successfully set."
             echo "All the Let's encrypt related files can be found at ./templates/local/letsencrypt."
@@ -7029,7 +7029,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         echo "Renewing SSL..."
 
-        if command docker exec -it $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") certbot renew; then
+        if command docker exec -it $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-prod-nginx | cut -f1 -d " ") certbot renew; then
         
             echo "SSL cert has been successfully renewed."
             echo "All Let's encrypt related files can be found at ./templates/local/letsencrypt."
