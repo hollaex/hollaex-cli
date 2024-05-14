@@ -322,6 +322,32 @@ function kit_cross_compatibility_converter() {
     echo "Converting it..."
     mv $(pwd)/templates/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose-web.yaml $(pwd)/web/docker-compose.yaml
 
+  fi 
+
+  # Kubernetes
+  # Ingress, Configmap, Secret conversion
+  if [[ -f "$(pwd)/templates/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-configmap.yaml" ]]; then
+
+    echo "Kubernetes configmap generated with HollaEx CLI v2 has been detected."
+    echo "Converting it..."
+    mv $(pwd)/templates/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-configmap.yaml $(pwd)/server/tools/kubernetes/env/configmap.yaml
+
+  fi 
+
+  if [[ -f "$(pwd)/templates/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-secret.yaml" ]]; then
+
+    echo "Kubernetes configmap generated with HollaEx CLI v2 has been detected."
+    echo "Converting it..."
+    mv $(pwd)/templates/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-secret.yaml $(pwd)/server/tools/kubernetes/env/secret.yaml
+
+  fi
+
+  if [[ -f "$(pwd)/templates/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml" ]]; then
+
+    echo "Kubernetes configmap generated with HollaEx CLI v2 has been detected."
+    echo "Converting it..."
+    mv $(pwd)/templates/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml $(pwd)/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
+
   fi
 
 }
@@ -625,513 +651,7 @@ if [[ "$1" == "dev" ]]; then
 
     fi
 
-    exit 0;
-
-elif [[ "$1" == "network" ]]; then
-
-    while true; do
-        [[ $# -eq 0 ]] && break
-        case $1 in
-            --setup)
-                export HOLLAEX_NETWORK_SETUP=true
-                hollaex setup ${@:2}
-                exit 0;
-                shift; continue
-                ;;
-            --start)
-                export HOLLAEX_NETWORK_START=true
-                hollaex start ${@:2}
-                exit 0;
-                shift; continue
-                ;;
-            --stop)
-                export HOLLAEX_NETWORK_STOP=true
-                hollaex stop ${@:2}
-                exit 0;
-                shift; continue
-                ;;
-            --restart)
-                export HOLLAEX_NETWORK_RESTART=true
-                hollaex restart ${@:2}
-                exit 0;
-                shift; continue
-                ;;
-            --upgrade)
-                export HOLLAEX_NETWORK_UPGRADE=true
-                hollaex apply ${@:2}
-                exit 0;
-                shift; continue
-                ;;
-            --terminate)
-                export HOLLAEX_NETWORK_TERMINATE=true
-                hollaex terminate ${@:2}
-                exit 0;
-                shift; continue
-                ;;
-            --prod)
-                export HOLLAEX_NETWORK_PROD=true
-                hollaex prod ${@:2}
-                exit 0;
-                shift; continue
-                ;;
-             --status)
-                export HOLLAEX_NETWORK_STATUS=true
-                hollaex status ${@:2}
-                exit 0;
-                shift; continue
-                ;;
-            --add_coin)
-                ADD_COIN=true
-                TOOLBOX_ENABLE=true
-                echo "HollaEx CLI will proceed to add new coin on your existing HollaEx Network."
-                shift; continue
-                ;;
-            --add_trading_pair)
-                ADD_TRADING_PAIR=true
-                TOOLBOX_ENABLE=true
-                echo "HollaEx CLI will proceed to add new trading pair on your existing HollaEx Network."
-                shift; continue
-                ;;
-            --remove_coin)
-                REMOVE_COIN=true
-                TOOLBOX_ENABLE=true
-                echo "HollaEx CLI will proceed to remove coin on your existing HollaEx Network."
-                shift; continue
-                ;;
-            --remove_trading_pair)
-                REMOVE_TRADING_PAIR=true
-                TOOLBOX_ENABLE=true
-                echo "HollaEx CLI will proceed to remove trading pair on your existing HollaEx Network."
-                shift; continue
-                ;;
-            --change_coin_owner)
-                CHANGE_COIN_OWNER=true
-                TOOLBOX_ENABLE=true
-                shift; continue
-                ;;
-            --change_trading_pair_owner)
-                CHANGE_PAIR_OWNER=true
-                TOOLBOX_ENABLE=true
-                shift; continue
-                ;;
-            --activate_coin)
-                ACTIVATE_COIN=true
-                TOOLBOX_ENABLE=true
-                shift; continue
-                ;;
-            --activate_trading_pair)
-                ACTIVATE_PAIR=true
-                TOOLBOX_ENABLE=true
-                shift; continue
-                ;;
-            --is_hollaex_setup)
-                IS_HOLLAEX_SETUP=true
-                shift; continue
-                ;;
-            --backup)
-                HOLLAEX_NETWORK_BACKUP=true
-                hollaex toolbox --backup --network ${@:2}
-                exit 0;
-                shift; continue
-                ;;
-            --restore)
-                HOLLAEX_NETWORK_RESTORE=true
-                hollaex toolbox --restore ${@:2}
-                exit 0;
-                shift; continue
-                ;;
-            --tag)
-                shift 
-                case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
-                ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$1
-                echo "Target Docker Image tag: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE."
-                shift; continue
-                ;;
-            --kube)
-                USE_KUBERNETES=true
-                shift; continue
-                ;;
-            --skip)
-                RUN_WITH_VERIFY=false
-                echo 'Skipping the command confirmation.'
-                shift; continue
-                ;;
-            --*) 
-                err_msg "Invalid option: $1"
-                print_network_usage;
-                exit 1;
-                shift; continue
-                ;;
-        esac
-        shift
-    done
-
-    source $SCRIPTPATH/tools_generator.sh
-
-    HOLLAEX_CLI_INIT_PATH=$(pwd)
-    CONFIG_FILE_PATH=$(pwd)/settings/*
-    TEMPLATE_GENERATE_PATH=$(pwd)/templates
-    INIT_PATH_CHECK=$(pwd)/.hollaex-network
-
-    for i in ${CONFIG_FILE_PATH[@]}; do
-        source $i
-    done;
-
-    if [[ "$ADD_COIN" ]]; then
-
-        if [[ "$IS_HOLLAEX_SETUP" ]]; then
-
-            echo "Adding user custom currencies on the exchange..."
-
-            for i in ${CONFIG_FILE_PATH[@]}; do
-
-                if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
-
-                    export CONFIGMAP_FILE_PATH=$i
-
-                fi
-
-            done
-
-            IFS=',' read -ra CUSTOM_CURRENCIES_TO_ADD <<< "$HOLLAEX_CONFIGMAP_CURRENCIES"
-
-            for j in ${CUSTOM_CURRENCIES_TO_ADD[@]}; do
-
-                if command grep -q $j $CONFIGMAP_FILE_PATH > /dev/null; then
-
-                    export COIN_CODE=$j
-                    export VALUE_IMPORTED_FROM_CONFIGMAP=true
-
-                    if command grep -q "ENVIRONMENT_ADD_COIN_$(echo $j | tr a-z A-Z)_" $CONFIGMAP_FILE_PATH > /dev/null ; then
-
-                        printf "\033[92mCoin configurations for $j has been detected at user's configmap file!\033[39m\n"
-                        echo "Proceeding to add..."
-
-                        add_coin_exec;
-                    
-                    else 
-
-                        printf "\033[91mError: Coin configurations for $j doesn't exists at user's configmap file.\033[39m\n"
-                        echo "Skipping to add..."
-
-                    fi
-                
-                fi
-            
-            done
-
-            if [[ "$USE_KUBERNETES" ]]; then
-
-                kubernetes_database_init upgrade;
-
-            else 
-
-                echo "Running database triggers"
-                docker exec --env "CURRENCIES=${HOLLAEX_CONFIGMAP_CURRENCIES}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js > /dev/null;
-            
-            fi
-             
-        elif [[ "$IS_COIN_CODE_PASSED" ]]; then
-
-            for i in ${CONFIG_FILE_PATH[@]}; do
-
-                if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
-
-                    export CONFIGMAP_FILE_PATH=$i
-
-                fi
-
-            done
-
-            IFS=',' read -ra CUSTOM_CURRENCIES_TO_ADD <<< "$PASSED_COIN_CODE"
-
-            for j in ${CUSTOM_CURRENCIES_TO_ADD[@]}; do
-                
-                for i in ${CONFIG_FILE_PATH[@]}; do
-                    source $i
-                done;
-
-                if [[ $(echo $j | grep $HOLLAEX_CONFIGMAP_CURRENCIES) ]]; then
-
-                    echo "Error: Coin $j is already exists on your exchange."
-                    exit 1;
-
-                fi
-                
-                COIN_CODE=$j
-                COIN_FULLNAME=$(echo $j | tr a-z A-Z)
-                COIN_ALLOW_DEPOSIT=true
-                COIN_ALLOW_WITHDRAWAL=true
-                COIN_WITHDRAWAL_FEE=0.01
-                COIN_MIN=0.01
-                COIN_MAX=10000
-                COIN_INCREMENT_UNIT=0.001
-                COIN_ACTIVE=true
-                
-                add_coin_exec;
-                   
-            done
-
-        else 
-
-            printf "\033[93mWarning: Adding new coin requires full restart of the exchange!\033[39m\n"
-            echo "Please double confirm that you are good to proceed"
-            
-            add_coin_input;
-
-            add_coin_exec;
-        
-        fi
-        
-    elif [[ "$REMOVE_COIN" ]]; then
-
-        printf "\033[93mWarning: Removing new coin requires full restart of the exchange!\033[39m\n"
-        echo "Please double confirm that you are good to proceed"
-
-        if [[ "$IS_COIN_CODE_PASSED" ]]; then
-
-            for i in ${CONFIG_FILE_PATH[@]}; do
-
-                if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
-
-                    export CONFIGMAP_FILE_PATH=$i
-
-                fi
-
-            done
-
-            for i in ${CONFIG_FILE_PATH[@]}; do
-
-                if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
-
-                    export CONFIGMAP_FILE_PATH=$i
-
-                fi
-
-            done
-
-            IFS=',' read -ra CUSTOM_CURRENCIES_TO_REMOVE <<< "$PASSED_COIN_CODE"
-
-            for j in ${CUSTOM_CURRENCIES_TO_REMOVE[@]}; do
-
-                for i in ${CONFIG_FILE_PATH[@]}; do
-                    source $i
-                done;
-
-                if [[ ! $(echo $HOLLAEX_CONFIGMAP_CURRENCIES | grep $j) ]]; then
-
-                    echo "Error: Coin $j doesn't exists on your exchange."
-                    exit 1;
-
-                fi
-                
-                COIN_CODE=$j
-
-                remove_coin_exec;
-                   
-            done
-
-        else 
-            
-            remove_coin_input;
-
-            remove_coin_exec;
-        
-        fi
-    
-    elif [[ "$ADD_TRADING_PAIR" ]]; then
-
-        if [[ "$IS_HOLLAEX_SETUP" ]]; then
-
-            echo "Adding user custom trading pairs on the exchange..."
-
-            for i in ${CONFIG_FILE_PATH[@]}; do
-
-                if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
-
-                    export CONFIGMAP_FILE_PATH=$i
-
-                fi
-
-            done
-
-            IFS=',' read -ra CUSTOM_PAIRS_TO_ADD <<< "$HOLLAEX_CONFIGMAP_PAIRS"
-
-            for j in ${CUSTOM_PAIRS_TO_ADD[@]}; do
-
-                if command grep -q $j $CONFIGMAP_FILE_PATH > /dev/null; then
-
-                    export PAIR_CODE=$j
-                    export PAIR_BASE=$(echo $j | cut -f1 -d "-")
-                    export PAIR_2=$(echo $j | cut -f2 -d "-")
-                    export PAIR_PREFIX=$(echo $PAIR_BASE | tr a-z A-Z)_$(echo $PAIR_2 | tr a-z A-Z)
-     
-                    export VALUE_IMPORTED_FROM_CONFIGMAP=true
-
-                    if command grep -q "ENVIRONMENT_ADD_PAIR_$(echo $PAIR_PREFIX)_" $CONFIGMAP_FILE_PATH > /dev/null ; then
-
-                        printf "\033[92mTrading pair configurations for $j has been detected at user's configmap file!\033[39m\n"
-                        echo "Proceeding to add..."
-
-                        add_pair_exec;
-                    
-                    else 
-
-                        printf "\033[91mError: Trading pair configurations for $j doesn't exists at user's configmap file.\033[39m\n"
-                        echo "Skipping to add..."
-                    
-                    fi
-                
-                fi
-            
-            done
-
-            if [[ "$USE_KUBERNETES" ]]; then
-
-                kubernetes_database_init upgrade;
-
-            else 
-
-                echo "Running database triggers"
-                docker exec --env "PAIRS=${HOLLAEX_CONFIGMAP_PAIRS}" ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js > /dev/null;
-            
-            fi
-
-        elif [[ "$IS_PAIR_CODE_PASSED" ]]; then
-
-            for i in ${CONFIG_FILE_PATH[@]}; do
-
-                if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
-
-                    export CONFIGMAP_FILE_PATH=$i
-
-                fi
-
-            done
-
-            IFS=',' read -ra CUSTOM_PAIRS_TO_ADD <<< "$PASSED_PAIR_CODE"
-
-            for j in ${CUSTOM_PAIRS_TO_ADD[@]}; do
-
-                for i in ${CONFIG_FILE_PATH[@]}; do
-                    source $i
-                done;
-
-                if [[ $(echo $j | grep $HOLLAEX_CONFIGMAP_PAIRS) ]]; then
-
-                    echo "Error: Pair $j is already exists on your exchange."
-                    exit 1;
-
-                fi
-                
-                PAIR_CODE=$j
-                PAIR_BASE=$(echo $PAIR_CODE | cut -f1 -d '-')
-                PAIR_2=$(echo $PAIR_CODE | cut -f2 -d '-')
-                MIN_SIZE=0.00001
-                MAX_SIZE=10000000
-                MIN_PRICE=0.000001
-                MAX_PRICE=1000000
-                INCREMENT_SIZE=0.001
-                INCREMENT_PRICE=0.001
-                PAIR_ACTIVE=true
-                TAKER_FEES=$(join_array_to_json $(for ((i=1;i<=$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER;i++)); do echo -n "$i " ; done;))
-                MAKER_FEES=$(join_array_to_json $(for ((i=1;i<=$HOLLAEX_CONFIGMAP_USER_LEVEL_NUMBER;i++)); do echo -n "$i " ; done;))
-                
-                add_pair_exec;
-                   
-            done
-
-        else 
-
-            printf "\033[93mWarning: Adding new pair requires full restart of the exchange!\033[39m\n"
-            echo "Please double confirm that you are good to proceed"
-            
-            add_pair_input;
-
-            add_pair_exec;
-        
-        fi
-
-    elif [[ "$REMOVE_TRADING_PAIR" ]]; then
-
-        printf "\033[93mWarning: Removing new pair requires full restart of the exchange!\033[39m\n"
-        echo "Please double confirm that you are good to proceed"
-
-        if [[ "$IS_PAIR_CODE_PASSED" ]]; then
-
-            for i in ${CONFIG_FILE_PATH[@]}; do
-
-                if command grep -q "ENVIRONMENT_USER_HOLLAEX_CORE_" $i > /dev/null ; then
-
-                    export CONFIGMAP_FILE_PATH=$i
-
-                fi
-
-            done 
-
-            IFS=',' read -ra CUSTOM_PAIRS_TO_REMOVE <<< "$PASSED_PAIR_CODE"
-
-            for j in ${CUSTOM_PAIRS_TO_REMOVE[@]}; do
-
-                for i in ${CONFIG_FILE_PATH[@]}; do
-                    source $i
-                done;
-
-                if [[ ! $(echo $HOLLAEX_CONFIGMAP_PAIRS | grep $j) ]]; then
-
-                    echo "Error: Pair $j doesn't exists on your exchange."
-                    exit 1;
-
-                fi
-                
-                PAIR_CODE=$j
-                PAIR_BASE=$(echo $PAIR_CODE | cut -f1 -d '-')
-                PAIR_2=$(echo $PAIR_CODE | cut -f2 -d '-')
-                
-                remove_pair_exec;
-                   
-            done
-        else 
-        
-            remove_pair_input;
-
-            remove_pair_exec;
-        
-        fi 
-
-    elif [[ "$CHANGE_COIN_OWNER" ]]; then
-            
-        change_coin_owner_input;
-
-        change_coin_owner_exec;
-    
-    elif [[ "$CHANGE_PAIR_OWNER" ]]; then
-
-        change_pair_owner_input;
-
-        change_pair_owner_exec;
-
-    elif [[ "$ACTIVATE_COIN" ]]; then
-
-        activate_coin_input;
-
-        activate_coin_exec;
-    
-    elif [[ "$ACTIVATE_PAIR" ]]; then
-
-        activate_pair_input;
-
-        activate_pair_exec;
-
-    else 
-
-        print_network_usage;
-
-        exit 1;
-
-    fi
-
-    exit 0;
+    exit 0
 
 elif [[ "$1" == "init" ]]; then
 
@@ -1634,108 +1154,23 @@ elif [[ "$1" == "setup" ]]; then
 
     source $SCRIPTPATH/tools_generator.sh
 
-    # HollaEx Network Home folder initialization.
-    if [[ "$HOLLAEX_NETWORK_SETUP" ]]; then 
-        
-        INIT_PATH_CHECK=$(pwd)/.hollaex-network
 
-        if [[ -f "$INIT_PATH_CHECK" ]]; then 
+    # git update-index --skip-worktree settings/
+    # git update-index --skip-worktree settings/*
 
-            echo "Successfully detected the existing HollaEx Network Home folder."
-            echo "Proceeding without creating a new Network Home."
-            echo "Your Hollaex Network Home folder: $(pwd)/hollaex-network-home."
-        
-        else
+    hollaex_setup_existing_exchange_check;
 
-            echo -e "\n### HollaEx Network Setup Initialization ###\n"
+    if [[ ! "$RUN_WITH_VERIFY" == false ]]; then 
 
-            echo "Generating the HollaEx Network Home folder under your current directory..."
-            echo -e "Your HollaEx Network Home folder will be created at: $(pwd)/hollaex-network-home\n"
+        hollaex_setup_initialization;
+    
+    else
 
-            if [[ -d "$(pwd)/hollaex-network-home" ]]; then 
+        echo -e "\nWarning: Skipping the exchange initialization steps."
+        echo -e "Please make sure that what you are doing exactly with the '--skip' flag.\n"
 
-                echo "Error: The folder already exists at $(pwd)/hollaex-network-home."
-                echo "Please move to another directory, or remove the existing folder if it's not being used."
-                exit 1;
-
-            fi 
-
-            mkdir $(pwd)/hollaex-network-home
-            cd $(pwd)/hollaex-network-home
-
-            echo "Current directory is: $(pwd)."
-
-            mkdir settings
-            touch settings/configmap
-            touch settings/secret
-            mkdir templates
-            touch .hollaex-network
-
-            # Settings up the initial envs for HollaEx Network.
-            hollaex_network_setup_initial_envs;
-
-            CONFIG_FILE_PATH=$(pwd)/settings/*
-            CONFIGMAP_FILE_PATH=$(pwd)/settings/configmap
-            SECRET_FILE_PATH=$(pwd)/settings/secret
-
-            export ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_HOST=docker.io
-
-            echo "Warning: You need to login with your Docker Hub account to proceed."
-            docker_registry_login
-
-            if [[ ! "$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE" ]]; then 
-
-                if [[ -z "$(check_latest_hollaex_network_docker_tag)" ]] ; then 
-
-                    echo -e "\n\033[91mError: Unable to get the latest HollaEx Network Docker image.\033[39m"
-                    echo -e "Please confirm that you provided correct Docker Hub credentials, and try again.\n"
-                    
-                    cd ..
-                    rm -r hollaex-network-home
-
-                    exit 1;
-
-                else 
-
-                    echo "Latest HollaEx Network Version: v$(check_latest_hollaex_network_docker_tag)."
-
-                fi
-
-                sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$(check_latest_hollaex_network_docker_tag)/" $CONFIGMAP_FILE_PATH
-
-
-            else 
-
-                echo "Passed HollaEx Network Version: v$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE."
-                sed -i.bak "s/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=.*/ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
-
-            fi 
-
-            rm $CONFIGMAP_FILE_PATH.bak
-            echo "Your HollaEx Network Home folder is all set and ready."
-        
-        fi
-
-    else 
-
-        # git update-index --skip-worktree settings/
-        # git update-index --skip-worktree settings/*
-
-        hollaex_setup_existing_exchange_check;
-
-        if [[ ! "$RUN_WITH_VERIFY" == false ]]; then 
-
-            hollaex_setup_initialization;
-        
-        else
-
-            echo -e "\nWarning: Skipping the exchange initialization steps."
-            echo -e "Please make sure that what you are doing exactly with the '--skip' flag.\n"
-
-        fi 
-
-    fi  
-
+    fi 
+    
     if [[ ! "$HOLLAEX_CLI_INIT_PATH" ]]; then
 
         HOLLAEX_CLI_INIT_PATH=$(pwd)
@@ -1770,109 +1205,100 @@ elif [[ "$1" == "setup" ]]; then
 
     check_docker_daemon_status;
 
-    if [[ ! "$HOLLAEX_NETWORK_SETUP" ]]; then 
+ 
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
 
-        # if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
+    for i in ${CONFIG_FILE_PATH[@]}; do
 
-        #     # Check Kit version compatibility range.
-        #     check_kit_version_compatibility_range;
-        
-        # fi 
+        if command grep -q "HOLLAEX_CONFIGMAP_API_NAME=" $i > /dev/null ; then
 
-        for i in ${CONFIG_FILE_PATH[@]}; do
-            source $i
-        done;
+            export CONFIGMAP_FILE_PATH=$i
 
-        for i in ${CONFIG_FILE_PATH[@]}; do
+        fi
 
-            if command grep -q "HOLLAEX_CONFIGMAP_API_NAME=" $i > /dev/null ; then
+    done
 
-                export CONFIGMAP_FILE_PATH=$i
+    for i in ${CONFIG_FILE_PATH[@]}; do
 
-            fi
+        if command grep -q "HOLLAEX_SECRET_DB_PASSWORD=" $i > /dev/null ; then
 
-        done
+            export SECRET_FILE_PATH=$i
 
-        for i in ${CONFIG_FILE_PATH[@]}; do
+        fi
 
-            if command grep -q "HOLLAEX_SECRET_DB_PASSWORD=" $i > /dev/null ; then
+    done
 
-                export SECRET_FILE_PATH=$i
+    # PRESET env for user initial setup config value selection
+    CONTINUE_WITH_PRECONFIGURED_VALUES=false 
 
-            fi
+    # hollaex_setup_initialization;
 
-        done
-
-        # PRESET env for user initial setup config value selection
-        CONTINUE_WITH_PRECONFIGURED_VALUES=false 
-
-        # hollaex_setup_initialization;
-
-        for i in ${CONFIG_FILE_PATH[@]}; do
-            source $i
-        done;
+    for i in ${CONFIG_FILE_PATH[@]}; do
+        source $i
+    done;
 
 
-        if [[ "$LOCAL_BUILD" ]]; then 
+    if [[ "$LOCAL_BUILD" ]]; then 
 
-            if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
+        if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
 
-                if [[ "$USE_KUBERNETES" ]]; then
+            if [[ "$USE_KUBERNETES" ]]; then
 
-                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --local_build --kube --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
-
-                else 
-
-                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --local_build --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
-
-                fi
+                hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --local_build --kube --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
 
             else 
 
-                if [[ "$USE_KUBERNETES" ]]; then
-
-                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --local_build --kube --is_hollaex_setup 
-
-                else 
-
-                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --local_build --is_hollaex_setup 
-
-                fi
+                hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --local_build --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
 
             fi
 
         else 
 
-            if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
+            if [[ "$USE_KUBERNETES" ]]; then
 
-                if [[ "$USE_KUBERNETES" ]]; then
-
-                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --kube --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
-
-                else 
-
-                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
-
-                fi
+                hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --local_build --kube --is_hollaex_setup 
 
             else 
 
-                if [[ "$USE_KUBERNETES" ]]; then
-
-                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --kube --is_hollaex_setup 
-
-                else 
-
-                    hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --is_hollaex_setup 
-
-                fi
+                hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --local_build --is_hollaex_setup 
 
             fi
-        
-        fi
-            
 
-    fi 
+        fi
+
+    else 
+
+        if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
+
+            if [[ "$USE_KUBERNETES" ]]; then
+
+                hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --kube --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+
+            else 
+
+                hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --is_hollaex_setup --arch $ENVIORNMENT_HOLLAEX_CPU_ARCH
+
+            fi
+
+        else 
+
+            if [[ "$USE_KUBERNETES" ]]; then
+
+                hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --kube --is_hollaex_setup 
+
+            else 
+
+                hollaex build --registry ${ENVIRONMENT_DOCKER_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY} --is_hollaex_setup 
+
+            fi
+
+        fi
+    
+    fi
+            
+    
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
@@ -1909,16 +1335,6 @@ elif [[ "$1" == "setup" ]]; then
         #Checking Kubernetes dependencies
         if ! check_kubernetes_dependencies; then exit 1; fi;
 
-        #Creating kubernetes_config directory for generating config for Kubernetes.
-
-        if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes" ]]; then
-            mkdir $TEMPLATE_GENERATE_PATH/kubernetes;
-        fi
-
-        if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
-            mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
-        fi
-
         if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION"  ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME"  ]] ; then
             printf "\033[91mError: Please define exchange name and Docker image version on config file before running HollaEx CLI.\033[39m\n"
             print_usage
@@ -1952,21 +1368,9 @@ elif [[ "$1" == "setup" ]]; then
 
         fi
 
-        if [[ "$HOLLAEX_NETWORK_SETUP" ]]; then
+     
 
-            generate_hollaex_network_kubernetes_env_coins
-            generate_hollaex_network_kubernetes_env_pairs
-
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-env-coins.yaml
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-env-pairs.yaml
-
-            run_and_upgrade_hollaex_network_on_kubernetes
-
-        else
-
-            run_and_upgrade_hollaex_on_kubernetes
-            
-        fi
+        run_and_upgrade_hollaex_on_kubernetes
 
         if [[ "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_ACCESSKEY" ]] && [[ "$ENVIRONMENT_KUBERNETES_S3_BACKUP_CRONJOB_SECRETKEY" ]]; then
 
@@ -1975,21 +1379,8 @@ elif [[ "$1" == "setup" ]]; then
 
         fi 
 
-        if [[ "$HOLLAEX_NETWORK_SETUP" ]]; then
 
-            hollaex_network_setup_finalization;
-
-            # hollaex_ascii_network_is_up
-
-        else 
-
-            hollaex_setup_finalization;
-
-            # hollaex_ascii_exchange_is_up
-
-
-
-        fi 
+        hollaex_setup_finalization;
 
     fi
 
@@ -3289,44 +2680,44 @@ elif [[ "$1" == "start" ]]; then
 
         #Generating and updating settings
 
-        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
+        # if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
 
-            echo "Generating Kubernetes Configmap"
-            generate_kubernetes_configmap;
+        #     echo "Generating Kubernetes Configmap"
+        #     generate_kubernetes_configmap;
 
-        fi
+        # fi
 
-        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]]; then
+        # if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]]; then
 
-            echo "Generating Kubernetes Secret"
-            generate_kubernetes_secret;
+        #     echo "Generating Kubernetes Secret"
+        #     generate_kubernetes_secret;
 
-        fi
+        # fi
 
 
-        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
+        # if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
 
-            echo "Generating Kubernetes Ingress"
+        #     echo "Generating Kubernetes Ingress"
 
-            if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+        #     if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
 
-                generate_kubernetes_ingress;
+        #         generate_kubernetes_ingress;
             
-            else 
+        #     else 
 
-                generate_kubernetes_ingress_2_4;
+        #         generate_kubernetes_ingress_2_4;
 
-            fi 
+        #     fi 
 
-        fi
+        # fi
 
         if [[ ! "$IGNORE_SETTINGS" ]]; then 
 
             echo "Applying configmap on the namespace"
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+            kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
 
             echo "Applying secret on the namespace"
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+            kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/secret.yaml
         
         fi 
 
@@ -3334,33 +2725,15 @@ elif [[ "$1" == "start" ]]; then
         if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
             echo "Scaling up containers on the cluster..."
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-prod-redis --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
             kubectl scale deployment/$HOLLAEX_SECRET_DB_HOST --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-            if [[ "$HOLLAEX_NETWORK_START" ]]; then 
-
-                kubectl scale statefulset/$ENVIRONMENT_EXCHANGE_NAME-influxdb --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-                kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-job --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-                helm_dynamic_trading_paris scaleup
-
-            else 
-
-                kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-plugins --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-            fi 
+            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-plugins --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=${ENVIRONMENT_API_SERVER_REPLICAS:-1} --namespace $ENVIRONMENT_EXCHANGE_NAME
 
             kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-            if [[ "$HOLLAEX_NETWORK_START" ]]; then 
-
-                kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-job --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-            fi
 
             if [[ ! "$IS_HOLLAEX_SETUP" ]]; then
 
@@ -3370,28 +2743,25 @@ elif [[ "$1" == "start" ]]; then
             fi
 
             # Only tries to attempt remove ingress rules from Kubernetes if it exists.
-            if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+            # if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
             
-                echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-                kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+            #     echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
+            #     kubectl delete -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
-            fi
+            # fi
 
-            echo "Applying Ingress rules..."
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+=
+            echo "Uodating $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
+            kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
+
+            # echo "Applying Ingress rules..."
+            # kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
             echo "All done!"
             echo "Containers successfully scaled up"
 
-            if [[ "$HOLLAEX_NETWORK_START" ]]; then 
-
-                hollaex_ascii_network_is_up;
-
-            else 
-
-                hollaex_ascii_exchange_is_up;
+            hollaex_ascii_exchange_is_up;
             
-            fi 
 
             exit 0;
 
@@ -3459,18 +2829,6 @@ elif [[ "$1" == "start" ]]; then
             export HOLLAEX_NETWORK_LOCALHOST_MODE=true
 
         fi
-
-        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
-            mkdir $TEMPLATE_GENERATE_PATH/local;
-        fi
-
-        if [[ ! -d "$HOLLAEX_CLI_INIT_PATH/nginx" ]]; then
-            mkdir $HOLLAEX_CLI_INIT_PATH/nginx;
-        fi
-
-        if [[ ! -d "$HOLLAEX_CLI_INIT_PATH/nginx/conf.d" ]]; then
-            mkdir $HOLLAEX_CLI_INIT_PATH/nginx/conf.d;
-        fi
         
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
@@ -3478,23 +2836,6 @@ elif [[ "$1" == "start" ]]; then
             generate_local_env;
 
         fi  
-        
-        # Generating docker-compose yaml for exchange
-        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE" == true ]]; then
-        
-            echo "Generating docker-compose file"
-
-            # if [[ "$HOLLAEX_NETWORK_START" ]]; then 
-
-            #     generate_local_docker_compose_for_network
-
-            # else
-
-            #     generate_local_docker_compose
-
-            # fi 
-
-        fi
         
         if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_NGINX_UPSTREAM" == true ]]; then
 
@@ -3511,21 +2852,6 @@ elif [[ "$1" == "start" ]]; then
             fi 
         
         fi
-
-        # Update nginx.conf to apply user own domains
-        # echo "Updating nginx conf file based on user settings"
-        # apply_nginx_user_defined_values;
-        
-        # Update the nginx if the Kit got a separated domain for the API.
-        # if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
-
-        #     apply_nginx_root_domain_to_api;
-        
-        # else
-
-        #     apply_nginx_root_domain_to_web;
-
-        # fi 
 
         if command docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml up -d; then
         
@@ -3685,11 +3011,6 @@ elif [[ "$1" == "scale" ]]; then
         #Checking Kubernetes dependencies
         if ! check_kubernetes_dependencies; then exit 1; fi;
 
-        #Creating kubernetes_config directory for generating config for Kubernetes.
-        if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
-            mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
-        fi
-
         if [[ ! "$ENVIRONMENT_DOCKER_IMAGE_VERSION"  ]] || [[ ! "$ENVIRONMENT_EXCHANGE_NAME"  ]] ; then
             printf "\033[91mError: Please define exchange name and Docker image version on config file before running HollaEx CLI.\033[39m\n"
             print_usage
@@ -3757,26 +3078,6 @@ elif [[ "$1" == "scale" ]]; then
             exit 1;
 
         fi
-
-        if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
-            mkdir $TEMPLATE_GENERATE_PATH/local;
-        fi
-
-        if [[ ! -d "$HOLLAEX_CLI_INIT_PATH/nginx" ]]; then
-            mkdir $HOLLAEX_CLI_INIT_PATH/nginx;
-        fi
-
-        if [[ ! -d "$HOLLAEX_CLI_INIT_PATH/nginx/conf.d" ]]; then
-            mkdir $HOLLAEX_CLI_INIT_PATH/nginx/conf.d;
-        fi
-
-        # Checking that the existing docker-compose file got the host port bound specifications.
-        # if command cat $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}-docker-compose.yaml | grep -e "10010" -e "10080" > /dev/null 2>&1; then
-            
-        #     echo "Generating docker-compose file"
-        #     generate_local_docker_compose
-
-        # fi
 
         # Running docker-compose scale command.
         if command docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml up -d --no-recreate --scale $HOLLAEX_SCALE_TARGET_CONVERTED=$HOLLAEX_SCALE_TARGET_REPLICAS; then
@@ -3995,79 +3296,8 @@ elif [[ "$1" == "prod" ]]; then
 
     }
 
-    function hollaex_network_prod_domain_questions() {
 
-    
-        # API Domain
-        echo "***************************************************************"
-        echo "Exchange Server API Domain"
-        printf "\033[2m- Enter the full domain of your exchange API server, without 'http' or 'https'.\033[22m\n"
-        read answer
-
-        while true;
-            do if [[ "$answer" == *"http"* ]]; then
-                printf "\nValue should be an URL without 'http' or 'https'.\n"
-                echo  "Exchange API Domain: "
-                read answer
-                local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
-            elif [[ -z "$answer" ]]; then
-                printf "\nThe value should not be empty!\n\n"
-                echo  "Exchange API Domain: "
-                read answer
-                local INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
-            else
-                break;
-            fi
-        done
-
-        export INPUT_HOLLAEX_CONFIGMAP_API_HOST="${answer}"
-
-        printf "\n"
-        echo "${INPUT_HOLLAEX_CONFIGMAP_API_HOST} ✔"
-        printf "\n"
-
-        local INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP="http://${answer}"
-        local PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST=${INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTP//\//\\/}
-
-        export HOLLAEX_CONFIGMAP_API_HOST=$INPUT_HOLLAEX_CONFIGMAP_API_HOST
-
-        printf "\nYour HollaEx Network API Domain: \033[92m$INPUT_HOLLAEX_CONFIGMAP_API_HOST\033[39m\n"
-        echo "Type 'Y' to proceed (Y/n)"
-        read answer
-
-        if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
-    
-            hollaex_network_prod_domain_questions;
-
-        else 
-
-            echo "Updating user settings file based on the provided values..."
-
-            for i in ${CONFIG_FILE_PATH[@]}; do
-
-                # Update exchange name
-                if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
-                    CONFIGMAP_FILE_PATH=$i
-                    sed -i.bak "s/HOLLAEX_CONFIGMAP_API_HOST=.*/HOLLAEX_CONFIGMAP_API_HOST=$PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST/" $CONFIGMAP_FILE_PATH
-                    rm $CONFIGMAP_FILE_PATH.bak
-                fi
-                
-            done
-        
-        fi
-
-    }
-
-    # Asking for domains questions for production.
-    if [[ "$HOLLAEX_NETWORK_PROD" ]]; then 
-
-        hollaex_network_prod_domain_questions
-    
-    else 
-
-        hollaex_prod_domain_questions;
-    
-    fi 
+    hollaex_prod_domain_questions;
 
     #Checking the domains are reachable
     function hollaex_prod_check_domains_reachability() {
@@ -4192,60 +3422,13 @@ elif [[ "$1" == "prod" ]]; then
         fi
     }
 
-    #Checking the domains are reachable
-    function hollaex_network_prod_check_domains_reachability() {
-        
-
-        if command nslookup $INPUT_HOLLAEX_CONFIGMAP_API_HOST > /dev/null; then
-
-            printf "\n\033[92mSuccessfully resolved the exchange API URL ($INPUT_HOLLAEX_CONFIGMAP_API_HOST).\033[39m\n"
-            HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=true
-
-        else
-
-            HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY=false
-        
-        fi
-
-        if [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
-
-            # Announcing the domain configuration how-to.
-            SYSTEM_PUBLIC_IP=$(curl -s ifconfig.me)
-
-            if [[ ! "$SYSTEM_PUBLIC_IP" ]]; then
-                printf "\n\033[91mError: Failed to get the system public IP automatically.\033[39m\n"
-                echo "You should check it by yourself."
-                SYSTEM_PUBLIC_IP="<YOUR_PUBLIC_IP>"
-            fi
-
-            printf "\n\nYour Public IP: $SYSTEM_PUBLIC_IP.\n\n"
-
-            if [[ "$HOLLAEX_PROD_EXCHANGE_API_URL_REACHABLILITY" == "false" ]]; then
-
-                printf "\n\033[93mThe domain DNS setup is required for $INPUT_HOLLAEX_CONFIGMAP_API_HOST.\033[39m\n"
-                printf "\nPlease set an \033[1mA RECORD\033[0m for \033[1m$INPUT_HOLLAEX_CONFIGMAP_API_HOST to point $SYSTEM_PUBLIC_IP\033[0m.\n"
-                printf "It is recommended to set the \033[1mTTL shorter\033[0m to apply DNS rule faster.\n\n"
-                read -p "Press enter once you configured the DNS."
-
-            fi
-
-            printf "\n\033[93mChecking the DNS reachability...\033[39m\n"
-            echo "Info: You could always quit the DNS checking loop with 'Crtl + C'."
-            hollaex_network_prod_check_domains_reachability;
-
-        fi
-    }
-
-    if [[ "$HOLLAEX_NETWORK_PROD" ]]; then 
-
-        hollaex_network_prod_check_domains_reachability;
-
-    else 
-
-        hollaex_prod_check_domains_reachability;
-
-    fi 
     
+
+
+
+    hollaex_prod_check_domains_reachability;
+
+
     if [[ ! "$USE_KUBERNETES" ]]; then 
 
         HOLLAEX_CONFIGMAP_DOMAIN=$INPUT_HOLLAEX_CONFIGMAP_DOMAIN
@@ -4527,19 +3710,31 @@ elif [[ "$1" == "prod" ]]; then
             
         done
 
+
+        for i in ${CONFIG_FILE_PATH[@]}; do
+            source $i
+        done;
+
+        echo "Generating Kubernetes Ingress"
+
+        if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+
+            generate_kubernetes_ingress;
+        
+        else 
+
+            generate_kubernetes_ingress_2_4;
+
+        fi
+
     fi
 
-    if [[ "$HOLLAEX_NETWORK_PROD" ]]; then 
+  
 
-        hollaex_network_prod_complete;
+    # apply_nginx_root_domain_to_web;
 
-    else 
-
-        # apply_nginx_root_domain_to_web;
-
-        hollaex_prod_complete;
+    hollaex_prod_complete;
     
-    fi 
 
     exit 0;
 
@@ -4661,37 +3856,16 @@ elif [[ "$1" == "stop" ]]; then
 
         kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-        if [[ ! "$HOLLAEX_NETWORK_STOP" ]]; then 
-
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-plugins --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-        fi 
+        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-plugins --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
         echo "Scaling down backend components..."
-        
-        if [[ "$HOLLAEX_NETWORK_STOP" ]]; then 
 
-            kubectl scale statefulset/$ENVIRONMENT_EXCHANGE_NAME-influxdb --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
+        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-prod-redis --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-job --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
+        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-prod-db --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-            helm_dynamic_trading_paris scaledown
+        hollaex_ascii_exchange_has_been_stopped;
 
-        fi 
-
-        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-        kubectl scale deployment/$HOLLAEX_SECRET_DB_HOST --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
-
-        if [[ "$HOLLAEX_NETWORK_STOP" ]]; then 
-
-            hollaex_ascii_network_has_been_stopped;
-
-        else 
-
-            hollaex_ascii_exchange_has_been_stopped;
-
-        fi 
 
     fi
 
@@ -4902,20 +4076,12 @@ elif [[ "$1" == "restart" ]]; then
 
         fi
 
-        if [[ "$HOLLAEX_NETWORK_RESTART" ]]; then 
+      
 
-            hollaex network --stop --skip --kube
+        hollaex server --stop --skip --kube
 
-            hollaex network --start --skip --kube
-
-
-        else 
-
-            hollaex server --stop --skip --kube
-
-            hollaex server --start --skip --kube
+        hollaex server --start --skip --kube
         
-        fi 
     
     fi
 
@@ -4963,28 +4129,12 @@ elif [[ "$1" == "restart" ]]; then
 
         fi
 
-        if [[ "$HOLLAEX_NETWORK_RESTART" ]]; then 
+    
 
-            hollaex network --stop --skip
+        hollaex server --stop --skip
 
-            if [[ "$ENVIRONMENT_LOCAL_NGINX_HTTP_PORT_UPDATE" ]] || [[ "$ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT_UPDATE" ]]; then 
-
-                hollaex network --start --skip --http_port $ENVIRONMENT_LOCAL_NGINX_HTTP_PORT_UPDATE --https_port $ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT_UPDATE
-            
-            else 
-
-                hollaex network --start --skip
-
-            fi 
-
-
-        else 
-
-            hollaex server --stop --skip
-
-            hollaex server --start --skip
+        hollaex server --start --skip
         
-        fi 
 
     fi
 
@@ -5268,7 +4418,7 @@ elif [[ "$1" == "apply" ]]; then
         if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
         
             echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-            kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+            kubectl delete -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
         fi
         
@@ -5282,58 +4432,39 @@ elif [[ "$1" == "apply" ]]; then
 
         fi
 
-        if [[ "$HOLLAEX_NETWORK_UPGRADE" ]]; then 
+        run_and_upgrade_hollaex_on_kubernetes;
 
-            run_and_upgrade_hollaex_network_on_kubernetes;
-        
-        else 
+        # Install / Upgrade status check logic
+        if [[ ! "$KUBERNETES_HELM_INSTALL_SERVER_API" ]] || [[ ! "$KUBERNETES_HELM_INSTALL_SERVER_STREAM" ]] || [[ ! "$KUBERNETES_HELM_INSTALL_SERVER_PLUGINS" ]]; then
 
-            run_and_upgrade_hollaex_on_kubernetes;
+            echo "Error: One of the install / upgrade has failed to get applied on your Kubernetes cluster."
+            echo "Please review the logs."
+            exit 1;
 
-            # Install / Upgrade status check logic
-            if [[ ! "$KUBERNETES_HELM_INSTALL_SERVER_API" ]] || [[ ! "$KUBERNETES_HELM_INSTALL_SERVER_STREAM" ]] || [[ ! "$KUBERNETES_HELM_INSTALL_SERVER_PLUGINS" ]]; then
-
-                echo "Error: One of the install / upgrade has failed to get applied on your Kubernetes cluster."
-                echo "Please review the logs."
-                exit 1;
-
-            fi 
+        fi 
     
-        fi
         
     else 
 
-        if [[ "$HOLLAEX_NETWORK_UPGRADE" ]]; then 
-
-            hollaex network --restart --skip 
-
-            local_hollaex_network_database_init upgrade
-
-            hollaex network --restart --skip
+        update_local_docker_compose;
         
-        else 
+        if [[ "$ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" == true ]]; then
 
-            update_local_docker_compose;
+            echo "Generating env file for docker"
+            generate_local_env;
 
-            hollaex restart --skip 
+        fi  
 
-            local_database_init upgrade
+        hollaex restart --skip 
 
-            hollaex restart --skip
+        local_database_init upgrade
 
-        fi
+        hollaex restart --skip
+
 
     fi
 
-    if [[ "$HOLLAEX_NETWORK_UPGRADE" ]]; then 
-
-        hollaex_ascii_network_has_been_upgraded;
-    
-    else 
-
-        hollaex_ascii_exchange_has_been_upgraded;
-
-    fi 
+    hollaex_ascii_exchange_has_been_upgraded;
 
     exit 0
 
@@ -5713,7 +4844,7 @@ elif [[ "$1" == "terminate" ]]; then
         if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
         
             echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-            kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+            kubectl delete -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
         fi
 
@@ -5837,9 +4968,9 @@ elif [[ "$1" == "terminate" ]]; then
         fi
 
         # Remove web server together if it exists.
-        if [[ -f "$TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml" ]] ; then
+        if [[ -f "$HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml" ]] ; then
 
-            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client down 
+            docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client down 
 
         fi
 
@@ -5872,8 +5003,8 @@ elif [[ "$1" == "terminate" ]]; then
 
         else 
 
-            docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml down -v
-
+            docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml down -v --remove-orphans
+ 
             hollaex_ascii_exchange_has_been_terminated;
         
         fi 
@@ -6114,17 +5245,11 @@ elif [[ "$1" == "web" ]]; then
             
             fi
 
-            #Creating kubernetes_config directory for generating config for Kubernetes.
-            if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
-                mkdir $TEMPLATE_GENERATE_PATH/kubernetes;
-                mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
-            fi
-
             echo "Generating web ingress rules for Kubernetes"
             generate_kubernetes_ingress_for_web;
 
             echo "Applying web ingress rules for Kubernetes"
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
+            kubectl apply -f $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
             
             # Create docker registry secret on Kubernetes.
@@ -6135,7 +5260,7 @@ elif [[ "$1" == "web" ]]; then
             fi
 
             # FOR GENERATING NODESELECTOR VALUES
-            generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateless
+            # generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateless
 
             echo "Running the web server on Kubernetes..."
             if command helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-web \
@@ -6149,8 +5274,7 @@ elif [[ "$1" == "web" ]]; then
                         --set resources.requests.cpu="${ENVIRONMENT_WEB_CPU_REQUESTS:-2m}" \
                         --set resources.requests.memory="${ENVIRONMENT_WEB_MEMORY_REQUESTS:-100Mi}" \
                         --set envName="$ENVIRONMENT_EXCHANGE_NAME-web-env" \
-                        -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
-                        -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web; then
+                        $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/helm-chart/hollaex-kit-web; then
 
 
                 echo "Scaling down the web server after the initialization..."
@@ -6333,7 +5457,7 @@ elif [[ "$1" == "web" ]]; then
             generate_kubernetes_ingress_for_web;
 
             echo "Applying web ingress rules for Kubernetes"
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
+            kubectl apply -f $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
 
             if ! command kubectl get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null && [[ ! "$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" == "hollaex/hollaex-kit" ]]; then
@@ -6409,8 +5533,8 @@ elif [[ "$1" == "web" ]]; then
                 
             fi
 
-            echo "Generating web docker-compose file"
-            generate_local_docker_compose_for_web
+            # echo "Generating web docker-compose file"
+            # generate_local_docker_compose_for_web
 
             # if [[ ! -f "$HOLLAEX_CLI_INIT_PATH/nginx/conf.d/web.conf" ]] || [[ ! -s "$HOLLAEX_CLI_INIT_PATH/nginx/conf.d/web.conf" ]]; then
 
@@ -6444,7 +5568,7 @@ elif [[ "$1" == "web" ]]; then
                 
             # fi
 
-            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client start; then
+            if command docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client up -d; then
 
                 # echo "Reloading Nginx..."
                 # if command docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload; then
@@ -6517,7 +5641,7 @@ elif [[ "$1" == "web" ]]; then
         fi
 
         echo "Removing web ingress rules from the Kubernetes"
-        kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
+        kubectl delete -f $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
         echo "Stopping (Scaling down) the web server..."
         if command kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-web --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME; then
@@ -6549,14 +5673,14 @@ elif [[ "$1" == "web" ]]; then
 
             fi
 
-            echo "Generating web docker-compose file"
-            generate_local_docker_compose_for_web
+            # echo "Generating web docker-compose file"
+            # generate_local_docker_compose_for_web
 
             # echo "Cleaning up the web Nginx configuration..."
             # cp -f $HOLLAEX_CLI_INIT_PATH/nginx/conf.d/web.conf $HOLLAEX_CLI_INIT_PATH/nginx/conf.d/.web.conf
             # rm $HOLLAEX_CLI_INIT_PATH/nginx/conf.d/web.conf
 
-            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client stop; then
+            if command docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client stop; then
 
                 # echo "Reloading Nginx..."
                 # if command docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload; then
@@ -6654,14 +5778,20 @@ elif [[ "$1" == "web" ]]; then
 
             fi
 
+            if ! command kubectl rollout restart -n $ENVIRONMENT_EXCHANGE_NAME deployment/$ENVIRONMENT_EXCHANGE_NAME-web; then
+
+                echo "Error: Failed to restart the web server. Please try again."
+
+            fi
+
             echo "Generating web ingress rules for Kubernetes"
             generate_kubernetes_ingress_for_web;
 
             echo "Applying web ingress rules for Kubernetes"
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
+            kubectl apply -f $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
             
             # FOR GENERATING NODESELECTOR VALUES
-            generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateless
+            # generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateless
 
             echo "Restarting the $HOLLAEX_CONFIGMAP_API_NAME web server."
             if command helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-web \
@@ -6710,8 +5840,8 @@ elif [[ "$1" == "web" ]]; then
                 
             fi
 
-            echo "Generating web docker-compose file"
-            generate_local_docker_compose_for_web
+            # echo "Generating web docker-compose file"
+            # generate_local_docker_compose_for_web
 
             echo "Generating web .env file"
             generate_hollaex_web_local_env
@@ -6749,20 +5879,16 @@ elif [[ "$1" == "web" ]]; then
                 
             # fi
 
-            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client stop; then
-                
-                docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client up -d
+            if command docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client restart; then
 
-                echo "Reloading Nginx..."
-                if command docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload; then
+                echo "Restarting Nginx..."
+                if command docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/nginx/docker-compose.yaml restart; then
                 
-                    printf "\n\033[92mSuccessfully reloaded the Nginx\033[39m\n"
+                    printf "\n\033[92mSuccessfully restarted the Nginx\033[39m\n"
         
                 else
 
-                    printf "\033[93mFailed to reload Nginx. Please make sure to start the exchange API server first.\033[39m\n"
-                    echo "The web server could be still reachable through 'http://localhost:8080',"
-                    echo "But the allocated domain for the web would not function correctly."
+                    printf "\033[93mFailed to restarted the Nginx."
 
                 fi
 
@@ -6782,33 +5908,19 @@ elif [[ "$1" == "web" ]]; then
     fi
 
     if [[ "$WEB_CLIENT_UPGRADE" ]];  then
-        
-        export OVERRIDE_THE_WEB_IMAGE_TAG=true 
 
-        export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY=${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY}
-        export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat version)-$(date +%y%m%d%H%M)"
-        if ! build_user_hollaex_web; then
-
-            exit 1;
-
-        fi 
-
-        ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE_PARSED=${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY}
-        ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE=${ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION}
-
-        override_user_hollaex_web;
-
-        for i in ${CONFIG_FILE_PATH[@]}; do
-            source $i
-        done;
 
         if [[ "$USE_KUBERNETES" ]]; then
 
-                hollaex web --restart --kube --skip
+            export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat $HOLLAEX_CLI_INIT_PATH/web/package.json | jq -r '.version')-$(date +%y%m%d%H%M)"
+
+            hollaex web --build --kube --skip
+            hollaex web --apply --kube --skip --registry $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY --tag $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION
 
         else 
 
-                hollaex web --restart --skip
+            update_local_docker_compose_web;
+            hollaex web --restart --skip
 
         fi
 
@@ -6858,10 +5970,43 @@ elif [[ "$1" == "web" ]]; then
 
         if [[ "$USE_KUBERNETES" ]]; then
 
-                hollaex web --restart --kube --skip
+            echo "Generating web ingress rules for Kubernetes"
+            generate_kubernetes_ingress_for_web;
+
+            echo "Applying web ingress rules for Kubernetes"
+            kubectl apply -f $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
+            
+            # FOR GENERATING NODESELECTOR VALUES
+            # generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateless
+
+            echo "Applying the image to the $HOLLAEX_CONFIGMAP_API_NAME web server."
+            if command helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-web \
+                        --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                        --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY" \
+                        --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION" \
+                        --set stable.replicaCount="${ENVIRONMENT_WEB_SERVER_REPLICAS:-1}" \
+                        --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_WEB_HPA_ENABLE:-false}" \
+                        --set envName="$ENVIRONMENT_EXCHANGE_NAME-web-env" \
+                        --set resources.limits.cpu="${ENVIRONMENT_WEB_CPU_LIMITS:-1000m}" \
+                        --set resources.limits.memory="${ENVIRONMENT_WEB_MEMORY_LIMITS:-1024Mi}" \
+                        --set resources.requests.cpu="${ENVIRONMENT_WEB_CPU_REQUESTS:-2m}" \
+                        --set resources.requests.memory="${ENVIRONMENT_WEB_MEMORY_REQUESTS:-100Mi}" \
+                        $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/helm-chart/hollaex-kit-web; then
+
+                echo -e "\n\033[92mSuccessfully applied the image to the web server!\033[39m\n"
+
+                hollaex_ascii_web_server_is_up;
+
+            else
+
+                echo "Error: Failed to apply the image to the web server."
+                exit 1;
+
+            fi 
 
         else 
-
+                
+                update_local_docker_compose_web;
                 hollaex web --restart --skip
 
         fi
@@ -6895,7 +6040,7 @@ elif [[ "$1" == "web" ]]; then
             fi
 
             echo "Removing web ingress rule on the cluster"
-            kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress-web.yaml
+            kubectl delete -f $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
             echo "Removing the web server..."
             if command helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-web; then
@@ -6932,20 +6077,16 @@ elif [[ "$1" == "web" ]]; then
 
             fi
 
-            echo "Cleaning up the web Nginx configuration..."
-            cp -f $HOLLAEX_CLI_INIT_PATH/nginx/conf.d/web.conf $HOLLAEX_CLI_INIT_PATH/nginx/conf.d/.web.conf
-            rm $HOLLAEX_CLI_INIT_PATH/nginx/conf.d/web.conf
+            if command docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client down --remove-orphans; then
 
-            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client down --remove-orphans; then
-
-                echo "Reloading Nginx..."
-                if command docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload; then
+                echo "Stopping Nginx..."
+                if command docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/nginx/docker-compose.yaml stop; then
                 
-                    printf "\n\033[92mSuccessfully reloaded the Nginx\033[39m\n"
+                    printf "\n\033[92mSuccessfully stopped the Nginx\033[39m\n"
         
                 else
 
-                    printf "\033[93mFailed to reload Nginx. Please make sure to start the exchange API server first.\033[39m\n"
+                    printf "\033[93mFailed to stop the Nginx. Please make sure to start the exchange API server first.\033[39m\n"
 
                 fi
 
@@ -7013,12 +6154,12 @@ elif [[ "$1" == "web" ]]; then
 
         else
 
-            generate_local_docker_compose_for_web;
+            # generate_local_docker_compose_for_web;
 
-            docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client down
+            docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client down
 
             # Running docker-compose scale command.
-            if command docker-compose -f $TEMPLATE_GENERATE_PATH/local/$ENVIRONMENT_EXCHANGE_NAME-docker-compose-web.yaml -p client up -d --no-recreate --scale $ENVIRONMENT_EXCHANGE_NAME-web=$HOLLAEX_WEB_SCALE_TARGET_REPLICAS; then
+            if command docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client up -d --no-recreate --scale $ENVIRONMENT_EXCHANGE_NAME-web=$HOLLAEX_WEB_SCALE_TARGET_REPLICAS; then
                 
                 # Nginx Reload
                 # docker exec -it $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-nginx | cut -f1 -d " ") nginx -s reload
@@ -7326,12 +6467,7 @@ elif [[ "$1" == "toolbox" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
         fi
 
-        if [[ ! -f "$TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml" ]]; then
-
-            generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATEFUL_NODESELECTOR:-ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateful
-
-        fi
-
+        
     else 
 
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
@@ -7384,7 +6520,7 @@ elif [[ "$1" == "toolbox" ]]; then
             fi
 
             echo "Deleting Ingress rules for the exchange..."
-            kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+            kubectl delete -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
             # DROP OLD INGRESS RULES IF IT EXISTS ON THE CLUSTER
             if command kubectl get ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
@@ -7400,7 +6536,7 @@ elif [[ "$1" == "toolbox" ]]; then
             if [[ "$ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB" ]]; then
 
                 echo "Upgrading PostgreSQL DB"
-                generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
+                # generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
 
                 helm upgrade --install $HOLLAEX_SECRET_DB_HOST \
                         --namespace $ENVIRONMENT_EXCHANGE_NAME \
@@ -7421,9 +6557,9 @@ elif [[ "$1" == "toolbox" ]]; then
             if [[ "$ENVIRONMENT_KUBERNETES_RUN_REDIS" ]]; then
 
                 echo "Upgrading Redis"
-                generate_nodeselector_values $ENVIRONMENT_KUBERNETES_REDIS_NODESELECTOR redis
+                # generate_nodeselector_values $ENVIRONMENT_KUBERNETES_REDIS_NODESELECTOR redis
 
-                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-redis \
+                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-prod-redis \
                         --namespace $ENVIRONMENT_EXCHANGE_NAME \
                         --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                         --set resources.limits.cpu="${ENVIRONMENT_REDIS_CPU_LIMITS:-100m}" \
@@ -7440,7 +6576,7 @@ elif [[ "$1" == "toolbox" ]]; then
             sleep 10;
 
             echo "Applying Ingress rules for the exchange..."
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+            kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
             exit 0;
 
@@ -8237,12 +7373,12 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if ! check_kubernetes_dependencies; then exit 1; fi;
 
-            if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 && command kubectl get pods -n $ENVIRONMENT_EXCHANGE_NAME -l app=$ENVIRONMENT_EXCHANGE_NAME-redis > /dev/null 2>&1; then
+            if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 && command kubectl get pods -n $ENVIRONMENT_EXCHANGE_NAME -l app=$ENVIRONMENT_EXCHANGE_NAME-prod-redis > /dev/null 2>&1; then
 
                 echo "Successfully detected the Redis created by HollaEx CLI."
                 echo "Opening kube-proxy tunnel for Redis connection..."
 
-                kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-redis" -o name | sed 's/pod\///' | head -n 1) 6379:6379 &
+                kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-prod-redis" -o name | sed 's/pod\///' | head -n 1) 6379:6379 &
                 sleep 5;
                 
                 echo "Opening local proxy on 6379 port of your machine..."
@@ -8268,7 +7404,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
             check_docker_compose_dependencies;
 
-            if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-redis > /dev/null 2>&1; then
+            if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-prod-redis > /dev/null 2>&1; then
 
                 echo "Successfully detected the Redis created by HollaEx CLI."
 

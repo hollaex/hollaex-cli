@@ -201,9 +201,7 @@ function kubernetes_database_init() {
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                 --set job.enable=true \
                 --set job.mode=hollaex_upgrade \
-                -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
-                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
-                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+                $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server; then
 
       while ! [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]] ;
           do echo "Waiting for the database job gets done..."
@@ -229,7 +227,7 @@ function kubernetes_database_init() {
       if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
       
           echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-          kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+          kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
       fi
 
@@ -342,7 +340,7 @@ function kubernetes_hollaex_network_database_init() {
       if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
       
           echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-          kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+          kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
       fi
 
@@ -1001,8 +999,18 @@ EOL
 
 function update_local_docker_compose() {
 
+  echo $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY
+  echo $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION
+
   # Update Docker Image
   yq e -i ".services.*-server-*.image = \"$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION\"" $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml
+
+}
+
+function update_local_docker_compose_web() {
+
+  # Update Docker Image
+  yq e -i ".services.*-web*.image = \"$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION\"" $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml
 
 }
 
@@ -1468,10 +1476,10 @@ EOL
     $(if [[ ! "$WEB_CLIENT_SCALE" ]]; then echo "ports:"; fi) 
       $(if [[ ! "$WEB_CLIENT_SCALE" ]]; then echo "- 8080:80"; fi) 
     networks:
-      - $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "local_hollaex-network-network"; else echo "local_${ENVIRONMENT_EXCHANGE_NAME}-network"; fi)
+      - $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "server_hollaex-network-network"; else echo "server_${ENVIRONMENT_EXCHANGE_NAME}-network"; fi)
 
 networks:
-  $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "local_hollaex-network-network:"; else echo "local_${ENVIRONMENT_EXCHANGE_NAME}-network:"; fi)
+  $(if [[ "$HOLLAEX_NETWORK_LOCALHOST_MODE" ]]; then echo "server_hollaex-network-network:"; else echo "server_${ENVIRONMENT_EXCHANGE_NAME}-network:"; fi)
     external: true
 
 EOL
@@ -1511,7 +1519,8 @@ EOL
 function generate_kubernetes_configmap() {
 
 # Generate Kubernetes Configmap
-cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-configmap.yaml <<EOL
+cat > $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml <<EOL
+
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -1527,7 +1536,7 @@ EOL
 function generate_kubernetes_secret() {
 
 # Generate Kubernetes Secret
-cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-secret.yaml <<EOL
+cat > $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/secret.yaml <<EOL
 apiVersion: v1
 kind: Secret
 metadata:
@@ -1574,7 +1583,7 @@ if [[ -z "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" ]]; then
 fi 
 
 # Generate Kubernetes Secret
-cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml <<EOL
+cat > $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml <<EOL
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -1773,7 +1782,7 @@ if [[ -z "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB" ]] || [[ ! "$ENVIRONME
 fi
 
   # Generate Kubernetes Secret
-cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress-web.yaml <<EOL
+cat > $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/ingress/hollaex-kit-ingress.yaml<<EOL
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -1820,7 +1829,7 @@ if [[ -z "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" ]]; then
 fi 
 
 # Generate Kubernetes Secret
-cat > $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml <<EOL
+cat > $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml <<EOL
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -2339,8 +2348,8 @@ function override_user_hollaex_core() {
   done
 
   # Update Helm chart's version data
-  sed -i.bak "s/^version:.*/version: $(cat $HOLLAEX_CLI_INIT_PATH/version)/" $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/Chart.yaml
-  rm $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/Chart.yaml.bak
+  sed -i.bak "s/^version:.*/version: $(cat $HOLLAEX_CLI_INIT_PATH/version)/" $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server/Chart.yaml
+  rm $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server/Chart.yaml.bak
 
   rm $CONFIGMAP_FILE_PATH.bak
 
@@ -3110,7 +3119,7 @@ function build_user_hollaex_core() {
 
   fi 
 
-  if [[ ! "$GIT_BRANCH" == "master" ]] && [[ ! "$GIT_BRANCH" == "testnet" ]]; then 
+  if [[ ! "$GIT_BRANCH" == "master" ]] && [[ ! "$GIT_BRANCH" == "testnet" ]] && [[ ! "$GIT_BRANCH" == "cli-deprecation" ]]; then 
 
     local UNSUPPORTED_GIT_BRANCH=true
 
@@ -3770,9 +3779,9 @@ EOL
                             --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                             --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
-                            -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                            -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server/values.yaml \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/set-activation-code.yaml \
-                            $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+                            $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server; then
 
       echo "Kubernetes Job has been created for updating activation code."
 
@@ -3846,9 +3855,9 @@ EOL
                             --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                             --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
-                            -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                            -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server/values.yaml \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/check_constants.yaml \
-                            $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+                            $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server; then
 
       echo "Kubernetes Job has been created for setting up the config."
 
@@ -3927,9 +3936,9 @@ EOL
                             --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                             --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
-                            -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                            -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server/values.yaml \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/set_config.yaml \
-                            $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+                            $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server; then
 
       echo "Kubernetes Job has been created for setting up the config."
 
@@ -4134,9 +4143,9 @@ EOL
                 --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
-                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+                -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server/values.yaml \
                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/set_security.yaml \
-                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+                $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server; then
 
       echo "Kubernetes Job has been created for setting up security values."
 
@@ -4964,11 +4973,6 @@ function hollaex_login_token_validate_and_issue() {
 function run_and_upgrade_hollaex_on_kubernetes() {
 
   #Creating kubernetes_config directory for generating config for Kubernetes.
-  if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
-      mkdir $TEMPLATE_GENERATE_PATH/kubernetes;
-      mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
-  fi
-
   if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
 
       echo "Generating Kubernetes Configmap"
@@ -5002,34 +5006,30 @@ function run_and_upgrade_hollaex_on_kubernetes() {
   if [[ ! "$IGNORE_SETTINGS" ]]; then 
 
       echo "Applying latest configmap env on the cluster."
-      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+      kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
 
       echo "Applying latest secret on the cluster"
-      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+      kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/secret.yaml
 
   fi
 
   # Running & Upgrading Databases
   if [[ "$ENVIRONMENT_KUBERNETES_RUN_REDIS" == true ]]; then
 
-      generate_nodeselector_values $ENVIRONMENT_KUBERNETES_REDIS_NODESELECTOR redis
-
-      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-redis \
+      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-prod-redis \
                   --namespace $ENVIRONMENT_EXCHANGE_NAME \
                   --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                   --set resources.limits.cpu="${ENVIRONMENT_REDIS_CPU_LIMITS:-100m}" \
                   --set resources.limits.memory="${ENVIRONMENT_REDIS_MEMORY_LIMITS:-200Mi}" \
                   --set resources.requests.cpu="${ENVIRONMENT_REDIS_CPU_REQUESTS:-10m}" \
                   --set resources.requests.memory="${ENVIRONMENT_REDIS_MEMORY_REQUESTS:-100Mi}" \
-                  -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis/values.yaml \
-                  -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-redis.yaml \
-                  $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT)
+                  $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-redis
   
   fi
 
   if [[ "$ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB" == true ]]; then
 
-      generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
+      # generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
 
       if command helm ls -n $ENVIRONMENT_EXCHANGE_NAME | grep $HOLLAEX_SECRET_DB_HOST; then
 
@@ -5048,7 +5048,7 @@ function run_and_upgrade_hollaex_on_kubernetes() {
 
       fi
 
-      helm upgrade --install $HOLLAEX_SECRET_DB_HOST \
+      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-prod-db \
                   --namespace $ENVIRONMENT_EXCHANGE_NAME \
                   --wait \
                   --set pvc.create=true \
@@ -5059,9 +5059,7 @@ function run_and_upgrade_hollaex_on_kubernetes() {
                   --set resources.limits.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_LIMITS:-200Mi}" \
                   --set resources.requests.cpu="${ENVIRONMENT_POSTGRESQL_CPU_REQUESTS:-10m}" \
                   --set resources.requests.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_REQUESTS:-100Mi}" \
-                  -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml \
-                  -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml \
-                  $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $(if [[ "$KUBERNETES_PSQL_DB_EXISTS" ]]; then echo $EXISTING_DB_DOCKER_IMAGE_TAG; else echo $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION; fi)) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
+                  $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-postgres
 
                   echo "Waiting until the database to be fully initialized"
                   sleep 60
@@ -5069,8 +5067,8 @@ function run_and_upgrade_hollaex_on_kubernetes() {
   fi
         
   # FOR GENERATING NODESELECTOR VALUES
-  generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATEFUL_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateful
-  generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateless
+  # generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATEFUL_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateful
+  # generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateless
 
   if command helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api \
                     --namespace $ENVIRONMENT_EXCHANGE_NAME \
@@ -5086,9 +5084,7 @@ function run_and_upgrade_hollaex_on_kubernetes() {
                     --set resources.requests.cpu="${ENVIRONMENT_API_CPU_REQUESTS:-10m}" \
                     --set resources.requests.memory="${ENVIRONMENT_API_MEMORY_REQUESTS:-1536Mi}" \
                     --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-                    -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
-                    -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
-                    $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+                    $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server; then
 
       export KUBERNETES_HELM_INSTALL_SERVER_API=true
 
@@ -5108,9 +5104,7 @@ function run_and_upgrade_hollaex_on_kubernetes() {
               --set resources.requests.cpu="${ENVIRONMENT_STREAM_CPU_REQUESTS:-10m}" \
               --set resources.requests.memory="${ENVIRONMENT_STREAM_MEMORY_REQUESTS:-1536Mi}" \
               --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-              -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
-              -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
-              $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+              $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server; then
 
       export KUBERNETES_HELM_INSTALL_SERVER_STREAM=true
 
@@ -5128,8 +5122,7 @@ function run_and_upgrade_hollaex_on_kubernetes() {
                      --set resources.requests.cpu="${ENVIRONMENT_PLUGINS_CPU_REQUESTS:-10m}" \
                      --set resources.requests.memory="${ENVIRONMENT_PLUGINS_MEMORY_REQUESTS:-700Mi}" \
                      --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
-                     -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+                     $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server; then
 
       export KUBERNETES_HELM_INSTALL_SERVER_PLUGINS=true
 
@@ -5166,231 +5159,7 @@ function run_and_upgrade_hollaex_on_kubernetes() {
   sleep 15;
 
   echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-  kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
-
-}
-
-function run_and_upgrade_hollaex_network_on_kubernetes() {
-
-  #Creating kubernetes_config directory for generating config for Kubernetes.
-  if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
-      mkdir $TEMPLATE_GENERATE_PATH/kubernetes;
-      mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
-  fi
-
-  if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
-
-      echo "Generating Kubernetes Configmap"
-      generate_kubernetes_configmap;
-
-  fi
-
-  if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]]; then
-
-      echo "Generating Kubernetes Secret"
-      generate_kubernetes_secret;
-
-  fi
-
-
-  if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
-
-      echo "Generating Kubernetes Ingress"
-      if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
-
-          generate_kubernetes_ingress;
-      
-      else 
-
-          generate_kubernetes_ingress_2_4;
-
-      fi 
-
-  fi
-
-  if [[ ! "$IGNORE_SETTINGS" ]]; then 
-
-      echo "Applying latest configmap env on the cluster."
-      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
-
-      echo "Applying latest secret on the cluster"
-      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
-
-  fi
-
-  # Running & Upgrading Databases
-  if [[ "$ENVIRONMENT_KUBERNETES_RUN_REDIS" == true ]]; then
-
-      generate_nodeselector_values $ENVIRONMENT_KUBERNETES_REDIS_NODESELECTOR redis
-
-      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-redis \
-                  --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                  --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                  --set resources.limits.cpu="${ENVIRONMENT_REDIS_CPU_LIMITS:-100m}" \
-                  --set resources.limits.memory="${ENVIRONMENT_REDIS_MEMORY_LIMITS:-200Mi}" \
-                  --set resources.requests.cpu="${ENVIRONMENT_REDIS_CPU_REQUESTS:-10m}" \
-                  --set resources.requests.memory="${ENVIRONMENT_REDIS_MEMORY_REQUESTS:-100Mi}" \
-                  -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis/values.yaml \
-                  -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-redis.yaml \
-                  $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-redis $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_REDIS_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_REDIS_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_REDIS_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_REDIS_ACCESS_PORT)
-  
-  fi
-
-  if [[ "$ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB" == true ]]; then
-
-      generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
-
-      helm upgrade --install $HOLLAEX_SECRET_DB_HOST \
-                  --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                  --wait \
-                  --set pvc.create=true \
-                  --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" \
-                  --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" \
-                  --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                  --set resources.limits.cpu="${ENVIRONMENT_POSTGRESQL_CPU_LIMITS:-100m}" \
-                  --set resources.limits.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_LIMITS:-200Mi}" \
-                  --set resources.requests.cpu="${ENVIRONMENT_POSTGRESQL_CPU_REQUESTS:-10m}" \
-                  --set resources.requests.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_REQUESTS:-100Mi}" \
-                  -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres/values.yaml \
-                  -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-postgresql.yaml \
-                  $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-postgres $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_POSTGRESQL_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_POSTGRESQL_DB_ACCESS_PORT)
-
-                  echo "Waiting until the database to be fully initialized"
-                  sleep 60
-
-  fi
-
-  if [[ "$ENVIRONMENT_KUBERNETES_RUN_INFLUXDB" == true ]]; then
-
-      generate_nodeselector_values $ENVIRONMENT_KUBERNETES_INFLUXDB_NODESELECTOR influxdb
-
-      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-influxdb \
-                  --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                  --wait \
-                  --set pvc.create=true \
-                  --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-influxdb-volume" \
-                  --set pvc.size="${ENVIRONMENT_KUBERNETES_INFLUXDB_VOLUMESIZE:-30Gi}" \
-                  --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                  --set resources.limits.cpu="${ENVIRONMENT_INFLUXDB_CPU_LIMITS:-100m}" \
-                  --set resources.limits.memory="${ENVIRONMENT_INFLUXDB_MEMORY_LIMITS:-200Mi}" \
-                  --set resources.requests.cpu="${ENVIRONMENT_INFLUXDB_CPU_REQUESTS:-10m}" \
-                  --set resources.requests.memory="${ENVIRONMENT_INFLUXDB_MEMORY_REQUESTS:-100Mi}" \
-                  -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-influxdb/values.yaml \
-                  -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-influxdb.yaml \
-                  $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-influxdb $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_INFLUXDB_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_INFLUXDB_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_INFLUXDB_DB_ACCESS_PORT)
-
-                  echo "Waiting until the database to be fully initialized"
-                  sleep 60
-
-  fi
-
-  if [[ "$ENVIRONMENT_KUBERNETES_RUN_MONGODB" == true ]]; then
-
-      generate_nodeselector_values $ENVIRONMENT_KUBERNETES_MONGODB_NODESELECTOR mongodb
-
-      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-mongodb \
-                  --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                  --wait \
-                  --set pvc.create=true \
-                  --set pvc.size="${ENVIRONMENT_KUBERNETES_MONGODB_VOLUMESIZE:-20Gi}" \
-                  --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                  --set resources.limits.cpu="${ENVIRONMENT_MONGODB_CPU_LIMITS:-100m}" \
-                  --set resources.limits.memory="${ENVIRONMENT_MONGODB_MEMORY_LIMITS:-200Mi}" \
-                  --set resources.requests.cpu="${ENVIRONMENT_MONGODB_CPU_REQUESTS:-10m}" \
-                  --set resources.requests.memory="${ENVIRONMENT_MONGODB_MEMORY_REQUESTS:-100Mi}" \
-                  -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-mongodb/values.yaml \
-                  -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-mongodb.yaml \
-                  $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-mongodb $(kubernetes_set_backend_image_target $ENVIRONMENT_DOCKER_IMAGE_POSTGRESQL_REGISTRY $ENVIRONMENT_DOCKER_IMAGE_MONGODB_VERSION) $(set_nodeport_access $ENVIRONMENT_KUBERNETES_ALLOW_EXTERNAL_MONGODB_DB_ACCESS $ENVIRONMENT_KUBERNETES_EXTERNAL_MONGODB_DB_ACCESS_PORT)
-
-                  echo "Waiting until the database to be fully initialized"
-                  sleep 30
-
-  fi
-        
-  # FOR GENERATING NODESELECTOR VALUES
-  generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATEFUL_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateful
-  generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateless
-
-  helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-api \
-                    --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                    --set DEPLOYMENT_MODE="api" \
-                    --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
-                    --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                    --set stable.replicaCount="${ENVIRONMENT_API_SERVER_REPLICAS:-1}" \
-                    --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_API_HPA_ENABLE:-false}" \
-                    --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_API_HPA_AVGMEMORY:-1300000000}" \
-                    --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_API_HPA_MAXREPLICAS:-4}" \
-                    --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
-                    --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                    --set resources.limits.cpu="${ENVIRONMENT_API_CPU_LIMITS:-1000m}" \
-                    --set resources.limits.memory="${ENVIRONMENT_API_MEMORY_LIMITS:-1536Mi}" \
-                    --set resources.requests.cpu="${ENVIRONMENT_API_CPU_REQUESTS:-10m}" \
-                    --set resources.requests.memory="${ENVIRONMENT_API_MEMORY_REQUESTS:-1536Mi}" \
-                    --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-                    -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
-                    -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server/values.yaml \
-                    $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server
-
-  helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-stream \
-              --namespace $ENVIRONMENT_EXCHANGE_NAME \
-              --set DEPLOYMENT_MODE="stream" \
-              --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
-              --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-              --set stable.replicaCount="${ENVIRONMENT_STREAM_SERVER_REPLICAS:-1}" \
-              --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_STREAM_HPA_ENABLE:-false}" \
-              --set autoScaling.hpa.avgMemory="${ENVIRONMENT_KUBERNETES_STREAM_HPA_AVGMEMORY:-300000000}" \
-              --set autoScaling.hpa.maxReplicas="${ENVIRONMENT_KUBERNETES_STREAM_HPA_MAXREPLICAS:-4}" \
-              --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
-              --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-              --set resources.limits.cpu="${ENVIRONMENT_STREAM_CPU_LIMITS:-1000m}" \
-              --set resources.limits.memory="${ENVIRONMENT_STREAM_MEMORY_LIMITS:-1536Mi}" \
-              --set resources.requests.cpu="${ENVIRONMENT_STREAM_CPU_REQUESTS:-10m}" \
-              --set resources.requests.memory="${ENVIRONMENT_STREAM_MEMORY_REQUESTS:-1536Mi}" \
-              --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-              -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
-              -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server/values.yaml \
-              $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server
-
-  helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-server-job \
-                     --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                     --set DEPLOYMENT_MODE="job" \
-                     --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
-                     --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                     --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
-                     --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                     --set resources.limits.cpu="${ENVIRONMENT_JOB_CPU_LIMITS:-500m}" \
-                     --set resources.limits.memory="${ENVIRONMENT_JOB_MEMORY_LIMITS:-512Mi}" \
-                     --set resources.requests.cpu="${ENVIRONMENT_JOB_CPU_REQUESTS:-10m}" \
-                     --set resources.requests.memory="${ENVIRONMENT_JOB_MEMORY_REQUESTS:-128Mi}" \
-                     --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
-                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
-                     -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server/values.yaml $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server
-                     
-  helm_dynamic_trading_paris run;
-
-  if [[ "$HOLLAEX_NETWORK_SETUP" == true ]]; then 
-
-    # Running database job for Kubernetes
-    kubernetes_hollaex_network_database_init launch;
-
-  else 
-
-    # Running database job for Kubernetes
-    kubernetes_hollaex_network_database_init upgrade;
-
-  fi
-
-  echo "Flushing Redis..."
-  kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/flushRedis.js
-
-  echo "Restarting all containers to apply latest database changes..."
-  kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
-
-  echo "Waiting for the containers get fully ready..."
-  sleep 15;
-
-  echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-  kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+  kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
 }
 
@@ -6049,7 +5818,7 @@ EOL
     # if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
     
     #     echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-    #     kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+    #     kubectl delete -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
     # fi
 
@@ -6080,7 +5849,7 @@ EOL
       helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_CODE
 
       # echo "Allowing exchange external connections"
-      # kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+      # kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
     fi
 
@@ -6115,7 +5884,7 @@ EOL
 
       done
 
-      if [[ ! -f "$TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml" ]]; then 
+      if [[ ! -f "$HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml" ]]; then 
 
         echo "Generating Kubernetes Configmap."
         generate_kubernetes_configmap;
@@ -6123,14 +5892,14 @@ EOL
       fi
 
       # Adding new value directly at generated env / configmap file
-      sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
-      rm $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml.bak
+      sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
+      rm $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml.bak
 
       export HOLLAEX_CONFIGMAP_CURRENCIES=$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE
       echo "Current Currencies: ${HOLLAEX_CONFIGMAP_CURRENCIES}"
 
       echo "Applying configmap on the namespace"
-      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+      kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
 
       if [[ ! "$IS_HOLLAEX_SETUP" ]]; then
         
@@ -6150,7 +5919,7 @@ EOL
       helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_CODE
 
       # echo "Allowing exchange external connections"
-      # kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+      # kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
       
     fi
 
@@ -6323,7 +6092,7 @@ function remove_coin_exec() {
   # if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
   
   #     echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-  #     kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+  #     kubectl delete -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
   # fi
 
@@ -6340,8 +6109,8 @@ function remove_coin_exec() {
                 --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
-                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
-                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+                -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server/values.yaml \
+                $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server; then
 
       echo "Kubernetes Job has been created for removing existing coin $COIN_CODE."
 
@@ -6354,7 +6123,7 @@ function remove_coin_exec() {
       helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_CODE
 
       echo "Allowing exchange external connections"
-      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+      kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
     fi
 
@@ -6385,8 +6154,8 @@ function remove_coin_exec() {
       done
 
       #Removing targeted coin directly at .configmap file for Kubernetes.
-      sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
-      rm $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml.bak
+      sed -i.bak "s/$HOLLAEX_CONFIGMAP_CURRENCIES/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
+      rm $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml.bak
 
       export HOLLAEX_CONFIGMAP_CURRENCIES=$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE
       echo "Current Currencies: ${HOLLAEX_CONFIGMAP_CURRENCIES}"
@@ -6395,7 +6164,7 @@ function remove_coin_exec() {
       # generate_kubernetes_configmap;
 
       echo "Applying configmap on the namespace"
-      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+      kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
 
       # Running database job for Kubernetes
       echo "Applying changes on database..."
@@ -6769,7 +6538,7 @@ EOL
     # if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
     
     #     echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-    #     kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+    #     kubectl delete -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
     # fi
 
@@ -6835,7 +6604,7 @@ EOL
 
       done
 
-      if [[ ! -f "$TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml" ]]; then 
+      if [[ ! -f "$HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml" ]]; then 
 
         echo "Generating Kubernetes Configmap."
         generate_kubernetes_configmap;
@@ -6843,14 +6612,14 @@ EOL
       fi
 
       # Adding new value directly at generated env / configmap file
-      sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE/" $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
-      rm $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml.bak
+      sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE/" $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
+      rm $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml.bak
 
       export HOLLAEX_CONFIGMAP_PAIRS=$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE
       echo "Current Trading Pairs: ${HOLLAEX_CONFIGMAP_PAIRS}"
 
       echo "Applying configmap on the namespace"
-      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+      kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
 
 
       if [[ ! "$IS_HOLLAEX_SETUP" ]]; then 
@@ -6889,7 +6658,7 @@ EOL
       helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_CODE
 
       echo "Allowing exchange external connections"
-      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+      kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
       
     fi
 
@@ -7053,7 +6822,7 @@ function remove_pair_exec() {
     # if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
     
     #     echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-    #     kubectl delete -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+    #     kubectl delete -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
     # fi
 
@@ -7071,8 +6840,8 @@ function remove_pair_exec() {
                 --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
-                -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
-                $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+                -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server/values.yaml \
+                $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server; then
 
       echo "*** Kubernetes Job has been created for removing existing pair $PAIR_CODE. ***"
 
@@ -7118,14 +6887,14 @@ function remove_pair_exec() {
 
       done
 
-      sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
-      rm $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml.bak
+      sed -i.bak "s/$HOLLAEX_CONFIGMAP_PAIRS/$HOLLAEX_CONFIGMAP_CURRENCIES_OVERRIDE/" $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
+      rm $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml.bak
 
       export HOLLAEX_CONFIGMAP_PAIRS=$HOLLAEX_CONFIGMAP_PAIRS_OVERRIDE
       echo "Current Trading Pairs: ${HOLLAEX_CONFIGMAP_PAIRS}"
 
       echo "Applying configmap on the namespace"
-      kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+      kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
 
       # Running database job for Kubernetes
       echo "Applying changes on database..."
