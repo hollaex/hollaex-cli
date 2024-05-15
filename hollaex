@@ -5862,17 +5862,17 @@ elif [[ "$1" == "web" ]]; then
     if [[ "$WEB_CLIENT_UPGRADE" ]];  then
 
 
-        if [[ "$USE_KUBERNETES" ]]; then
+        export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat $HOLLAEX_CLI_INIT_PATH/web/package.json | jq -r '.version')-$(date +%y%m%d%H%M)"
 
-            export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat $HOLLAEX_CLI_INIT_PATH/web/package.json | jq -r '.version')-$(date +%y%m%d%H%M)"
+        if [[ "$USE_KUBERNETES" ]]; then
 
             hollaex web --build --kube --skip
             hollaex web --apply --kube --skip --registry $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY --tag $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION
 
         else 
-
-            update_local_docker_compose_web;
-            hollaex web --restart --skip
+            
+            hollaex web --build --skip
+            hollaex web --apply --skip --registry $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY --tag $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION
 
         fi
 
