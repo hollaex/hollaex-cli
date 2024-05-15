@@ -4931,25 +4931,15 @@ elif [[ "$1" == "terminate" ]]; then
 
 
         echo "Running a final backup for the database."
-
-        if [[ "$HOLLAEX_NETWORK_BACKUP" ]]; then 
-
-            if command hollaex network --backup --skip; then 
-
-                IS_BACKUP_SUCCESS=true
-            
-            fi 
         
-        else 
 
-            if command hollaex toolbox --backup --skip; then 
+        if command hollaex toolbox --backup --skip; then 
 
-                IS_BACKUP_SUCCESS=true
-
-            fi 
+            IS_BACKUP_SUCCESS=true
 
         fi 
 
+        
         if [[ ! "$IS_BACKUP_SUCCESS" ]]; then 
 
             printf "\033[91mWarning: HollaEx CLI failed to make a final DB backup!\033[39m\n"
@@ -4971,6 +4961,7 @@ elif [[ "$1" == "terminate" ]]; then
         if [[ -f "$HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml" ]] ; then
 
             docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client down 
+            docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/nginx/docker-compose down
 
         fi
 
@@ -4980,34 +4971,13 @@ elif [[ "$1" == "terminate" ]]; then
         
         fi 
 
-        if [[ "$HOLLAEX_NETWORK_TERMINATE" ]]; then 
-
-            docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml down --remove-orphans -v
-
-            hollaex_ascii_network_has_been_terminated;
-
-            for i in ${CONFIG_FILE_PATH[@]}; do
-
-                if command grep -q "HOLLAEX_CONFIGMAP_API_NAME=" $i > /dev/null ; then
-
-                    export CONFIGMAP_FILE_PATH=$i
-
-                fi
-
-            done
-
-            sed -i.bak "s/HOLLAEX_CONFIGMAP_CURRENCIES=.*/HOLLAEX_CONFIGMAP_CURRENCIES=xht,usdt/" $CONFIGMAP_FILE_PATH;
-            sed -i.bak "s/HOLLAEX_CONFIGMAP_PAIRS=.*/HOLLAEX_CONFIGMAP_PAIRS=xht-usdt/" $CONFIGMAP_FILE_PATH;
-            rm $CONFIGMAP_FILE_PATH.bak
-
-
-        else 
-
-            docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml down -v --remove-orphans
- 
-            hollaex_ascii_exchange_has_been_terminated;
         
-        fi 
+
+        docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml down -v --remove-orphans
+
+        hollaex_ascii_exchange_has_been_terminated;
+        
+        
 
 
         echo "$HOLLAEX_CONFIGMAP_API_NAME ($HOLLAEX_CONFIGMAP_API_HOST) has been successfully terminated."
