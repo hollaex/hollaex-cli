@@ -4215,25 +4215,6 @@ EOL
 
 }
 
-function check_docker_compose_dependencies() {
-
-  # Checking docker-compose is installed on this machine.
-  if command docker-compose version > /dev/null 2>&1; then
-
-      echo "*********************************************"
-      echo "docker-compose detected"  
-      echo "$(docker-compose version)"
-      echo "*********************************************"
-
-  else
-
-      echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
-      exit 1;
-
-  fi
-
-}
-
 function hollaex_pull_and_apply_exchange_data() {  
 
   local HOLLAEX_CONFIGMAP_API_NAME_OVERRIDE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$BITHOLLA_USER_EXCHANGE_ORDER].name";)
@@ -4263,7 +4244,7 @@ function hollaex_pull_and_apply_exchange_data() {
 function check_docker_compose_is_installed() {
 
   # Checking docker-compose is installed on this machine.
-  if command docker-compose version > /dev/null 2>&1; then
+  if command docker compose version > /dev/null 2>&1; then
       
       echo "*********************************************"
       echo "docker-compose detected"

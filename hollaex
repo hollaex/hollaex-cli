@@ -43,7 +43,7 @@ DOCKER_COMPOSE_NAME_PREFIX='local_'
 DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR="_"
 
 # Docker compose v2+ compatibility prefiexes
-if [[ ! "$(docker compose version 2>&1)" == *"Docker compose version 1."* ]]; then
+if [[ ! "$(check_docker_compose_is_installed 2>&1)" == *"check_docker_compose_is_installed 1."* ]]; then
 
     export DOCKER_COMPOSE_NAME_PREFIX="server-"
     export DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR="-"
@@ -507,10 +507,10 @@ if [[ "$1" == "dev" ]]; then
         generate_nginx_upstream;
 
         # Checking docker-compose is installed on this machine.
-        if command docker compose version > /dev/null 2>&1; then
+        if command check_docker_compose_is_installed > /dev/null 2>&1; then
             echo "*********************************************"
             echo "docker-compose detected"
-            echo "version: $(docker compose version)"
+            echo "version: $(check_docker_compose_is_installed)"
             echo "*********************************************"
 
         else
@@ -1387,11 +1387,11 @@ elif [[ "$1" == "setup" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if command docker compose version > /dev/null 2>&1; then
+        if command check_docker_compose_is_installed > /dev/null 2>&1; then
 
             echo "*********************************************"
             echo "docker-compose detected"  
-            echo "version: $(docker compose version)"
+            echo "version: $(check_docker_compose_is_installed)"
             echo "*********************************************"
 
         else
@@ -2779,11 +2779,11 @@ elif [[ "$1" == "start" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if command docker compose version > /dev/null 2>&1; then
+        if command check_docker_compose_is_installed > /dev/null 2>&1; then
 
             echo "*********************************************"
             echo "docker-compose detected"
-            echo "version: $(docker compose version)"
+            echo "version: $(check_docker_compose_is_installed)"
             echo "*********************************************"
 
         else
@@ -3057,11 +3057,11 @@ elif [[ "$1" == "scale" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if command docker compose version > /dev/null 2>&1; then
+        if command check_docker_compose_is_installed > /dev/null 2>&1; then
 
             echo "*********************************************"
             echo "docker-compose detected"
-            echo "version: $(docker compose version)"
+            echo "version: $(check_docker_compose_is_installed)"
             echo "*********************************************"
 
         else
@@ -3872,11 +3872,11 @@ elif [[ "$1" == "stop" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if command docker compose version > /dev/null 2>&1; then
+        if command check_docker_compose_is_installed > /dev/null 2>&1; then
 
             echo "*********************************************"
             echo "docker-compose detected"
-            echo "version: $(docker compose version)"
+            echo "version: $(check_docker_compose_is_installed)"
             echo "*********************************************"
 
         else
@@ -4088,11 +4088,11 @@ elif [[ "$1" == "restart" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if command docker compose version > /dev/null 2>&1; then
+        if command check_docker_compose_is_installed > /dev/null 2>&1; then
 
             echo "*********************************************"
             echo "docker-compose detected"
-            echo "version: $(docker compose version)"
+            echo "version: $(check_docker_compose_is_installed)"
             echo "*********************************************"
 
         else
@@ -4903,11 +4903,11 @@ elif [[ "$1" == "terminate" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if command docker compose version > /dev/null 2>&1; then
+        if command check_docker_compose_is_installed > /dev/null 2>&1; then
 
             echo "*********************************************"
             echo "docker-compose detected"
-            echo "version: $(docker compose version)"
+            echo "version: $(check_docker_compose_is_installed)"
             echo "*********************************************"
 
         else
@@ -7094,7 +7094,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         elif [[ ! "$USE_KUBERNETES" ]]; then
 
-            check_docker_compose_dependencies;
+            check_docker_compose_is_installed;
 
             echo "Are you sure that you want to update your activation code for the exchange on this machine? (y/N)"
             read answer 
@@ -7196,7 +7196,7 @@ elif [[ "$1" == "toolbox" ]]; then
             
         elif [[ ! "$USE_KUBERNETES" ]]; then 
         
-            check_docker_compose_dependencies; 
+            check_docker_compose_is_installed; 
 
             toolbox_set_config_confirm_message;
             
@@ -7245,7 +7245,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         elif [[ ! "$USE_KUBERNETES" ]]; then 
         
-            check_docker_compose_dependencies; 
+            check_docker_compose_is_installed; 
 
             toolbox_set_security_confirm_message;
 
@@ -7303,7 +7303,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         elif [[ ! "$USE_KUBERNETES" ]]; then
 
-            check_docker_compose_dependencies;
+            check_docker_compose_is_installed;
 
             if command docker ps | grep $HOLLAEX_SECRET_DB_HOST > /dev/null 2>&1; then
 
@@ -7372,7 +7372,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         elif [[ ! "$USE_KUBERNETES" ]]; then
 
-            check_docker_compose_dependencies;
+            check_docker_compose_is_installed;
 
             if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-prod-redis > /dev/null 2>&1; then
 
