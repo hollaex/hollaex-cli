@@ -508,10 +508,7 @@ if [[ "$1" == "dev" ]]; then
 
         # Checking docker-compose is installed on this machine.
         if command check_docker_compose_is_installed > /dev/null 2>&1; then
-            echo "*********************************************"
-            echo "docker-compose detected"
-            echo "version: $(check_docker_compose_is_installed)"
-            echo "*********************************************"
+            check_docker_compose_is_installed
 
         else
             echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
@@ -2781,10 +2778,7 @@ elif [[ "$1" == "start" ]]; then
         # Checking docker-compose is installed on this machine.
         if command check_docker_compose_is_installed > /dev/null 2>&1; then
 
-            echo "*********************************************"
-            echo "docker-compose detected"
-            echo "version: $(check_docker_compose_is_installed)"
-            echo "*********************************************"
+            check_docker_compose_is_installed
 
         else
 
@@ -3059,10 +3053,7 @@ elif [[ "$1" == "scale" ]]; then
         # Checking docker-compose is installed on this machine.
         if command check_docker_compose_is_installed > /dev/null 2>&1; then
 
-            echo "*********************************************"
-            echo "docker-compose detected"
-            echo "version: $(check_docker_compose_is_installed)"
-            echo "*********************************************"
+            check_docker_compose_is_installed
 
         else
 
@@ -3874,10 +3865,7 @@ elif [[ "$1" == "stop" ]]; then
         # Checking docker-compose is installed on this machine.
         if command check_docker_compose_is_installed > /dev/null 2>&1; then
 
-            echo "*********************************************"
-            echo "docker-compose detected"
-            echo "version: $(check_docker_compose_is_installed)"
-            echo "*********************************************"
+            check_docker_compose_is_installed
 
         else
 
@@ -4090,10 +4078,7 @@ elif [[ "$1" == "restart" ]]; then
         # Checking docker-compose is installed on this machine.
         if command check_docker_compose_is_installed > /dev/null 2>&1; then
 
-            echo "*********************************************"
-            echo "docker-compose detected"
-            echo "version: $(check_docker_compose_is_installed)"
-            echo "*********************************************"
+            check_docker_compose_is_installed
 
         else
 
@@ -4905,10 +4890,7 @@ elif [[ "$1" == "terminate" ]]; then
         # Checking docker-compose is installed on this machine.
         if command check_docker_compose_is_installed > /dev/null 2>&1; then
 
-            echo "*********************************************"
-            echo "docker-compose detected"
-            echo "version: $(check_docker_compose_is_installed)"
-            echo "*********************************************"
+            check_docker_compose_is_installed
 
         else
 
