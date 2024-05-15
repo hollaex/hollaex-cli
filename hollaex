@@ -5384,14 +5384,14 @@ elif [[ "$1" == "web" ]]; then
 
             if command docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client up -d; then
 
-                echo "Reloading Nginx..."
-                if command docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-prod-nginx | cut -f1 -d " ") nginx -s reload; then
+                echo "Starting the Nginx..."
+                if command docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/nginx/docker-compose.yaml up -d; then
                 
-                    printf "\n\033[92mSuccessfully reloaded the Nginx\033[39m\n"
+                    printf "\n\033[92mSuccessfully started the Nginx\033[39m\n"
         
                 else
 
-                    printf "\033[93mFailed to reload Nginx. Please make sure to start the exchange API server first.\033[39m\n"
+                    printf "\033[93mFailed to start the Nginx. Please try again by restarting the web server.\033[39m\n"
                     echo "The web server could be still reachable through 'http://localhost:8080',"
                     echo "But the allocated domain for the web would not function correctly."
 
