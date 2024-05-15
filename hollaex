@@ -5871,8 +5871,8 @@ elif [[ "$1" == "web" ]]; then
 
         else 
             
-            hollaex web --build --skip
-            hollaex web --apply --skip --registry $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY --tag $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION
+            hollaex web --build
+            hollaex web --apply --registry $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY --tag $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION
 
         fi
 
