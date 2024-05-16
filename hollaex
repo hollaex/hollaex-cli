@@ -2771,7 +2771,7 @@ elif [[ "$1" == "start" ]]; then
             exit 1;
 
         fi
-        
+
         # Exit HollaEx CLI If docker_compose 
         if [[ ! "$ENVIRONMENT_EXCHANGE_RUN_MODE" ]]; then
 
@@ -4908,7 +4908,7 @@ elif [[ "$1" == "terminate" ]]; then
         if [[ -f "$HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml" ]] ; then
 
             docker compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client down 
-            docker compose -f ${HOLLAEX_CLI_INIT_PATH}/nginx/docker-compose down
+            docker compose -f ${HOLLAEX_CLI_INIT_PATH}/nginx/docker-compose.yaml down
 
         fi
 
