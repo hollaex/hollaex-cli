@@ -4055,7 +4055,7 @@ elif [[ "$1" == "restart" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if ! command check_docker_compose_is_installed > /dev/null 2>&1; then
+        if ! command docker compose version; then
 
             echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
             exit 1;
