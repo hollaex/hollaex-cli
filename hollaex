@@ -507,10 +507,8 @@ if [[ "$1" == "dev" ]]; then
         generate_nginx_upstream;
 
         # Checking docker-compose is installed on this machine.
-        if command check_docker_compose_is_installed > /dev/null 2>&1; then
-            check_docker_compose_is_installed
+       if ! command check_docker_compose_is_installed > /dev/null 2>&1; then
 
-        else
             echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
             exit 1;
 
@@ -1384,14 +1382,7 @@ elif [[ "$1" == "setup" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if command check_docker_compose_is_installed > /dev/null 2>&1; then
-
-            echo "*********************************************"
-            echo "docker-compose detected"  
-            echo "version: $(check_docker_compose_is_installed)"
-            echo "*********************************************"
-
-        else
+        if ! command check_docker_compose_is_installed > /dev/null 2>&1; then
 
             echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
             exit 1;
@@ -2776,11 +2767,7 @@ elif [[ "$1" == "start" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if command check_docker_compose_is_installed > /dev/null 2>&1; then
-
-            check_docker_compose_is_installed
-
-        else
+        if ! command check_docker_compose_is_installed > /dev/null 2>&1; then
 
             echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
             exit 1;
@@ -3051,11 +3038,7 @@ elif [[ "$1" == "scale" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if command check_docker_compose_is_installed > /dev/null 2>&1; then
-
-            check_docker_compose_is_installed
-
-        else
+        if ! command check_docker_compose_is_installed > /dev/null 2>&1; then
 
             echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
             exit 1;
@@ -3863,11 +3846,7 @@ elif [[ "$1" == "stop" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if command check_docker_compose_is_installed > /dev/null 2>&1; then
-
-            check_docker_compose_is_installed
-
-        else
+        if ! command check_docker_compose_is_installed > /dev/null 2>&1; then
 
             echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
             exit 1;
@@ -4076,14 +4055,9 @@ elif [[ "$1" == "restart" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if command check_docker_compose_is_installed > /dev/null 2>&1; then
+        if ! command check_docker_compose_is_installed > /dev/null 2>&1; then
 
-            check_docker_compose_is_installed
-
-        else
-
-            printf "\033[91mHollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI.\033[39m\n"
-            
+            echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
             exit 1;
 
         fi
@@ -4888,11 +4862,7 @@ elif [[ "$1" == "terminate" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if command check_docker_compose_is_installed > /dev/null 2>&1; then
-
-            check_docker_compose_is_installed
-
-        else
+        if ! command check_docker_compose_is_installed > /dev/null 2>&1; then
 
             echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
             exit 1;
