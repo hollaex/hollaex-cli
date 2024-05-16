@@ -4912,12 +4912,6 @@ elif [[ "$1" == "terminate" ]]; then
 
         fi
 
-        if [[ -f "$HOLLAEX_CLI_INIT_PATH/nginx/conf.d/upstream-web.conf" ]]; then 
-
-            rm $HOLLAEX_CLI_INIT_PATH/nginx/conf.d/upstream-web.conf
-        
-        fi 
-
         
 
         docker compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml down -v --remove-orphans
