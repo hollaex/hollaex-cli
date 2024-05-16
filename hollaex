@@ -5959,7 +5959,7 @@ elif [[ "$1" == "web" ]]; then
         else 
                 
                 update_local_docker_compose_web;
-                hollaex web --restart --skip
+                docker compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client up -d;
 
         fi
 
