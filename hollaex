@@ -507,13 +507,12 @@ if [[ "$1" == "dev" ]]; then
         generate_nginx_upstream;
 
         # Checking docker-compose is installed on this machine.
-       if ! command check_docker_compose_is_installed > /dev/null 2>&1; then
+       if ! command docker compose version; then
 
-            echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
+            echo -e "\033[91mHollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI.\033[39m"
             exit 1;
 
         fi
-
         if [[ "$HOLLAEX_DEV_SETUP" ]]; then
 
             CONTINUE_WITH_PRECONFIGURED_VALUES=false         
@@ -1382,13 +1381,12 @@ elif [[ "$1" == "setup" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if ! command check_docker_compose_is_installed > /dev/null 2>&1; then
+        if ! command docker compose version; then
 
-            echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
+            echo -e "\033[91mHollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI.\033[39m"
             exit 1;
 
         fi
-
         if [[ "$HOLLAEX_CONFIGMAP_NETWORK_URL" == *"hollaex-network-nginx"* ]]; then 
 
             echo "Hollaex Network URL: $HOLLAEX_CONFIGMAP_NETWORK_URL"
@@ -2767,13 +2765,13 @@ elif [[ "$1" == "start" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if ! command check_docker_compose_is_installed > /dev/null 2>&1; then
+        if ! command docker compose version; then
 
-            echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
+            echo -e "\033[91mHollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI.\033[39m"
             exit 1;
 
         fi
-
+        
         # Exit HollaEx CLI If docker_compose 
         if [[ ! "$ENVIRONMENT_EXCHANGE_RUN_MODE" ]]; then
 
@@ -3038,13 +3036,12 @@ elif [[ "$1" == "scale" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if ! command check_docker_compose_is_installed > /dev/null 2>&1; then
+        if ! command docker compose version; then
 
-            echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
+            echo -e "\033[91mHollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI.\033[39m"
             exit 1;
 
         fi
-
         # Exit HollaEx CLI If docker_compose 
         if [[ ! "$ENVIRONMENT_EXCHANGE_RUN_MODE" ]]; then
 
@@ -3846,7 +3843,7 @@ elif [[ "$1" == "stop" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if ! command check_docker_compose_is_installed > /dev/null 2>&1; then
+        if ! command docker compose version; then
 
             echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
             exit 1;
@@ -4057,11 +4054,10 @@ elif [[ "$1" == "restart" ]]; then
         # Checking docker-compose is installed on this machine.
         if ! command docker compose version; then
 
-            echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
+            echo -e "\033[91mHollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI.\033[39m"
             exit 1;
 
         fi
-
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local;
         fi
@@ -4862,13 +4858,12 @@ elif [[ "$1" == "terminate" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if ! command check_docker_compose_is_installed > /dev/null 2>&1; then
+        if ! command docker compose version; then
 
-            echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
+            echo -e "\033[91mHollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI.\033[39m"
             exit 1;
 
         fi
-
 
         echo -e "\033[91mTHIS IS YOUR LAST CHANCE TO CANCEL IT!\033[39m\n"
 
