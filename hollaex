@@ -2623,7 +2623,7 @@ elif [[ "$1" == "start" ]]; then
     #Validate the envs
     essential_secret_validator;
 
-    kit_cross_compatibility_converter;
+    #kit_cross_compatibility_converter;
 
     # if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
 
@@ -3788,7 +3788,7 @@ elif [[ "$1" == "stop" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
-    kit_cross_compatibility_converter;
+    #kit_cross_compatibility_converter;
 
     # if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
 
@@ -4205,7 +4205,7 @@ elif [[ "$1" == "build" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
-    kit_cross_compatibility_converter;
+    #kit_cross_compatibility_converter;
 
     # Set the default HollaEx Server version as the maximum compatible version of the current release of CLI.
     export ENVIRONMENT_DOCKER_IMAGE_VERSION="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
@@ -4320,7 +4320,7 @@ elif [[ "$1" == "apply" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
-    kit_cross_compatibility_converter;
+    #kit_cross_compatibility_converter;
 
     if [[ "$IGNORE_SETTINGS" ]]; then
 
@@ -4753,7 +4753,7 @@ elif [[ "$1" == "terminate" ]]; then
     source $SCRIPTPATH/tools_generator.sh
     load_config_variables;
 
-    kit_cross_compatibility_converter;
+    #kit_cross_compatibility_converter;
 
     # if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
 
