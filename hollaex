@@ -1112,6 +1112,7 @@ elif [[ "$1" == "setup" ]]; then
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 if [[ "$1" == "amd64" ]] || [[ "$1" == "arm64v8" ]] || [[ "$1" == "s390x" ]]; then
                     export ENVIORNMENT_HOLLAEX_CPU_ARCH=$1
+                    export HOLLAEX_CROSS_ARCH_BUILD="--platform linux/$ENVIORNMENT_HOLLAEX_CPU_ARCH"
                     echo "Target CPU Arch: $ENVIORNMENT_HOLLAEX_CPU_ARCH."
                 else 
                     echo -e "\n\033[91mError: Not supported CPU arch!\033[39m"
@@ -2621,6 +2622,9 @@ elif [[ "$1" == "start" ]]; then
     #Validate the envs
     essential_secret_validator;
 
+    # exchange initialization status check & disables resource generation
+    cli_resource_generation_checker;
+
     #kit_cross_compatibility_converter;
 
     # if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then 
@@ -2777,28 +2781,6 @@ elif [[ "$1" == "start" ]]; then
 
             echo "Your ENVIRONMENT_EXCHANGE_RUN_MODE value is missing! Please reconfirm your settings files."
             exit 1;
-
-        fi 
-
-        # Update ports for local network 
-        if [[ "$ENVIRONMENT_LOCAL_NGINX_HTTP_PORT_UPDATE" ]] || [[ "$ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT_UPDATE" ]]; then 
-
-            export ENVIRONMENT_LOCAL_NGINX_HTTP_PORT=${ENVIRONMENT_LOCAL_NGINX_HTTP_PORT_UPDATE:-8081}
-            export ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT=${ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT_UPDATE:-8082}
-
-            for i in ${CONFIG_FILE_PATH[@]}; do
-
-                if command grep -q "HOLLAEX_CONFIGMAP_API_NAME=" $i > /dev/null ; then
-
-                    export CONFIGMAP_FILE_PATH=$i
-
-                fi
-
-            done
-
-            sed -i.bak "s/ENVIRONMENT_LOCAL_NGINX_HTTP_PORT=.*/ENVIRONMENT_LOCAL_NGINX_HTTP_PORT=${ENVIRONMENT_LOCAL_NGINX_HTTP_PORT}/" $CONFIGMAP_FILE_PATH;
-            sed -i.bak "s/ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT=.*/ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT=${ENVIRONMENT_LOCAL_NGINX_HTTPS_PORT}/" $CONFIGMAP_FILE_PATH;
-            rm $CONFIGMAP_FILE_PATH.bak
 
         fi 
 
@@ -4128,6 +4110,7 @@ elif [[ "$1" == "build" ]]; then
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 if [[ "$1" == "amd64" ]] || [[ "$1" == "arm64v8" ]] || [[ "$1" == "s390x" ]]; then
                     export ENVIORNMENT_HOLLAEX_CPU_ARCH=$1
+                    export HOLLAEX_CROSS_ARCH_BUILD="--platform linux/$ENVIORNMENT_HOLLAEX_CPU_ARCH"
                     echo "Target CPU Arch: $ENVIORNMENT_HOLLAEX_CPU_ARCH."
                 else 
                     echo -e "\n\033[91mError: Not supported CPU arch!\033[39m"
@@ -4209,19 +4192,6 @@ elif [[ "$1" == "build" ]]; then
     rm $CONFIGMAP_FILE_PATH.bak
 
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
-    
-    if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
-
-        export ENVIRONMENT_DOCKER_IMAGE_VERSION="${ENVIRONMENT_DOCKER_IMAGE_VERSION}-${ENVIORNMENT_HOLLAEX_CPU_ARCH:-amd64}"
-
-        ENVIRONMENT_NODE_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/Dockerfile | grep -e "FROM.*node:" | cut -f2 -d ":")
-
-        # Overriding the base image with the env value
-        sed -i.bak "s/FROM .*node.*/FROM ${ENVIORNMENT_HOLLAEX_CPU_ARCH}\/node:${ENVIRONMENT_NODE_VERSION}/" $HOLLAEX_CLI_INIT_PATH/Dockerfile
-        rm $HOLLAEX_CLI_INIT_PATH/Dockerfile.bak
-
-    fi 
-
 
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-server-${ENVIRONMENT_DOCKER_IMAGE_VERSION}-$(date +%y%m%d%H%M)"
 
@@ -4262,6 +4232,7 @@ elif [[ "$1" == "apply" ]]; then
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 if [[ "$1" == "amd64" ]] || [[ "$1" == "arm64v8" ]] || [[ "$1" == "s390x" ]]; then
                     export ENVIORNMENT_HOLLAEX_CPU_ARCH=$1
+                    export HOLLAEX_CROSS_ARCH_BUILD="--platform linux/$ENVIORNMENT_HOLLAEX_CPU_ARCH"
                     echo "Target CPU Arch: $ENVIORNMENT_HOLLAEX_CPU_ARCH."
                 else 
                     echo -e "\n\033[91mError: Not supported CPU arch!\033[39m"
@@ -4470,6 +4441,7 @@ elif [[ "$1" == "upgrade" ]]; then
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 if [[ "$1" == "amd64" ]] || [[ "$1" == "arm64v8" ]] || [[ "$1" == "s390x" ]]; then
                     export ENVIORNMENT_HOLLAEX_CPU_ARCH=$1
+                    export HOLLAEX_CROSS_ARCH_BUILD="--platform linux/$ENVIORNMENT_HOLLAEX_CPU_ARCH"
                     echo "Target CPU Arch: $ENVIORNMENT_HOLLAEX_CPU_ARCH."
                 else 
                     echo -e "\n\033[91mError: Not supported CPU arch!\033[39m"
@@ -4535,6 +4507,9 @@ elif [[ "$1" == "upgrade" ]]; then
     #     update_random_values_to_config;
 
     # fi
+
+    # exchange initialization status check & disables resource generation
+    cli_resource_generation_checker;
 
     if [[ ! "$IGNORE_COMPATIBILITY_CHECK" ]]; then
 
@@ -5015,6 +4990,7 @@ elif [[ "$1" == "web" ]]; then
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 if [[ "$1" == "amd64" ]] || [[ "$1" == "arm64v8" ]] || [[ "$1" == "s390x" ]]; then
                     export ENVIORNMENT_HOLLAEX_CPU_ARCH=$1
+                    export HOLLAEX_CROSS_ARCH_BUILD="--platform linux/$ENVIORNMENT_HOLLAEX_CPU_ARCH"
                     echo "Target CPU Arch: $ENVIORNMENT_HOLLAEX_CPU_ARCH."
                 else 
                     echo -e "\n\033[91mError: Not supported CPU arch!\033[39m"
@@ -5088,17 +5064,6 @@ elif [[ "$1" == "web" ]]; then
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/kubernetes/config" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/kubernetes/config;
         fi
-
-    fi
-
-    if [[ "$ENVIORNMENT_HOLLAEX_CPU_ARCH" ]]; then 
-
-        ENVIRONMENT_WEB_NGINX_VERSION=$(cat $HOLLAEX_CLI_INIT_PATH/web/docker/Dockerfile | grep "FROM.*nginx:" | cut -f2 -d ":")
-
-        # Overriding the base image with the env value
-        sed -i.bak "s/FROM .*nginx.*/FROM ${ENVIORNMENT_HOLLAEX_CPU_ARCH}\/nginx:${ENVIRONMENT_WEB_NGINX_VERSION}/" $HOLLAEX_CLI_INIT_PATH/web/docker/Dockerfile
-
-        rm $HOLLAEX_CLI_INIT_PATH/web/docker/Dockerfile.bak
 
     fi
 
@@ -5689,38 +5654,7 @@ elif [[ "$1" == "web" ]]; then
 
             fi
 
-            if ! command kubectl rollout restart -n $ENVIRONMENT_EXCHANGE_NAME deployment/$ENVIRONMENT_EXCHANGE_NAME-web; then
-
-                echo "Error: Failed to restart the web server. Please try again."
-
-            fi
-
-            echo "Generating web ingress rules for Kubernetes"
-            generate_kubernetes_ingress_for_web;
-
-            echo "Applying web ingress rules for Kubernetes"
-            kubectl apply -f $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
-            
-            # FOR GENERATING NODESELECTOR VALUES
-            # generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateless
-
-            echo "Restarting the $HOLLAEX_CONFIGMAP_API_NAME web server."
-            if command helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-web \
-                        --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                        --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY" \
-                        --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION" \
-                        --set stable.replicaCount="${ENVIRONMENT_WEB_SERVER_REPLICAS:-1}" \
-                        --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_WEB_HPA_ENABLE:-false}" \
-                        --set envName="$ENVIRONMENT_EXCHANGE_NAME-web-env" \
-                        --set resources.limits.cpu="${ENVIRONMENT_WEB_CPU_LIMITS:-1000m}" \
-                        --set resources.limits.memory="${ENVIRONMENT_WEB_MEMORY_LIMITS:-1024Mi}" \
-                        --set resources.requests.cpu="${ENVIRONMENT_WEB_CPU_REQUESTS:-2m}" \
-                        --set resources.requests.memory="${ENVIRONMENT_WEB_MEMORY_REQUESTS:-100Mi}" \
-                        -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateless.yaml \
-                        -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web/values.yaml $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-web; then
-
-                # Scaling up the web in case of it gets already scaled down.
-                kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-web --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+            if command kubectl rollout restart -n $ENVIRONMENT_EXCHANGE_NAME deployment/$ENVIRONMENT_EXCHANGE_NAME-web; then
 
                 echo -e "\n\033[92mSuccessfully restarted the web server on the Kubernetes!\033[39m\n"
 
@@ -7819,7 +7753,7 @@ EOL
                 --set DEPLOYMENT_MODE="api" \
                 --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                 --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                 --set job.enable=true \
                 --set job.mode=changeEmail \
@@ -8320,6 +8254,14 @@ elif [[ "$1" == "status" ]]; then
 
         kubectl get pods --namespace $ENVIRONMENT_EXCHANGE_NAME
 
+        if [[ "$HOLLAEX_CONFIGMAP_API_HOST" == *"localhost"* ]]; then
+
+            echo -e  "\nWarning: Your HollaEx Kit does not have a public domain yet."
+            echo "The health check will not be available until you apply a public domain."
+            echo -e "You can apply a public domain through 'hollaex prod --kube' command AFTER you setup a web server."
+        
+        fi
+
     fi
     
     if [[ ! "$USE_KUBERNETES" ]]; then
@@ -8334,21 +8276,22 @@ elif [[ "$1" == "status" ]]; then
 
         fi
 
+        if [[ "$(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME)" == *"nginx"* ]]; then
+
+            echo "Nginx detected on the system."
+
+        else 
+
+            echo "Nginx is NOT detected on the system."
+            echo "If you are in the middle of the initial exchange setup, then this is normal."
+            echo "If it's not, please make sure to start the Nginx container."
+            echo "Calling the localhost endpoint for the health check..."
+            export HOLLAEX_CONFIGMAP_API_HOST="localhost:10010"
+
+        fi 
+
     fi
 
-    if [[ "$(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME)" == *"nginx"* ]]; then
-
-        echo "Nginx detected on the system."
-
-    else 
-
-        echo "Nginx is NOT detected on the system."
-        echo "If you are in the middle of the initial exchange setup, then this is normal."
-        echo "If it's not, please make sure to start the Nginx container."
-        echo "Calling the localhost endpoint for the health check..."
-        export HOLLAEX_CONFIGMAP_API_HOST="localhost:10010"
-
-    fi 
 
     printf "\nCalling the exchange health page ($HOLLAEX_CONFIGMAP_API_HOST/v2/health) ...\n"
 

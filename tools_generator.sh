@@ -197,7 +197,7 @@ function kubernetes_database_init() {
                 --set DEPLOYMENT_MODE="api" \
                 --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                 --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                 --set job.enable=true \
                 --set job.mode=hollaex_upgrade \
@@ -308,7 +308,7 @@ function kubernetes_hollaex_network_database_init() {
                 --set DEPLOYMENT_MODE="api" \
                 --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                 --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                 --set job.enable=true \
                 --set job.mode=run_triggers \
@@ -1524,7 +1524,7 @@ cat > $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml <<EOL
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: ${ENVIRONMENT_EXCHANGE_NAME}-env
+  name: ${ENVIRONMENT_EXCHANGE_NAME}-configmap
   namespace: ${ENVIRONMENT_EXCHANGE_NAME}
 data:
   DB_DIALECT: postgres
@@ -2302,7 +2302,7 @@ function helm_dynamic_trading_paris() {
                    --set PAIR="$TRADE_PARIS_DEPLOYMENT" \
                    --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                    --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                   --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                   --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
                    --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                    --set resources.limits.cpu="${ENVIRONMENT_KUBERNETES_ENGINE_CPU_LIMITS:-500m}" \
                    --set resources.limits.memory="${ENVIRONMENT_KUBERNETES_ENGINE_MEMORY_LIMITS:-1024Mi}" \
@@ -2767,7 +2767,7 @@ function hollaex_prod_complete() {
 
     Your Exchange has been setup for production!
 
-    Please run 'hollaex server --restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' and 'hollaex web --build' with 'hollaex web --apply --tag <YOUR_TAG>'
+    Please run 'hollaex server --restart$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' and 'hollaex web --build$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' with 'hollaex web --apply --tag <YOUR_TAG> $(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)'
     to apply the changes you made.
 
     For the web, You should rebuild the Docker image to apply the changes.
@@ -3130,7 +3130,7 @@ function build_user_hollaex_core() {
     # Preparing HollaEx Server image with custom mail configurations
     echo "Building the user HollaEx Server image with user custom Kit setups."
 
-    if command docker build -t $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION -f $HOLLAEX_CLI_INIT_PATH/Dockerfile $HOLLAEX_CLI_INIT_PATH; then
+    if command docker build ${HOLLAEX_CROSS_ARCH_BUILD} -t $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION -f $HOLLAEX_CLI_INIT_PATH/Dockerfile $HOLLAEX_CLI_INIT_PATH; then
 
         echo "Your custom HollaEx Server image has been successfully built."
 
@@ -3302,7 +3302,7 @@ function build_user_hollaex_web() {
   echo "Generating .env for Web Client"
   generate_hollaex_web_local_env
 
-  if command docker build -t $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION -f $HOLLAEX_CLI_INIT_PATH/web/docker/Dockerfile $HOLLAEX_CLI_INIT_PATH/web; then
+  if command docker build ${HOLLAEX_CROSS_ARCH_BUILD} -t $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION -f $HOLLAEX_CLI_INIT_PATH/web/docker/Dockerfile $HOLLAEX_CLI_INIT_PATH/web; then
 
       echo "Your custom HollaEx Web image has been successfully built."
 
@@ -3776,7 +3776,7 @@ EOL
                             --set DEPLOYMENT_MODE="api" \
                             --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                             --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
                             --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                             -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server/values.yaml \
@@ -3852,7 +3852,7 @@ EOL
                             --wait \
                             --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                             --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
                             --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                             -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server/values.yaml \
@@ -3933,7 +3933,7 @@ EOL
                             --set DEPLOYMENT_MODE="api" \
                             --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                             --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
                             --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                             -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server/values.yaml \
@@ -4140,7 +4140,7 @@ EOL
                 --set DEPLOYMENT_MODE="api" \
                 --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                 --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                 -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server/values.yaml \
@@ -5058,7 +5058,7 @@ function run_and_upgrade_hollaex_on_kubernetes() {
                     --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
                     --set stable.replicaCount="${ENVIRONMENT_API_SERVER_REPLICAS:-1}" \
                     --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_API_HPA_ENABLE:-false}" \
-                    --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                    --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
                     --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                     --set resources.limits.cpu="${ENVIRONMENT_API_CPU_LIMITS:-1000m}" \
                     --set resources.limits.memory="${ENVIRONMENT_API_MEMORY_LIMITS:-1536Mi}" \
@@ -5078,7 +5078,7 @@ function run_and_upgrade_hollaex_on_kubernetes() {
               --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
               --set stable.replicaCount="${ENVIRONMENT_STREAM_SERVER_REPLICAS:-1}" \
               --set autoScaling.hpa.enable="${ENVIRONMENT_KUBERNETES_STREAM_HPA_ENABLE:-false}" \
-              --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+              --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
               --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
               --set resources.limits.cpu="${ENVIRONMENT_STREAM_CPU_LIMITS:-1000m}" \
               --set resources.limits.memory="${ENVIRONMENT_STREAM_MEMORY_LIMITS:-1536Mi}" \
@@ -5096,7 +5096,7 @@ function run_and_upgrade_hollaex_on_kubernetes() {
                      --set DEPLOYMENT_MODE="plugins" \
                      --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                      --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                     --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                     --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
                      --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                      --set resources.limits.cpu="${ENVIRONMENT_PLUGINS_CPU_LIMITS:-500m}" \
                      --set resources.limits.memory="${ENVIRONMENT_PLUGINS_MEMORY_LIMITS:-1200Mi}" \
@@ -5812,7 +5812,7 @@ EOL
                             --set DEPLOYMENT_MODE="api" \
                             --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                             --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
                             --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                             -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server/values.yaml \
@@ -6087,7 +6087,7 @@ function remove_coin_exec() {
                 --set DEPLOYMENT_MODE="api" \
                 --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                 --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                 -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server/values.yaml \
@@ -6532,7 +6532,7 @@ EOL
                 --set DEPLOYMENT_MODE="api" \
                 --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                 --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                 -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server/values.yaml \
@@ -6621,7 +6621,7 @@ EOL
                     --set PAIR="$(echo ${!PAIR_CODE_OVERRIDE})" \
                     --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                     --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                    --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                    --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
                     --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                     --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
                     -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
@@ -6818,7 +6818,7 @@ function remove_pair_exec() {
                 --set DEPLOYMENT_MODE="api" \
                 --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                 --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
                 --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                 -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                 -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server/values.yaml \
@@ -7018,7 +7018,7 @@ EOL
                             --set DEPLOYMENT_MODE="api" \
                             --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                             --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
                             --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                             -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server/values.yaml \
@@ -7146,7 +7146,7 @@ EOL
                             --set DEPLOYMENT_MODE="api" \
                             --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                             --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
                             --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                             -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server/values.yaml \
@@ -7351,7 +7351,7 @@ EOL
                             --set DEPLOYMENT_MODE="api" \
                             --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                             --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
                             --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                             -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server/values.yaml \
@@ -7483,7 +7483,7 @@ EOL
                             --set DEPLOYMENT_MODE="api" \
                             --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                             --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                            --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
                             --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                             -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
                             -f $SCRIPTPATH/kubernetes/helm-chart/hollaex-network-server/values.yaml \
@@ -7545,7 +7545,7 @@ EOL
                   --set PAIR=$PAIR_CODE \
                   --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
                   --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                  --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+                  --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
                   --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                   --set podRestart_webhook_url="$ENVIRONMENT_KUBERNETES_RESTART_NOTIFICATION_WEBHOOK_URL" \
                   -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
@@ -7757,5 +7757,35 @@ function essential_secret_validator() {
   done
 
   echo "All good!"
+
+}
+
+function cli_resource_generation_checker() {
+
+  if [[ -z $(pwd)/.hollaex ]]; then
+
+    echo "Disabling the CLI file generation since the exchange has been initialized without the CLI."
+    
+    export ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE=false
+    export ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE=false
+    export ENVIRONMENT_DOCKER_COMPOSE_GENERATE_NGINX_UPSTREAM=false
+
+    export ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE=false
+    export ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE=false
+    export ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE=false
+
+     for i in ${CONFIG_FILE_PATH[@]}; do
+
+      if command grep -q "ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" $i > /dev/null ; then
+        CONFIGMAP_FILE_PATH=$i
+        sed -i.bak "s/ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE=.*/ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE=false/" $CONFIGMAP_FILE_PATH
+        sed -i.bak "s/ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE=.*/ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE=false/" $CONFIGMAP_FILE_PATH
+        sed -i.bak "s/ENVIRONMENT_DOCKER_COMPOSE_GENERATE_NGINX_UPSTREAM=.*/ENVIRONMENT_DOCKER_COMPOSE_GENERATE_NGINX_UPSTREAM=false/" $CONFIGMAP_FILE_PATH
+        sed -i.bak "s/ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE=.*/ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE=false/" $CONFIGMAP_FILE_PATH
+        sed -i.bak "s/ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE=.*/ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE=false/" $CONFIGMAP_FILE_PATH
+        sed -i.bak "s/ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE=.*/ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE=false/" $CONFIGMAP_FILE_PATH
+      fi
+      
+    done
 
 }
