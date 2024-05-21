@@ -2353,6 +2353,12 @@ function override_user_hollaex_core() {
 
   rm $CONFIGMAP_FILE_PATH.bak
 
+  yq e -i ".services.*-server-*.image = \"$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION\"" $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml
+  # Updating the local values.yaml file to point the latest image version
+  yq e -i ".dockerTag = \"$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION\"" $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server/values.yaml
+  yq e -i ".imageRegistry = \"$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY\"" $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server/values.yaml
+
+
 }
 
 function override_user_hollaex_web() {
@@ -2368,6 +2374,13 @@ function override_user_hollaex_web() {
     fi
     
   done
+
+  # Updating the local values.yaml file to point the latest image version
+  yq e -i ".services.hollaex-kit-web.image = \"$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE\"" $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml
+
+  # Updating the local values.yaml file to point the latest image version
+  yq e -i ".dockerTag = \"$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE\"" $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/helm-chart/hollaex-kit-web/values.yaml
+  yq e -i ".imageRegistry = \"$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE\"" $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/helm-chart/hollaex-kit-web/values.yaml
 
   rm $CONFIGMAP_FILE_PATH.bak
 
@@ -3119,11 +3132,12 @@ function build_user_hollaex_core() {
 
   fi 
 
-  if [[ ! "$GIT_BRANCH" == "master" ]] && [[ ! "$GIT_BRANCH" == "testnet" ]]; then 
+  if [[ ! "$GIT_BRANCH" == "master" ]] && [[ ! "$GIT_BRANCH" == "testnet" ]] && [[ ! "$GIT_BRANCH" == "cli-deprecation" ]]; then 
 
     local UNSUPPORTED_GIT_BRANCH=true
 
   fi 
+
 
   if [[ "$CUSTOM_GIT_REMOTE_URL" ]] || [[ "$UNSUPPORTED_GIT_BRANCH" ]] || [[ "$LOCAL_BUILD" ]]; then
 
@@ -5127,6 +5141,10 @@ function run_and_upgrade_hollaex_on_kubernetes() {
 
     # Running database job for Kubernetes
     kubernetes_database_init upgrade;
+
+    # Updating the local values.yaml file to point the latest image version
+    yq e -i ".dockerTag = \"$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION\"" $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server/values.yaml
+    yq e -i ".imageRegistry = \"$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY\"" $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server/values.yaml
 
   fi
 
@@ -7762,7 +7780,7 @@ function essential_secret_validator() {
 
 function cli_resource_generation_checker() {
 
-  if [[ -z $(pwd)/.hollaex ]]; then
+  if [[ -z $HOLLAEX_SECRET_ACTIVATION_CODE ]]; then
 
     echo "Disabling the CLI file generation since the exchange has been initialized without the CLI."
     
@@ -7778,14 +7796,17 @@ function cli_resource_generation_checker() {
 
       if command grep -q "ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE" $i > /dev/null ; then
         CONFIGMAP_FILE_PATH=$i
-        sed -i.bak "s/ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE=.*/ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE=false/" $CONFIGMAP_FILE_PATH
+        sed -i.bak "s/ENVIRONMNT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE=.*/ENVIRONMENT_DOCKER_COMPOSE_GENERATE_ENV_ENABLE=false/" $CONFIGMAP_FILE_PATH
         sed -i.bak "s/ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE=.*/ENVIRONMENT_DOCKER_COMPOSE_GENERATE_YAML_ENABLE=false/" $CONFIGMAP_FILE_PATH
         sed -i.bak "s/ENVIRONMENT_DOCKER_COMPOSE_GENERATE_NGINX_UPSTREAM=.*/ENVIRONMENT_DOCKER_COMPOSE_GENERATE_NGINX_UPSTREAM=false/" $CONFIGMAP_FILE_PATH
         sed -i.bak "s/ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE=.*/ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE=false/" $CONFIGMAP_FILE_PATH
         sed -i.bak "s/ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE=.*/ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE=false/" $CONFIGMAP_FILE_PATH
         sed -i.bak "s/ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE=.*/ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE=false/" $CONFIGMAP_FILE_PATH
+        rm $CONFIGMAP_FILE_PATH.bak
       fi
       
     done
+
+  fi 
 
 }

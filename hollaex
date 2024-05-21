@@ -1424,15 +1424,10 @@ elif [[ "$1" == "setup" ]]; then
 
         generate_local_env
 
-        if [[ "$HOLLAEX_NETWORK_SETUP" ]]; then
+     
 
-            generate_nginx_upstream_for_network
-        
-        else 
+        generate_nginx_upstream
 
-            generate_nginx_upstream
-
-        fi 
 
         apply_nginx_user_defined_values
 
@@ -4279,13 +4274,15 @@ elif [[ "$1" == "apply" ]]; then
     fi
     
     
+    source $SCRIPTPATH/tools_generator.sh
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
     done;
-    
-    source $SCRIPTPATH/tools_generator.sh
+    cli_resource_generation_checker;
+
     load_config_variables;
+    
 
     #kit_cross_compatibility_converter;
 
@@ -4298,17 +4295,7 @@ elif [[ "$1" == "apply" ]]; then
     fi 
 
     ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY=${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY}
-
-    if [[ "$HOLLAEX_NETWORK_UPGRADE" ]]; then 
-        
-        ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=$(check_latest_hollaex_network_docker_tag)
-        echo "Latest HollaEx Network Version: v$HOLLAEX_CORE_USER_APPLY_TAG."
-
-    else 
-
-        ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
-
-    fi 
+    ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION=${ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE:-$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION}
 
     if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
@@ -5039,6 +5026,9 @@ elif [[ "$1" == "web" ]]; then
     fi
     
     source $SCRIPTPATH/tools_generator.sh
+
+    cli_resource_generation_checker;
+
     load_config_variables;
 
     # Setting web operation enabled command to true.
@@ -5815,9 +5805,10 @@ elif [[ "$1" == "web" ]]; then
 
         if [[ "$USE_KUBERNETES" ]]; then
 
-            echo "Generating web ingress rules for Kubernetes"
-            generate_kubernetes_ingress_for_web;
-
+            if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == "true" ]]; then 
+                echo "Generating web ingress rules for Kubernetes"
+                generate_kubernetes_ingress_for_web;
+            fi
             echo "Applying web ingress rules for Kubernetes"
             kubectl apply -f $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
             
