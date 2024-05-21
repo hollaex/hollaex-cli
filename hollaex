@@ -2615,7 +2615,7 @@ elif [[ "$1" == "start" ]]; then
     load_config_variables;
 
     #Validate the envs
-    essential_secret_validator;
+    # essential_secret_validator;
 
     # exchange initialization status check & disables resource generation
     cli_resource_generation_checker;
