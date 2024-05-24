@@ -2376,7 +2376,7 @@ function override_user_hollaex_web() {
   done
 
   # Updating the local values.yaml file to point the latest image version
-  yq e -i ".services.hollaex-kit-web.image = \"$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE\"" $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml
+  yq e -i ".services.*.image = \"$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE\"" $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml
 
   # Updating the local values.yaml file to point the latest image version
   yq e -i ".dockerTag = \"$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE\"" $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/helm-chart/hollaex-kit-web/values.yaml
