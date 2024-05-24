@@ -5259,15 +5259,15 @@ elif [[ "$1" == "web" ]]; then
 
         elif [[ ! "$USE_KUBERNETES" ]]; then
 
-            if ! command docker images | grep hollaex-kit-web > /dev/null; then
+            # if ! command docker images | grep hollaex-kit-web > /dev/null; then
 
-                echo "Error: Can't detect built web docker image on this machine!"
-                echo "If this is your first time launching the web server, please run 'hollaex web --setup' instead."
-                echo "You can also build the image manually by using 'hollaex web --build' command."
+            #     echo "Error: Can't detect built web docker image on this machine!"
+            #     echo "If this is your first time launching the web server, please run 'hollaex web --setup' instead."
+            #     echo "You can also build the image manually by using 'hollaex web --build' command."
 
-                exit 1;
+            #     exit 1;
               
-            fi
+            # fi
 
             # Checking docker-compose is installed on this machine.
             check_docker_compose_is_installed;
