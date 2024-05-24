@@ -24,8 +24,6 @@
 
 # hollaex_ascii_cli_is_deprecated;
 
-sleep 1;
-
 ############################
 
 SCRIPTPATH="$HOME/.hollaex-cli"
@@ -43,27 +41,15 @@ DOCKER_COMPOSE_NAME_PREFIX='local_'
 DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR="_"
 
 # Docker compose v2+ compatibility prefiexes
-if [[ ! "$(docker compose version)" == *"1."* ]]; then
+if command docker compose version; then
 
+    echo "Docker Compose v2 Detected."
     # export DOCKER_COMPOSE_NAME_PREFIX="server-"
     export DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR="-"
 
 fi
 
 INIT_PATH_CHECK=$(pwd)/.hollaex
-
-# Setting the mode to hollaex network operation
-if [[ "$1" == "network" ]]; then 
-
-    export HOLLAEX_NETWORK_OPERATION=true
-
-fi
-
-if [[ "$1" == "network" ]] && [[ "$2" == "--setup" ]]; then
-    
-    export HOLLAEX_NETWORK_SETUP=true
-
-fi 
 
 if [[ ! -f "$INIT_PATH_CHECK" ]] && [[ ! "$HOLLAEX_NETWORK_OPERATION" ]] && [[ ! "$1" == "version" ]]; then 
 
