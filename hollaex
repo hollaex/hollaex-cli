@@ -43,7 +43,7 @@ DOCKER_COMPOSE_NAME_PREFIX='local_'
 DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR="_"
 
 # Docker compose v2+ compatibility prefiexes
-if [[ ! "$(check_docker_compose_is_installed 2>&1)" == *"check_docker_compose_is_installed 1."* ]]; then
+if [[ ! "$(check_docker_compose_is_installed)" == *"1."* ]]; then
 
     # export DOCKER_COMPOSE_NAME_PREFIX="server-"
     export DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR="-"
