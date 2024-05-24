@@ -6710,7 +6710,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
         echo "Issuing SSL..."
 
-        if command docker exec -it $(docker ps | grep -prod-nginx | cut -f1 -d " ") certbot --nginx; then
+        if command docker exec -it $(docker ps | grep .*-prod-nginx | cut -f1 -d " ") certbot --nginx; then
             
             echo "SSL cert has been successfully set."
             echo "All the Let's encrypt related files can be found at ./templates/local/letsencrypt."
