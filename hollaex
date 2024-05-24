@@ -41,7 +41,7 @@ DOCKER_COMPOSE_NAME_PREFIX='local_'
 DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR="_"
 
 # Docker compose v2+ compatibility prefiexes
-if command docker compose version; then
+if command docker compose version > /dev/null; then
 
     echo "Docker Compose v2 Detected."
     # export DOCKER_COMPOSE_NAME_PREFIX="server-"
