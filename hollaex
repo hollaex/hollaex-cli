@@ -45,6 +45,7 @@ if command docker compose version > /dev/null; then
 
     echo "Docker Compose v2 Detected."
     # export DOCKER_COMPOSE_NAME_PREFIX="server-"
+    DOCKER_COMPOSE_NAME_PREFIX='local-'
     export DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR="-"
 
 fi
