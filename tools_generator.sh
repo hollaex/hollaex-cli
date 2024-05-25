@@ -3132,7 +3132,7 @@ function build_user_hollaex_core() {
 
   fi 
 
-  if [[ ! "$GIT_BRANCH" == "master" ]] && [[ ! "$GIT_BRANCH" == "testnet" ]] && [[ ! "$GIT_BRANCH" == "cli-deprecation" ]]; then 
+  if [[ ! "$GIT_BRANCH" == "master" ]] && [[ ! "$GIT_BRANCH" == "testnet" ]] && [[ ! "$GIT_BRANCH" == "cli-deprecationn" ]]; then 
 
     local UNSUPPORTED_GIT_BRANCH=true
 
