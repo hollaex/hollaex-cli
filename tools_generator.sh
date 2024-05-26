@@ -5011,7 +5011,7 @@ function run_and_upgrade_hollaex_on_kubernetes() {
   # Running & Upgrading Databases
   if [[ "$ENVIRONMENT_KUBERNETES_RUN_REDIS" == true ]]; then
 
-      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-prod-redis \
+      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-redis \
                   --namespace $ENVIRONMENT_EXCHANGE_NAME \
                   --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                   --set resources.limits.cpu="${ENVIRONMENT_REDIS_CPU_LIMITS:-100m}" \
@@ -5022,7 +5022,7 @@ function run_and_upgrade_hollaex_on_kubernetes() {
   
   fi
 
-  if [[ "$ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB" == true ]]; then
+  if [[ "$ENVIRONMENT_KUBERNETES_RUN_POSTGRESQL_DB" == true ]] && [[ "$HOLLAEX_IS_SETUP" == true ]]; then
 
       # generate_nodeselector_values $ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_NODESELECTOR postgresql
 
@@ -5043,22 +5043,24 @@ function run_and_upgrade_hollaex_on_kubernetes() {
 
       fi
 
-      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-prod-db \
-                  --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                  --wait \
-                  --set pvc.create=true \
-                  --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" \
-                  --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" \
-                  --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                  --set resources.limits.cpu="${ENVIRONMENT_POSTGRESQL_CPU_LIMITS:-100m}" \
-                  --set resources.limits.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_LIMITS:-200Mi}" \
-                  --set resources.requests.cpu="${ENVIRONMENT_POSTGRESQL_CPU_REQUESTS:-10m}" \
-                  --set resources.requests.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_REQUESTS:-100Mi}" \
-                  $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-postgres
+  
 
-                  echo "Waiting until the database to be fully initialized"
-                  sleep 60
+      helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-db \
+                --namespace $ENVIRONMENT_EXCHANGE_NAME \
+                --wait \
+                --set pvc.create=true \
+                --set pvc.name="$ENVIRONMENT_EXCHANGE_NAME-postgres-volume" \
+                --set pvc.size="$ENVIRONMENT_KUBERNETES_POSTGRESQL_DB_VOLUMESIZE" \
+                --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+                --set resources.limits.cpu="${ENVIRONMENT_POSTGRESQL_CPU_LIMITS:-100m}" \
+                --set resources.limits.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_LIMITS:-200Mi}" \
+                --set resources.requests.cpu="${ENVIRONMENT_POSTGRESQL_CPU_REQUESTS:-10m}" \
+                --set resources.requests.memory="${ENVIRONMENT_POSTGRESQL_MEMORY_REQUESTS:-100Mi}" \
+                $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-postgres
 
+      echo "Waiting until the database to be fully initialized"
+      sleep 60
+      
   fi
         
   # FOR GENERATING NODESELECTOR VALUES

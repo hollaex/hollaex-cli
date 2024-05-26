@@ -2618,7 +2618,7 @@ elif [[ "$1" == "start" ]]; then
         if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
             echo "Scaling up containers on the cluster..."
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-prod-redis --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
             kubectl scale deployment/$HOLLAEX_SECRET_DB_HOST --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
@@ -3716,9 +3716,9 @@ elif [[ "$1" == "stop" ]]; then
 
         echo "Scaling down backend components..."
 
-        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-prod-redis --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
+        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-prod-db --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
+        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-db --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
         hollaex_ascii_exchange_has_been_stopped;
 
@@ -6303,7 +6303,7 @@ elif [[ "$1" == "toolbox" ]]; then
                 echo "Upgrading Redis"
                 # generate_nodeselector_values $ENVIRONMENT_KUBERNETES_REDIS_NODESELECTOR redis
 
-                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-prod-redis \
+                helm upgrade --install $ENVIRONMENT_EXCHANGE_NAME-redis \
                         --namespace $ENVIRONMENT_EXCHANGE_NAME \
                         --set setAuth.secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
                         --set resources.limits.cpu="${ENVIRONMENT_REDIS_CPU_LIMITS:-100m}" \
@@ -7117,12 +7117,12 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if ! check_kubernetes_dependencies; then exit 1; fi;
 
-            if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 && command kubectl get pods -n $ENVIRONMENT_EXCHANGE_NAME -l app=$ENVIRONMENT_EXCHANGE_NAME-prod-redis > /dev/null 2>&1; then
+            if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 && command kubectl get pods -n $ENVIRONMENT_EXCHANGE_NAME -l app=$ENVIRONMENT_EXCHANGE_NAME-redis > /dev/null 2>&1; then
 
                 echo "Successfully detected the Redis created by HollaEx CLI."
                 echo "Opening kube-proxy tunnel for Redis connection..."
 
-                kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-prod-redis" -o name | sed 's/pod\///' | head -n 1) 6379:6379 &
+                kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-redis" -o name | sed 's/pod\///' | head -n 1) 6379:6379 &
                 sleep 5;
                 
                 echo "Opening local proxy on 6379 port of your machine..."
@@ -7148,7 +7148,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
             check_docker_compose_is_installed;
 
-            if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-prod-redis > /dev/null 2>&1; then
+            if command docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-redis > /dev/null 2>&1; then
 
                 echo "Successfully detected the Redis created by HollaEx CLI."
 
