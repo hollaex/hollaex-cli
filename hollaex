@@ -721,7 +721,7 @@ elif [[ "$1" == "init" ]]; then
         for i in ${CONFIG_FILE_PATH[@]}; do
             if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
                 CONFIGMAP_FILE_PATH=$i
-                sed -i.bak "s/ENVIRONMENT_EXCHANGE_NAME=.*/ENVIRONMENT_EXCHANGE_NAME=hollaex-kit/" $CONFIGMAP_FILE_PATH
+                # sed -i.bak "s/ENVIRONMENT_EXCHANGE_NAME=.*/ENVIRONMENT_EXCHANGE_NAME=hollaex-kit/" $CONFIGMAP_FILE_PATH
                 sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=.*/HOLLAEX_CONFIGMAP_API_NAME=$hollaexExchangeName/" $CONFIGMAP_FILE_PATH
                 sed -i.bak "s/HOLLAEX_CONFIGMAP_NETWORK_URL=.*/HOLLAEX_CONFIGMAP_NETWORK_URL=$hollaexAPIURLEscaped/" $CONFIGMAP_FILE_PATH
 
@@ -873,7 +873,7 @@ elif [[ "$1" == "init" ]]; then
             for i in ${CONFIG_FILE_PATH[@]}; do
                 if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
                     CONFIGMAP_FILE_PATH=$i
-                    sed -i.bak "s/ENVIRONMENT_EXCHANGE_NAME=.*/ENVIRONMENT_EXCHANGE_NAME=hollaex-kit/" $CONFIGMAP_FILE_PATH
+                    # sed -i.bak "s/ENVIRONMENT_EXCHANGE_NAME=.*/ENVIRONMENT_EXCHANGE_NAME=hollaex-kit/" $CONFIGMAP_FILE_PATH
                     sed -i.bak "s/HOLLAEX_CONFIGMAP_API_NAME=.*/HOLLAEX_CONFIGMAP_API_NAME=$hollaexExchangeName/" $CONFIGMAP_FILE_PATH
                     sed -i.bak "s/HOLLAEX_CONFIGMAP_NETWORK_URL=.*/HOLLAEX_CONFIGMAP_NETWORK_URL=$hollaexAPIURLEscaped/" $CONFIGMAP_FILE_PATH
 
@@ -1518,7 +1518,7 @@ EOL
             fi
         done
 
-        export ENVIRONMENT_EXCHANGE_NAME=hollaex-kit
+        export ENVIRONMENT_EXCHANGE_NAME=$exchangeNameParsed
 
     fi 
 
@@ -1768,7 +1768,7 @@ elif [[ "$1" == "export" ]]; then
                 fi
             done
 
-            export ENVIRONMENT_EXCHANGE_NAME=hollaex-kit
+            export ENVIRONMENT_EXCHANGE_NAME=$exchangeNameParsed
 
         fi
 
@@ -3491,52 +3491,49 @@ elif [[ "$1" == "prod" ]]; then
             
             fi 
 
-            if [[ ! "$HOLLAEX_NETWORK_PROD" ]]; then 
+            echo "Do you want to enable cert-manager based SSL for Web server? (Y/n)"
+            read answer
 
-                echo "Do you want to enable cert-manager based SSL for Web server? (Y/n)"
-                read answer
+            if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
+            
+                echo "Skipping to enable SSL for Web server..."
 
-                if [[ ! "$answer" = "${answer#[Nn]}" ]]; then
-                
-                    echo "Skipping to enable SSL for Web server..."
-
-                    if command grep -q "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB" $CONFIGMAP_FILE_PATH > /dev/null ; then
-                
-                        echo "Updating the existing ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB value..."
-                        sed -i.bak "s/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=.*/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=false/" $CONFIGMAP_FILE_PATH
-                        rm $CONFIGMAP_FILE_PATH.bak
-
-                    else 
-
-                        echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB is missing on your settings file. Adding it now..."
-                        echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=false" >> $CONFIGMAP_FILE_PATH
-
-                    fi
+                if command grep -q "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB" $CONFIGMAP_FILE_PATH > /dev/null ; then
+            
+                    echo "Updating the existing ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB value..."
+                    sed -i.bak "s/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=.*/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=false/" $CONFIGMAP_FILE_PATH
+                    rm $CONFIGMAP_FILE_PATH.bak
 
                 else 
 
-                    export ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=true
+                    echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB is missing on your settings file. Adding it now..."
+                    echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=false" >> $CONFIGMAP_FILE_PATH
 
-                    if command grep -q "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB" $CONFIGMAP_FILE_PATH > /dev/null ; then
-                
-                        echo "Updating the existing ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB value..."
-                        sed -i.bak "s/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=.*/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=true/" $CONFIGMAP_FILE_PATH
-                        rm $CONFIGMAP_FILE_PATH.bak
+                fi
 
-                    else 
+            else 
 
-                        echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB is missing on your settings file. Adding it now..."
-                        echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=true" >> $CONFIGMAP_FILE_PATH
+                export ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=true
 
-                    fi
+                if command grep -q "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB" $CONFIGMAP_FILE_PATH > /dev/null ; then
+            
+                    echo "Updating the existing ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB value..."
+                    sed -i.bak "s/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=.*/ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=true/" $CONFIGMAP_FILE_PATH
+                    rm $CONFIGMAP_FILE_PATH.bak
 
-                    printf "\n"
-                    echo "✔"
-                    printf "\n"
-                
-                fi 
+                else 
+
+                    echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB is missing on your settings file. Adding it now..."
+                    echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=true" >> $CONFIGMAP_FILE_PATH
+
+                fi
+
+                printf "\n"
+                echo "✔"
+                printf "\n"
             
             fi 
+  
         
         fi
 
@@ -3557,35 +3554,56 @@ elif [[ "$1" == "prod" ]]; then
             # Update exchange name
             if command grep -q "ENVIRONMENT_EXCHANGE_NAME" $i > /dev/null ; then
                 CONFIGMAP_FILE_PATH=$i
-                if [[ ! "$HOLLAEX_NETWORK_PROD" ]]; then 
-                    sed -i.bak "s/HOLLAEX_CONFIGMAP_DOMAIN=.*/HOLLAEX_CONFIGMAP_DOMAIN=$PARSED_INPUT_HOLLAEX_CONFIGMAP_DOMAIN/" $CONFIGMAP_FILE_PATH
-                fi 
+                sed -i.bak "s/HOLLAEX_CONFIGMAP_DOMAIN=.*/HOLLAEX_CONFIGMAP_DOMAIN=$PARSED_INPUT_HOLLAEX_CONFIGMAP_DOMAIN/" $CONFIGMAP_FILE_PATH
                 sed -i.bak "s/HOLLAEX_CONFIGMAP_API_HOST=.*/HOLLAEX_CONFIGMAP_API_HOST=$PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST/" $CONFIGMAP_FILE_PATH
                 rm $CONFIGMAP_FILE_PATH.bak
             fi
             
         done
 
+        # Updating the env directly & apply
+        if [[ "$USE_KUBERNETES" ]]; then
 
-        for i in ${CONFIG_FILE_PATH[@]}; do
-            source $i
-        done;
+            # yq update hollaex kit configmap - DOMAIN and API_HOST
+            yq e -i ".data.API_HOST = \"$INPUT_HOLLAEX_CONFIGMAP_API_HOST_WITH_HTTPS\"" $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
+            yq e -i ".data.DOMAIN = \"$INPUT_HOLLAEX_CONFIGMAP_DOMAIN_WITH_HTTPS\"" $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
 
-        echo "Generating Kubernetes Ingress"
+            # kubectl apply
+            echo "Updating the configmap..."
+            kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
 
-        if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+            # Direct Ingress file update with yq
+            yq e -i ".spec.rules[0].host = \"$INPUT_HOLLAEX_CONFIGMAP_DOMAIN\"" $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
+            yq e -i ".spec.tls[0].hosts[0] = \"$INPUT_HOLLAEX_CONFIGMAP_DOMAIN\"" $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
-            generate_kubernetes_ingress;
-        
-        else 
 
-            generate_kubernetes_ingress_2_4;
+
+        elif [[ ! "$USE_KUBERNETES" ]]; then 
+
+            # .env update hollaex kit - API_HOST
+            sed -i.bak "s/DOMAIN=.*/DOMAIN=$PARSED_INPUT_HOLLAEX_CONFIGMAP_DOMAIN/" $HOLLAEX_CLI_INIT_PATH/server/hollaex-kit.env
+            sed -i.bak "s/API_HOST=.*/API_HOST=$PARSED_INPUT_HOLLAEX_CONFIGMAP_API_HOST/" $HOLLAEX_CLI_INIT_PATH/server/hollaex-kit.env
+            rm $HOLLAEX_CLI_INIT_PATH/server/hollaex-kit.env.bak
 
         fi
 
-    fi
+        # for i in ${CONFIG_FILE_PATH[@]}; do
+        #     source $i
+        # done;
+        
+        # echo "Generating Kubernetes Ingress"
 
-  
+        # if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+
+        #     generate_kubernetes_ingress;
+        
+        # else 
+
+        #     generate_kubernetes_ingress_2_4;
+
+        # fi
+
+    fi
 
     # apply_nginx_root_domain_to_web;
 
