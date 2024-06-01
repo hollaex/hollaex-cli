@@ -2353,10 +2353,10 @@ function override_user_hollaex_core() {
 
   rm $CONFIGMAP_FILE_PATH.bak
 
-  yq e -i ".services.*-server-*.image = \"$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION\"" $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml
+  yq e -i ".services.*-server-*.image = \"$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE\"" $HOLLAEX_CLI_INIT_PATH/server/docker-compose-prod.yaml
   # Updating the local values.yaml file to point the latest image version
-  yq e -i ".dockerTag = \"$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION\"" $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server/values.yaml
-  yq e -i ".imageRegistry = \"$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY\"" $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server/values.yaml
+  yq e -i ".dockerTag = \"$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE\"" $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server/values.yaml
+  yq e -i ".imageRegistry = \"$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE\"" $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server/values.yaml
 
 
 }
