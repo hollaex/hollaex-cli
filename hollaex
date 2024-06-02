@@ -3507,7 +3507,7 @@ elif [[ "$1" == "prod" ]]; then
                 else 
 
                     echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB is missing on your settings file. Adding it now..."
-                    echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=false" >> $CONFIGMAP_FILE_PATH
+                    echo -e "\nENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=false" >> $CONFIGMAP_FILE_PATH
 
                 fi
 
@@ -3524,7 +3524,7 @@ elif [[ "$1" == "prod" ]]; then
                 else 
 
                     echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB is missing on your settings file. Adding it now..."
-                    echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=true" >> $CONFIGMAP_FILE_PATH
+                    echo -e "\nENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_WEB=true" >> $CONFIGMAP_FILE_PATH
 
                 fi
 
