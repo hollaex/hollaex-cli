@@ -13,7 +13,7 @@ spec:
         spec:
           containers:
           - name: postgres-backup-to-s3
-            image: bitholla/postgres-s3-backup-cronjob:psql15-awscli
+            image: bitholla/postgres-s3-backup-cronjob:psql16-s3cmd
             env:
             - name: AWS_BUCKET
               value: {{.Values.awsBucket}}
@@ -50,9 +50,17 @@ spec:
             - /bin/sh
             - -c
             {{- if eq .Values.pgdumpMode "pg_dumpall" }}
-            - export TZ=$TIMEZONE_SET && export TIMESTAMP="$(date +%y%m%d%H%M)" && pg_dumpall > {{.Release.Namespace}}-$TIMESTAMP.dump && echo successfullly dumped "{{.Release.Namespace}}-$TIMESTAMP, Now pushing it to S3." && ls -al && aws s3 cp {{.Release.Namespace}}-$TIMESTAMP.dump s3://$AWS_BUCKET/backup/{{.Release.Namespace}}-postgres/{{.Release.Namespace}}-$TIMESTAMP.dump
+            - export TZ=$TIMEZONE_SET && export TIMESTAMP="$(date +%y%m%d%H%M)" && pg_dumpall > {{.Release.Namespace}}-$TIMESTAMP.dump && echo successfullly dumped "{{.Release.Namespace}}-$TIMESTAMP, Now pushing it to S3." && tar -czvf {{.Release.Namespace}}-$TIMESTAMP.dump.tar.gz {{.Release.Namespace}}-$TIMESTAMP.dump && ls -al && s3cmd put {{.Release.Namespace}}-$TIMESTAMP.dump.tar.gz s3://$AWS_BUCKET/backup/{{.Release.Namespace}}-postgres/{{.Release.Namespace}}-$TIMESTAMP.dump.tar.gz
             {{- else if eq .Values.pgdumpMode "pg_dump" }}
-            - export TZ=$TIMEZONE_SET && export TIMESTAMP="$(date +%y%m%d%H%M)" && pg_dump -Fc > {{.Release.Namespace}}-$TIMESTAMP.dump && echo successfullly dumped "{{.Release.Namespace}}-$TIMESTAMP, Now pushing it to S3." && ls -al && aws s3 cp {{.Release.Namespace}}-$TIMESTAMP.dump s3://$AWS_BUCKET/backup/{{.Release.Namespace}}-postgres/{{.Release.Namespace}}-$TIMESTAMP.dump
+            - export TZ=$TIMEZONE_SET && export TIMESTAMP="$(date +%y%m%d%H%M)" && pg_dump -Fc > {{.Release.Namespace}}-$TIMESTAMP.dump && echo successfullly dumped "{{.Release.Namespace}}-$TIMESTAMP, Now pushing it to S3." && tar -czvf {{.Release.Namespace}}-$TIMESTAMP.dump.tar.gz {{.Release.Namespace}}-$TIMESTAMP.dump && ls -al && s3cmd put {{.Release.Namespace}}-$TIMESTAMP.dump.tar.gz s3://$AWS_BUCKET/backup/{{.Release.Namespace}}-postgres/{{.Release.Namespace}}-$TIMESTAMP.dump.tar.gz
             {{- end }}
           restartPolicy: OnFailure
 
+
+export TZ=$TIMEZONE_SET && export TIMESTAMP="$(date
+                  +%y%m%d%H%M)" && pg_dump --format=p >
+                  hollaex-network-testnet-$TIMESTAMP.dump && echo successfullly
+                  dumped "hollaex-network-testnet-$TIMESTAMP, Now pushing it to
+                  S3." && ls -al && tar -czvf
+                  hollaex-network-testnet-$TIMESTAMP.dump.tar.gz hollaex-network-testnet-$TIMESTAMP.dump && s3cmd put
+                  hollaex-network-testnet-$TIMESTAMP.dump.tar.gz s3://$AWS_BUCKET/backup/hollaex-network-testnet-postgres/hollaex-network-testnet-$TIMESTAMP.dump.tar.gz
