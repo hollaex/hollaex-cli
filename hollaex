@@ -1267,7 +1267,11 @@ elif [[ "$1" == "setup" ]]; then
         
         if [[ ! "$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" == "hollaex/hollaex-kit" ]]; then
 
-            create_kubernetes_docker_registry_secret;
+             if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                create_kubernetes_docker_registry_secret;
+
+            fi
 
         fi
 
@@ -5045,10 +5049,14 @@ elif [[ "$1" == "web" ]]; then
 
             
             # Create docker registry secret on Kubernetes.
-            if ! command kubectl get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null && [[ ! "$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY" == "hollaex/hollaex-kit" ]]; then
+            if ! command kubectl get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+                
+                 if [[ "$RUN_WITH_VERIFY" == true ]]; then
+                 
+                    create_kubernetes_docker_registry_secret;
 
-                create_kubernetes_docker_registry_secret;
-            
+                fi
+                
             fi
 
             # FOR GENERATING NODESELECTOR VALUES
@@ -5254,7 +5262,11 @@ elif [[ "$1" == "web" ]]; then
 
             if ! command kubectl get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null && [[ ! "$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" == "hollaex/hollaex-kit" ]]; then
 
-                create_kubernetes_docker_registry_secret;
+                if [[ "$RUN_WITH_VERIFY" == true ]]; then
+
+                    create_kubernetes_docker_registry_secret;
+
+                fi
             
             fi
 
