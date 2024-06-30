@@ -2647,8 +2647,8 @@ elif [[ "$1" == "start" ]]; then
 
             # fi
 
-=
-            echo "Uodating $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
+
+            echo "Updating $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
             kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
             # echo "Applying Ingress rules..."
@@ -3591,21 +3591,21 @@ elif [[ "$1" == "prod" ]]; then
 
         fi
 
-        # for i in ${CONFIG_FILE_PATH[@]}; do
-        #     source $i
-        # done;
+        for i in ${CONFIG_FILE_PATH[@]}; do
+            source $i
+        done;
         
-        # echo "Generating Kubernetes Ingress"
+        echo "Generating Kubernetes Ingress"
 
-        # if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+        if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
 
-        #     generate_kubernetes_ingress;
+            generate_kubernetes_ingress;
         
-        # else 
+        else 
 
-        #     generate_kubernetes_ingress_2_4;
+            generate_kubernetes_ingress_2_4;
 
-        # fi
+        fi
 
     fi
 
@@ -5056,7 +5056,7 @@ elif [[ "$1" == "web" ]]; then
                     create_kubernetes_docker_registry_secret;
 
                 fi
-                
+
             fi
 
             # FOR GENERATING NODESELECTOR VALUES
