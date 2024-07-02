@@ -65,76 +65,123 @@ function local_database_init() {
 
     echo "Preparing to initialize exchange database..."
     sleep 10;
-    
+
     if [[ "$1" == "start" ]]; then
+      
+      if ! command docker run --rm \
+        --entrypoint /bin/bash \
+        --network local_$ENVIRONMENT_EXCHANGE_NAME-network \
+        --env-file $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local \
+        $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION \
+        -c "
+          sequelize db:migrate && 
+          node tools/dbs/runTriggers.js && 
+          sequelize db:seed:all &&
+          node tools/dbs/setActivationCode.js &&
+          node tools/dbs/checkConfig.js &&
+          node tools/dbs/setKitVersion.js
+        "; then
 
-      IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+        echo "Failed to initialie the database!"
+        exit 1; 
 
-      echo "Running sequelize db:migrate"
-      if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 sequelize db:migrate; then
-
-        printf "\n\033[91mError: Something went wrong while setting up the database (db:migrate).\033[39m\n"
-        echo "Please check the server status try it again."
-        exit 1
-        
       fi
 
-      echo "Running database triggers"
-      if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js; then
 
-        printf "\n\033[91mError: Something went wrong while setting up the database (runTriggers).\033[39m\n"
-        echo "Please check the server status try it again."
-        exit 1
-        
+    elif [[ "$1" == "upgrade" ]]; then
+
+     if ! command docker run --rm \
+        --entrypoint /bin/bash \
+        --network local_$ENVIRONMENT_EXCHANGE_NAME-network \
+        --env-file templates/local/yechankit240702.env.local \
+        hollaex/hollaex-kit:2.11.2 \
+        -c "
+          sequelize db:migrate && 
+          node tools/dbs/runTriggers.js && 
+          node tools/dbs/checkConfig.js &&
+          node tools/dbs/setKitVersion.js
+        "; then
+
+        echo "Failed to initialie the database!"
+        exit 1; 
+
       fi
 
-      echo "Running sequelize db:seed:all"
-      if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 sequelize db:seed:all; then
-
-        printf "\n\033[91mError: Something went wrong while setting up the database (db:seed:all).\033[39m\n"
-        echo "Please check the server status try it again."
-        exit 1
-        
-      fi
-
-      echo "Setting up the exchange with provided activation code"
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/setActivationCode.js
-
-      echo "Updating the secrets.."
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/checkConfig.js
-
-      echo "Setting up the version number based on the current Kit."
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/setKitVersion.js
-
-    elif [[ "$1" == 'upgrade' ]]; then
-
-      IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
-
-      echo "Running sequelize db:migrate"
-      if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 sequelize db:migrate; then
-
-        printf "\n\033[91mError: Something went wrong while setting up the database (db:migrate).\033[39m\n"
-        echo "Please check the server status try it again."
-        exit 1
-        
-      fi
-
-      echo "Running database triggers"
-      if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js; then
-
-        printf "\n\033[91mError: Something went wrong while setting up the database (runTriggers).\033[39m\n"
-        echo "Please check the server status try it again."
-        exit 1
-        
-      fi
-
-      echo "Updating the secrets.."
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/checkConfig.js
-
-      echo "Setting up the version number based on the current Kit."
-      docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/setKitVersion.js
-    
     fi
+
+
+    # echo "Preparing to initialize exchange database..."
+    # sleep 10;
+    
+    # if [[ "$1" == "start" ]]; then
+
+    #   IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+
+    #   echo "Running sequelize db:migrate"
+    #   if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 sequelize db:migrate; then
+
+    #     printf "\n\033[91mError: Something went wrong while setting up the database (db:migrate).\033[39m\n"
+    #     echo "Please check the server status try it again."
+    #     exit 1
+        
+    #   fi
+
+    #   echo "Running database triggers"
+    #   if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js; then
+
+    #     printf "\n\033[91mError: Something went wrong while setting up the database (runTriggers).\033[39m\n"
+    #     echo "Please check the server status try it again."
+    #     exit 1
+        
+    #   fi
+
+    #   echo "Running sequelize db:seed:all"
+    #   if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 sequelize db:seed:all; then
+
+    #     printf "\n\033[91mError: Something went wrong while setting up the database (db:seed:all).\033[39m\n"
+    #     echo "Please check the server status try it again."
+    #     exit 1
+        
+    #   fi
+
+    #   echo "Setting up the exchange with provided activation code"
+    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/setActivationCode.js
+
+    #   echo "Updating the secrets.."
+    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/checkConfig.js
+
+    #   echo "Setting up the version number based on the current Kit."
+    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/setKitVersion.js
+
+    # elif [[ "$1" == 'upgrade' ]]; then
+
+    #   IFS=',' read -ra CONTAINER_PREFIX <<< "-${ENVIRONMENT_EXCHANGE_RUN_MODE}"
+
+    #   echo "Running sequelize db:migrate"
+    #   if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 sequelize db:migrate; then
+
+    #     printf "\n\033[91mError: Something went wrong while setting up the database (db:migrate).\033[39m\n"
+    #     echo "Please check the server status try it again."
+    #     exit 1
+        
+    #   fi
+
+    #   echo "Running database triggers"
+    #   if ! command docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/runTriggers.js; then
+
+    #     printf "\n\033[91mError: Something went wrong while setting up the database (runTriggers).\033[39m\n"
+    #     echo "Please check the server status try it again."
+    #     exit 1
+        
+    #   fi
+
+    #   echo "Updating the secrets.."
+    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/checkConfig.js
+
+    #   echo "Setting up the version number based on the current Kit."
+    #   docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/setKitVersion.js
+    
+    # fi
 }
 
 function kubernetes_database_init() {
