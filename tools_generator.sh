@@ -94,8 +94,8 @@ function local_database_init() {
      if ! command docker run --rm \
         --entrypoint /bin/bash \
         --network local_$ENVIRONMENT_EXCHANGE_NAME-network \
-        --env-file templates/local/yechankit240702.env.local \
-        hollaex/hollaex-kit:2.11.2 \
+        --env-file $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local \
+        $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION \
         -c "
           sequelize db:migrate && 
           node tools/dbs/runTriggers.js && 
