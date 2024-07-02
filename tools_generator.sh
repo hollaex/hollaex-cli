@@ -140,100 +140,61 @@ function local_database_init() {
 function kubernetes_database_init() {
 
   if [[ "$1" == "launch" ]]; then
-
-    sleep 30
-
-     # Checks the api container(s) get ready enough to run database upgrade jobs.
-    while ! kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- echo "API is ready!" > /dev/null 2>&1;
-        do echo "API container is not ready! Retrying..."
-        sleep 15;
-    done;
-
-    echo "API container become ready to run Database initialization jobs!"
-    sleep 10;
-
-    echo "Running sequelize db:migrate"
-    if ! command kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:migrate; then
-        
-      printf "\n\033[91mError: Something went wrong while setting up the database (db:migrate).\033[39m\n"
-      echo "Please check the server status try it again."
-      exit 1
-        
-    fi
-
-    echo "Running Database Triggers"
-    if ! command kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/runTriggers.js; then
-
-      printf "\n\033[91mError: Something went wrong while setting up the database (runTriggers).\033[39m\n"
-      echo "Please check the server status try it again."
-      exit 1
-        
-    fi
-
-    echo "Running sequelize db:seed:all"
-    if ! command kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:seed:all; then
-
-      printf "\n\033[91mError: Something went wrong while setting up the database (db:seed:all).\033[39m\n"
-      echo "Please check the server status try it again."
-      exit 1
-        
-    fi
-
-    echo "Setting up the exchange with provided activation code"
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/setActivationCode.js
-
-    echo "Setting up the secret"
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/checkConfig.js
-
-    echo "Setting up the version"
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/setKitVersion.js
     
+    export K8S_DB_JOB_ACTION="setup"
+    export K8S_DB_JOB_MODE="hollaex_setup"
+
   elif [[ "$1" == "upgrade" ]]; then
 
-    echo "Running database jobs..."
+    export K8S_DB_JOB_ACTION="upgrade"
+    export K8S_DB_JOB_MODE="hollaex_upgrade"
 
-    if command helm install $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade \
-                --namespace $ENVIRONMENT_EXCHANGE_NAME \
-                --set DEPLOYMENT_MODE="api" \
-                --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
-                --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-                --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
-                --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
-                --set job.enable=true \
-                --set job.mode=hollaex_upgrade \
-                $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server; then
+  fi
 
-      while ! [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]] ;
-          do echo "Waiting for the database job gets done..."
-          sleep 10;
-      done;
+  echo "Running database jobs..."
 
-      echo "Successfully ran the database jobs!"
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
+  if command helm install $ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION \
+              --namespace $ENVIRONMENT_EXCHANGE_NAME \
+              --set DEPLOYMENT_MODE="api" \
+              --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
+              --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
+              --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+              --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
+              --set job.enable=true \
+              --set job.mode=$K8S_DB_JOB_MODE \
+              -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
+              -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
+              $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
 
-      echo "Removing the Kubernetes Job for running database jobs..."
-      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade --namespace $ENVIRONMENT_EXCHANGE_NAME
+    while ! [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]] ;
+        do echo "Waiting for the database job gets done..."
+        sleep 10;
+    done;
 
-    else 
+    echo "Successfully ran the database jobs!"
+    kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION
 
-      printf "\033[91mFailed to create Kubernetes Job for running database jobs, Please confirm your input values and try again.\033[39m\n"
+    echo "Removing the Kubernetes Job for running database jobs..."
+    helm uninstall $ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-      echo "Displayling logs..."
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
-      
-      helm uninstall $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade --namespace $ENVIRONMENT_EXCHANGE_NAME
+  else 
 
-      # Only tries to attempt apply ingress rules from Kubernetes if it doesn't exists.
-      if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
-      
-          echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-          kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
+    printf "\033[91mFailed to create Kubernetes Job for running database jobs, Please confirm your input values and try again.\033[39m\n"
 
-      fi
+    echo "Displayling logs..."
+    kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION
+    
+    helm uninstall $ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-      exit 1;
+    # Only tries to attempt apply ingress rules from Kubernetes if it doesn't exists.
+    if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+    
+        echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
+        kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
     fi
+
+    exit 1;
 
   fi
 
