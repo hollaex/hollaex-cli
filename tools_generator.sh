@@ -64,7 +64,7 @@ function local_hollaex_network_database_init() {
 function local_database_init() {
 
     echo "Preparing to initialize exchange database..."
-    sleep 10;
+    sleep 30;
 
     if [[ "$1" == "start" ]]; then
       
