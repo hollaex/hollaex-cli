@@ -72,7 +72,7 @@ function local_database_init() {
       if ! command docker run --rm \
         --entrypoint /bin/bash \
         --network local_$ENVIRONMENT_EXCHANGE_NAME-network \
-        --env-file $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local \
+        --env-file $HOLLAEX_CLI_INIT_PATH/server/hollaex-kit.env \
         $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION \
         -c "
           sequelize db:migrate && 
@@ -94,7 +94,7 @@ function local_database_init() {
      if ! command docker run --rm \
         --entrypoint /bin/bash \
         --network local_$ENVIRONMENT_EXCHANGE_NAME-network \
-        --env-file $TEMPLATE_GENERATE_PATH/local/${ENVIRONMENT_EXCHANGE_NAME}.env.local \
+        --env-file $HOLLAEX_CLI_INIT_PATH/server/hollaex-kit.env \
         $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION \
         -c "
           sequelize db:migrate && 
