@@ -206,7 +206,7 @@ function kubernetes_database_init() {
               --set DEPLOYMENT_MODE="api" \
               --set imageRegistry="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" \
               --set dockerTag="$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION" \
-              --set envName="$ENVIRONMENT_EXCHANGE_NAME-env" \
+              --set envName="$ENVIRONMENT_EXCHANGE_NAME-configmap" \
               --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
               --set job.enable=true \
               --set job.mode=$K8S_DB_JOB_MODE \
