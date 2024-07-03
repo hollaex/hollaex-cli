@@ -210,9 +210,7 @@ function kubernetes_database_init() {
               --set secretName="$ENVIRONMENT_EXCHANGE_NAME-secret" \
               --set job.enable=true \
               --set job.mode=$K8S_DB_JOB_MODE \
-              -f $TEMPLATE_GENERATE_PATH/kubernetes/config/nodeSelector-hollaex-stateful.yaml \
-              -f $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server/values.yaml \
-              $SCRIPTPATH/kubernetes/helm-chart/bitholla-hollaex-server; then
+              $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server; then
 
     while ! [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]] ;
         do echo "Waiting for the database job gets done..."
