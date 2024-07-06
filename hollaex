@@ -2738,6 +2738,21 @@ elif [[ "$1" == "start" ]]; then
 
                 fi
 
+                if command docker ps | grep nginx > /dev/null 2>&1; then
+                
+                    echo "Restarting Nginx..."
+                    if command docker compose -f ${HOLLAEX_CLI_INIT_PATH}/nginx/docker-compose.yaml restart; then
+                    
+                        printf "\n\033[92mSuccessfully restarted the Nginx\033[39m\n"
+            
+                    else
+
+                        printf "\033[93mFailed to restarted the Nginx."
+
+                    fi
+                
+                fi
+
                 hollaex_ascii_exchange_is_up;
             
             fi 
