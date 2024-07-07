@@ -4370,7 +4370,7 @@ elif [[ "$1" == "prod" ]]; then
                 else 
 
                     echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER is missing on your settings file. Adding it now..."
-                    echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER=false" >> $CONFIGMAP_FILE_PATH
+                    echo -e "\nENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER=false" >> $CONFIGMAP_FILE_PATH
 
                 fi
 
@@ -4387,7 +4387,7 @@ elif [[ "$1" == "prod" ]]; then
                 else 
 
                     echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER is missing on your settings file. Adding it now..."
-                    echo "ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER=true" >> $CONFIGMAP_FILE_PATH
+                    echo -e "\nENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER=true" >> $CONFIGMAP_FILE_PATH
 
                 fi
 
