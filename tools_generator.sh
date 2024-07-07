@@ -3097,11 +3097,21 @@ function hollaex_setup_finalization() {
 
     printf "\033[93m\Starting back the server to run the DB restore...\033[39m\n"
     if [[ "$USE_KUBERNETES" ]]; then
-        hollaex toolbox --kube --skip --restore $BACKUP_DUMP_FILE_PATH
+        if ! command hollaex toolbox --kube --skip --restore $BACKUP_DUMP_FILE_PATH; then
+
+          echo "Failed to restore the backup!"
+          exit 1; 
+
+        fi 
         kubernetes_database_init upgrade
 
     elif [[ ! "$USE_KUBERNETES" ]]; then
-        hollaex toolbox --skip --restore $BACKUP_DUMP_FILE_PATH
+        if ! command hollaex toolbox --skip --restore $BACKUP_DUMP_FILE_PATH; then
+
+          echo "Failed to restore the backup!"
+          exit 1; 
+
+        fi
         local_database_init upgrade 
 
     fi
