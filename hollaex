@@ -102,6 +102,19 @@ if [[ ! "$HOLLAEX_NETWORK_OPERATION" ]]; then
 
 fi
 
+check_git_conflict() {
+    local file=$1
+
+    if grep -q '<< HEAD' "$file" && grep -q '==' "$file" && grep -q '>>' "$file"; then
+        echo -e "\nError: Git conflict detected in file: $file"
+        echo "Please check the file and fix the Git conflict to proceed."
+        exit 1;
+    fi
+}
+
+check_git_conflict settings/configmap;
+check_git_conflict settings/secret;
+
 err_msg() { echo "$@" ;} >&2
 err_msg_a() { err_msg "-a option argument required" ;}
 err_msg_l() { err_msg "--long option argument required" ;}
