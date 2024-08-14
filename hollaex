@@ -5210,7 +5210,7 @@ elif [[ "$1" == "web" ]]; then
 
             # apply_nginx_root_domain_to_web
 
-            if command docker compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client up -d; then
+            if command docker compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client up --build -d; then
 
                 echo "Starting the Nginx..."
                 if command docker compose -f ${HOLLAEX_CLI_INIT_PATH}/nginx/docker-compose.yaml up -d; then
