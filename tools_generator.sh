@@ -4283,6 +4283,9 @@ function check_docker_compose_is_installed() {
     echo -e "\n\033[91mError: HollaEx CLI could not detect Docker Compose on this machine. Please install Docker Compose before proceeding.\033[39m\n"
     echo "To install the core dependencies, including Docker Compose, you can run: \`bash install.sh\`."
     echo -e "Alternatively, you can manually install Docker Compose by following the instructions at: https://docs.docker.com/compose/install/linux/.\n"
+
+    echo -e "Warning: HollaEx CLI v3+ only supports the Docker Compose Plugin (the 'docker compose' command without a dash) and not the standalone binary ('docker-compose').\n"
+
     exit 1
 
   fi
