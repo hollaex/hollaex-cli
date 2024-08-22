@@ -5849,6 +5849,8 @@ elif [[ "$1" == "web" ]]; then
                 update_local_docker_compose_web;
                 docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client up -d;
 
+                hollaex_ascii_web_server_is_up;
+
         fi
 
     fi
