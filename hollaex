@@ -36,12 +36,32 @@ LOCAL_DEPLOYMENT_MODE='all'
 
 GENERATE_PASSWORDS=false
 
+function check_docker_compose_is_installed() {
+
+    echo "Checking docker-compose availability..."
+    docker-compose version
+
+    # Checking docker compose is installed on this machine.
+    if [[ $? -ne 0 ]] ; then
+
+        echo -e "\n\033[91mError: HollaEx CLI could not detect Docker Compose on this machine. Please install Docker Compose before proceeding.\033[39m\n"
+        echo "To install the core dependencies, including Docker Compose, you can run: \`bash install.sh\`."
+        echo -e "Alternatively, you can manually install Docker Compose by following the instructions at: https://docs.docker.com/compose/install/standalone/.\n"
+
+        exit 1
+
+    fi
+  
+}
+
+check_docker_compose_is_installed;
+
 # Docker compose v1 prefixes
 DOCKER_COMPOSE_NAME_PREFIX='local_'
 DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR="_"
 
 # Docker compose v2+ compatibility prefiexes
-if command docker compose version > /dev/null; then
+if command docker-compose version > /dev/null; then
 
     # export DOCKER_COMPOSE_NAME_PREFIX="server-"
     DOCKER_COMPOSE_NAME_PREFIX='local-'
@@ -385,7 +405,7 @@ if [[ "$1" == "dev" ]]; then
     
         local_database_init start;
 
-        docker compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml restart
+        docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml restart
 
         exit 0;
 
@@ -427,13 +447,16 @@ if [[ "$1" == "dev" ]]; then
 
         generate_nginx_upstream;
 
+        check_docker_compose_is_installed;
+
         # Checking docker-compose is installed on this machine.
-       if ! command docker compose version; then
+    #    if ! command docker compose version; then
 
-            echo -e "\033[91mHollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI.\033[39m"
-            exit 1;
+    #         echo -e "\033[91mHollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI.\033[39m"
+    #         exit 1;
 
-        fi
+    #     fi
+
         if [[ "$HOLLAEX_DEV_SETUP" ]]; then
 
             CONTINUE_WITH_PRECONFIGURED_VALUES=false         
@@ -504,7 +527,7 @@ if [[ "$1" == "dev" ]]; then
 
             fi
 
-            docker compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml up -d  
+            docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml up -d  
             
             echo "Installing npm packages for /plugins"
             docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server-api_1 bash -c '
@@ -514,17 +537,17 @@ if [[ "$1" == "dev" ]]; then
 
             hollaex dev --database_init
         
-            docker compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml restart
+            docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml restart
 
             hollaex_setup_finalization;
 
-            docker compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml restart
+            docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml restart
             
             
         elif [[ "$HOLLAEX_DEV_RESTART" ]]; then
 
-            docker compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml stop
-            docker compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml up -d
+            docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml stop
+            docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml up -d
 
             if [[ ! "$HOLLAEX_DEV_SETUP" ]]; then
 
@@ -537,7 +560,7 @@ if [[ "$1" == "dev" ]]; then
 
         else 
 
-            docker compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml $LOCAL_COMMAND
+            docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml $LOCAL_COMMAND
 
         fi
 
@@ -1307,12 +1330,15 @@ elif [[ "$1" == "setup" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if ! command docker compose version; then
+        # if ! command docker compose version; then
 
-            echo -e "\033[91mHollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI.\033[39m"
-            exit 1;
+        #     echo -e "\033[91mHollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI.\033[39m"
+        #     exit 1;
 
-        fi
+        # fi
+
+        check_docker_compose_is_installed;
+        
         if [[ "$HOLLAEX_CONFIGMAP_NETWORK_URL" == *"hollaex-network-nginx"* ]]; then 
 
             echo "Hollaex Network URL: $HOLLAEX_CONFIGMAP_NETWORK_URL"
@@ -1370,7 +1396,7 @@ elif [[ "$1" == "setup" ]]; then
             
         # fi
 
-        if command docker compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml up -d; then
+        if command docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml up -d; then
             
             sleep 5
             
@@ -1400,7 +1426,7 @@ elif [[ "$1" == "setup" ]]; then
 
             fi
 
-            docker compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml restart
+            docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml restart
 
             if [[ "$HOLLAEX_NETWORK_SETUP" ]]; then
 
@@ -2689,12 +2715,14 @@ elif [[ "$1" == "start" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if ! command docker compose version; then
+        # if ! command docker compose version; then
 
-            echo -e "\033[91mHollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI.\033[39m"
-            exit 1;
+        #     echo -e "\033[91mHollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI.\033[39m"
+        #     exit 1;
 
-        fi
+        # fi
+
+        check_docker_compose_is_installed
 
         # Exit HollaEx CLI If docker_compose 
         if [[ ! "$ENVIRONMENT_EXCHANGE_RUN_MODE" ]]; then
@@ -2734,7 +2762,7 @@ elif [[ "$1" == "start" ]]; then
         
         fi
 
-        if command docker compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml up -d; then
+        if command docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml up -d; then
         
 
             if [[ "$HOLLAEX_NETWORK_START" ]]; then 
@@ -2754,7 +2782,7 @@ elif [[ "$1" == "start" ]]; then
                 if command docker ps | grep nginx > /dev/null 2>&1; then
                 
                     echo "Restarting Nginx..."
-                    if command docker compose -f ${HOLLAEX_CLI_INIT_PATH}/nginx/docker-compose.yaml restart; then
+                    if command docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/nginx/docker-compose.yaml restart; then
                     
                         printf "\n\033[92mSuccessfully restarted the Nginx\033[39m\n"
             
@@ -2953,12 +2981,15 @@ elif [[ "$1" == "scale" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if ! command docker compose version; then
+        # if ! command docker compose version; then
 
-            echo -e "\033[91mHollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI.\033[39m"
-            exit 1;
+        #     echo -e "\033[91mHollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI.\033[39m"
+        #     exit 1;
 
-        fi
+        # fi
+
+        check_docker_compose_is_installed;
+
         # Exit HollaEx CLI If docker_compose 
         if [[ ! "$ENVIRONMENT_EXCHANGE_RUN_MODE" ]]; then
 
@@ -2968,7 +2999,7 @@ elif [[ "$1" == "scale" ]]; then
         fi
 
         # Running docker-compose scale command.
-        if command docker compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml up -d --no-recreate --scale $HOLLAEX_SCALE_TARGET_CONVERTED=$HOLLAEX_SCALE_TARGET_REPLICAS; then
+        if command docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml up -d --no-recreate --scale $HOLLAEX_SCALE_TARGET_CONVERTED=$HOLLAEX_SCALE_TARGET_REPLICAS; then
             
             # Nginx Reload
             docker exec -it $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-prod-nginx | cut -f1 -d " ") nginx -s reload
@@ -3778,12 +3809,14 @@ elif [[ "$1" == "stop" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if ! command docker compose version; then
+        # if ! command docker compose version; then
 
-            echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
-            exit 1;
+        #     echo "HollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI."
+        #     exit 1;
 
-        fi 
+        # fi 
+
+        check_docker_compose_is_installed
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
@@ -3798,7 +3831,7 @@ elif [[ "$1" == "stop" ]]; then
 
         fi
 
-        if command docker compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml stop; then
+        if command docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml stop; then
 
             if [[ "$HOLLAEX_NETWORK_STOP" ]]; then 
 
@@ -3987,12 +4020,15 @@ elif [[ "$1" == "restart" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if ! command docker compose version; then
+        # if ! command docker compose version; then
 
-            echo -e "\033[91mHollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI.\033[39m"
-            exit 1;
+        #     echo -e "\033[91mHollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI.\033[39m"
+        #     exit 1;
 
-        fi
+        # fi
+
+        check_docker_compose_is_installed;
+
         if [[ ! -d "$TEMPLATE_GENERATE_PATH/local" ]]; then
             mkdir $TEMPLATE_GENERATE_PATH/local;
         fi
@@ -4778,12 +4814,14 @@ elif [[ "$1" == "terminate" ]]; then
     if [[ ! "$USE_KUBERNETES" ]]; then
 
         # Checking docker-compose is installed on this machine.
-        if ! command docker compose version; then
+        # if ! command docker compose version; then
 
-            echo -e "\033[91mHollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI.\033[39m"
-            exit 1;
+        #     echo -e "\033[91mHollaEx CLI failed to detect docker-compose installed on this machine. Please install it before running HollaEx CLI.\033[39m"
+        #     exit 1;
 
-        fi
+        # fi
+
+        check_docker_compose_is_installed
 
         echo -e "\033[91mTHIS IS YOUR LAST CHANCE TO CANCEL IT!\033[39m\n"
 
@@ -4827,14 +4865,14 @@ elif [[ "$1" == "terminate" ]]; then
         # Remove web server together if it exists.
         if [[ -f "$HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml" ]] ; then
 
-            docker compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client down 
-            docker compose -f ${HOLLAEX_CLI_INIT_PATH}/nginx/docker-compose.yaml down
+            docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client down 
+            docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/nginx/docker-compose.yaml down
 
         fi
 
         
 
-        docker compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml down -v --remove-orphans
+        docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml down -v --remove-orphans
 
         hollaex_ascii_exchange_has_been_terminated;
         
@@ -5210,10 +5248,10 @@ elif [[ "$1" == "web" ]]; then
 
             # apply_nginx_root_domain_to_web
 
-            if command docker compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client up --build -d; then
+            if command docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client up --build -d; then
 
                 echo "Starting the Nginx..."
-                if command docker compose -f ${HOLLAEX_CLI_INIT_PATH}/nginx/docker-compose.yaml up -d; then
+                if command docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/nginx/docker-compose.yaml up -d; then
                 
                     printf "\n\033[92mSuccessfully started the Nginx\033[39m\n"
         
@@ -5400,7 +5438,7 @@ elif [[ "$1" == "web" ]]; then
                 
             # fi
 
-            if command docker compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client up -d; then
+            if command docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client up -d; then
 
                 # echo "Reloading Nginx..."
                 # if command docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-prod-nginx | cut -f1 -d " ") nginx -s reload; then
@@ -5416,7 +5454,7 @@ elif [[ "$1" == "web" ]]; then
                 # fi
 
                 echo "Starting the Nginx..."
-                docker compose -f ${HOLLAEX_CLI_INIT_PATH}/nginx/docker-compose.yaml up -d
+                docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/nginx/docker-compose.yaml up -d
 
                 hollaex_ascii_web_server_is_up;
 
@@ -5512,7 +5550,7 @@ elif [[ "$1" == "web" ]]; then
             # cp -f $HOLLAEX_CLI_INIT_PATH/nginx/conf.d/web.conf $HOLLAEX_CLI_INIT_PATH/nginx/conf.d/.web.conf
             # rm $HOLLAEX_CLI_INIT_PATH/nginx/conf.d/web.conf
 
-            if command docker compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client stop; then
+            if command docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client stop; then
 
                 # echo "Reloading Nginx..."
                 # if command docker exec $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-prod-nginx | cut -f1 -d " ") nginx -s reload; then
@@ -5529,7 +5567,7 @@ elif [[ "$1" == "web" ]]; then
                 echo "To bring it up, Please run 'hollaex web --start' command".
 
                 echo "Stopping the Nginx..."
-                docker compose -f ${HOLLAEX_CLI_INIT_PATH}/nginx/docker-compose.yaml stop
+                docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/nginx/docker-compose.yaml stop
 
 
             else 
@@ -5680,10 +5718,10 @@ elif [[ "$1" == "web" ]]; then
                 
             # fi
 
-            if command docker compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client restart; then
+            if command docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client restart; then
 
                 echo "Restarting Nginx..."
-                if command docker compose -f ${HOLLAEX_CLI_INIT_PATH}/nginx/docker-compose.yaml restart; then
+                if command docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/nginx/docker-compose.yaml restart; then
                 
                     printf "\n\033[92mSuccessfully restarted the Nginx\033[39m\n"
         
@@ -5809,7 +5847,9 @@ elif [[ "$1" == "web" ]]; then
         else 
                 
                 update_local_docker_compose_web;
-                docker compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client up -d;
+                docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client up -d;
+
+                hollaex_ascii_web_server_is_up;
 
         fi
 
@@ -5879,10 +5919,10 @@ elif [[ "$1" == "web" ]]; then
 
             fi
 
-            if command docker compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client down --remove-orphans; then
+            if command docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client down --remove-orphans; then
 
                 echo "Stopping Nginx..."
-                if command docker compose -f ${HOLLAEX_CLI_INIT_PATH}/nginx/docker-compose.yaml stop; then
+                if command docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/nginx/docker-compose.yaml stop; then
                 
                     printf "\n\033[92mSuccessfully stopped the Nginx\033[39m\n"
         
@@ -5958,10 +5998,10 @@ elif [[ "$1" == "web" ]]; then
 
             # generate_local_docker_compose_for_web;
 
-            docker compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client down
+            docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client down
 
             # Running docker-compose scale command.
-            if command docker compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client up -d --no-recreate --scale $ENVIRONMENT_EXCHANGE_NAME-web=$HOLLAEX_WEB_SCALE_TARGET_REPLICAS; then
+            if command docker-compose -f $HOLLAEX_CLI_INIT_PATH/web/docker-compose.yaml -p client up -d --no-recreate --scale $ENVIRONMENT_EXCHANGE_NAME-web=$HOLLAEX_WEB_SCALE_TARGET_REPLICAS; then
                 
                 # Nginx Reload
                 # docker exec -it $(docker ps | grep $ENVIRONMENT_EXCHANGE_NAME-prod-nginx | cut -f1 -d " ") nginx -s reload
@@ -6403,7 +6443,7 @@ elif [[ "$1" == "toolbox" ]]; then
             # generate_local_docker_compose $ENVIRONMENT_EXCHANGE_RUN_MODE
 
             echo "Restarting containers..."
-            docker compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml up -d
+            docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml up -d
 
             exit 0;
 
@@ -6746,7 +6786,7 @@ elif [[ "$1" == "toolbox" ]]; then
             docker exec ${DOCKER_COMPOSE_NAME_PREFIX}${ENVIRONMENT_EXCHANGE_NAME}-server${CONTAINER_PREFIX[0]}${DOCKER_COMPOSE_CONTAINER_NUMBER_CONNECTOR}1 node tools/dbs/flushRedis.js
 
             echo "Restarting all workload containers..."
-            docker compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml restart
+            docker-compose -f ${HOLLAEX_CLI_INIT_PATH}/server/docker-compose-prod.yaml restart
 
             sleep 10;
 

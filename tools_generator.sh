@@ -4272,24 +4272,25 @@ function hollaex_pull_and_apply_exchange_data() {
 
 }
 
-function check_docker_compose_is_installed() {
+# function check_docker_compose_is_installed() {
 
-  # Checking docker compose is installed on this machine.
-  if command docker compose version > /dev/null 2>&1; then
-      
-      echo "*********************************************"
-      echo "docker compose detected"
-      echo "version: $(docker compose version)"
-      echo "*********************************************"
+#   echo "Checking docker compose availability..."
+#   docker compose version
 
-  else
+#   # Checking docker compose is installed on this machine.
+#   if [[ $? -ne 0 ]] ; then
 
-      echo "HollaEx CLI failed to detect docker compose installed on this machine. Please install it before running HollaEx CLI."
-      exit 1;
+#     echo -e "\n\033[91mError: HollaEx CLI could not detect Docker Compose on this machine. Please install Docker Compose before proceeding.\033[39m\n"
+#     echo "To install the core dependencies, including Docker Compose, you can run: \`bash install.sh\`."
+#     echo -e "Alternatively, you can manually install Docker Compose by following the instructions at: https://docs.docker.com/compose/install/linux/.\n"
 
-  fi
+#     echo -e "Warning: HollaEx CLI v3+ only supports the Docker Compose Plugin (the 'docker compose' command without a dash) and not the standalone binary ('docker-compose').\n"
+
+#     exit 1
+
+#   fi
   
-}
+# }
 
 
 # function check_kit_version_compatibility_range() {
@@ -4418,7 +4419,7 @@ function system_dependencies_check() {
   # Local deployment dependencies
   else  
 
-    if command docker compose -v > /dev/null 2>&1; then
+    if command docker-compose -v > /dev/null 2>&1; then
 
       IS_DOCKER_COMPOSE_INSTALLED=true
     
