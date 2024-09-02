@@ -5748,17 +5748,30 @@ elif [[ "$1" == "web" ]]; then
 
     if [[ "$WEB_CLIENT_UPGRADE" ]];  then
 
+        if [[ "$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE" ]]; then
 
-        export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat $HOLLAEX_CLI_INIT_PATH/web/package.json | jq -r '.version')-$(date +%y%m%d%H%M)"
+            export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE"
+
+        fi
+
+        if [[ "$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE" ]]; then
+
+            export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE"
+
+        else 
+
+            export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat $HOLLAEX_CLI_INIT_PATH/web/package.json | jq -r '.version')-$(date +%y%m%d%H%M)"
+
+        fi
 
         if [[ "$USE_KUBERNETES" ]]; then
 
-            hollaex web --build --kube --skip
+            hollaex web --build --kube --skip --registry $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY --tag $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION
             hollaex web --apply --kube --skip --registry $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY --tag $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION
 
         else 
             
-            hollaex web --build
+            hollaex web --build --registry $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY --tag $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION
             hollaex web --apply --skip --registry $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY --tag $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION
 
         fi
@@ -5769,7 +5782,24 @@ elif [[ "$1" == "web" ]]; then
 
     if [[ "$WEB_CLIENT_REBUILD" ]];  then
         
-        export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat $HOLLAEX_CLI_INIT_PATH/web/package.json | jq -r '.version')-$(date +%y%m%d%H%M)"
+        if [[ "$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE" ]]; then
+
+            export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE"
+
+        fi
+
+        if [[ "$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE" ]]; then
+
+            export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE"
+
+        else 
+
+            echo "Brah"
+            export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat $HOLLAEX_CLI_INIT_PATH/web/package.json | jq -r '.version')-$(date +%y%m%d%H%M)"
+
+        fi
+        
+        #export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat $HOLLAEX_CLI_INIT_PATH/web/package.json | jq -r '.version')-$(date +%y%m%d%H%M)"
         if ! build_user_hollaex_web; then
 
             exit 1;
