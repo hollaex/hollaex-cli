@@ -2616,36 +2616,44 @@ elif [[ "$1" == "start" ]]; then
 
         #Generating and updating settings
 
-        # if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
+        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
 
-        #     echo "Generating Kubernetes Configmap"
-        #     generate_kubernetes_configmap;
+            if [[ "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then
 
-        # fi
+                echo "Generating Kubernetes Configmap"
+                generate_kubernetes_configmap;
 
-        # if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]]; then
+            fi
 
-        #     echo "Generating Kubernetes Secret"
-        #     generate_kubernetes_secret;
+        fi
 
-        # fi
+        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]]; then
 
+            if [[ "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then
 
-        # if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
-
-        #     echo "Generating Kubernetes Ingress"
-
-        #     if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
-
-        #         generate_kubernetes_ingress;
+                echo "Generating Kubernetes Secret"
+                generate_kubernetes_secret;
             
-        #     else 
+            fi
 
-        #         generate_kubernetes_ingress_2_4;
+        fi
 
-        #     fi 
 
-        # fi
+        if [[ "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then
+
+            echo "Generating Kubernetes Ingress"
+
+            if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+
+                generate_kubernetes_ingress;
+            
+            else 
+
+                generate_kubernetes_ingress_2_4;
+
+            fi 
+
+        fi
 
         if [[ ! "$IGNORE_SETTINGS" ]]; then 
 
@@ -5748,17 +5756,30 @@ elif [[ "$1" == "web" ]]; then
 
     if [[ "$WEB_CLIENT_UPGRADE" ]];  then
 
+        if [[ "$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE" ]]; then
 
-        export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat $HOLLAEX_CLI_INIT_PATH/web/package.json | jq -r '.version')-$(date +%y%m%d%H%M)"
+            export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE"
+
+        fi
+
+        if [[ "$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE" ]]; then
+
+            export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE"
+
+        else 
+
+            export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat $HOLLAEX_CLI_INIT_PATH/web/package.json | jq -r '.version')-$(date +%y%m%d%H%M)"
+
+        fi
 
         if [[ "$USE_KUBERNETES" ]]; then
 
-            hollaex web --build --kube --skip
+            hollaex web --build --kube --skip --registry $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY --tag $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION
             hollaex web --apply --kube --skip --registry $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY --tag $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION
 
         else 
             
-            hollaex web --build
+            hollaex web --build --registry $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY --tag $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION
             hollaex web --apply --skip --registry $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY --tag $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION
 
         fi
@@ -5769,7 +5790,23 @@ elif [[ "$1" == "web" ]]; then
 
     if [[ "$WEB_CLIENT_REBUILD" ]];  then
         
-        export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat $HOLLAEX_CLI_INIT_PATH/web/package.json | jq -r '.version')-$(date +%y%m%d%H%M)"
+        if [[ "$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE" ]]; then
+
+            export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_REGISTRY_OVERRIDE"
+
+        fi
+
+        if [[ "$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE" ]]; then
+
+            export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="$ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE"
+
+        else 
+
+            export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat $HOLLAEX_CLI_INIT_PATH/web/package.json | jq -r '.version')-$(date +%y%m%d%H%M)"
+
+        fi
+
+        #export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION="${ENVIRONMENT_EXCHANGE_NAME}-web-$(cat $HOLLAEX_CLI_INIT_PATH/web/package.json | jq -r '.version')-$(date +%y%m%d%H%M)"
         if ! build_user_hollaex_web; then
 
             exit 1;
@@ -7005,11 +7042,15 @@ elif [[ "$1" == "toolbox" ]]; then
 
             toolbox_set_constants_confirm_message;
 
-            echo "Generating Kubernetes Configmap."
-            generate_kubernetes_configmap;
+            if [[ "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then
 
-            echo "Generating Kubernetes Secret."
-            generate_kubernetes_secret;
+                echo "Generating Kubernetes Configmap."
+                generate_kubernetes_configmap;
+
+                echo "Generating Kubernetes Secret."
+                generate_kubernetes_secret;
+
+            fi
 
              echo "Applying configmap on the namespace."
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
@@ -7052,11 +7093,14 @@ elif [[ "$1" == "toolbox" ]]; then
 
             toolbox_set_config_confirm_message;
 
-            echo "Generating Kubernetes Configmap."
-            generate_kubernetes_configmap;
+            if [[ "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then
+                
+                echo "Generating Kubernetes Configmap."
+                generate_kubernetes_configmap;
 
-            echo "Generating Kubernetes Secret."
-            generate_kubernetes_secret;
+                echo "Generating Kubernetes Secret."
+                generate_kubernetes_secret;
+            fi
 
              echo "Applying configmap on the namespace."
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
@@ -7100,11 +7144,15 @@ elif [[ "$1" == "toolbox" ]]; then
 
             set_security_input;
 
-            echo "Generating Kubernetes Configmap."
-            generate_kubernetes_configmap;
+            if [[ "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then
 
-            echo "Generating Kubernetes Secret."
-            generate_kubernetes_secret;
+                echo "Generating Kubernetes Configmap."
+                generate_kubernetes_configmap;
+
+                echo "Generating Kubernetes Secret."
+                generate_kubernetes_secret;
+
+            fi
 
              echo "Applying configmap on the namespace."
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
