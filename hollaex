@@ -2639,21 +2639,21 @@ elif [[ "$1" == "start" ]]; then
         fi
 
 
-        # if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
+        if [[ "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then
 
-        #     echo "Generating Kubernetes Ingress"
+            echo "Generating Kubernetes Ingress"
 
-        #     if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+            if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
 
-        #         generate_kubernetes_ingress;
+                generate_kubernetes_ingress;
             
-        #     else 
+            else 
 
-        #         generate_kubernetes_ingress_2_4;
+                generate_kubernetes_ingress_2_4;
 
-        #     fi 
+            fi 
 
-        # fi
+        fi
 
         if [[ ! "$IGNORE_SETTINGS" ]]; then 
 
