@@ -4987,7 +4987,7 @@ function run_and_upgrade_hollaex_on_kubernetes() {
 
   #Creating kubernetes_config directory for generating config for Kubernetes.
   if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
-
+      
       echo "Generating Kubernetes Configmap"
       generate_kubernetes_configmap;
 
@@ -5903,8 +5903,8 @@ EOL
 
       done
 
-      if [[ ! -f "$HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml" ]]; then 
-
+      if [[ "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then
+      
         echo "Generating Kubernetes Configmap."
         generate_kubernetes_configmap;
       
@@ -6623,7 +6623,7 @@ EOL
 
       done
 
-      if [[ ! -f "$HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml" ]]; then 
+      if [[ "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then
 
         echo "Generating Kubernetes Configmap."
         generate_kubernetes_configmap;

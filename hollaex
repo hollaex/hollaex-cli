@@ -2616,19 +2616,27 @@ elif [[ "$1" == "start" ]]; then
 
         #Generating and updating settings
 
-        # if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
+        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE" == true ]]; then
 
-        #     echo "Generating Kubernetes Configmap"
-        #     generate_kubernetes_configmap;
+            if [[ "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then
 
-        # fi
+                echo "Generating Kubernetes Configmap"
+                generate_kubernetes_configmap;
 
-        # if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]]; then
+            fi
 
-        #     echo "Generating Kubernetes Secret"
-        #     generate_kubernetes_secret;
+        fi
 
-        # fi
+        if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE" == true ]]; then
+
+            if [[ "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then
+
+                echo "Generating Kubernetes Secret"
+                generate_kubernetes_secret;
+            
+            fi
+
+        fi
 
 
         # if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
@@ -7034,11 +7042,15 @@ elif [[ "$1" == "toolbox" ]]; then
 
             toolbox_set_constants_confirm_message;
 
-            echo "Generating Kubernetes Configmap."
-            generate_kubernetes_configmap;
+            if [[ "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then
 
-            echo "Generating Kubernetes Secret."
-            generate_kubernetes_secret;
+                echo "Generating Kubernetes Configmap."
+                generate_kubernetes_configmap;
+
+                echo "Generating Kubernetes Secret."
+                generate_kubernetes_secret;
+
+            fi
 
              echo "Applying configmap on the namespace."
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
@@ -7081,11 +7093,14 @@ elif [[ "$1" == "toolbox" ]]; then
 
             toolbox_set_config_confirm_message;
 
-            echo "Generating Kubernetes Configmap."
-            generate_kubernetes_configmap;
+            if [[ "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then
+                
+                echo "Generating Kubernetes Configmap."
+                generate_kubernetes_configmap;
 
-            echo "Generating Kubernetes Secret."
-            generate_kubernetes_secret;
+                echo "Generating Kubernetes Secret."
+                generate_kubernetes_secret;
+            fi
 
              echo "Applying configmap on the namespace."
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
@@ -7129,11 +7144,15 @@ elif [[ "$1" == "toolbox" ]]; then
 
             set_security_input;
 
-            echo "Generating Kubernetes Configmap."
-            generate_kubernetes_configmap;
+            if [[ "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then
 
-            echo "Generating Kubernetes Secret."
-            generate_kubernetes_secret;
+                echo "Generating Kubernetes Configmap."
+                generate_kubernetes_configmap;
+
+                echo "Generating Kubernetes Secret."
+                generate_kubernetes_secret;
+
+            fi
 
              echo "Applying configmap on the namespace."
             kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
