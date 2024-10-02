@@ -845,14 +845,27 @@ elif [[ "$1" == "init" ]]; then
             echo -e "Please type your email address and password that you are going to use for your admin account.\n"
             echo "Email: "
             read hollaexAdminEmail
-            echo "Password: "
-            read -s hollaexAdminPassword
 
             while true;
                 do if [[ ! "$hollaexAdminEmail" == *"@"* ]]; then 
                     printf "\nInvalid email address. Please type it again.\n"
                     echo "Email: "
                     read hollaexAdminEmail
+                else
+                    break;
+                fi
+            done
+
+            echo -e "\nPassword: "
+            printf "\033[2m-Password must contain at least 8 characters and one digit.\033[22m\n\n"
+            read -s hollaexAdminPassword
+
+            while true;
+                do if [[ ${#hollaexAdminPassword} -lt 8 || ! "$hollaexAdminPassword" =~ [0-9] ]]; then
+                    printf "\nInvalid password. Please type it again.\n"
+                    printf "\033[2m-Password must contain at least 8 characters and one digit.\033[22m\n\n"
+                    echo "Password: "
+                    read -s hollaexAdminPassword
                 else
                     break;
                 fi
