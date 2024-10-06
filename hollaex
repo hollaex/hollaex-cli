@@ -700,19 +700,6 @@ elif [[ "$1" == "init" ]]; then
     }
     done
 
-    if [[ "$hollaexAPIURL" == *"localhost"* ]]; then 
-
-        export HOLLAEX_INIT_LOCALHOST_MODE_INTERNAL_URL="http://hollaex-network-nginx"
-        export hollaexAPIURLEscaped=${HOLLAEX_INIT_LOCALHOST_MODE_INTERNAL_URL//\//\\/}
-
-        export HOLLAEX_NETWORK_LOCALHOST_MODE=true
-
-    else
-    
-        export hollaexAPIURLEscaped=${hollaexAPIURL//\//\\/}
-
-    fi
-
     # Network URL health check
     while true;
         do if command curl $hollaexAPIURL/v2/health; then
@@ -728,6 +715,25 @@ elif [[ "$1" == "init" ]]; then
     printf "\n"
     echo "${hollaexAPIURL} ✔"
     printf "\n"
+
+    if [[ "$hollaexAPIURL" == *"http://localhost"* ]]; then 
+
+
+        export HOLLAEX_INIT_LOCALHOST_MODE_INTERNAL_DOMAIN="http://host.docker.internal"
+        HOLLAEX_INIT_LOCALHOST_MODE_INTERNAL_PORT=$(echo $hollaexAPIURL | cut -f3 -d ":")
+        export HOLLAEX_INIT_LOCALHOST_MODE_INTERNAL_PORT=${HOLLAEX_INIT_LOCALHOST_MODE_INTERNAL_PORT:-80}
+
+        export HOLLAEX_INIT_LOCALHOST_MODE_INTERNAL_URL="$HOLLAEX_INIT_LOCALHOST_MODE_INTERNAL_DOMAIN:$HOLLAEX_INIT_LOCALHOST_MODE_INTERNAL_PORT"
+
+        export hollaexAPIURLEscaped=${HOLLAEX_INIT_LOCALHOST_MODE_INTERNAL_URL//\//\\/}
+
+        export HOLLAEX_NETWORK_LOCALHOST_MODE=true
+
+    else
+    
+        export hollaexAPIURLEscaped=${hollaexAPIURL//\//\\/}
+
+    fi
     
 
     if [[ "$RESTORE_FROM_BACKUP" ]]; then
@@ -1352,7 +1358,7 @@ elif [[ "$1" == "setup" ]]; then
 
         check_docker_compose_is_installed;
         
-        if [[ "$HOLLAEX_CONFIGMAP_NETWORK_URL" == *"hollaex-network-nginx"* ]]; then 
+        if [[ "$HOLLAEX_CONFIGMAP_NETWORK_URL" == *"host.docker.internal"* ]]; then 
 
             echo "Hollaex Network URL: $HOLLAEX_CONFIGMAP_NETWORK_URL"
             export HOLLAEX_NETWORK_LOCALHOST_MODE=true
@@ -2753,7 +2759,7 @@ elif [[ "$1" == "start" ]]; then
 
         fi 
 
-        if [[ "$HOLLAEX_CONFIGMAP_NETWORK_URL" == *"hollaex-network-nginx"* ]]; then 
+        if [[ "$HOLLAEX_CONFIGMAP_NETWORK_URL" == *"host.docker.internal"* ]]; then 
 
             echo "Hollaex Network URL: $HOLLAEX_CONFIGMAP_NETWORK_URL"
             export HOLLAEX_NETWORK_LOCALHOST_MODE=true
@@ -5035,7 +5041,7 @@ elif [[ "$1" == "web" ]]; then
         source $i
     done;
 
-    if [[ "$HOLLAEX_CONFIGMAP_NETWORK_URL" == *"hollaex-network-nginx"* ]]; then 
+    if [[ "$HOLLAEX_CONFIGMAP_NETWORK_URL" == *"host.docker.internal"* ]]; then 
 
         echo "Hollaex Network URL: $HOLLAEX_CONFIGMAP_NETWORK_URL"
         export HOLLAEX_NETWORK_LOCALHOST_MODE=true
