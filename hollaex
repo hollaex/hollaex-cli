@@ -118,8 +118,6 @@ if [[ ! "$HOLLAEX_NETWORK_OPERATION" ]]; then
 
     fi
 
-    source $SCRIPTPATH/version_range
-
 fi
 
 check_git_conflict() {
@@ -349,6 +347,10 @@ if [[ "$1" == "dev" ]]; then
             --test)
                 LOCAL_CODE_TEST=true
                 echo 'Local mocha code test mode enabled.'
+                shift; continue
+                ;;
+            --scale)
+                HOLLAEX_DEV_SCALE=true
                 shift; continue
                 ;;
             --skip)
@@ -2907,7 +2909,7 @@ elif [[ "$1" == "scale" ]]; then
 
     
 
-     source $SCRIPTPATH/tools_generator.sh
+    source $SCRIPTPATH/tools_generator.sh
 
     for i in ${CONFIG_FILE_PATH[@]}; do
         source $i
@@ -2928,7 +2930,27 @@ elif [[ "$1" == "scale" ]]; then
         export ENVIRONMENT_KUBERNETES_GENERATE_CONFIGMAP_ENABLE=false
         export ENVIRONMENT_KUBERNETES_GENERATE_SECRET_ENABLE=false 
         
-    fi 
+    fi
+
+    if [[ ! "$RUN_WITH_VERIFY" == true ]]; then 
+
+
+        if [[ "$USE_KUBERNETES" ]]; then
+
+            run_and_upgrade_hollaex_on_kubernetes;
+            exit 0;
+
+
+        else
+
+            echo "Error: The '--skip' flag is not supported for 'hollaex server --scale".
+            exit 1;
+
+
+        fi 
+
+
+    fi
 
      # Target filtering
 
@@ -4303,6 +4325,22 @@ elif [[ "$1" == "apply" ]]; then
     cli_resource_generation_checker;
 
     load_config_variables;
+
+    # Randomly generates backend passwords
+    if [[ ! "$HOLLAEX_SECRET_REDIS_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_PUBSUB_PASSWORD" ]] || [[ ! "$HOLLAEX_SECRET_DB_PASSWORD" ]] ; then
+    
+        echo -e "\033[91m\nError: Your Database passwords are missing!\033[39m"
+        echo -e "Please check your settings/secret file to ensure all values are set."
+        echo -e "\nThe apply procedure has been exited due to a failsafe."
+
+        echo -e "\nKeys to check:"
+        echo -e "- HOLLAEX_SECRET_REDIS_PASSWORD"
+        echo -e "- HOLLAEX_SECRET_PUBSUB_PASSWORD"
+        echo -e "- HOLLAEX_SECRET_DB_PASSWORD\n"
+
+        exit 1;
+
+    fi
     
 
     #kit_cross_compatibility_converter;
@@ -4523,21 +4561,6 @@ elif [[ "$1" == "upgrade" ]]; then
 
         # Update HollaEx CLI to latest if there is newer release available.
         update_hollaex_cli_to_latest;
-
-        echo "Checking the version compatibility between the latest HollaEx CLI and your local Kit..."
-        if command curl -s -f https://raw.githubusercontent.com/bitholla/hollaex-cli/master/version_range > $SCRIPTPATH/.master_version_range; then 
-
-            source $SCRIPTPATH/.master_version_range
-            rm $SCRIPTPATH/.master_version_range
-
-        else 
-
-            printf "\n\033[91mError: Failed to read latest version compatibility range from the server.\n\033[39m"
-            echo "Please check your internet connectivity and try it again."
-            
-            exit 1;
-
-        fi
 
         # Check Kit version compatibility range.
         # check_kit_version_compatibility_range;
@@ -4981,11 +5004,6 @@ elif [[ "$1" == "web" ]]; then
                 case $1 in (-*|"") err_msg_l; print_usage; exit 1; esac
                 export ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE=$1
                 echo "Target hollaex web image tag : $ENVIRONMENT_USER_HOLLAEX_WEB_IMAGE_VERSION_OVERRIDE."
-                shift; continue
-                ;;
-            # Scale related
-            --scale)
-                WEB_CLIENT_SCALE=true
                 shift; continue
                 ;;
             --replicas)
