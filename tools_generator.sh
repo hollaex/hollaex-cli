@@ -212,10 +212,22 @@ function kubernetes_database_init() {
               --set job.mode=$K8S_DB_JOB_MODE \
               $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server; then
 
-    while ! [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]] ;
-        do echo "Waiting for the database job gets done..."
-        sleep 10;
-    done;
+    START_TIME=$(date +%s)
+    TIMEOUT=600  # 10 minutes in seconds
+
+    while ! [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; do
+        ELAPSED_TIME=$(($(date +%s) - $START_TIME))
+        
+        if [ $ELAPSED_TIME -ge $TIMEOUT ]; then
+            echo "Timeout reached! The job did not complete in 5 minutes."
+            exit 1
+        fi
+        
+        echo "Waiting for the database job to complete..."
+        sleep 10
+    done
+
+    echo "Database job completed."
 
     echo "Successfully ran the database jobs!"
     kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION
