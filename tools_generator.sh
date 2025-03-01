@@ -219,7 +219,7 @@ function kubernetes_database_init() {
         ELAPSED_TIME=$(($(date +%s) - $START_TIME))
         
         if [ $ELAPSED_TIME -ge $TIMEOUT ]; then
-            echo "Timeout reached! The job did not complete in 10 minutes."
+            echo -e "\033[91mError: Timeout reached! The job did not complete in 10 minutes.\033[39m\n"
             exit 1
         fi
         
