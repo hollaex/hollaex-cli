@@ -1964,6 +1964,13 @@ spec:
             name: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
             port:
               number: 10010
+      - pathType: Prefix
+        path: /api-explorer
+        backend:
+          service:
+            name: ${ENVIRONMENT_EXCHANGE_NAME}-server-api
+            port:
+              number: 10010
   $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_CERT_MANAGER_ISSUER" ]] && [[ "$ENVIRONMENT_KUBERNETES_INGRESS_SSL_ENABLE_SERVER" == true ]];then ingress_web_tls_snippets $HOLLAEX_CONFIGMAP_API_HOST; fi)
 ---
 apiVersion: networking.k8s.io/v1
