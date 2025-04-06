@@ -1815,6 +1815,9 @@ metadata:
     nginx.org/websocket-services: "${ENVIRONMENT_EXCHANGE_NAME}-server-stream"
     nginx.ingress.kubernetes.io/upstream-hash-by: "\$binary_remote_addr"
     nginx.ingress.kubernetes.io/configuration-snippet: |
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=stream burst=14 nodelay;
+      limit_req_log_level notice;
+      limit_req_status 429;'; fi)
       #error_page 403 @maintenance_503;
 spec:
   rules:
@@ -2110,6 +2113,9 @@ metadata:
     nginx.org/websocket-services: "${ENVIRONMENT_EXCHANGE_NAME}-server-stream"
     nginx.ingress.kubernetes.io/upstream-hash-by: "\$binary_remote_addr"
     nginx.ingress.kubernetes.io/configuration-snippet: |
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=stream burst=14 nodelay;
+      limit_req_log_level notice;
+      limit_req_status 429;'; fi)
       #error_page 403 @maintenance_503;
 spec:
   rules:
