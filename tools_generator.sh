@@ -1746,7 +1746,7 @@ metadata:
         real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/proxy-body-size: "6m"
     nginx.ingress.kubernetes.io/configuration-snippet: |
-      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=plugins burst=30 nodelay;
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=plugins burst=20 nodelay;
       limit_req_log_level notice;
       limit_req_status 429;'; fi)
 
@@ -2049,7 +2049,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-body-size: "6m"
     nginx.ingress.kubernetes.io/rewrite-target: /plugins/\$2
     nginx.ingress.kubernetes.io/configuration-snippet: |
-      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=plugins burst=30 nodelay;
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=plugins burst=20 nodelay;
       limit_req_log_level notice;
       limit_req_status 429;'; fi)
       
