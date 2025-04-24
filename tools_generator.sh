@@ -1661,6 +1661,10 @@ metadata:
 
         real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/configuration-snippet: |
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=admin burst=10 nodelay;
+      limit_req_log_level notice;
+      limit_req_status 429;'; fi)
+
       #error_page 403 @maintenance_503;
 
 spec:
@@ -1696,6 +1700,10 @@ metadata:
 
         real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/configuration-snippet: |
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=apidocs burst=5 nodelay;
+      limit_req_log_level notice;
+      limit_req_status 429;'; fi)
+
       #error_page 403 @maintenance_503;
 
 spec:
@@ -1738,6 +1746,10 @@ metadata:
         real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/proxy-body-size: "6m"
     nginx.ingress.kubernetes.io/configuration-snippet: |
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=plugins burst=20 nodelay;
+      limit_req_log_level notice;
+      limit_req_status 429;'; fi)
+
       #error_page 403 @maintenance_503;
 
 spec:
@@ -1815,6 +1827,9 @@ metadata:
     nginx.org/websocket-services: "${ENVIRONMENT_EXCHANGE_NAME}-server-stream"
     nginx.ingress.kubernetes.io/upstream-hash-by: "\$binary_remote_addr"
     nginx.ingress.kubernetes.io/configuration-snippet: |
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=stream burst=14 nodelay;
+      limit_req_log_level notice;
+      limit_req_status 429;'; fi)
       #error_page 403 @maintenance_503;
 spec:
   rules:
@@ -1949,7 +1964,7 @@ metadata:
         }
         real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/configuration-snippet: |
-      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=14 nodelay;
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=admin burst=10 nodelay;
       limit_req_log_level notice;
       limit_req_status 429;'; fi)
 
@@ -1988,7 +2003,7 @@ metadata:
         }
         real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/configuration-snippet: |
-      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=14 nodelay;
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=apidocs burst=5 nodelay;
       limit_req_log_level notice;
       limit_req_status 429;'; fi)
 
@@ -2034,6 +2049,10 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-body-size: "6m"
     nginx.ingress.kubernetes.io/rewrite-target: /plugins/\$2
     nginx.ingress.kubernetes.io/configuration-snippet: |
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=plugins burst=20 nodelay;
+      limit_req_log_level notice;
+      limit_req_status 429;'; fi)
+      
       #error_page 403 @maintenance_503;
 
 spec:
@@ -2110,6 +2129,9 @@ metadata:
     nginx.org/websocket-services: "${ENVIRONMENT_EXCHANGE_NAME}-server-stream"
     nginx.ingress.kubernetes.io/upstream-hash-by: "\$binary_remote_addr"
     nginx.ingress.kubernetes.io/configuration-snippet: |
+      $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=stream burst=14 nodelay;
+      limit_req_log_level notice;
+      limit_req_status 429;'; fi)
       #error_page 403 @maintenance_503;
 spec:
   rules:
