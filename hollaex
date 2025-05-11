@@ -4385,25 +4385,7 @@ elif [[ "$1" == "apply" ]]; then
 
         #Checking Kubernetes dependencies
         if ! check_kubernetes_dependencies; then exit 1; fi;
-
-        # Only tries to attempt remove ingress rules from Kubernetes if it exists.
-        if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
         
-            echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-            kubectl delete -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
-
-        fi
-        
-        # DROP OLD INGRESS RULES IF IT EXISTS ON THE CLUSTER
-        if command kubectl get ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
-        
-            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order
-            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-admin
-            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-explorer
-            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-docs
-
-        fi
-
         run_and_upgrade_hollaex_on_kubernetes;
 
         # Install / Upgrade status check logic
@@ -4803,6 +4785,21 @@ elif [[ "$1" == "terminate" ]]; then
 
          # Only tries to attempt remove ingress rules from Kubernetes if it exists.
         if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+
+            if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
+
+                echo "Generating Kubernetes Ingress"
+                if [[ ! "$HOLLAEX_CONFIGMAP_API_HOST" == "$HOLLAEX_CONFIGMAP_DOMAIN/api" ]]; then
+
+                    generate_kubernetes_ingress;
+                
+                else 
+
+                    generate_kubernetes_ingress_2_4;
+
+                fi 
+
+            fi
         
             echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
             kubectl delete -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
@@ -5954,7 +5951,10 @@ elif [[ "$1" == "web" ]]; then
                 fi
 
             fi
-
+            
+            echo "Generating web ingress rules for Kubernetes"
+            generate_kubernetes_ingress_for_web;
+            
             echo "Removing web ingress rule on the cluster"
             kubectl delete -f $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
