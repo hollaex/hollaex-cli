@@ -220,6 +220,7 @@ function kubernetes_database_init() {
         
         if [ $ELAPSED_TIME -ge $TIMEOUT ]; then
             echo -e "\033[91mError: Timeout reached! The job did not complete in 10 minutes.\033[39m\n"
+            kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION
             exit 1
         fi
         
