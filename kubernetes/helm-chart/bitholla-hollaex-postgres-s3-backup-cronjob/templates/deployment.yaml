@@ -46,6 +46,12 @@ spec:
                   name: {{.Values.secretName}}
                   key: DB_NAME
 
+            resources:
+              limits:
+                memory: 256Mi
+              requests:
+                memory: 256Mi
+
             args:
             - /bin/sh
             - -c
