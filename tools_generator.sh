@@ -199,6 +199,13 @@ function kubernetes_database_init() {
 
   fi
 
+  # Wait unitl both Redis and PSQL DB become online.
+  echo "Waiting for both Redis and PSQL DB become online..."
+  kubectl wait --for=condition=available --timeout=30m \
+    deployment/${ENVIRONMENT_EXCHANGE_NAME}-redis \
+    deployment/${ENVIRONMENT_EXCHANGE_NAME}-db \
+    -n "$ENVIRONMENT_EXCHANGE_NAME"   || exit 1
+
   echo "Running database jobs..."
 
   if command helm install $ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION \
@@ -213,13 +220,16 @@ function kubernetes_database_init() {
               $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/helm-chart/hollaex-kit-server; then
 
     START_TIME=$(date +%s)
-    TIMEOUT=600  # 10 minutes in seconds
+    TIMEOUT=1800  # 30 minutes in seconds
 
     while ! [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; do
         ELAPSED_TIME=$(($(date +%s) - $START_TIME))
         
         if [ $ELAPSED_TIME -ge $TIMEOUT ]; then
-            echo -e "\033[91mError: Timeout reached! The job did not complete in 10 minutes.\033[39m\n"
+            echo -e "\033[91mError: Timeout reached! The job did not complete in 20 minutes.\033[39m\n"
+            kubectl describe --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION
+            kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION
+            helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION
             exit 1
         fi
         
