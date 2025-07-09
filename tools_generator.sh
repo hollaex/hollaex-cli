@@ -5320,10 +5320,10 @@ function run_and_upgrade_hollaex_on_kubernetes() {
   kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/flushRedis.js
 
   echo "Restarting all containers to apply latest database changes..."
-  kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
-
-  echo "Waiting for the containers get fully ready..."
-  sleep 15;
+  kubectl rollout restart --namespace $ENVIRONMENT_EXCHANGE_NAME \
+    deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api \
+    deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream \
+    deployment/$ENVIRONMENT_EXCHANGE_NAME-server-plugins
 
   echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
   kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
