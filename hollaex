@@ -1199,11 +1199,6 @@ elif [[ "$1" == "setup" ]]; then
         source $i
     done;
 
-    # Docker tag update
-    ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
-    echo "Current HollaEx Kit Version: $ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE"
-    sed -i.bak "s/ENVIRONMENT_DOCKER_IMAGE_VERSION=.*/ENVIRONMENT_DOCKER_IMAGE_VERSION=$ENVIRONMENT_DOCKER_IMAGE_VERSION_OVERRIDE/" $CONFIGMAP_FILE_PATH
-    rm $CONFIGMAP_FILE_PATH.bak
 
     if [[ "$LOCAL_BUILD" ]]; then 
 
@@ -2004,138 +1999,125 @@ elif [[ "$1" == "login" ]]; then
 
     source $SCRIPTPATH/tools_generator.sh
 
-    if [[ "$ENVIRONMENT_EXCHANGE_NAME" ]] && [[ "$HOLLAEX_SECRET_ACTIVATION_CODE" ]]; then 
+    hollaex_login_token_validate_and_issue;
 
-        echo -e "\n\033[92mHollaEx CLI detected existing Exchane Name and Activation Code from your settings files.\033[39m\n"
+    export BITHOLLA_ACCOUNT_TOKEN=$(cat $HOLLAEX_CLI_INIT_PATH/.token)
 
-        echo "Exchange Name: $ENVIRONMENT_EXCHANGE_NAME"
-        echo "Activation Code: $HOLLAEX_SECRET_ACTIVATION_CODE"
+    BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
+        --request GET \
+        $hollaexAPIURL/v2/exchange \
+       | jq '.')
+    
+    BITHOLLA_USER_EXCHANGE_COUNT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r '.count')
 
-    else 
+    # Exit with error if user doesn't have any exchange on the account.
+    if [[ "$BITHOLLA_USER_EXCHANGE_COUNT" == "0" ]]; then
 
-        hollaex_login_token_validate_and_issue;
-
-    `    export BITHOLLA_ACCOUNT_TOKEN=$(cat $HOLLAEX_CLI_INIT_PATH/.token)
-
-        BITHOLLA_USER_EXCHANGE_LIST=$(curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $BITHOLLA_ACCOUNT_TOKEN"\
-            --request GET \
-            $hollaexAPIURL/v2/exchange \
-        | jq '.')
+        printf "\n\033[91mError: You don't have any exchange on your account.\033[39m\n"
+        echo "Please go to the HollaEx Dashboard (dash.hollaex.com), and do an exchange configuration first."
         
-        BITHOLLA_USER_EXCHANGE_COUNT=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r '.count')
-
-        # Exit with error if user doesn't have any exchange on the account.
-        if [[ "$BITHOLLA_USER_EXCHANGE_COUNT" == "0" ]]; then
-
-            printf "\n\033[91mError: You don't have any exchange on your account.\033[39m\n"
-            echo "Please go to the HollaEx Dashboard (dash.hollaex.com), and do an exchange configuration first."
-            
-            exit 1;
-
-        fi
-
-        # Subtracting 1 from total count due to the array starts from 0, not from 1.
-        BITHOLLA_USER_EXCHANGE_COUNT=$((BITHOLLA_USER_EXCHANGE_COUNT-1))
-
-        printf "\n"
-
-        if (( $BITHOLLA_USER_EXCHANGE_COUNT > 0 )); then 
-
-            function hollaex_login_select_exchange() {
-
-                printf "Please pick the \033[1mexchange number\033[0m you want to bind.\n\n"
-
-                for ((i=0;i<=BITHOLLA_USER_EXCHANGE_COUNT;i++)); do 
-
-                printf "Exchange number : \033[1m$((i+1))\033[0m\n";
-
-                echo "Name:" $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].name");
-                echo "Activation Code:" $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].activation_code");
-                printf "\n"
-
-                EXCHANGE_NAME_TEMP=EXCHANGE_NAME_${i}
-                EXCHANGE_ACTIVATION_CODE_TEMP=EXCHANGE_ACTIVATION_CODE_${i}
-
-                export $(echo $EXCHANGE_NAME_TEMP)=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].name";);
-                export $(echo $EXCHANGE_ACTIVATION_CODE_TEMP)=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].activation_code";);
-
-                done;
-
-                printf "Input the exchange number: "
-                read answer
-
-                while true;
-                    do if [[ ! "${answer}" =~ ^[0-9]+$ ]]; then 
-                        printf "\033[91m\nError: The input always should be numberic.\033[39m\n"
-                        echo "Please pick the exchange number you want to bind."
-                        read answer
-                    else
-                        break;
-                    fi
-                done
-
-                answer=$((answer-1))
-
-                printf "\n"
-                SELECTED_EXCHANGE_NAME=EXCHANGE_NAME_${answer}
-                SELECTED_EXCHANGE_ACTIVATION_CODE=EXCHANGE_ACTIVATION_CODE_${answer}
-
-                if [[ ! "${!SELECTED_EXCHANGE_NAME}" ]] || [[ ! "${!SELECTED_EXCHANGE_ACTIVATION_CODE}" ]]; then
-
-                    printf "\033[91m\nError: Failed to read the data from the selected exchange.\033[39m\n"
-                    printf "Please make sure that you selected the correct number, and try again.\n\n"
-                    hollaex_login_select_exchange;
-
-                fi
-                
-                echo -e "\033[1mYour Exchange name: ${!SELECTED_EXCHANGE_NAME}\033[0m"
-                echo -e "\033[1mYour Activation code: ${!SELECTED_EXCHANGE_ACTIVATION_CODE}\033[0m"
-                echo "Do you want to continue? (Y/n)"
-                read answer
-
-                if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
-
-                    hollaex_login_select_exchange;
-
-                fi
-            }
-
-            hollaex_login_select_exchange;
-
-        else 
-
-            export SELECTED_EXCHANGE_NAME=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[0].name";);
-            export SELECTED_EXCHANGE_ACTIVATION_CODE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[0].activation_code";);
-
-            echo -e "\033[1mYour Exchange name: ${SELECTED_EXCHANGE_NAME}\033[0m"
-            echo -e "\033[1mYour Activation code: ${SELECTED_EXCHANGE_ACTIVATION_CODE}\033[0m"
-
-        fi 
-
-        if [[ ! "$SELECTED_EXCHANGE_ACTIVATION_CODE" ]]; then
-
-            export SELECTED_EXCHANGE_ACTIVATION_CODE=${!SELECTED_EXCHANGE_ACTIVATION_CODE}
-
-        fi
-
-
-        if command sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=.*/HOLLAEX_SECRET_ACTIVATION_CODE=${SELECTED_EXCHANGE_ACTIVATION_CODE}/" $SECRET_FILE_PATH; then
-
-            rm $SECRET_FILE_PATH.bak
-
-            printf "\n\033[92mSuccessfully bound the selected exchange to HollaEx Kit.\033[39m\n"
-
-        else
-
-            printf "\033[91mFailed to bind selected exchange to HollaEx Kit.\033[39m\n"
-            echo "Please review the error and try again."
-            exit 1;
-
-        fi`
+        exit 1;
 
     fi
 
-    
+    # Subtracting 1 from total count due to the array starts from 0, not from 1.
+    BITHOLLA_USER_EXCHANGE_COUNT=$((BITHOLLA_USER_EXCHANGE_COUNT-1))
+
+    printf "\n"
+
+    if (( $BITHOLLA_USER_EXCHANGE_COUNT > 0 )); then 
+
+        function hollaex_login_select_exchange() {
+
+            printf "Please pick the \033[1mexchange number\033[0m you want to bind.\n\n"
+
+            for ((i=0;i<=BITHOLLA_USER_EXCHANGE_COUNT;i++)); do 
+
+            printf "Exchange number : \033[1m$((i+1))\033[0m\n";
+
+            echo "Name:" $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].name");
+            echo "Activation Code:" $(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].activation_code");
+            printf "\n"
+
+            EXCHANGE_NAME_TEMP=EXCHANGE_NAME_${i}
+            EXCHANGE_ACTIVATION_CODE_TEMP=EXCHANGE_ACTIVATION_CODE_${i}
+
+            export $(echo $EXCHANGE_NAME_TEMP)=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].name";);
+            export $(echo $EXCHANGE_ACTIVATION_CODE_TEMP)=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[$i].activation_code";);
+
+            done;
+
+            printf "Input the exchange number: "
+            read answer
+
+            while true;
+                do if [[ ! "${answer}" =~ ^[0-9]+$ ]]; then 
+                    printf "\033[91m\nError: The input always should be numberic.\033[39m\n"
+                    echo "Please pick the exchange number you want to bind."
+                    read answer
+                else
+                    break;
+                fi
+            done
+
+            answer=$((answer-1))
+
+            printf "\n"
+            SELECTED_EXCHANGE_NAME=EXCHANGE_NAME_${answer}
+            SELECTED_EXCHANGE_ACTIVATION_CODE=EXCHANGE_ACTIVATION_CODE_${answer}
+
+            if [[ ! "${!SELECTED_EXCHANGE_NAME}" ]] || [[ ! "${!SELECTED_EXCHANGE_ACTIVATION_CODE}" ]]; then
+
+                printf "\033[91m\nError: Failed to read the data from the selected exchange.\033[39m\n"
+                printf "Please make sure that you selected the correct number, and try again.\n\n"
+                hollaex_login_select_exchange;
+
+            fi
+            
+            echo -e "\033[1mYour Exchange name: ${!SELECTED_EXCHANGE_NAME}\033[0m"
+            echo -e "\033[1mYour Activation code: ${!SELECTED_EXCHANGE_ACTIVATION_CODE}\033[0m"
+            echo "Do you want to continue? (Y/n)"
+            read answer
+
+            if [[ ! "$answer" = "${answer#[Nn]}" ]] ;then
+
+                hollaex_login_select_exchange;
+
+            fi
+        }
+
+        hollaex_login_select_exchange;
+
+    else 
+
+        export SELECTED_EXCHANGE_NAME=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[0].name";);
+        export SELECTED_EXCHANGE_ACTIVATION_CODE=$(echo $BITHOLLA_USER_EXCHANGE_LIST | jq -r ".data[0].activation_code";);
+
+        echo -e "\033[1mYour Exchange name: ${SELECTED_EXCHANGE_NAME}\033[0m"
+        echo -e "\033[1mYour Activation code: ${SELECTED_EXCHANGE_ACTIVATION_CODE}\033[0m"
+
+    fi 
+
+    if [[ ! "$SELECTED_EXCHANGE_ACTIVATION_CODE" ]]; then
+
+        export SELECTED_EXCHANGE_ACTIVATION_CODE=${!SELECTED_EXCHANGE_ACTIVATION_CODE}
+
+    fi
+
+
+    if command sed -i.bak "s/HOLLAEX_SECRET_ACTIVATION_CODE=.*/HOLLAEX_SECRET_ACTIVATION_CODE=${SELECTED_EXCHANGE_ACTIVATION_CODE}/" $SECRET_FILE_PATH; then
+
+        rm $SECRET_FILE_PATH.bak
+
+        printf "\n\033[92mSuccessfully bound the selected exchange to HollaEx Kit.\033[39m\n"
+
+    else
+
+        printf "\033[91mFailed to bind selected exchange to HollaEx Kit.\033[39m\n"
+        echo "Please review the error and try again."
+        exit 1;
+
+    fi
     
     # hollaexAPIURL=$hollaexAPIURL
     # hollaex_login_form;
