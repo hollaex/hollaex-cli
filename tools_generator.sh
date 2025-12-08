@@ -1630,7 +1630,7 @@ metadata:
           return 503;
         }
 
-        real_ip_header    X-Forwarded-For;
+        #real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/configuration-snippet: |
       $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=14 nodelay;
       limit_req_log_level notice;
@@ -1669,7 +1669,7 @@ metadata:
           return 503;
         }
 
-        real_ip_header    X-Forwarded-For;
+        #real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/configuration-snippet: |
       $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=admin burst=10 nodelay;
       limit_req_log_level notice;
@@ -1708,7 +1708,7 @@ metadata:
           return 503;
         }
 
-        real_ip_header    X-Forwarded-For;
+        #real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/configuration-snippet: |
       $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=apidocs burst=5 nodelay;
       limit_req_log_level notice;
@@ -1753,7 +1753,7 @@ metadata:
           return 503;
         }
 
-        real_ip_header    X-Forwarded-For;
+        #real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/proxy-body-size: "6m"
     nginx.ingress.kubernetes.io/configuration-snippet: |
       $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=plugins burst=20 nodelay;
@@ -1793,7 +1793,7 @@ metadata:
           return 503;
         }
 
-        real_ip_header    X-Forwarded-For;
+        #real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/proxy-body-size: "6m"
     nginx.ingress.kubernetes.io/configuration-snippet: |
       #error_page 403 @maintenance_503;
@@ -1832,7 +1832,7 @@ metadata:
           return 503;
         }
 
-        real_ip_header    X-Forwarded-For;
+        #real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/proxy-body-size: "6m"
     nginx.org/websocket-services: "${ENVIRONMENT_EXCHANGE_NAME}-server-stream"
     nginx.ingress.kubernetes.io/upstream-hash-by: "\$binary_remote_addr"
@@ -1886,7 +1886,7 @@ metadata:
           internal;
           return 503;
         }
-        real_ip_header    X-Forwarded-For;
+        #real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/proxy-body-size: "6m"
 spec:
   rules:
@@ -1933,7 +1933,7 @@ metadata:
           internal;
           return 503;
         }
-        real_ip_header    X-Forwarded-For;
+        #real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/configuration-snippet: |
       $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=api burst=14 nodelay;
       limit_req_log_level notice;
@@ -1972,7 +1972,7 @@ metadata:
           internal;
           return 503;
         }
-        real_ip_header    X-Forwarded-For;
+        #real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/configuration-snippet: |
       $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=admin burst=10 nodelay;
       limit_req_log_level notice;
@@ -2011,7 +2011,7 @@ metadata:
           internal;
           return 503;
         }
-        real_ip_header    X-Forwarded-For;
+        #real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/configuration-snippet: |
       $(if [[ "$ENVIRONMENT_KUBERNETES_INGRESS_OPTIMIZED_RATE_LIMIT" ]]; then echo 'limit_req zone=apidocs burst=5 nodelay;
       limit_req_log_level notice;
@@ -2055,7 +2055,7 @@ metadata:
           internal;
           return 503;
         }
-        real_ip_header    X-Forwarded-For;
+        #real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/proxy-body-size: "6m"
     nginx.ingress.kubernetes.io/rewrite-target: /plugins/\$2
     nginx.ingress.kubernetes.io/configuration-snippet: |
@@ -2095,7 +2095,7 @@ metadata:
           internal;
           return 503;
         }
-        real_ip_header    X-Forwarded-For;
+        #real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/proxy-body-size: "6m"
     nginx.ingress.kubernetes.io/rewrite-target: /plugins/sms/verify/\$2
     nginx.ingress.kubernetes.io/configuration-snippet: |
@@ -2134,7 +2134,7 @@ metadata:
           internal;
           return 503;
         }
-        real_ip_header    X-Forwarded-For;
+        #real_ip_header    X-Forwarded-For;
     nginx.ingress.kubernetes.io/proxy-body-size: "6m"
     nginx.org/websocket-services: "${ENVIRONMENT_EXCHANGE_NAME}-server-stream"
     nginx.ingress.kubernetes.io/upstream-hash-by: "\$binary_remote_addr"
