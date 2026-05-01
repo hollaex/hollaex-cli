@@ -26,6 +26,21 @@
 
 ############################
 
+function hollaex_ascii_outbound_ip_registration_warning() {
+
+  /bin/cat << EOF
+
+### OUTBOUND IP REGISTRATION WARNING ###
+
+Starting June 1, 2026, HollaEx Kit servers must have their outbound server IP address registered with HollaEx to operate correctly.
+
+Please contact support@hollaex.com and provide your server's outbound IP address before continuing with the setup.
+
+---------------------------------
+EOF
+
+}
+
 SCRIPTPATH="$HOME/.hollaex-cli"
 
 #### HollaEx CLI Settings ####
@@ -1111,6 +1126,8 @@ elif [[ "$1" == "setup" ]]; then
         export HOLLAEX_SETUP_FORCE=true
 
     fi
+
+    hollaex_ascii_outbound_ip_registration_warning;
 
     source $SCRIPTPATH/tools_generator.sh
 
