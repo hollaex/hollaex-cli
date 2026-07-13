@@ -1,5 +1,45 @@
 #!/bin/bash 
 
+# =============================================================================
+# kubectl Retry Wrapper (transient network errors only)
+# =============================================================================
+# The CLI hits the same cluster and the same intermittent connectivity drops as
+# the HollaCloud jobs. Operational kubectl calls are routed through
+# kubectl_retry so a transient network error (e.g. "Unable to connect to the
+# server: dial tcp ...: connect: connection refused") is retried up to 3 times,
+# 5s apart, instead of failing. Genuine kubectl errors (NotFound, Forbidden,
+# invalid args, ...) do NOT match and return immediately with kubectl's exit
+# code. stdout is handed back to the caller so $(...) captures and pipes still
+# work. Blocking commands (port-forward, proxy) and install/version checks are
+# intentionally NOT routed through this wrapper.
+KUBECTL_NET_ERR_RE='Unable to connect to the server|connection to the server.*(was )?refused|was refused - did you specify the right host or port|error dialing backend|unable to upgrade connection|dial tcp|connection refused|connection reset|connection timed out|i/o timeout|TLS handshake timeout|TLS handshake error|no route to host|network is unreachable|context deadline exceeded|deadline exceeded|Client\.Timeout|no such host|Temporary failure in name resolution|server misbehaving|unexpected EOF|transport is closing'
+
+function kubectl_retry() {
+    local outf errf rc attempt=1
+    local max_attempts=4   # initial try + 3 retries
+    outf="$(mktemp)"; errf="$(mktemp)"
+
+    while true; do
+        if kubectl "$@" >"$outf" 2>"$errf"; then rc=0; else rc=$?; fi
+        cat "$errf" >&2
+
+        if [[ $rc -ne 0 && $attempt -lt $max_attempts ]] && grep -qiE "$KUBECTL_NET_ERR_RE" "$outf" "$errf"; then
+            cat "$outf" >&2
+            echo "kubectl network error (attempt $attempt/$max_attempts); retrying in 5s: kubectl $*" >&2
+            attempt=$((attempt + 1))
+            sleep 5
+            continue
+        fi
+
+        cat "$outf"
+        break
+    done
+
+    rm -f "$outf" "$errf"
+    return "$rc"
+}
+
+
 ### DEPRECATION WARNING ###
 # function hollaex_ascii_cli_is_deprecated() {
 
@@ -1320,7 +1360,7 @@ elif [[ "$1" == "setup" ]]; then
 
         echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
-        kubectl get nodes
+        kubectl_retry get nodes
         echo "*********************************************"
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
@@ -1337,7 +1377,7 @@ elif [[ "$1" == "setup" ]]; then
         fi
         
         echo "Creating namespace on Kubernetes."
-        kubectl create ns $ENVIRONMENT_EXCHANGE_NAME
+        kubectl_retry create ns $ENVIRONMENT_EXCHANGE_NAME
         
         if [[ ! "$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" == "hollaex/hollaex-kit" ]]; then
 
@@ -2649,7 +2689,7 @@ elif [[ "$1" == "start" ]]; then
 
         echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
-        kubectl get nodes
+        kubectl_retry get nodes
         echo "*********************************************"
 
         #Generating and updating settings
@@ -2696,26 +2736,26 @@ elif [[ "$1" == "start" ]]; then
         if [[ ! "$IGNORE_SETTINGS" ]]; then 
 
             echo "Applying configmap on the namespace"
-            kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
+            kubectl_retry apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
 
             echo "Applying secret on the namespace"
-            kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/secret.yaml
+            kubectl_retry apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/secret.yaml
         
         fi 
 
         # For scaling up exisitng Exchange on Kubernetes
-        if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+        if kubectl_retry get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
             echo "Scaling up containers on the cluster..."
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+            kubectl_retry scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-            kubectl scale deployment/$HOLLAEX_SECRET_DB_HOST --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+            kubectl_retry scale deployment/$HOLLAEX_SECRET_DB_HOST --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-plugins --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+            kubectl_retry scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-plugins --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=${ENVIRONMENT_API_SERVER_REPLICAS:-1} --namespace $ENVIRONMENT_EXCHANGE_NAME
+            kubectl_retry scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=${ENVIRONMENT_API_SERVER_REPLICAS:-1} --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-            kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+            kubectl_retry scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
             if [[ ! "$IS_HOLLAEX_SETUP" ]]; then
 
@@ -2734,7 +2774,7 @@ elif [[ "$1" == "start" ]]; then
 
 
             echo "Updating $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-            kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
+            kubectl_retry apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
             # echo "Applying Ingress rules..."
             # kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
@@ -3009,14 +3049,14 @@ elif [[ "$1" == "scale" ]]; then
 
         echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
-        kubectl get nodes
+        kubectl_retry get nodes
         echo "*********************************************"
 
         # For scaling up exisitng Exchange on Kubernetes
-        if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+        if kubectl_retry get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
             echo "Scaling up containers on the cluster..."
-            kubectl scale deployment/$HOLLAEX_SCALE_TARGET_CONVERTED --replicas=$HOLLAEX_SCALE_TARGET_REPLICAS --namespace $ENVIRONMENT_EXCHANGE_NAME
+            kubectl_retry scale deployment/$HOLLAEX_SCALE_TARGET_CONVERTED --replicas=$HOLLAEX_SCALE_TARGET_REPLICAS --namespace $ENVIRONMENT_EXCHANGE_NAME
             
             export HOLLAEX_SCALE_TARGET_REPLICAS_SETTINGS="ENVIRONMENT_KUBERNETES_$(echo $HOLLAEX_SCALE_TARGET | tr '[:lower:]' '[:upper:]')_SERVER_REPLICAS"
 
@@ -3699,7 +3739,7 @@ elif [[ "$1" == "prod" ]]; then
 
             # kubectl apply
             echo "Updating the configmap..."
-            kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
+            kubectl_retry apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
 
             # Direct Ingress file update with yq
             yq e -i ".spec.rules[0].host = \"$INPUT_HOLLAEX_CONFIGMAP_DOMAIN\"" $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
@@ -3838,7 +3878,7 @@ elif [[ "$1" == "stop" ]]; then
 
         echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
-        kubectl get nodes
+        kubectl_retry get nodes
         echo "*********************************************"
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
@@ -3855,17 +3895,17 @@ elif [[ "$1" == "stop" ]]; then
         fi
 
         echo "Scaling down containers on the cluster..."
-        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
+        kubectl_retry scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
+        kubectl_retry scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-plugins --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
+        kubectl_retry scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-plugins --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
         echo "Scaling down backend components..."
 
-        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
+        kubectl_retry scale deployment/$ENVIRONMENT_EXCHANGE_NAME-redis --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
-        kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-db --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
+        kubectl_retry scale deployment/$ENVIRONMENT_EXCHANGE_NAME-db --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
         hollaex_ascii_exchange_has_been_stopped;
 
@@ -4057,7 +4097,7 @@ elif [[ "$1" == "restart" ]]; then
 
         echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
-        kubectl get nodes
+        kubectl_retry get nodes
         echo "*********************************************"
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
@@ -4782,7 +4822,7 @@ elif [[ "$1" == "terminate" ]]; then
 
         echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
-        kubectl get nodes
+        kubectl_retry get nodes
         echo "*********************************************"
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
@@ -4801,7 +4841,7 @@ elif [[ "$1" == "terminate" ]]; then
         fi
 
          # Only tries to attempt remove ingress rules from Kubernetes if it exists.
-        if command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+        if kubectl_retry get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
 
             if [[ "$ENVIRONMENT_KUBERNETES_GENERATE_INGRESS_ENABLE" == true ]]; then
 
@@ -4819,17 +4859,17 @@ elif [[ "$1" == "terminate" ]]; then
             fi
         
             echo "Removing $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-            kubectl delete -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
+            kubectl_retry delete -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
         fi
 
         # DROP OLD INGRESS RULES IF IT EXISTS ON THE CLUSTER
-        if command kubectl get ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+        if kubectl_retry get ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
         
-            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order
-            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-admin
-            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-explorer
-            kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-docs
+            kubectl_retry delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order
+            kubectl_retry delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-admin
+            kubectl_retry delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-explorer
+            kubectl_retry delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-docs
 
         fi
 
@@ -4855,7 +4895,7 @@ elif [[ "$1" == "terminate" ]]; then
         fi
 
         echo "Removing $HOLLAEX_CONFIGMAP_API_NAME namespace."
-        kubectl delete ns $ENVIRONMENT_EXCHANGE_NAME
+        kubectl_retry delete ns $ENVIRONMENT_EXCHANGE_NAME
 
         if [[ "$HOLLAEX_NETWORK_TERMINATE" ]]; then 
 
@@ -5140,7 +5180,7 @@ elif [[ "$1" == "web" ]]; then
             echo "*********************************************"
             #Verify remote Kubernetes cluster is correct.
             echo "Verifying current KUBECONFIG on the machine"
-            kubectl get nodes
+            kubectl_retry get nodes
             echo "*********************************************"
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
@@ -5170,11 +5210,11 @@ elif [[ "$1" == "web" ]]; then
             generate_kubernetes_ingress_for_web;
 
             echo "Applying web ingress rules for Kubernetes"
-            kubectl apply -f $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
+            kubectl_retry apply -f $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
             
             # Create docker registry secret on Kubernetes.
-            if ! command kubectl get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+            if ! kubectl_retry get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
                 
                  if [[ "$RUN_WITH_VERIFY" == true ]]; then
                  
@@ -5352,7 +5392,7 @@ elif [[ "$1" == "web" ]]; then
             echo "*********************************************"
             #Verify remote Kubernetes cluster is correct.
             echo "Verifying current KUBECONFIG on the machine"
-            kubectl get nodes
+            kubectl_retry get nodes
             echo "*********************************************"
 
             # if [[ "$RUN_WITH_VERIFY" == true ]]; then
@@ -5382,10 +5422,10 @@ elif [[ "$1" == "web" ]]; then
             generate_kubernetes_ingress_for_web;
 
             echo "Applying web ingress rules for Kubernetes"
-            kubectl apply -f $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
+            kubectl_retry apply -f $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
 
-            if ! command kubectl get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null && [[ ! "$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" == "hollaex/hollaex-kit" ]]; then
+            if ! kubectl_retry get secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null && [[ ! "$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY" == "hollaex/hollaex-kit" ]]; then
 
                 if [[ "$RUN_WITH_VERIFY" == true ]]; then
 
@@ -5396,7 +5436,7 @@ elif [[ "$1" == "web" ]]; then
             fi
 
             echo "Starting (Scaling up) the web server on Kubernetes..."
-            if command kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-web --replicas=${ENVIRONMENT_WEB_SERVER_REPLICAS:-1} --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 ; then
+            if kubectl_retry scale deployment/$ENVIRONMENT_EXCHANGE_NAME-web --replicas=${ENVIRONMENT_WEB_SERVER_REPLICAS:-1} --namespace $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 ; then
 
                 hollaex_ascii_web_server_is_up;
 
@@ -5542,7 +5582,7 @@ elif [[ "$1" == "web" ]]; then
         echo "*********************************************"
         #Verify remote Kubernetes cluster is correct.
         echo "Verifying current KUBECONFIG on the machine"
-        kubectl get nodes
+        kubectl_retry get nodes
         echo "*********************************************"
 
         if [[ "$RUN_WITH_VERIFY" == true ]]; then
@@ -5570,10 +5610,10 @@ elif [[ "$1" == "web" ]]; then
         fi
 
         echo "Removing web ingress rules from the Kubernetes"
-        kubectl delete -f $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
+        kubectl_retry delete -f $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
         echo "Stopping (Scaling down) the web server..."
-        if command kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-web --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME; then
+        if kubectl_retry scale deployment/$ENVIRONMENT_EXCHANGE_NAME-web --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME; then
 
             printf "\n\033[92mSuccessfully stopped the web server.\033[39m\n"
             echo "To bring it up, Please run 'hollaex web --start --kube' command".
@@ -5691,7 +5731,7 @@ elif [[ "$1" == "web" ]]; then
             echo "*********************************************"
             #Verify remote Kubernetes cluster is correct.
             echo "Verifying current KUBECONFIG on the machine"
-            kubectl get nodes
+            kubectl_retry get nodes
             echo "*********************************************"
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
@@ -5707,7 +5747,7 @@ elif [[ "$1" == "web" ]]; then
 
             fi
 
-            if command kubectl rollout restart -n $ENVIRONMENT_EXCHANGE_NAME deployment/$ENVIRONMENT_EXCHANGE_NAME-web; then
+            if kubectl_retry rollout restart -n $ENVIRONMENT_EXCHANGE_NAME deployment/$ENVIRONMENT_EXCHANGE_NAME-web; then
 
                 echo -e "\n\033[92mSuccessfully restarted the web server on the Kubernetes!\033[39m\n"
 
@@ -5902,7 +5942,7 @@ elif [[ "$1" == "web" ]]; then
                 generate_kubernetes_ingress_for_web;
             fi
             echo "Applying web ingress rules for Kubernetes"
-            kubectl apply -f $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
+            kubectl_retry apply -f $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
             
             # FOR GENERATING NODESELECTOR VALUES
             # generate_nodeselector_values ${ENVIRONMENT_KUBERNETES_EXCHANGE_STATELESS_NODESELECTOR:-$ENVIRONMENT_KUBERNETES_EXCHANGE_NODESELECTOR} hollaex-stateless
@@ -5953,7 +5993,7 @@ elif [[ "$1" == "web" ]]; then
             echo "*********************************************"
             #Verify remote Kubernetes cluster is correct.
             echo "Verifying current KUBECONFIG on the machine"
-            kubectl get nodes
+            kubectl_retry get nodes
             echo "*********************************************"
 
             if [[ "$RUN_WITH_VERIFY" == true ]]; then
@@ -5973,7 +6013,7 @@ elif [[ "$1" == "web" ]]; then
             generate_kubernetes_ingress_for_web;
             
             echo "Removing web ingress rule on the cluster"
-            kubectl delete -f $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
+            kubectl_retry delete -f $HOLLAEX_CLI_INIT_PATH/web/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
             echo "Removing the web server..."
             if command helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-web; then
@@ -6056,14 +6096,14 @@ elif [[ "$1" == "web" ]]; then
 
             echo "*********************************************"
             echo "Verifying current KUBECONFIG on the machine"
-            kubectl get nodes
+            kubectl_retry get nodes
             echo "*********************************************"
 
             # For scaling up exisitng Exchange on Kubernetes
-            if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+            if kubectl_retry get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
                 echo "Scaling up containers on the cluster..."
-                kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-web --replicas=$HOLLAEX_WEB_SCALE_TARGET_REPLICAS --namespace $ENVIRONMENT_EXCHANGE_NAME
+                kubectl_retry scale deployment/$ENVIRONMENT_EXCHANGE_NAME-web --replicas=$HOLLAEX_WEB_SCALE_TARGET_REPLICAS --namespace $ENVIRONMENT_EXCHANGE_NAME
                 
                 for i in ${CONFIG_FILE_PATH[@]}; do
 
@@ -6425,7 +6465,7 @@ elif [[ "$1" == "toolbox" ]]; then
         echo "*********************************************"
         #Verify remote Kubernetes cluster is correct.
         echo "Verifying current KUBECONFIG on the machine"
-        kubectl get nodes
+        kubectl_retry get nodes
         echo "*********************************************"
 
     fi
@@ -6453,15 +6493,15 @@ elif [[ "$1" == "toolbox" ]]; then
             fi
 
             echo "Deleting Ingress rules for the exchange..."
-            kubectl delete -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
+            kubectl_retry delete -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
             # DROP OLD INGRESS RULES IF IT EXISTS ON THE CLUSTER
-            if command kubectl get ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+            if kubectl_retry get ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
             
-                kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order
-                kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-admin
-                kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-explorer
-                kubectl delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-docs
+                kubectl_retry delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-order
+                kubectl_retry delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-admin
+                kubectl_retry delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-api-explorer
+                kubectl_retry delete -n $ENVIRONMENT_EXCHANGE_NAME ingress/$ENVIRONMENT_EXCHANGE_NAME-ingress-docs
 
             fi
 
@@ -6504,12 +6544,12 @@ elif [[ "$1" == "toolbox" ]]; then
             fi
 
             echo "Restarting all workload containers..."
-            kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+            kubectl_retry delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
 
             sleep 10;
 
             echo "Applying Ingress rules for the exchange..."
-            kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
+            kubectl_retry apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
             exit 0;
 
@@ -6583,7 +6623,7 @@ elif [[ "$1" == "toolbox" ]]; then
             echo "HollaEx CLI will open proxy tunnel between your machine and remote proxy with kubectl proxy."
 
             echo "Opening local proxy on 5432 port of your machine..."
-            kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$HOLLAEX_SECRET_DB_HOST" -o name | sed 's/pod\///' | head -n 1) 5432:5432 &
+            kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl_retry get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$HOLLAEX_SECRET_DB_HOST" -o name | sed 's/pod\///' | head -n 1) 5432:5432 &
 
             echo "Waiting for the proxy tunnel get fully ready..."
             sleep 10;
@@ -6712,7 +6752,7 @@ elif [[ "$1" == "toolbox" ]]; then
             echo "HollaEx CLI will open proxy tunnel between your machine and remote proxy with kubectl proxy."
 
             echo "Opening local proxy on 5432 port of your machine..."
-            kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$HOLLAEX_SECRET_DB_HOST" -o name | sed 's/pod\///' | head -n 1) 5432:5432 &
+            kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl_retry get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$HOLLAEX_SECRET_DB_HOST" -o name | sed 's/pod\///' | head -n 1) 5432:5432 &
 
             echo "Waiting for the proxy tunnel get fully ready..."
             sleep 10;
@@ -6846,10 +6886,10 @@ elif [[ "$1" == "toolbox" ]]; then
             fi
 
             echo "Flushing Redis..."
-            kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/flushRedis.js
+            kubectl_retry exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl_retry get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/flushRedis.js
 
             echo "Restarting all workload containers..."
-            kubectl delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
+            kubectl_retry delete pods --namespace $ENVIRONMENT_EXCHANGE_NAME -l role=$ENVIRONMENT_EXCHANGE_NAME
 
             exit 0;
 
@@ -6989,7 +7029,7 @@ elif [[ "$1" == "toolbox" ]]; then
         
         echo "*********************************************"
         echo "Verifying current KUBECONFIG on the machine"
-        kubectl get nodes
+        kubectl_retry get nodes
         echo "*********************************************"
 
         echo "Are you sure that you want to update your existing Docker registry secret at this Kubernets cluster? (y/N)"
@@ -7001,7 +7041,7 @@ elif [[ "$1" == "toolbox" ]]; then
         fi
 
         echo "Removing the current Docker registry secret at $ENVIRONMENT_EXCHANGE_NAME namespace."
-        kubectl delete secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME
+        kubectl_retry delete secret docker-registry-secret --namespace $ENVIRONMENT_EXCHANGE_NAME
 
          if [[ "$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME" ]] && [[ "$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_PASSWORD" ]] && [[ "$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_EMAIL" ]]; then
 
@@ -7036,7 +7076,7 @@ elif [[ "$1" == "toolbox" ]]; then
         
             echo "*********************************************"
             echo "Verifying current KUBECONFIG on the machine"
-            kubectl get nodes
+            kubectl_retry get nodes
             echo "*********************************************"
 
             echo "Are you sure that you want to update your activation code for the exchange on this Kubernets cluster? (y/N)"
@@ -7107,10 +7147,10 @@ elif [[ "$1" == "toolbox" ]]; then
             fi
 
              echo "Applying configmap on the namespace."
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+            kubectl_retry apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
             
             echo "Applying secret on the namespace."
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+            kubectl_retry apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
             check_constants_exec;
             
@@ -7157,10 +7197,10 @@ elif [[ "$1" == "toolbox" ]]; then
             fi
 
              echo "Applying configmap on the namespace."
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+            kubectl_retry apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
             
             echo "Applying secret on the namespace."
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+            kubectl_retry apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
 
             set_config_exec;
             
@@ -7209,10 +7249,10 @@ elif [[ "$1" == "toolbox" ]]; then
             fi
 
              echo "Applying configmap on the namespace."
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
+            kubectl_retry apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-configmap.yaml
             
             echo "Applying secret on the namespace."
-            kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
+            kubectl_retry apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-secret.yaml
             
             set_security_exec;
             
@@ -7245,12 +7285,12 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if ! check_kubernetes_dependencies; then exit 1; fi;
 
-            if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 && command kubectl get pods -n $ENVIRONMENT_EXCHANGE_NAME -l app=$HOLLAEX_SECRET_DB_HOST > /dev/null 2>&1; then
+            if kubectl_retry get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 && kubectl_retry get pods -n $ENVIRONMENT_EXCHANGE_NAME -l app=$HOLLAEX_SECRET_DB_HOST > /dev/null 2>&1; then
 
                 echo "Successfully detected the PostgreSQL DB created by HollaEx CLI."
                 echo "Opening kube-proxy tunnel for database connection..."
 
-                kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$HOLLAEX_SECRET_DB_HOST" -o name | sed 's/pod\///' | head -n 1) 5432:5432 &
+                kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl_retry get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$HOLLAEX_SECRET_DB_HOST" -o name | sed 's/pod\///' | head -n 1) 5432:5432 &
                 sleep 5;
                 
                 echo "Opening local proxy on 5432 port of your machine..."
@@ -7317,12 +7357,12 @@ elif [[ "$1" == "toolbox" ]]; then
 
             if ! check_kubernetes_dependencies; then exit 1; fi;
 
-            if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 && command kubectl get pods -n $ENVIRONMENT_EXCHANGE_NAME -l app=$ENVIRONMENT_EXCHANGE_NAME-redis > /dev/null 2>&1; then
+            if kubectl_retry get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1 && kubectl_retry get pods -n $ENVIRONMENT_EXCHANGE_NAME -l app=$ENVIRONMENT_EXCHANGE_NAME-redis > /dev/null 2>&1; then
 
                 echo "Successfully detected the Redis created by HollaEx CLI."
                 echo "Opening kube-proxy tunnel for Redis connection..."
 
-                kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-redis" -o name | sed 's/pod\///' | head -n 1) 6379:6379 &
+                kubectl port-forward --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl_retry get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-redis" -o name | sed 's/pod\///' | head -n 1) 6379:6379 &
                 sleep 5;
                 
                 echo "Opening local proxy on 6379 port of your machine..."
@@ -7500,7 +7540,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
                     rm $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml.bak
 
-                    kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml
+                    kubectl_retry apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml
 
                 fi
 
@@ -7510,7 +7550,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
                     rm $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress-web.yaml.bak
                     
-                    kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress-web.yaml
+                    kubectl_retry apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress-web.yaml
 
                 fi
 
@@ -7622,7 +7662,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
                     rm $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml.bak
                     
-                    kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml
+                    kubectl_retry apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress.yaml
 
                 fi
 
@@ -7632,7 +7672,7 @@ elif [[ "$1" == "toolbox" ]]; then
 
                     rm $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress-web.yaml.bak
                     
-                    kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress-web.yaml
+                    kubectl_retry apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/${ENVIRONMENT_EXCHANGE_NAME}-ingress-web.yaml
 
                 fi
 
@@ -7867,7 +7907,7 @@ EOL
                 done;
 
                 echo "Successfully ran the changeEmail job!"
-                kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-change-email
+                kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-change-email
 
                 echo "Removing the Kubernetes Job for running changeEmail jobs..."
                 helm uninstall $ENVIRONMENT_EXCHANGE_NAME-change-email --namespace $ENVIRONMENT_EXCHANGE_NAME
@@ -7877,7 +7917,7 @@ EOL
                 printf "\033[91mFailed to create Kubernetes Job for running changeEmail job, Please confirm your input values and try again.\033[39m\n"
 
                 echo "Displayling logs..."
-                kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-change-email
+                kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-change-email
                 
                 helm uninstall $ENVIRONMENT_EXCHANGE_NAME-change-email --namespace $ENVIRONMENT_EXCHANGE_NAME
 
@@ -8351,7 +8391,7 @@ elif [[ "$1" == "status" ]]; then
         #Checking Kubernetes dependencies
         if ! check_kubernetes_dependencies; then exit 1; fi;
 
-        kubectl get pods --namespace $ENVIRONMENT_EXCHANGE_NAME
+        kubectl_retry get pods --namespace $ENVIRONMENT_EXCHANGE_NAME
 
         if [[ "$HOLLAEX_CONFIGMAP_API_HOST" == *"localhost"* ]]; then
 
@@ -8538,11 +8578,11 @@ elif [[ "$1" == "logs" ]]; then
 
             if [[ "$HOLLAEX_LOGS_TARGET" ]]; then
 
-                local POD_ID=$(kubectl get pods --namespace $ENVIRONMENT_EXCHANGE_NAME | grep $ENVIRONMENT_EXCHANGE_NAME | grep $HOLLAEX_LOGS_TARGET | cut -f1 -d " ")
+                local POD_ID=$(kubectl_retry get pods --namespace $ENVIRONMENT_EXCHANGE_NAME | grep $ENVIRONMENT_EXCHANGE_NAME | grep $HOLLAEX_LOGS_TARGET | cut -f1 -d " ")
 
             else 
                 
-                local POD_ID=$(kubectl get pods --namespace $ENVIRONMENT_EXCHANGE_NAME | grep $ENVIRONMENT_EXCHANGE_NAME | cut -f1 -d " ")
+                local POD_ID=$(kubectl_retry get pods --namespace $ENVIRONMENT_EXCHANGE_NAME | grep $ENVIRONMENT_EXCHANGE_NAME | cut -f1 -d " ")
             
             fi
 
@@ -8550,9 +8590,9 @@ elif [[ "$1" == "logs" ]]; then
 
                 printf "\nPod : $i\n"
 
-                    if [[ $(kubectl logs $i --namespace $ENVIRONMENT_EXCHANGE_NAME --tail 10) ]]; then
+                    if [[ $(kubectl_retry logs $i --namespace $ENVIRONMENT_EXCHANGE_NAME --tail 10) ]]; then
 
-                            kubectl logs $i --namespace $ENVIRONMENT_EXCHANGE_NAME --tail ${HOLLAEX_LOGS_TARGET_LINE:-100}
+                            kubectl_retry logs $i --namespace $ENVIRONMENT_EXCHANGE_NAME --tail ${HOLLAEX_LOGS_TARGET_LINE:-100}
 
                     else 
 

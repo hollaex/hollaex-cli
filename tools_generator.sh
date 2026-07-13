@@ -1,4 +1,44 @@
 #!/bin/bash 
+
+# =============================================================================
+# kubectl Retry Wrapper (transient network errors only)
+# =============================================================================
+# The CLI hits the same cluster and the same intermittent connectivity drops as
+# the HollaCloud jobs. Operational kubectl calls are routed through
+# kubectl_retry so a transient network error (e.g. "Unable to connect to the
+# server: dial tcp ...: connect: connection refused") is retried up to 3 times,
+# 5s apart, instead of failing. Genuine kubectl errors (NotFound, Forbidden,
+# invalid args, ...) do NOT match and return immediately with kubectl's exit
+# code. stdout is handed back to the caller so $(...) captures and pipes still
+# work. Blocking commands (port-forward, proxy) and install/version checks are
+# intentionally NOT routed through this wrapper.
+KUBECTL_NET_ERR_RE='Unable to connect to the server|connection to the server.*(was )?refused|was refused - did you specify the right host or port|error dialing backend|unable to upgrade connection|dial tcp|connection refused|connection reset|connection timed out|i/o timeout|TLS handshake timeout|TLS handshake error|no route to host|network is unreachable|context deadline exceeded|deadline exceeded|Client\.Timeout|no such host|Temporary failure in name resolution|server misbehaving|unexpected EOF|transport is closing'
+
+function kubectl_retry() {
+    local outf errf rc attempt=1
+    local max_attempts=4   # initial try + 3 retries
+    outf="$(mktemp)"; errf="$(mktemp)"
+
+    while true; do
+        if kubectl "$@" >"$outf" 2>"$errf"; then rc=0; else rc=$?; fi
+        cat "$errf" >&2
+
+        if [[ $rc -ne 0 && $attempt -lt $max_attempts ]] && grep -qiE "$KUBECTL_NET_ERR_RE" "$outf" "$errf"; then
+            cat "$outf" >&2
+            echo "kubectl network error (attempt $attempt/$max_attempts); retrying in 5s: kubectl $*" >&2
+            attempt=$((attempt + 1))
+            sleep 5
+            continue
+        fi
+
+        cat "$outf"
+        break
+    done
+
+    rm -f "$outf" "$errf"
+    return "$rc"
+}
+
 SCRIPTPATH=$HOME/.hollaex-cli
 
 function local_hollaex_network_database_init() {
@@ -201,7 +241,7 @@ function kubernetes_database_init() {
 
   # Wait unitl both Redis and PSQL DB become online.
   echo "Waiting for both Redis and PSQL DB become online..."
-  kubectl wait --for=condition=available --timeout=30m \
+  kubectl_retry wait --for=condition=available --timeout=30m \
     deployment/${ENVIRONMENT_EXCHANGE_NAME}-redis \
     deployment/${ENVIRONMENT_EXCHANGE_NAME}-db \
     -n "$ENVIRONMENT_EXCHANGE_NAME"   || exit 1
@@ -227,8 +267,8 @@ function kubernetes_database_init() {
         
         if [ $ELAPSED_TIME -ge $TIMEOUT ]; then
             echo -e "\033[91mError: Timeout reached! The job did not complete in 20 minutes.\033[39m\n"
-            kubectl describe --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION
-            kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION
+            kubectl_retry describe --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION
+            kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION
             helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION
             exit 1
         fi
@@ -240,7 +280,7 @@ function kubernetes_database_init() {
     echo "Database job completed."
 
     echo "Successfully ran the database jobs!"
-    kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION
+    kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION
 
     echo "Removing the Kubernetes Job for running database jobs..."
     helm uninstall $ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION --namespace $ENVIRONMENT_EXCHANGE_NAME
@@ -250,15 +290,15 @@ function kubernetes_database_init() {
     printf "\033[91mFailed to create Kubernetes Job for running database jobs, Please confirm your input values and try again.\033[39m\n"
 
     echo "Displayling logs..."
-    kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION
+    kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION
     
     helm uninstall $ENVIRONMENT_EXCHANGE_NAME-hollaex-$K8S_DB_JOB_ACTION --namespace $ENVIRONMENT_EXCHANGE_NAME
 
     # Only tries to attempt apply ingress rules from Kubernetes if it doesn't exists.
-    if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+    if ! kubectl_retry get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
     
         echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-        kubectl apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
+        kubectl_retry apply -f $TEMPLATE_GENERATE_PATH/kubernetes/config/$ENVIRONMENT_EXCHANGE_NAME-ingress.yaml
 
     fi
 
@@ -282,7 +322,7 @@ function kubernetes_run_checkconfig() {
   sleep 10;
 
   echo "Running checkConfig"
-  kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/checkConfig.js
+  kubectl_retry exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl_retry get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/checkConfig.js
 
 }
 
@@ -315,18 +355,18 @@ function kubernetes_hollaex_network_database_init() {
     sleep 10;
 
     echo "Running sequelize db:migrate"
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:migrate 
+    kubectl_retry exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl_retry get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:migrate 
 
     echo "Running Database Triggers"
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/runTriggers.js
+    kubectl_retry exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl_retry get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/runTriggers.js
 
     echo "Running sequelize db:seed:all"
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:seed:all 
+    kubectl_retry exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl_retry get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- sequelize db:seed:all 
 
     echo "Running InfluxDB initialization jobs"
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/createInflux.js
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/migrateInflux.js
-    kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
+    kubectl_retry exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl_retry get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/createInflux.js
+    kubectl_retry exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl_retry get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/migrateInflux.js
+    kubectl_retry exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl_retry get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/initializeInflux.js
     
   elif [[ "$1" == "upgrade" ]]; then
 
@@ -351,7 +391,7 @@ function kubernetes_hollaex_network_database_init() {
       done;
 
       echo "Successfully ran the database jobs!"
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
 
       echo "Removing the Kubernetes Job for running database jobs..."
       helm uninstall $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade --namespace $ENVIRONMENT_EXCHANGE_NAME
@@ -361,15 +401,15 @@ function kubernetes_hollaex_network_database_init() {
       printf "\033[91mFailed to create Kubernetes Job for running database jobs, Please confirm your input values and try again.\033[39m\n"
 
       echo "Displayling logs..."
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade
       
       helm uninstall $ENVIRONMENT_EXCHANGE_NAME-hollaex-upgrade --namespace $ENVIRONMENT_EXCHANGE_NAME
 
       # Only tries to attempt apply ingress rules from Kubernetes if it doesn't exists.
-      if ! command kubectl get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
+      if ! kubectl_retry get ingress -n $ENVIRONMENT_EXCHANGE_NAME > /dev/null; then
       
           echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-          kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
+          kubectl_retry apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
       fi
 
@@ -2454,12 +2494,12 @@ function helm_dynamic_trading_paris() {
     elif [[ "$1" == "scaleup" ]]; then
       
       #Scaling down queue deployments on Kubernetes
-      kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
+      kubectl_retry scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME --replicas=1 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
     elif [[ "$1" == "scaledown" ]]; then
       
       #Scaling down queue deployments on Kubernetes
-      kubectl scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
+      kubectl_retry scale deployment/$ENVIRONMENT_EXCHANGE_NAME-server-engine-$TRADE_PARIS_DEPLOYMENT_NAME --replicas=0 --namespace $ENVIRONMENT_EXCHANGE_NAME
 
     elif [[ "$1" == "terminate" ]]; then
 
@@ -3734,7 +3774,7 @@ function create_kubernetes_docker_registry_secret() {
   docker_registry_login
 
   echo "Creating Docker registry secret on $ENVIRONMENT_EXCHANGE_NAME namespace."
-  kubectl create secret docker-registry docker-registry-secret \
+  kubectl_retry create secret docker-registry docker-registry-secret \
                         --namespace $ENVIRONMENT_EXCHANGE_NAME \
                         --docker-server=$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_HOST \
                         --docker-username=$ENVIRONMENT_KUBERNETES_DOCKER_REGISTRY_USERNAME \
@@ -3972,10 +4012,10 @@ EOL
 
     fi
 
-    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-set-activation-code --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+    if [[ $(kubectl_retry get jobs $ENVIRONMENT_EXCHANGE_NAME-set-activation-code --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
 
       echo "Your activation code has been successfully updated on your exchange!"
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-activation-code
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-activation-code
 
       echo "Removing created Kubernetes Job for updating the activation code..."
       helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-activation-code --namespace $$ENVIRONMENT_EXCHANGE_NAME
@@ -3984,7 +4024,7 @@ EOL
 
       printf "\033[91mFailed to update the activation code! Please try again.\033[39m\n"
       
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-activation-code
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-activation-code
       helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-activation-code --namespace $$ENVIRONMENT_EXCHANGE_NAME
 
       exit 1;
@@ -4048,10 +4088,10 @@ EOL
 
     fi
 
-    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-check-constants --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+    if [[ $(kubectl_retry get jobs $ENVIRONMENT_EXCHANGE_NAME-check-constants --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
 
       echo "Your missing database constants has been successfully updated!"
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-check-constants
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-check-constants
 
       echo "Removing created Kubernetes Job for setting up the config..."
       helm uninstall $ENVIRONMENT_EXCHANGE_NAME-check-constants --namespace $ENVIRONMENT_EXCHANGE_NAME
@@ -4063,7 +4103,7 @@ EOL
 
       printf "\033[91mFailed to update the database constants! Please try again.\033[39m\n"
       
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-check-constants
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-check-constants
       helm uninstall $ENVIRONMENT_EXCHANGE_NAME-check-constants --namespace $ENVIRONMENT_EXCHANGE_NAME
 
       exit 1;
@@ -4129,10 +4169,10 @@ EOL
 
     fi
 
-    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-set-config --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+    if [[ $(kubectl_retry get jobs $ENVIRONMENT_EXCHANGE_NAME-set-config --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
 
       echo "Your database constants has been successfully updated!"
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-config
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-config
 
       echo "Removing created Kubernetes Job for setting up the config..."
       helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-config --namespace $ENVIRONMENT_EXCHANGE_NAME
@@ -4144,7 +4184,7 @@ EOL
 
       printf "\033[91mFailed to update the database constants! Please try again.\033[39m\n"
       
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-config
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-config
       helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-config --namespace $ENVIRONMENT_EXCHANGE_NAME
 
       exit 1;
@@ -4336,10 +4376,10 @@ EOL
 
     fi
 
-    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-set-security --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+    if [[ $(kubectl_retry get jobs $ENVIRONMENT_EXCHANGE_NAME-set-security --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
 
       echo "Your database constants has been successfully updated!"
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-security
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-security
 
       echo "Removing created Kubernetes Job for setting up security values..."
       helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-security --namespace $ENVIRONMENT_EXCHANGE_NAME
@@ -4351,7 +4391,7 @@ EOL
 
       printf "\033[91mFailed to update the database constants! Please try again.\033[39m\n"
       
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-security
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-set-security
       helm uninstall $ENVIRONMENT_EXCHANGE_NAME-set-security --namespace $ENVIRONMENT_EXCHANGE_NAME
 
       exit 1;
@@ -5165,10 +5205,10 @@ function run_and_upgrade_hollaex_on_kubernetes() {
   if [[ ! "$IGNORE_SETTINGS" ]]; then 
 
       echo "Applying latest configmap env on the cluster."
-      kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
+      kubectl_retry apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
 
       echo "Applying latest secret on the cluster"
-      kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/secret.yaml
+      kubectl_retry apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/secret.yaml
 
   fi
 
@@ -5194,7 +5234,7 @@ function run_and_upgrade_hollaex_on_kubernetes() {
 
         export KUBERNETES_PSQL_DB_EXISTS=true
 
-       EXISTING_DB_DOCKER_IMAGE=$(kubectl get -n $ENVIRONMENT_EXCHANGE_NAME deployment/$HOLLAEX_SECRET_DB_HOST -o jsonpath="{.spec.template.spec.containers[0].image}")
+       EXISTING_DB_DOCKER_IMAGE=$(kubectl_retry get -n $ENVIRONMENT_EXCHANGE_NAME deployment/$HOLLAEX_SECRET_DB_HOST -o jsonpath="{.spec.template.spec.containers[0].image}")
        EXISTING_DB_DOCKER_IMAGE_TAG=$(echo $EXISTING_DB_DOCKER_IMAGE | cut -f2 -d":")
        
         if [[ -z "$EXISTING_DB_DOCKER_IMAGE_TAG" ]]; then
@@ -5331,16 +5371,16 @@ function run_and_upgrade_hollaex_on_kubernetes() {
   fi
 
   echo "Flushing Redis..."
-  kubectl exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/flushRedis.js
+  kubectl_retry exec --namespace $ENVIRONMENT_EXCHANGE_NAME $(kubectl_retry get pod --namespace $ENVIRONMENT_EXCHANGE_NAME -l "app=$ENVIRONMENT_EXCHANGE_NAME-server-api" -o name | sed 's/pod\///' | head -n 1) -- node tools/dbs/flushRedis.js
 
   echo "Restarting all containers to apply latest database changes..."
-  kubectl rollout restart --namespace $ENVIRONMENT_EXCHANGE_NAME \
+  kubectl_retry rollout restart --namespace $ENVIRONMENT_EXCHANGE_NAME \
     deployment/$ENVIRONMENT_EXCHANGE_NAME-server-api \
     deployment/$ENVIRONMENT_EXCHANGE_NAME-server-stream \
     deployment/$ENVIRONMENT_EXCHANGE_NAME-server-plugins
 
   echo "Applying $HOLLAEX_CONFIGMAP_API_NAME ingress rule on the cluster."
-  kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
+  kubectl_retry apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
 }
 
@@ -6034,10 +6074,10 @@ EOL
 
     fi
 
-    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_CODE --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+    if [[ $(kubectl_retry get jobs $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_CODE --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
 
       echo "Coin $COIN_CODE has been successfully added on your exchange!"
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_CODE
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_CODE
 
       echo "Removing created Kubernetes Job for adding new coin..."
       helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_CODE
@@ -6080,7 +6120,7 @@ EOL
       echo "Current Currencies: ${HOLLAEX_CONFIGMAP_CURRENCIES}"
 
       echo "Applying configmap on the namespace"
-      kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
+      kubectl_retry apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
 
       if [[ ! "$IS_HOLLAEX_SETUP" ]]; then
         
@@ -6096,7 +6136,7 @@ EOL
 
       printf "\033[91mFailed to add coin $COIN_CODE! Please try again.\033[39m\n"
       
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_CODE
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_CODE
       helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-add-coin-$COIN_CODE
 
       # echo "Allowing exchange external connections"
@@ -6304,16 +6344,16 @@ function remove_coin_exec() {
       helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_CODE
 
       echo "Allowing exchange external connections"
-      kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
+      kubectl_retry apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
 
     fi
 
-    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_CODE \
+    if [[ $(kubectl_retry get jobs $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_CODE \
             --namespace $ENVIRONMENT_EXCHANGE_NAME \
             -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
 
       echo "Coin $COIN_CODE has been successfully removed on your exchange!"
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_CODE
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_CODE
 
       echo "Removing created Kubernetes Job for removing existing coin..."
       helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_CODE
@@ -6345,7 +6385,7 @@ function remove_coin_exec() {
       # generate_kubernetes_configmap;
 
       echo "Applying configmap on the namespace"
-      kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
+      kubectl_retry apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
 
       # Running database job for Kubernetes
       echo "Applying changes on database..."
@@ -6358,7 +6398,7 @@ function remove_coin_exec() {
 
       printf "\033[91mFailed to remove existing coin $COIN_CODE! Please try again.\033[39m\n"
       
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_CODE
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_CODE
       helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-remove-coin-$COIN_CODE
 
     fi
@@ -6751,12 +6791,12 @@ EOL
 
     fi
 
-    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_CODE \
+    if [[ $(kubectl_retry get jobs $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_CODE \
             --namespace $ENVIRONMENT_EXCHANGE_NAME \
             -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
 
       echo "Pair $PAIR_CODE has been successfully added on your exchange!"
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_CODE
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_CODE
 
       echo "Removing created Kubernetes Job for adding new coin..."
       helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_CODE
@@ -6800,7 +6840,7 @@ EOL
       echo "Current Trading Pairs: ${HOLLAEX_CONFIGMAP_PAIRS}"
 
       echo "Applying configmap on the namespace"
-      kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
+      kubectl_retry apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
 
 
       if [[ ! "$IS_HOLLAEX_SETUP" ]]; then 
@@ -6835,11 +6875,11 @@ EOL
 
       printf "\033[91mFailed to add new pair $PAIR_CODE! Please try again.\033[39m\n"
       
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_CODE
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_CODE
       helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-add-pair-$PAIR_CODE
 
       echo "Allowing exchange external connections"
-      kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
+      kubectl_retry apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/ingress/hollaex-kit-ingress.yaml
       
     fi
 
@@ -7036,12 +7076,12 @@ function remove_pair_exec() {
 
     fi
 
-    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_CODE \
+    if [[ $(kubectl_retry get jobs $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_CODE \
             --namespace $ENVIRONMENT_EXCHANGE_NAME \
             -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
 
       echo "*** Pair $PAIR_CODE has been successfully removed on your exchange! ***"
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_CODE
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_CODE
 
       echo "*** Removing created Kubernetes Job for removing existing pair... ***"
       helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_CODE
@@ -7075,7 +7115,7 @@ function remove_pair_exec() {
       echo "Current Trading Pairs: ${HOLLAEX_CONFIGMAP_PAIRS}"
 
       echo "Applying configmap on the namespace"
-      kubectl apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
+      kubectl_retry apply -f $HOLLAEX_CLI_INIT_PATH/server/tools/kubernetes/env/configmap.yaml
 
       # Running database job for Kubernetes
       echo "Applying changes on database..."
@@ -7088,7 +7128,7 @@ function remove_pair_exec() {
 
       printf "\033[91mFailed to remove existing pair $PAIR_CODE! Please try again.\033[39m\n"
       
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_CODE
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_CODE
       helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-remove-pair-$PAIR_CODE
       
     fi
@@ -7237,10 +7277,10 @@ EOL
 
     fi
 
-    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-change-coin-owner-$COIN_CODE --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+    if [[ $(kubectl_retry get jobs $ENVIRONMENT_EXCHANGE_NAME-change-coin-owner-$COIN_CODE --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
 
       echo "Coin ownership of $COIN_CODE has been successfully changed!"
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-change-coin-owner-$COIN_CODE
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-change-coin-owner-$COIN_CODE
 
       echo "Removing created Kubernetes Job..."
       helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-change-coin-owner-$COIN_CODE
@@ -7251,7 +7291,7 @@ EOL
 
       printf "\033[91mFailed to change coin ownership of $COIN_CODE! Please try again.\033[39m\n"
       
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-change-coin-owner-$COIN_CODE
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-change-coin-owner-$COIN_CODE
       helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-change-coin-owner-$COIN_CODE
 
       
@@ -7365,10 +7405,10 @@ EOL
 
     fi
 
-    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-activate-coin-$COIN_CODE --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+    if [[ $(kubectl_retry get jobs $ENVIRONMENT_EXCHANGE_NAME-activate-coin-$COIN_CODE --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
 
       echo "Coin $COIN_CODE has been successfully activated!"
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-activate-coin-$COIN_CODE
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-activate-coin-$COIN_CODE
       
       echo "Updating settings file to add new $COIN_CODE."
       for i in ${CONFIG_FILE_PATH[@]}; do
@@ -7408,7 +7448,7 @@ EOL
 
       printf "\033[91mFailed to activate $COIN_CODE! Please try again.\033[39m\n"
       
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-activate-coin-$COIN_CODE
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-activate-coin-$COIN_CODE
       helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-activate-coin-$COIN_CODE
 
       
@@ -7570,10 +7610,10 @@ EOL
 
     fi
 
-    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-change-pair-owner-$PAIR_CODE --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+    if [[ $(kubectl_retry get jobs $ENVIRONMENT_EXCHANGE_NAME-change-pair-owner-$PAIR_CODE --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
 
       echo "Pair ownership of $PAIR_CODE has been successfully changed!"
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-change-pair-owner-$PAIR_CODE
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-change-pair-owner-$PAIR_CODE
 
       echo "Removing created Kubernetes Job..."
       helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-change-pair-owner-$PAIR_CODE
@@ -7584,7 +7624,7 @@ EOL
 
       printf "\033[91mFailed to change pair ownership of $PAIR_CODE! Please try again.\033[39m\n"
       
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-change-pair-owner-$PAIR_CODE
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-change-pair-owner-$PAIR_CODE
       helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-change-pair-owner-$PAIR_CODE
 
       
@@ -7702,10 +7742,10 @@ EOL
 
     fi
 
-    if [[ $(kubectl get jobs $ENVIRONMENT_EXCHANGE_NAME-activate-pair-$PAIR_CODE --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+    if [[ $(kubectl_retry get jobs $ENVIRONMENT_EXCHANGE_NAME-activate-pair-$PAIR_CODE --namespace $ENVIRONMENT_EXCHANGE_NAME -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
 
       echo "Pair $PAIR_CODE has been successfully activated!"
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-activate-pair-$PAIR_CODE
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-activate-pair-$PAIR_CODE
 
       for i in ${CONFIG_FILE_PATH[@]}; do
 
@@ -7760,7 +7800,7 @@ EOL
 
       printf "\033[91mFailed to activate $PAIR_CODE! Please try again.\033[39m\n"
       
-      kubectl logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-activate-pair-$PAIR_CODE
+      kubectl_retry logs --namespace $ENVIRONMENT_EXCHANGE_NAME job/$ENVIRONMENT_EXCHANGE_NAME-activate-pair-$PAIR_CODE
       helm uninstall --namespace $ENVIRONMENT_EXCHANGE_NAME $ENVIRONMENT_EXCHANGE_NAME-activate-pair-$PAIR_CODE
 
       
@@ -7849,7 +7889,7 @@ function hollaex_setup_existing_exchange_check() {
 
   if [[ "$USE_KUBERNETES" ]]; then
 
-      if command kubectl get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
+      if kubectl_retry get ns $ENVIRONMENT_EXCHANGE_NAME > /dev/null 2>&1; then
 
           export IS_HOLLAEX_KUBE_ALREADY_EXISTS=true
 
