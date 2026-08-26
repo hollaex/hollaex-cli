@@ -3283,6 +3283,225 @@ function hollaex_setup_finalization() {
 
 }
 
+function hollaex_server_docker_login_error() {
+
+  printf "\n\033[91mError: Failed to access bitholla/hollaex-server on Docker Hub.\033[39m\n"
+  echo "This Docker image requires authentication."
+  echo "Please run 'docker login' and try it again."
+
+}
+
+function load_docker_hub_credentials() {
+
+  local DOCKER_CONFIG_FILE="${DOCKER_CONFIG:-$HOME/.docker}/config.json"
+  local DOCKER_CREDENTIAL_SERVER
+  local DOCKER_CREDENTIAL_HELPER
+  local DOCKER_CREDENTIAL_RESPONSE
+  local DOCKER_REGISTRY_AUTH
+  local DOCKER_REGISTRY_AUTH_DECODED
+
+  unset DOCKER_HUB_USERNAME
+  unset DOCKER_HUB_PASSWORD
+
+  if [[ ! -f "$DOCKER_CONFIG_FILE" ]]; then
+
+    return 1
+
+  fi
+
+  for DOCKER_CREDENTIAL_SERVER in "https://index.docker.io/v1/" "index.docker.io" "registry-1.docker.io" "https://registry-1.docker.io"; do
+
+    DOCKER_CREDENTIAL_HELPER=$(jq -r --arg registry "$DOCKER_CREDENTIAL_SERVER" '.credHelpers[$registry] // .credsStore // empty' "$DOCKER_CONFIG_FILE")
+
+    if [[ "$DOCKER_CREDENTIAL_HELPER" ]] && command -v "docker-credential-$DOCKER_CREDENTIAL_HELPER" > /dev/null 2>&1; then
+
+      if DOCKER_CREDENTIAL_RESPONSE=$(printf '%s' "$DOCKER_CREDENTIAL_SERVER" | "docker-credential-$DOCKER_CREDENTIAL_HELPER" get 2>/dev/null); then
+
+        DOCKER_HUB_USERNAME=$(printf '%s' "$DOCKER_CREDENTIAL_RESPONSE" | jq -r '.Username // empty' 2>/dev/null)
+        DOCKER_HUB_PASSWORD=$(printf '%s' "$DOCKER_CREDENTIAL_RESPONSE" | jq -r '.Secret // empty' 2>/dev/null)
+
+      fi
+
+    else
+
+      DOCKER_REGISTRY_AUTH=$(jq -r --arg registry "$DOCKER_CREDENTIAL_SERVER" '.auths[$registry].auth // empty' "$DOCKER_CONFIG_FILE")
+
+      if [[ "$DOCKER_REGISTRY_AUTH" ]]; then
+
+        if ! DOCKER_REGISTRY_AUTH_DECODED=$(printf '%s' "$DOCKER_REGISTRY_AUTH" | base64 -d 2>/dev/null); then
+
+          DOCKER_REGISTRY_AUTH_DECODED=$(printf '%s' "$DOCKER_REGISTRY_AUTH" | base64 -D 2>/dev/null)
+
+        fi
+
+        DOCKER_HUB_USERNAME=${DOCKER_REGISTRY_AUTH_DECODED%%:*}
+        DOCKER_HUB_PASSWORD=${DOCKER_REGISTRY_AUTH_DECODED#*:}
+
+      fi
+
+    fi
+
+
+    if [[ "$DOCKER_HUB_USERNAME" ]] && [[ "$DOCKER_HUB_PASSWORD" ]]; then
+
+      return 0
+
+    fi
+
+  done
+
+  return 1
+
+}
+
+function check_latest_hollaex_server_branch_docker_tag() {
+
+  local HOLLAEX_SERVER_VERSION=$1
+  local HOLLAEX_SERVER_BRANCH=$2
+  local HOLLAEX_SERVER_TAG_PREFIX="$HOLLAEX_SERVER_VERSION-$HOLLAEX_SERVER_BRANCH-"
+  local DOCKER_HUB_TOKEN_RESPONSE
+  local DOCKER_HUB_TOKEN_HTTP_CODE
+  local DOCKER_HUB_ACCESS_TOKEN
+  local DOCKER_HUB_TAG_RESPONSE
+  local DOCKER_HUB_TAG_HTTP_CODE
+  local DOCKER_HUB_TAGS_URL="https://hub.docker.com/v2/repositories/bitholla/hollaex-server/tags?page_size=100&name=$HOLLAEX_SERVER_TAG_PREFIX"
+  local DOCKER_HUB_NEXT_TAGS_URL=$DOCKER_HUB_TAGS_URL
+  local HOLLAEX_SERVER_TAG_CANDIDATE
+  local HOLLAEX_SERVER_TAG_CANDIDATE_PUSHED_AT
+  local HOLLAEX_SERVER_TAG_CANDIDATE_NAME
+  local HOLLAEX_SERVER_LATEST_DOCKER_TAG
+  local HOLLAEX_SERVER_LATEST_DOCKER_TAG_PUSHED_AT
+
+  DOCKER_HUB_TOKEN_RESPONSE=$(mktemp)
+  DOCKER_HUB_TAG_RESPONSE=$(mktemp)
+
+  if ! load_docker_hub_credentials; then
+
+    rm "$DOCKER_HUB_TOKEN_RESPONSE" "$DOCKER_HUB_TAG_RESPONSE"
+    hollaex_server_docker_login_error >&2
+    return 1
+
+  fi
+
+  if ! DOCKER_HUB_TOKEN_HTTP_CODE=$(jq -n \
+      --arg identifier "$DOCKER_HUB_USERNAME" \
+      --arg secret "$DOCKER_HUB_PASSWORD" \
+      '{identifier: $identifier, secret: $secret}' | \
+      curl -s -S -o "$DOCKER_HUB_TOKEN_RESPONSE" -w "%{http_code}" \
+      -H "Content-Type: application/json" \
+      --data-binary @- \
+      "https://hub.docker.com/v2/auth/token"); then
+
+    unset DOCKER_HUB_USERNAME
+    unset DOCKER_HUB_PASSWORD
+    rm "$DOCKER_HUB_TOKEN_RESPONSE" "$DOCKER_HUB_TAG_RESPONSE"
+    printf "\n\033[91mError: Failed to connect to Docker Hub.\033[39m\n" >&2
+    echo "Please check your network connection and try it again." >&2
+    return 1
+
+  fi
+
+  unset DOCKER_HUB_USERNAME
+  unset DOCKER_HUB_PASSWORD
+
+  if [[ "$DOCKER_HUB_TOKEN_HTTP_CODE" == "401" ]] || [[ "$DOCKER_HUB_TOKEN_HTTP_CODE" == "403" ]]; then
+
+    rm "$DOCKER_HUB_TOKEN_RESPONSE" "$DOCKER_HUB_TAG_RESPONSE"
+    hollaex_server_docker_login_error >&2
+    return 1
+
+  fi
+
+  if [[ ! "$DOCKER_HUB_TOKEN_HTTP_CODE" == "200" ]]; then
+
+    rm "$DOCKER_HUB_TOKEN_RESPONSE" "$DOCKER_HUB_TAG_RESPONSE"
+    printf "\n\033[91mError: Failed to authenticate with Docker Hub.\033[39m\n" >&2
+    echo "Docker Hub responded with HTTP $DOCKER_HUB_TOKEN_HTTP_CODE." >&2
+    return 1
+
+  fi
+
+  DOCKER_HUB_ACCESS_TOKEN=$(jq -r '.access_token // empty' "$DOCKER_HUB_TOKEN_RESPONSE")
+
+  if [[ ! "$DOCKER_HUB_ACCESS_TOKEN" ]]; then
+
+    rm "$DOCKER_HUB_TOKEN_RESPONSE" "$DOCKER_HUB_TAG_RESPONSE"
+    hollaex_server_docker_login_error >&2
+    return 1
+
+  fi
+
+  while [[ "$DOCKER_HUB_NEXT_TAGS_URL" ]]; do
+
+    if ! DOCKER_HUB_TAG_HTTP_CODE=$(curl -s -S -o "$DOCKER_HUB_TAG_RESPONSE" -w "%{http_code}" \
+        -H "Authorization: Bearer $DOCKER_HUB_ACCESS_TOKEN" \
+        "$DOCKER_HUB_NEXT_TAGS_URL"); then
+
+      rm "$DOCKER_HUB_TOKEN_RESPONSE" "$DOCKER_HUB_TAG_RESPONSE"
+      printf "\n\033[91mError: Failed to retrieve HollaEx Server Docker tags.\033[39m\n" >&2
+      echo "Please check your network connection and try it again." >&2
+      return 1
+
+    fi
+
+    if [[ "$DOCKER_HUB_TAG_HTTP_CODE" == "401" ]] || [[ "$DOCKER_HUB_TAG_HTTP_CODE" == "403" ]]; then
+
+      rm "$DOCKER_HUB_TOKEN_RESPONSE" "$DOCKER_HUB_TAG_RESPONSE"
+      hollaex_server_docker_login_error >&2
+      return 1
+
+    fi
+
+    if [[ ! "$DOCKER_HUB_TAG_HTTP_CODE" == "200" ]]; then
+
+      rm "$DOCKER_HUB_TOKEN_RESPONSE" "$DOCKER_HUB_TAG_RESPONSE"
+      printf "\n\033[91mError: Failed to retrieve HollaEx Server Docker tags.\033[39m\n" >&2
+      echo "Docker Hub responded with HTTP $DOCKER_HUB_TAG_HTTP_CODE." >&2
+      return 1
+
+    fi
+
+    HOLLAEX_SERVER_TAG_CANDIDATE=$(jq -r --arg prefix "$HOLLAEX_SERVER_TAG_PREFIX" '
+      [.results[]?
+        | select(.name | startswith($prefix))
+        | select((.name | ltrimstr($prefix)) | test("^[0-9a-fA-F]{7}$"))]
+      | sort_by(.tag_last_pushed // .last_updated // "")
+      | last
+      | if . then [(.tag_last_pushed // .last_updated // ""), .name] | @tsv else empty end
+    ' "$DOCKER_HUB_TAG_RESPONSE")
+
+    if [[ "$HOLLAEX_SERVER_TAG_CANDIDATE" ]]; then
+
+      HOLLAEX_SERVER_TAG_CANDIDATE_PUSHED_AT=${HOLLAEX_SERVER_TAG_CANDIDATE%%$'\t'*}
+      HOLLAEX_SERVER_TAG_CANDIDATE_NAME=${HOLLAEX_SERVER_TAG_CANDIDATE#*$'\t'}
+
+      if [[ ! "$HOLLAEX_SERVER_LATEST_DOCKER_TAG" ]] || [[ "$HOLLAEX_SERVER_TAG_CANDIDATE_PUSHED_AT" > "$HOLLAEX_SERVER_LATEST_DOCKER_TAG_PUSHED_AT" ]]; then
+
+        HOLLAEX_SERVER_LATEST_DOCKER_TAG=$HOLLAEX_SERVER_TAG_CANDIDATE_NAME
+        HOLLAEX_SERVER_LATEST_DOCKER_TAG_PUSHED_AT=$HOLLAEX_SERVER_TAG_CANDIDATE_PUSHED_AT
+
+      fi
+
+    fi
+
+    DOCKER_HUB_NEXT_TAGS_URL=$(jq -r '.next // empty' "$DOCKER_HUB_TAG_RESPONSE")
+
+  done
+
+  rm "$DOCKER_HUB_TOKEN_RESPONSE" "$DOCKER_HUB_TAG_RESPONSE"
+
+  if [[ ! "$HOLLAEX_SERVER_LATEST_DOCKER_TAG" ]]; then
+
+    printf "\n\033[91mError: Failed to find a matching HollaEx Server Docker tag.\033[39m\n" >&2
+    echo "Expected a tag such as '$HOLLAEX_SERVER_TAG_PREFIX<commit-id>'." >&2
+    return 1
+
+  fi
+
+  echo "$HOLLAEX_SERVER_LATEST_DOCKER_TAG"
+
+}
+
 function build_user_hollaex_core() {
 
   GIT_REMOTE_URL=$(git remote -v | awk '{print $2}' | head -n1)
@@ -3295,7 +3514,7 @@ function build_user_hollaex_core() {
 
   fi 
 
-  if [[ ! "$GIT_BRANCH" == "master" ]] && [[ ! "$GIT_BRANCH" == "testnet" ]]; then 
+  if [[ ! "$GIT_BRANCH" == "master" ]] && [[ ! "$GIT_BRANCH" == "testnet" ]] && [[ ! "$GIT_BRANCH" == "next" ]]; then
 
     local UNSUPPORTED_GIT_BRANCH=true
 
@@ -3402,7 +3621,18 @@ function build_user_hollaex_core() {
   else
 
     export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE="bitholla/hollaex-server"
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/version)"
+    if [[ "$GIT_BRANCH" == "master" ]]; then
+      export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/version)"
+    else
+      if ! ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE=$(check_latest_hollaex_server_branch_docker_tag \
+          "$(cat $HOLLAEX_CLI_INIT_PATH/version)" "$GIT_BRANCH"); then
+
+        return 1
+
+      fi
+
+      export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
+    fi
 
     echo "HollaEx Server Docker image: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE"
 
