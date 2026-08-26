@@ -3283,11 +3283,53 @@ function hollaex_setup_finalization() {
 
 }
 
+function hollaex_server_docker_error() {
+
+  local ERROR_MESSAGE=$1
+  local ERROR_STAGE=$2
+  local ERROR_DETAILS=$3
+
+  if [[ -t 2 ]]; then
+
+    printf "\n\033[91mError: %s\033[39m\n" "$ERROR_MESSAGE" >&2
+
+  else
+
+    printf "\nError: %s\n" "$ERROR_MESSAGE" >&2
+
+  fi
+
+  printf "Stage: %s\n" "$ERROR_STAGE" >&2
+
+  if [[ "$ERROR_DETAILS" ]]; then
+
+    printf "Details: %s\n" "$ERROR_DETAILS" >&2
+
+  fi
+
+}
+
 function hollaex_server_docker_login_error() {
 
-  printf "\n\033[91mError: Failed to access bitholla/hollaex-server on Docker Hub.\033[39m\n"
-  echo "This Docker image requires authentication."
-  echo "Please run 'docker login' and try it again."
+  local ERROR_STAGE=${1:-"Docker Hub authentication"}
+  local ERROR_DETAILS=${2:-"Docker Hub credentials are unavailable or invalid."}
+
+  hollaex_server_docker_error \
+    "Failed to access bitholla/hollaex-server on Docker Hub." \
+    "$ERROR_STAGE" \
+    "$ERROR_DETAILS"
+  echo "Action: Run 'docker login docker.io' as the same OS user running HollaEx CLI, then try again." >&2
+
+}
+
+function get_docker_hub_api_error() {
+
+  local DOCKER_HUB_RESPONSE_FILE=$1
+
+  jq -r '
+    (.detail // .message // .error // empty)
+    | if type == "string" then . else tojson end
+  ' "$DOCKER_HUB_RESPONSE_FILE" 2>/dev/null | head -n 1
 
 }
 
@@ -3297,14 +3339,24 @@ function load_docker_hub_credentials() {
   local DOCKER_CREDENTIAL_SERVER
   local DOCKER_CREDENTIAL_HELPER
   local DOCKER_CREDENTIAL_RESPONSE
+  local DOCKER_CREDENTIAL_HELPER_EXIT_CODE
   local DOCKER_REGISTRY_AUTH
   local DOCKER_REGISTRY_AUTH_DECODED
 
   unset DOCKER_HUB_USERNAME
   unset DOCKER_HUB_PASSWORD
+  unset DOCKER_HUB_CREDENTIAL_ERROR
 
   if [[ ! -f "$DOCKER_CONFIG_FILE" ]]; then
 
+    DOCKER_HUB_CREDENTIAL_ERROR="Docker config file not found: $DOCKER_CONFIG_FILE"
+    return 1
+
+  fi
+
+  if ! jq -e . "$DOCKER_CONFIG_FILE" > /dev/null 2>&1; then
+
+    DOCKER_HUB_CREDENTIAL_ERROR="Docker config file is not valid JSON: $DOCKER_CONFIG_FILE"
     return 1
 
   fi
@@ -3313,42 +3365,92 @@ function load_docker_hub_credentials() {
 
     DOCKER_CREDENTIAL_HELPER=$(jq -r --arg registry "$DOCKER_CREDENTIAL_SERVER" '.credHelpers[$registry] // .credsStore // empty' "$DOCKER_CONFIG_FILE")
 
-    if [[ "$DOCKER_CREDENTIAL_HELPER" ]] && command -v "docker-credential-$DOCKER_CREDENTIAL_HELPER" > /dev/null 2>&1; then
+    if [[ "$DOCKER_CREDENTIAL_HELPER" ]]; then
 
-      if DOCKER_CREDENTIAL_RESPONSE=$(printf '%s' "$DOCKER_CREDENTIAL_SERVER" | "docker-credential-$DOCKER_CREDENTIAL_HELPER" get 2>/dev/null); then
+      if ! command -v "docker-credential-$DOCKER_CREDENTIAL_HELPER" > /dev/null 2>&1; then
+
+        if [[ ! "$DOCKER_HUB_CREDENTIAL_ERROR" ]]; then
+
+          DOCKER_HUB_CREDENTIAL_ERROR="Credential helper 'docker-credential-$DOCKER_CREDENTIAL_HELPER' is configured but not installed. Docker config: $DOCKER_CONFIG_FILE"
+
+        fi
+
+      elif DOCKER_CREDENTIAL_RESPONSE=$(printf '%s' "$DOCKER_CREDENTIAL_SERVER" | "docker-credential-$DOCKER_CREDENTIAL_HELPER" get 2>/dev/null); then
 
         DOCKER_HUB_USERNAME=$(printf '%s' "$DOCKER_CREDENTIAL_RESPONSE" | jq -r '.Username // empty' 2>/dev/null)
         DOCKER_HUB_PASSWORD=$(printf '%s' "$DOCKER_CREDENTIAL_RESPONSE" | jq -r '.Secret // empty' 2>/dev/null)
 
-      fi
+        if [[ "$DOCKER_HUB_USERNAME" ]] && [[ "$DOCKER_HUB_PASSWORD" ]]; then
 
-    else
-
-      DOCKER_REGISTRY_AUTH=$(jq -r --arg registry "$DOCKER_CREDENTIAL_SERVER" '.auths[$registry].auth // empty' "$DOCKER_CONFIG_FILE")
-
-      if [[ "$DOCKER_REGISTRY_AUTH" ]]; then
-
-        if ! DOCKER_REGISTRY_AUTH_DECODED=$(printf '%s' "$DOCKER_REGISTRY_AUTH" | base64 -d 2>/dev/null); then
-
-          DOCKER_REGISTRY_AUTH_DECODED=$(printf '%s' "$DOCKER_REGISTRY_AUTH" | base64 -D 2>/dev/null)
+          return 0
 
         fi
 
-        DOCKER_HUB_USERNAME=${DOCKER_REGISTRY_AUTH_DECODED%%:*}
-        DOCKER_HUB_PASSWORD=${DOCKER_REGISTRY_AUTH_DECODED#*:}
+        if [[ ! "$DOCKER_HUB_CREDENTIAL_ERROR" ]]; then
+
+          DOCKER_HUB_CREDENTIAL_ERROR="Credential helper 'docker-credential-$DOCKER_CREDENTIAL_HELPER' returned incomplete credentials for '$DOCKER_CREDENTIAL_SERVER'. Docker config: $DOCKER_CONFIG_FILE"
+
+        fi
+
+      else
+
+        DOCKER_CREDENTIAL_HELPER_EXIT_CODE=$?
+
+        if [[ ! "$DOCKER_HUB_CREDENTIAL_ERROR" ]]; then
+
+          DOCKER_HUB_CREDENTIAL_ERROR="Credential helper 'docker-credential-$DOCKER_CREDENTIAL_HELPER' failed for '$DOCKER_CREDENTIAL_SERVER' with exit code $DOCKER_CREDENTIAL_HELPER_EXIT_CODE. Docker config: $DOCKER_CONFIG_FILE"
+
+        fi
+
+      fi
+
+    fi
+
+    DOCKER_REGISTRY_AUTH=$(jq -r --arg registry "$DOCKER_CREDENTIAL_SERVER" '.auths[$registry].auth // empty' "$DOCKER_CONFIG_FILE")
+
+    if [[ "$DOCKER_REGISTRY_AUTH" ]]; then
+
+      if ! DOCKER_REGISTRY_AUTH_DECODED=$(printf '%s' "$DOCKER_REGISTRY_AUTH" | base64 -d 2>/dev/null); then
+
+        if ! DOCKER_REGISTRY_AUTH_DECODED=$(printf '%s' "$DOCKER_REGISTRY_AUTH" | base64 -D 2>/dev/null); then
+
+          if [[ ! "$DOCKER_HUB_CREDENTIAL_ERROR" ]]; then
+
+            DOCKER_HUB_CREDENTIAL_ERROR="Docker Hub auth entry is not valid base64 for '$DOCKER_CREDENTIAL_SERVER'. Docker config: $DOCKER_CONFIG_FILE"
+
+          fi
+
+          continue
+
+        fi
+
+      fi
+
+      DOCKER_HUB_USERNAME=${DOCKER_REGISTRY_AUTH_DECODED%%:*}
+      DOCKER_HUB_PASSWORD=${DOCKER_REGISTRY_AUTH_DECODED#*:}
+
+      if [[ "$DOCKER_HUB_USERNAME" ]] && [[ "$DOCKER_HUB_PASSWORD" ]]; then
+
+        return 0
+
+      fi
+
+      if [[ ! "$DOCKER_HUB_CREDENTIAL_ERROR" ]]; then
+
+        DOCKER_HUB_CREDENTIAL_ERROR="Docker Hub auth entry contains incomplete credentials for '$DOCKER_CREDENTIAL_SERVER'. Docker config: $DOCKER_CONFIG_FILE"
 
       fi
 
     fi
 
 
-    if [[ "$DOCKER_HUB_USERNAME" ]] && [[ "$DOCKER_HUB_PASSWORD" ]]; then
-
-      return 0
-
-    fi
-
   done
+
+  if [[ ! "$DOCKER_HUB_CREDENTIAL_ERROR" ]]; then
+
+    DOCKER_HUB_CREDENTIAL_ERROR="No Docker Hub credentials were found in $DOCKER_CONFIG_FILE"
+
+  fi
 
   return 1
 
@@ -3364,6 +3466,7 @@ function check_latest_hollaex_server_branch_docker_tag() {
   local DOCKER_HUB_ACCESS_TOKEN
   local DOCKER_HUB_TAG_RESPONSE
   local DOCKER_HUB_TAG_HTTP_CODE
+  local DOCKER_HUB_API_ERROR
   local DOCKER_HUB_TAGS_URL="https://hub.docker.com/v2/repositories/bitholla/hollaex-server/tags?page_size=100&name=$HOLLAEX_SERVER_TAG_PREFIX"
   local DOCKER_HUB_NEXT_TAGS_URL=$DOCKER_HUB_TAGS_URL
   local HOLLAEX_SERVER_TAG_CANDIDATE
@@ -3378,7 +3481,9 @@ function check_latest_hollaex_server_branch_docker_tag() {
   if ! load_docker_hub_credentials; then
 
     rm "$DOCKER_HUB_TOKEN_RESPONSE" "$DOCKER_HUB_TAG_RESPONSE"
-    hollaex_server_docker_login_error >&2
+    hollaex_server_docker_login_error \
+      "Docker credential discovery" \
+      "$DOCKER_HUB_CREDENTIAL_ERROR"
     return 1
 
   fi
@@ -3395,8 +3500,10 @@ function check_latest_hollaex_server_branch_docker_tag() {
     unset DOCKER_HUB_USERNAME
     unset DOCKER_HUB_PASSWORD
     rm "$DOCKER_HUB_TOKEN_RESPONSE" "$DOCKER_HUB_TAG_RESPONSE"
-    printf "\n\033[91mError: Failed to connect to Docker Hub.\033[39m\n" >&2
-    echo "Please check your network connection and try it again." >&2
+    hollaex_server_docker_error \
+      "Failed to connect to Docker Hub." \
+      "Docker Hub access-token request" \
+      "curl could not complete the request to https://hub.docker.com/v2/auth/token. Check the preceding curl error and your network connection."
     return 1
 
   fi
@@ -3406,17 +3513,23 @@ function check_latest_hollaex_server_branch_docker_tag() {
 
   if [[ "$DOCKER_HUB_TOKEN_HTTP_CODE" == "401" ]] || [[ "$DOCKER_HUB_TOKEN_HTTP_CODE" == "403" ]]; then
 
+    DOCKER_HUB_API_ERROR=$(get_docker_hub_api_error "$DOCKER_HUB_TOKEN_RESPONSE")
     rm "$DOCKER_HUB_TOKEN_RESPONSE" "$DOCKER_HUB_TAG_RESPONSE"
-    hollaex_server_docker_login_error >&2
+    hollaex_server_docker_login_error \
+      "Docker Hub access-token request" \
+      "Docker Hub returned HTTP $DOCKER_HUB_TOKEN_HTTP_CODE${DOCKER_HUB_API_ERROR:+: $DOCKER_HUB_API_ERROR}"
     return 1
 
   fi
 
   if [[ ! "$DOCKER_HUB_TOKEN_HTTP_CODE" == "200" ]]; then
 
+    DOCKER_HUB_API_ERROR=$(get_docker_hub_api_error "$DOCKER_HUB_TOKEN_RESPONSE")
     rm "$DOCKER_HUB_TOKEN_RESPONSE" "$DOCKER_HUB_TAG_RESPONSE"
-    printf "\n\033[91mError: Failed to authenticate with Docker Hub.\033[39m\n" >&2
-    echo "Docker Hub responded with HTTP $DOCKER_HUB_TOKEN_HTTP_CODE." >&2
+    hollaex_server_docker_error \
+      "Failed to authenticate with Docker Hub." \
+      "Docker Hub access-token request" \
+      "Docker Hub returned HTTP $DOCKER_HUB_TOKEN_HTTP_CODE${DOCKER_HUB_API_ERROR:+: $DOCKER_HUB_API_ERROR}"
     return 1
 
   fi
@@ -3425,8 +3538,12 @@ function check_latest_hollaex_server_branch_docker_tag() {
 
   if [[ ! "$DOCKER_HUB_ACCESS_TOKEN" ]]; then
 
+    DOCKER_HUB_API_ERROR=$(get_docker_hub_api_error "$DOCKER_HUB_TOKEN_RESPONSE")
     rm "$DOCKER_HUB_TOKEN_RESPONSE" "$DOCKER_HUB_TAG_RESPONSE"
-    hollaex_server_docker_login_error >&2
+    hollaex_server_docker_error \
+      "Docker Hub returned an invalid authentication response." \
+      "Docker Hub access-token response" \
+      "The response did not contain an access_token${DOCKER_HUB_API_ERROR:+: $DOCKER_HUB_API_ERROR}"
     return 1
 
   fi
@@ -3438,25 +3555,33 @@ function check_latest_hollaex_server_branch_docker_tag() {
         "$DOCKER_HUB_NEXT_TAGS_URL"); then
 
       rm "$DOCKER_HUB_TOKEN_RESPONSE" "$DOCKER_HUB_TAG_RESPONSE"
-      printf "\n\033[91mError: Failed to retrieve HollaEx Server Docker tags.\033[39m\n" >&2
-      echo "Please check your network connection and try it again." >&2
+      hollaex_server_docker_error \
+        "Failed to retrieve HollaEx Server Docker tags." \
+        "Docker Hub tag-list request" \
+        "curl could not complete the request to Docker Hub. Check the preceding curl error and your network connection."
       return 1
 
     fi
 
     if [[ "$DOCKER_HUB_TAG_HTTP_CODE" == "401" ]] || [[ "$DOCKER_HUB_TAG_HTTP_CODE" == "403" ]]; then
 
+      DOCKER_HUB_API_ERROR=$(get_docker_hub_api_error "$DOCKER_HUB_TAG_RESPONSE")
       rm "$DOCKER_HUB_TOKEN_RESPONSE" "$DOCKER_HUB_TAG_RESPONSE"
-      hollaex_server_docker_login_error >&2
+      hollaex_server_docker_login_error \
+        "Docker Hub tag-list request" \
+        "Docker Hub returned HTTP $DOCKER_HUB_TAG_HTTP_CODE${DOCKER_HUB_API_ERROR:+: $DOCKER_HUB_API_ERROR}"
       return 1
 
     fi
 
     if [[ ! "$DOCKER_HUB_TAG_HTTP_CODE" == "200" ]]; then
 
+      DOCKER_HUB_API_ERROR=$(get_docker_hub_api_error "$DOCKER_HUB_TAG_RESPONSE")
       rm "$DOCKER_HUB_TOKEN_RESPONSE" "$DOCKER_HUB_TAG_RESPONSE"
-      printf "\n\033[91mError: Failed to retrieve HollaEx Server Docker tags.\033[39m\n" >&2
-      echo "Docker Hub responded with HTTP $DOCKER_HUB_TAG_HTTP_CODE." >&2
+      hollaex_server_docker_error \
+        "Failed to retrieve HollaEx Server Docker tags." \
+        "Docker Hub tag-list request" \
+        "Docker Hub returned HTTP $DOCKER_HUB_TAG_HTTP_CODE${DOCKER_HUB_API_ERROR:+: $DOCKER_HUB_API_ERROR}"
       return 1
 
     fi
@@ -3492,8 +3617,10 @@ function check_latest_hollaex_server_branch_docker_tag() {
 
   if [[ ! "$HOLLAEX_SERVER_LATEST_DOCKER_TAG" ]]; then
 
-    printf "\n\033[91mError: Failed to find a matching HollaEx Server Docker tag.\033[39m\n" >&2
-    echo "Expected a tag such as '$HOLLAEX_SERVER_TAG_PREFIX<commit-id>'." >&2
+    hollaex_server_docker_error \
+      "Failed to find a matching HollaEx Server Docker tag." \
+      "Docker Hub tag selection" \
+      "Expected a tag such as '$HOLLAEX_SERVER_TAG_PREFIX<commit-id>', but Docker Hub returned no matching tags."
     return 1
 
   fi
@@ -3503,6 +3630,8 @@ function check_latest_hollaex_server_branch_docker_tag() {
 }
 
 function build_user_hollaex_core() {
+
+  local DOCKER_PULL_EXIT_CODE
 
   GIT_REMOTE_URL=$(git remote -v | awk '{print $2}' | head -n1)
   GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
@@ -3638,10 +3767,18 @@ function build_user_hollaex_core() {
 
     override_user_hollaex_core;
 
-    if ! command docker pull $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE; then
+    if command docker pull $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE; then
 
-      printf "\n\033[91mFailed to pull the HollaEx Server Docker image.\033[39m\n"
-      echo "Please run 'docker login' and try it again."
+      :
+
+    else
+
+      DOCKER_PULL_EXIT_CODE=$?
+
+      hollaex_server_docker_error \
+        "Failed to pull the HollaEx Server Docker image." \
+        "Docker image pull" \
+        "'docker pull $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE' exited with code $DOCKER_PULL_EXIT_CODE. Review the Docker error immediately above."
       return 1
 
     fi
