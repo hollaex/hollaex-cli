@@ -3401,16 +3401,20 @@ function build_user_hollaex_core() {
 
   else
 
-    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE="hollaex/hollaex-kit"
-    if [[ ! "$GIT_BRANCH" == "master" ]]; then
-      export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')-$GIT_BRANCH-$GIT_COMMIT_ID"
-    else
-      export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/server/package.json | jq -r '.version')"
-    fi
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE="bitholla/hollaex-server"
+    export ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE="$(cat $HOLLAEX_CLI_INIT_PATH/version)"
+
+    echo "HollaEx Server Docker image: $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE"
 
     override_user_hollaex_core;
 
-    docker pull $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE
+    if ! command docker pull $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE:$ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE; then
+
+      printf "\n\033[91mFailed to pull the HollaEx Server Docker image.\033[39m\n"
+      echo "Please run 'docker login' and try it again."
+      return 1
+
+    fi
 
     echo -e "\nPlease run 'hollaex apply --registry $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_REGISTRY_OVERRIDE --tag $ENVIRONMENT_USER_HOLLAEX_CORE_IMAGE_VERSION_OVERRIDE$(if [[ "$USE_KUBERNETES" ]]; then echo " --kube"; fi)' to apply it on the server."
   
