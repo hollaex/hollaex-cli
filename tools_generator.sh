@@ -3347,6 +3347,14 @@ function load_docker_hub_credentials() {
   unset DOCKER_HUB_PASSWORD
   unset DOCKER_HUB_CREDENTIAL_ERROR
 
+  if [[ "${DOCKER_USERNAME:-}" ]] && [[ "${DOCKER_ACCESS_TOKEN:-}" ]]; then
+
+    DOCKER_HUB_USERNAME=$DOCKER_USERNAME
+    DOCKER_HUB_PASSWORD=$DOCKER_ACCESS_TOKEN
+    return 0
+
+  fi
+
   if [[ ! -f "$DOCKER_CONFIG_FILE" ]]; then
 
     DOCKER_HUB_CREDENTIAL_ERROR="Docker config file not found: $DOCKER_CONFIG_FILE"
